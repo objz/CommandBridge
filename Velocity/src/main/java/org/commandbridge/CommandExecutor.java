@@ -12,7 +12,8 @@ public class CommandExecutor {
     private final VerboseLogger verboseLogger;
     private final CommandBridge plugin;
     private final Bridge bridge;
-
+    private boolean timeoutMessageSent = false;
+    private boolean timeoutServer = false;
 
     public CommandExecutor(ProxyServer server, CommandBridge plugin) {
         this.server = server;
@@ -21,6 +22,10 @@ public class CommandExecutor {
         this.verboseLogger = plugin.getVerboseLogger();
     }
 
+    public void resetState() {
+        timeoutMessageSent = false;
+        timeoutServer = false;
+    }
 
 
     public void executeCommand(String command, String targetServerId, String targetExecutor, boolean waitForOnline, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disable_player_online) {
@@ -39,7 +44,10 @@ public class CommandExecutor {
                                         .schedule();
                                 verboseLogger.info("Waiting for player to be online on server " + targetServerId + ": " + command);
                             } else {
-                                playerMessage.sendMessage(Component.text("Timeout reached. Player not online within 20 seconds on server " + targetServerId, net.kyori.adventure.text.format.NamedTextColor.RED));
+                                if (!timeoutServer) {
+                                    playerMessage.sendMessage(Component.text("Timeout reached. Player not online within 20 seconds on server " + targetServerId, net.kyori.adventure.text.format.NamedTextColor.RED));
+                                    timeoutServer = true;
+                                }
                                 verboseLogger.warn("Timeout reached. Player not online on server " + targetServerId + ": " + command);
                             }
                         });
@@ -66,8 +74,12 @@ public class CommandExecutor {
                             bridge.sendCommandToBukkit(command, targetServerId, targetExecutor);
                             verboseLogger.info("Executing command: " + command);
                         }, () -> {
+                            if (!timeoutMessageSent) {
+                                playerMessage.sendMessage(Component.text("You must be on the server " + targetServerId + " to use this command.", net.kyori.adventure.text.format.NamedTextColor.RED));
+                                timeoutMessageSent = true;
+                            }
                             verboseLogger.warn("Player is not online on server " + targetServerId + ": " + command);
-                            playerMessage.sendMessage(Component.text("You must be on the server " + targetServerId + " to use this command.", net.kyori.adventure.text.format.NamedTextColor.RED));
+
                         });
             }
         });

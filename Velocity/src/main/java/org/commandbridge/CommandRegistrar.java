@@ -31,6 +31,7 @@ public class CommandRegistrar {
 
 
     public void registerCommand(Map<String, Object> commandData) {
+        commandExecutor.resetState();
         String commandName = (String) commandData.get("name");
         List<Map<String, Object>> commandList = (List<Map<String, Object>>) commandData.get("commands");
         boolean disableExecutorIsPlayerCheck = (boolean) commandData.getOrDefault("disable-check-if-executor-is-player", false);
@@ -60,6 +61,7 @@ public class CommandRegistrar {
                         source.sendMessage(Component.text("You do not have permission to use this command.", net.kyori.adventure.text.format.NamedTextColor.RED));
                         return 0;
                     }
+                    commandExecutor.resetState();
 
                     for (Map<String, Object> cmdData : commandList) {
                         String cmd = parsePlaceholders((String) cmdData.get("command"), player);

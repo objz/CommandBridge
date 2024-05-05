@@ -17,7 +17,7 @@ commands:
     check-if-executor-is-player: false
     disable-check-if-executor-is-on-server: false
     dispatch-command-on-target-server: ["lobby", "hub"]
-  - command: "server lobby"
+  - command: "say %player% has left the server!"
     delay: 0
     target-server-id: "lobby"
     target-executor: "player"
