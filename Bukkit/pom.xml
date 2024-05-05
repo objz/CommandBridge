@@ -49,7 +49,6 @@
               <relocations>
                   <relocation>
                       <pattern>dev.jorel.commandapi</pattern>
-                      <!-- TODO: Change this  -->
                       <shadedPattern>org.72S.CommandBridge</shadedPattern>
                   </relocation>
               </relocations>

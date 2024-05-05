@@ -46,9 +46,9 @@ public class CommandExecutor {
                             } else {
                                 if (!timeoutServer) {
                                     playerMessage.sendMessage(Component.text("Timeout reached. Player not online within 20 seconds on server " + targetServerId, net.kyori.adventure.text.format.NamedTextColor.RED));
+                                    verboseLogger.warn("Timeout reached. Player not online on server " + targetServerId + ": " + command);
                                     timeoutServer = true;
                                 }
-                                verboseLogger.warn("Timeout reached. Player not online on server " + targetServerId + ": " + command);
                             }
                         });
             } else {
@@ -76,10 +76,9 @@ public class CommandExecutor {
                         }, () -> {
                             if (!timeoutMessageSent) {
                                 playerMessage.sendMessage(Component.text("You must be on the server " + targetServerId + " to use this command.", net.kyori.adventure.text.format.NamedTextColor.RED));
+                                verboseLogger.warn("Player is not online on server " + targetServerId + ": " + command);
                                 timeoutMessageSent = true;
                             }
-                            verboseLogger.warn("Player is not online on server " + targetServerId + ": " + command);
-
                         });
             }
         });
