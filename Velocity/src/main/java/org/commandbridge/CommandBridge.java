@@ -20,20 +20,22 @@ public class CommandBridge {
     public static final MinecraftChannelIdentifier CHANNEL = MinecraftChannelIdentifier.create("commandbridge", "main");
     private final List<String> registeredCommands = new ArrayList<>();
     private final Runtime runtime;
+    private final Startup startup;
 
     @Inject
     public CommandBridge(ProxyServer server, Logger logger) {
         this.server = server;
         this.verboseLogger = new VerboseLogger(this, logger);
-        this.runtime = new Runtime(server, this); // Runtime initialisieren
+        this.runtime = new Runtime(server, this);
+        this.startup = new Startup(server, this);
     }
+
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
         this.server.getChannelRegistrar().register(CHANNEL);
-        this.runtime.loadScripts();
-        // Delegate command registration to the Startup class
-        new Startup(server, this).registerCommands();
+        startup.loadConfig();
+        startup.registerCommands();
         verboseLogger.info("CommandBridgeVelocity has been enabled!");
     }
 
@@ -70,6 +72,10 @@ public class CommandBridge {
     }
 
     public boolean isVerboseOutputEnabled() {
-        return true;
+        return startup.isVerboseOutput();
+    }
+
+    public Startup getStartup() {
+        return startup;
     }
 }

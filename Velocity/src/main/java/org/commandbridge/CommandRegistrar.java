@@ -50,7 +50,6 @@ public class CommandRegistrar {
                 .executes(context -> {
                     CommandSource source = context.getSource();
 
-                    // Prüfe Berechtigungen und ob der Befehl von einem Spieler ausgeführt werden muss, wenn nicht deaktiviert
                     if (!disableExecutorIsPlayerCheck && !(source instanceof Player player)) {
                         verboseLogger.warn("This command can only be used by a player.");
                         return 0;
@@ -76,7 +75,6 @@ public class CommandRegistrar {
                             verboseLogger.info("Player online check is enabled for command " + commandName);
                         }
 
-                        // Ausführen des Befehls sofort oder verzögert
                         if (delay > 0) {
                             server.getScheduler().buildTask(plugin, () -> commandExecutor.executeCommand(cmd, targetServerId, targetExecutor, waitForOnline, player, new AtomicInteger(0), player.getUniqueId().toString(), disablePlayerOnline))
                                     .delay(delay, TimeUnit.SECONDS)

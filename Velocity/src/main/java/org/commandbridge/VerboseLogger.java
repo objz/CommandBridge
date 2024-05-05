@@ -6,6 +6,7 @@ public class VerboseLogger {
     private final CommandBridge plugin;
     private final Logger logger;
 
+
     public VerboseLogger(CommandBridge plugin, Logger logger) {
         this.plugin = plugin;
         this.logger = logger;

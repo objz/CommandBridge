@@ -8,7 +8,7 @@ commands:
     wait-until-player-is-online: false
     disable-check-if-executor-is-player: false
     disable-check-if-executor-is-on-server: false
-    dispatch-command-on-target-server: "lobby", "hub"
+    dispatch-command-on-target-server: ["lobby", "hub"]
   - command: "say %player% has joined the server!"
     delay: 0
     target-server-id: "lobby"
@@ -16,7 +16,7 @@ commands:
     wait-until-player-is-online: false
     check-if-executor-is-player: false
     disable-check-if-executor-is-on-server: false
-    dispatch-command-on-target-server: "lobby", "hub"
+    dispatch-command-on-target-server: ["lobby", "hub"]
   - command: "server lobby"
     delay: 0
     target-server-id: "lobby"
@@ -24,4 +24,4 @@ commands:
     wait-until-player-is-online: false
     check-if-executor-is-player: false
     disable-check-if-executor-is-on-server: false
-    dispatch-command-on-target-server: "lobby", "hub"
+    dispatch-command-on-target-server: ["lobby", "hub"]
