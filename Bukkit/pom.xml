@@ -14,7 +14,7 @@
     <artifactId>CommandBridgeBukkit</artifactId>
     <packaging>jar</packaging>
 
-    <name>Bukkit</name>
+    <name>BukkitPlugin</name>
 
   <properties>
     <java.version>17</java.version>
