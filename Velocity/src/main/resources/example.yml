@@ -1,27 +1,30 @@
+# The name of the command that will be dispatched
 name: examplecommand
-enabled: false
+# Whether the command is enabled
+enabled: true
+# The list of commands to execute
 commands:
-  - command: "title %player% title {\"text\":\"Command Bridge is the Way to Go!\"}"
+  # The command to execute on the target server
+  # IMPORTANT: The command must be enclosed in single quotes
+  - command: 'say Hello, world!'
+    # The delay in seconds before executing the command
     delay: 0
-    target-server-id: "lobby"
-    target-executor: "console"
-    wait-until-player-is-online: false
+    # The ID of the target server.
+    # Use the server-id from the config.yml file of the target server
+    target-server-id: 'lobby'
+    # The executor of the command.
+    # This can be either "player" or "console"
+    target-executor: 'player'
+    # Whether to wait until the player
+    # is online on the target server before executing the command
+    wait-until-player-is-online: true
+    # Whether to disable the check if the executor is a player
     disable-check-if-executor-is-player: false
+    # Whether to disable the check if the executor is on the server
     disable-check-if-executor-is-on-server: false
-    dispatch-command-on-target-server: ["lobby", "hub"]
-  - command: "say %player% has joined the server!"
+  # Add more commands here
+  - command: 'say I love Coding!'
     delay: 0
-    target-server-id: "lobby"
-    target-executor: "player"
-    wait-until-player-is-online: false
-    check-if-executor-is-player: false
-    disable-check-if-executor-is-on-server: false
-    dispatch-command-on-target-server: ["lobby", "hub"]
-  - command: "say %player% has left the server!"
-    delay: 0
-    target-server-id: "lobby"
-    target-executor: "player"
-    wait-until-player-is-online: false
-    check-if-executor-is-player: false
-    disable-check-if-executor-is-on-server: false
-    dispatch-command-on-target-server: ["lobby", "hub"]
+    target-server-id: 'lobby'
+    target-executor: 'player'
+    wait-until-player-is-online: true

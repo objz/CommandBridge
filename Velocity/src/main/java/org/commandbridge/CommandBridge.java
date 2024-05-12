@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.0-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://github.com/72-S")
+@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.1-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://github.com/72-S")
 public class CommandBridge {
 
     private final ProxyServer server;
