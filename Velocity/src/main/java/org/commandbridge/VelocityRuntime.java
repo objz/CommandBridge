@@ -14,14 +14,12 @@ public class VelocityRuntime {
     private final ProxyServer server;
     private final VerboseLogger verboseLogger;
     private final CommandBridge plugin;
-    private final Startup startup;
     private final File scriptsFolder = new File("plugins/CommandBridgeVelocity/scripts");
 
     public VelocityRuntime(ProxyServer server, CommandBridge plugin) {
         this.server = server;
         this.plugin = plugin;
         this.verboseLogger = plugin.getVerboseLogger();
-        this.startup = plugin.getStartup();
     }
 
     public void loadScripts() {
