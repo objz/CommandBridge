@@ -21,14 +21,14 @@ public class Startup {
     private final CommandBridge plugin;
     private final VerboseLogger verboseLogger;
     private boolean verboseOutput;
-    private final Runtime runtime;
+    private final VelocityRuntime velocityRuntime;
     private final Path dataDirectory = Path.of("plugins", "CommandBridgeVelocity");
 
     public Startup(ProxyServer server, CommandBridge plugin) {
         this.server = server;
         this.plugin = plugin;
         this.verboseLogger = plugin.getVerboseLogger();
-        this.runtime = new Runtime(server, plugin);
+        this.velocityRuntime = new VelocityRuntime(server, plugin);
     }
 
     public void loadConfig() {
@@ -55,7 +55,7 @@ public class Startup {
             Map<String, Object> data = yaml.load(fis);
             verboseOutput = (boolean) data.getOrDefault("verbose-output", false);
             verboseLogger.info("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
-            runtime.loadScripts();
+            velocityRuntime.loadScripts();
             copyExampleYml();
         } catch (IOException e) {
             verboseLogger.error("Failed to load config file", e);

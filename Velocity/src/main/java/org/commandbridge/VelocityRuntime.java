@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import org.yaml.snakeyaml.Yaml;
 
-public class Runtime {
+public class VelocityRuntime {
 
     private final ProxyServer server;
     private final VerboseLogger verboseLogger;
@@ -17,7 +17,7 @@ public class Runtime {
     private final Startup startup;
     private final File scriptsFolder = new File("plugins/CommandBridgeVelocity/scripts");
 
-    public Runtime(ProxyServer server, CommandBridge plugin) {
+    public VelocityRuntime(ProxyServer server, CommandBridge plugin) {
         this.server = server;
         this.plugin = plugin;
         this.verboseLogger = plugin.getVerboseLogger();

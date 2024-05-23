@@ -12,27 +12,31 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.1-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://github.com/72-S")
+@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.2-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://github.com/72-S")
 public class CommandBridge {
 
     private final ProxyServer server;
     private final VerboseLogger verboseLogger;
     public static final MinecraftChannelIdentifier CHANNEL = MinecraftChannelIdentifier.create("commandbridge", "main");
     private final List<String> registeredCommands = new ArrayList<>();
-    private final Runtime runtime;
+    private final VelocityRuntime velocityRuntime;
     private final Startup startup;
+    private final Metrics.Factory metricsFactory;
 
     @Inject
-    public CommandBridge(ProxyServer server, Logger logger) {
+    public CommandBridge(ProxyServer server, Logger logger, Metrics.Factory metricsFactory) {
         this.server = server;
         this.verboseLogger = new VerboseLogger(this, logger);
-        this.runtime = new Runtime(server, this);
+        this.velocityRuntime = new VelocityRuntime(server, this);
         this.startup = new Startup(server, this);
+        this.metricsFactory = metricsFactory;
     }
 
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
+        int pluginId = 22008;
+        Metrics metrics = metricsFactory.make(this, pluginId);
         this.server.getChannelRegistrar().register(CHANNEL);
         startup.loadConfig();
         startup.registerCommands();
@@ -63,8 +67,8 @@ public class CommandBridge {
         registeredCommands.clear();
     }
 
-    public Runtime getRuntime() {
-        return runtime;
+    public VelocityRuntime getRuntime() {
+        return velocityRuntime;
     }
 
     public CommandRegistrar getCommandRegistrar() {
