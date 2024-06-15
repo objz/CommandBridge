@@ -1,5 +1,5 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+# Simple workflow for deploying unzipped static content to GitHub Pages
+name: Deploy unzipped content to Pages
 
 on:
   # Runs on pushes targeting the default branch
@@ -31,13 +31,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Install unzip tool
+      - name: Install unzip
+        run: sudo apt-get install -y unzip
+
+      # Unzip the file into Docs/source folder
+      - name: Unzip content
+        run: unzip ./Docs/content.zip -d ./Docs/source
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: './Docs'
+          # Upload the content of the unzipped directory in Docs/source
+          path: ./Docs/source
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
