@@ -37,6 +37,7 @@ public class CommandBridge {
     public void onProxyInitialization(ProxyInitializeEvent event) {
         int pluginId = 22008;
         Metrics metrics = metricsFactory.make(this, pluginId);
+        metrics.addCustomChart(new Metrics.SimplePie("verbose_output", () -> String.valueOf(startup.isVerboseOutput())));
         this.server.getChannelRegistrar().register(CHANNEL);
         startup.loadConfig();
         startup.registerCommands();
@@ -74,6 +75,8 @@ public class CommandBridge {
     public CommandRegistrar getCommandRegistrar() {
         return new CommandRegistrar(server, this);
     }
+
+    public Bridge getBridge() { return new Bridge(server, this); }
 
     public boolean isVerboseOutputEnabled() {
         return startup.isVerboseOutput();

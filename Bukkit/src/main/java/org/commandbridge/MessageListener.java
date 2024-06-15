@@ -1,6 +1,7 @@
 package org.commandbridge;
 
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
@@ -43,6 +44,17 @@ public class MessageListener implements PluginMessageListener {
                     logger.info("Executing command as console: " + command);
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
                 }
+            } else if ("RegisterCommand".equals(subChannel)) {
+                String targetServerId = in.readUTF();
+                String command = in.readUTF();
+                logger.info("Received command to register on server " + targetServerId + ": " + command);
+
+                if (!targetServerId.equals(plugin.getConfig().getString("server-id"))) {
+                    logger.info("Command not for this server, ignoring.");
+                    return;
+                }
+
+                plugin.getLogger().warning("Registered Command: " + command);
             }
         } catch (IOException e) {
             logger.error("Failed to read plugin message" , e);

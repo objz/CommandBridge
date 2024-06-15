@@ -35,4 +35,22 @@ public class Bridge {
             verboseLogger.error("Failed to send command to Bukkit", e);
         }
     }
+
+    public void registerBukkitCommand(String command, String targetServerId) {
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(byteOut);
+        try {
+            out.writeUTF("RegisterCommand");
+            out.writeUTF(targetServerId);
+            out.writeUTF(command);
+            server.getAllServers().stream()
+                    .filter(serverConnection -> serverConnection.getServerInfo().getName().equals(targetServerId))
+                    .forEach(serverConnection -> {
+                        serverConnection.sendPluginMessage(MinecraftChannelIdentifier.create("commandbridge", "main"), byteOut.toByteArray());
+                        verboseLogger.info("Command registered on Bukkit server " + targetServerId + ": " + command);
+                    });
+        } catch (IOException e) {
+            verboseLogger.error("Failed to register command on Bukkit", e);
+        }
+    }
 }

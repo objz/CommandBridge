@@ -94,4 +94,15 @@ public class CommandRegistrar {
         plugin.addRegisteredCommand(commandName);
         verboseLogger.info("Command " + commandName + " registered successfully.");
     }
+
+    public void registerBukkitCommand(Map<String, Object> commandData) {
+        String command = (String) commandData.get("command");
+        String targetServerId = (String) commandData.get("target-server-id");
+        if (command == null || targetServerId == null) {
+            verboseLogger.warn("Command or target server ID is missing in config.");
+            return;
+        }
+        plugin.getBridge().registerBukkitCommand(command, targetServerId);
+
+    }
 }
