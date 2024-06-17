@@ -33,6 +33,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: built-jars
-          path: target/*.jar  # Replace with the path to your JAR files
+          path: target/**/*.jar  # Replace with the path to your JAR files
           # Use the environment variable in the description
           description: "Built from ${{ env.COMMIT_MESSAGE }}"
