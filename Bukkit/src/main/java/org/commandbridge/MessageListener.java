@@ -54,9 +54,22 @@ public class MessageListener implements PluginMessageListener {
                     return;
                 }
 
-                plugin.getLogger().warning("Registered Command: " + command);
+                plugin.getLogger().info("Register Command .... : " + command);
                 plugin.getCommandRegister().registerCommand(command);
 
+            }
+            if ("UnregisterCommand".equals(subChannel)) {
+                String targetServerId = in.readUTF();
+                String command = in.readUTF();
+                logger.info("Received command to unregister on server " + targetServerId + ": " + command);
+
+                if (!targetServerId.equals(plugin.getConfig().getString("server-id"))) {
+                    logger.info("Command not for this server, ignoring.");
+                    return;
+                }
+
+                plugin.getLogger().info("Unregister Command .... : " + command);
+                plugin.getCommandRegister().unregisterCommand(command);
             }
         } catch (IOException e) {
             logger.error("Failed to read plugin message" , e);
