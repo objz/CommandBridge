@@ -29,10 +29,16 @@ jobs:
       - name: Build Description
         run: |
           echo "Deployment Description: ${{ env.COMMIT_MESSAGE }}"
-      - name: Upload JAR Artifacts
+      - name: Upload Bukkit JAR Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: built-jars
-          path: target/**/*.jar  # Replace with the path to your JAR files
-          # Use the environment variable in the description
+          name: built-bukkit-jar
+          path: Bukkit/target/*.jar
+          description: "Built from ${{ env.COMMIT_MESSAGE }}"
+
+      - name: Upload Velocity JAR Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: built-velocity-jar
+          path: Velocity/target/*.jar
           description: "Built from ${{ env.COMMIT_MESSAGE }}"
