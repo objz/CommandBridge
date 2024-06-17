@@ -34,11 +34,8 @@ jobs:
         with:
           name: built-bukkit-jar
           path: Bukkit/target/*.jar
-          description: "Built from ${{ env.COMMIT_MESSAGE }}"
-
       - name: Upload Velocity JAR Artifacts
         uses: actions/upload-artifact@v3
         with:
           name: built-velocity-jar
           path: Velocity/target/*.jar
-          description: "Built from ${{ env.COMMIT_MESSAGE }}"
