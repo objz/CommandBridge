@@ -4,9 +4,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class VerboseLogger {
     private boolean verboseOutput;
-    private final JavaPlugin plugin;
+    private final CommandBridge plugin;
 
-    public VerboseLogger(JavaPlugin plugin) {
+    public VerboseLogger(CommandBridge plugin) {
         this.plugin = plugin;
     }
 

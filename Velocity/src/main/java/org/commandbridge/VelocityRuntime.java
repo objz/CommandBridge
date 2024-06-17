@@ -41,6 +41,10 @@ public class VelocityRuntime {
                 } else if (Boolean.TRUE.equals(data.get("enabled")) && Boolean.TRUE.equals(data.get("reverse-registration"))) {
                     verboseLogger.info("Skipping command with reverse registration in: " + file.getName());
                     this.plugin.getCommandRegistrar().registerBukkitCommand(data);
+                }else if (Boolean.FALSE.equals(data.get("enabled")) && Boolean.TRUE.equals(data.get("reverse-registration"))) {
+                    verboseLogger.info("Skipping disabled command with reverse registration in: " + file.getName());
+                    this.plugin.getCommandRegistrar().unregisterBukkitCommand(data);
+
                 } else {
                     verboseLogger.info("Skipping disabled command in: " + file.getName());
                 }
