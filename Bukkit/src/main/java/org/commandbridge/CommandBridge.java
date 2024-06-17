@@ -31,6 +31,10 @@ public final class CommandBridge extends JavaPlugin {
         logger.info("CommandBridge has been disabled!");
     }
 
+    public CommandRegister getCommandRegister() {
+        return new CommandRegister(this);
+    }
+
 
 
 }

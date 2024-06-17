@@ -12,9 +12,9 @@ import java.io.IOException;
 
 
 public class MessageListener implements PluginMessageListener {
-    private final JavaPlugin plugin;
+    private final CommandBridge plugin;
 
-    public MessageListener(JavaPlugin plugin) {
+    public MessageListener(CommandBridge plugin) {
         this.plugin = plugin;
     }
 
@@ -55,6 +55,8 @@ public class MessageListener implements PluginMessageListener {
                 }
 
                 plugin.getLogger().warning("Registered Command: " + command);
+                plugin.getCommandRegister().registerCommand(command);
+
             }
         } catch (IOException e) {
             logger.error("Failed to read plugin message" , e);
