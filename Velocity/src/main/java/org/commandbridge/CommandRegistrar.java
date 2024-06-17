@@ -109,4 +109,18 @@ public class CommandRegistrar {
         }
     }
 
+    public void unregisterBukkitCommand(Map<String, Object> data) {
+        String command = (String) data.get("name");
+        List<String> targetServerIds = (List<String>) data.get("target-server-ids");
+
+        if (command == null || targetServerIds == null || targetServerIds.isEmpty()) {
+            verboseLogger.warn("Command or target server IDs are missing in config.");
+            return;
+        }
+
+        for (String targetServerId : targetServerIds) {
+            plugin.getBridge().unregisterBukkitCommand(command, targetServerId);
+        }
+
+    }
 }
