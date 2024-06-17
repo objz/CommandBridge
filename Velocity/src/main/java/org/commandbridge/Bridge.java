@@ -6,6 +6,7 @@ import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Map;
 
 public class Bridge {
     private final ProxyServer server;
@@ -53,4 +54,24 @@ public class Bridge {
             verboseLogger.error("Failed to register command on Bukkit", e);
         }
     }
+
+    public void unregisterBukkitCommand(String command, String targetServerId) {
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(byteOut);
+        try {
+            out.writeUTF("UnregisterCommand");
+            out.writeUTF(targetServerId);
+            out.writeUTF(command);
+            server.getAllServers().stream()
+                    .filter(serverConnection -> serverConnection.getServerInfo().getName().equals(targetServerId))
+                    .forEach(serverConnection -> {
+                        serverConnection.sendPluginMessage(MinecraftChannelIdentifier.create("commandbridge", "main"), byteOut.toByteArray());
+                        verboseLogger.info("Command remove on Bukkit server " + targetServerId + ": " + command);
+                    });
+        } catch (IOException e) {
+            verboseLogger.error("Failed to remove command on Bukkit", e);
+        }
+    }
+
+
 }

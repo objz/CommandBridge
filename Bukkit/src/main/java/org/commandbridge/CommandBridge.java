@@ -35,6 +35,10 @@ public final class CommandBridge extends JavaPlugin {
         return new CommandRegister(this);
     }
 
+    public VerboseLogger getVerboseLogger() {
+        return new VerboseLogger(this);
+    }
+
 
 
 }
