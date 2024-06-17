@@ -27,7 +27,7 @@ public class VelocityRuntime {
         unloadScripts();
         File[] files = scriptsFolder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files == null) {
-            verboseLogger.info("No scripts found.");
+            verboseLogger.warn("No scripts found.");
             return;
         }
 
@@ -35,9 +35,10 @@ public class VelocityRuntime {
             try (InputStream input = new FileInputStream(file)) {
                 Yaml yaml = new Yaml();
                 Map<String, Object> data = yaml.load(input);
-                if (Boolean.TRUE.equals(data.get("enabled")) && Boolean.TRUE.equals(data.get("reverse-registration"))) {
+                if (Boolean.TRUE.equals(data.get("enabled")) && Boolean.FALSE.equals(data.get("reverse-registration"))) {
                     this.plugin.getCommandRegistrar().registerCommand(data);
-                } else if (Boolean.TRUE.equals(data.get("reverse-registration"))) {
+                    verboseLogger.info("Command registered successfully: " + file.getName());
+                } else if (Boolean.TRUE.equals(data.get("enabled")) && Boolean.TRUE.equals(data.get("reverse-registration"))) {
                     verboseLogger.info("Skipping command with reverse registration in: " + file.getName());
                     this.plugin.getCommandRegistrar().registerBukkitCommand(data);
                 } else {

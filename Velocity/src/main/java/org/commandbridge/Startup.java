@@ -1,19 +1,18 @@
 package org.commandbridge;
 
-import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
-import net.kyori.adventure.text.Component;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
-
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
+import net.kyori.adventure.text.Component;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 public class Startup {
 
@@ -54,7 +53,7 @@ public class Startup {
             Yaml yaml = new Yaml(new Constructor(Map.class));
             Map<String, Object> data = yaml.load(fis);
             verboseOutput = (boolean) data.getOrDefault("verbose-output", false);
-            verboseLogger.info("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
+            verboseLogger.ForceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
             velocityRuntime.loadScripts();
             copyExampleYml();
         } catch (IOException e) {
@@ -71,7 +70,8 @@ public class Startup {
         try {
             Files.createDirectories(scriptFolder); // Stellt sicher, dass der Ordner existiert
             Path exampleScript = scriptFolder.resolve("example.yml");
-            if (Files.notExists(exampleScript)) {
+            Path exampleBukkitScript = scriptFolder.resolve("example-bukkit.yml");
+            if (Files.notExists(exampleScript) || Files.notExists(exampleBukkitScript)) {
                 try (InputStream in = getClass().getClassLoader().getResourceAsStream("example.yml")) {
                     if (in == null) {
                         verboseLogger.warn("Could not find example.yml in resources");
@@ -80,6 +80,15 @@ public class Startup {
                     Files.copy(in, exampleScript, StandardCopyOption.REPLACE_EXISTING);
                     verboseLogger.info("example.yml has been copied successfully.");
                 }
+                try (InputStream in =
+                     getClass().getClassLoader().getResourceAsStream("example-bukkit.yml")) {
+                         if (in == null) {
+                     verboseLogger.warn("Could not find example-bukkit.yml in resources");
+                         return;
+                    }
+                              Files.copy(in, exampleBukkitScript, StandardCopyOption.REPLACE_EXISTING);
+                         verboseLogger.info("example-bukkit.yml has been copied successfully.");
+                    }
             }
         } catch (IOException e) {
             verboseLogger.error("Failed to create scripts folder or copy example.yml", e);

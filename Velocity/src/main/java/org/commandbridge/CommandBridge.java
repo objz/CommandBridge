@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.2-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
+@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.3-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
 public class CommandBridge {
 
     private final ProxyServer server;
@@ -41,13 +41,13 @@ public class CommandBridge {
         this.server.getChannelRegistrar().register(CHANNEL);
         startup.loadConfig();
         startup.registerCommands();
-        verboseLogger.info("CommandBridgeVelocity has been enabled!");
+        verboseLogger.ForceInfo("CommandBridgeVelocity has been enabled!");
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         server.getChannelRegistrar().unregister(CHANNEL);
-        verboseLogger.info("CommandBridgeVelocity has been disabled!");
+        verboseLogger.ForceInfo("CommandBridgeVelocity has been disabled!");
     }
 
     public VerboseLogger getVerboseLogger() {

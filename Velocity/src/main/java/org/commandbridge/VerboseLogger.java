@@ -19,16 +19,19 @@ public class VerboseLogger {
     }
 
     public void warn(String message) {
-        if (plugin.isVerboseOutputEnabled()) {
             logger.warn(message);
-        }
     }
 
     public void error(String message, Throwable e) {
-        if (plugin.isVerboseOutputEnabled()) {
             logger.error(message, e);
-        }
     }
+
+    public void ForceInfo(String message) {
+        logger.info(message);
+    }
+
+
+
 }
 
 

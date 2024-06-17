@@ -42,7 +42,7 @@ public class CommandRegistrar {
         }
 
         if (commandName == null || commandList == null || commandList.isEmpty()) {
-            verboseLogger.warn("Command name or command list is missing or empty in config.");
+            verboseLogger.error("Command name or command list is missing or empty in config.", new IllegalArgumentException());
             return;
         }
 
@@ -96,13 +96,17 @@ public class CommandRegistrar {
     }
 
     public void registerBukkitCommand(Map<String, Object> commandData) {
-        String command = (String) commandData.get("command");
-        String targetServerId = (String) commandData.get("target-server-id");
-        if (command == null || targetServerId == null) {
-            verboseLogger.warn("Command or target server ID is missing in config.");
+        String command = (String) commandData.get("name");
+        List<String> targetServerIds = (List<String>) commandData.get("target-server-ids");
+
+        if (command == null || targetServerIds == null || targetServerIds.isEmpty()) {
+            verboseLogger.warn("Command or target server IDs are missing in config.");
             return;
         }
-        plugin.getBridge().registerBukkitCommand(command, targetServerId);
 
+        for (String targetServerId : targetServerIds) {
+            plugin.getBridge().registerBukkitCommand(command, targetServerId);
+        }
     }
+
 }

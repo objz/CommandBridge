@@ -59,7 +59,7 @@ public class CommandExecutor {
 
     private void checkAndExecute(String command, String targetServerId, String targetExecutor, Player playerMessage, String playerUUID, boolean disable_player_online) {
         server.getServer(targetServerId).ifPresent(serverConnection -> {
-            verboseLogger.warn("Player UUID: " + playerUUID);
+            verboseLogger.info("Player UUID: " + playerUUID);
 
 
             if (disable_player_online) {
