@@ -30,12 +30,12 @@ jobs:
         run: |
           echo "Deployment Description: ${{ env.COMMIT_MESSAGE }}"
       - name: Upload Bukkit JAR Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.3
         with:
           name: built-bukkit-jar
           path: Bukkit/target/*.jar
       - name: Upload Velocity JAR Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.3
         with:
           name: built-velocity-jar
           path: Velocity/target/*.jar
