@@ -8,10 +8,12 @@ import java.io.File;
 
 public final class CommandBridge extends JavaPlugin {
     private final VerboseLogger verboseLogger;
+    private final MessageSender messageSender;
 
 
     public CommandBridge() {
         this.verboseLogger = new VerboseLogger(this, getLogger());
+        this.messageSender = new MessageSender(this);
     }
 
 
@@ -43,6 +45,10 @@ public final class CommandBridge extends JavaPlugin {
 
     public VerboseLogger getVerboseLogger() {
         return verboseLogger;
+    }
+
+    public MessageSender getMessageSender() {
+        return messageSender;
     }
 
 

@@ -4,6 +4,7 @@ package org.commandbridge;
 
 import org.bukkit.command.*;
 import org.bukkit.command.defaults.BukkitCommand;
+import org.bukkit.entity.Player;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -28,7 +29,12 @@ public class CommandRegister {
             Command newCommand = new BukkitCommand(command) {
                 @Override
                 public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-                    sender.sendMessage("Command executed");
+                    if (sender instanceof Player) {
+                        plugin.getMessageSender().sendPluginMessage(command);
+                        return true;
+                    } else {
+                        verboseLogger.warn("This command can only be used by a player.");
+                    }
                     return false;
                 }
             };

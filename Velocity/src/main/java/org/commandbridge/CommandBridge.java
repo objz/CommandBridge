@@ -39,6 +39,7 @@ public class CommandBridge {
         Metrics metrics = metricsFactory.make(this, pluginId);
         metrics.addCustomChart(new Metrics.SimplePie("verbose_output", () -> String.valueOf(startup.isVerboseOutput())));
         this.server.getChannelRegistrar().register(CHANNEL);
+        server.getEventManager().register(this, new MessageListener(server, this));
         startup.loadConfig();
         startup.registerCommands();
         verboseLogger.ForceInfo("CommandBridgeVelocity has been enabled!");
@@ -84,5 +85,9 @@ public class CommandBridge {
 
     public Startup getStartup() {
         return startup;
+    }
+
+    public MinecraftChannelIdentifier getChannelIdentifier() {
+        return CHANNEL;
     }
 }
