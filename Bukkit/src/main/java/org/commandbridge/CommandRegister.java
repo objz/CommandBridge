@@ -2,9 +2,7 @@ package org.commandbridge;
 
 
 
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandMap;
-import org.bukkit.command.CommandSender;
+import org.bukkit.command.*;
 import org.bukkit.command.defaults.BukkitCommand;
 
 import java.lang.reflect.Field;
@@ -13,10 +11,12 @@ import java.util.Objects;
 
 public class CommandRegister {
     private final CommandBridge plugin;
+    private final VerboseLogger verboseLogger;
 
 
     public CommandRegister(CommandBridge plugin) {
         this.plugin = plugin;
+        this.verboseLogger = plugin.getVerboseLogger();
     }
 
     public void registerCommand(String command) {
@@ -34,34 +34,38 @@ public class CommandRegister {
             };
             commandMap.register(plugin.getName(), newCommand);
         } catch (Exception e) {
-            plugin.getVerboseLogger().error("Failed to register command: " + command, e);
+            verboseLogger.error("Failed to register command: " + command, e);
         }
     }
 
-    public void unregisterCommand(String commandName) {
-        VerboseLogger logger = plugin.getVerboseLogger();
-        logger.info("Unregistering command: " + commandName);
+
+
+    public void unregisterCommand(String command) {
         try {
             Field commandMapField = plugin.getServer().getClass().getDeclaredField("commandMap");
             commandMapField.setAccessible(true);
             CommandMap commandMap = (CommandMap) commandMapField.get(plugin.getServer());
-            logger.info("CommandMap: " + commandMap);
 
-            // Get the knownCommands map from the CommandMap
-            Field knownCommandsField = commandMap.getClass().getDeclaredField("knownCommands");
-            knownCommandsField.setAccessible(true);
-            Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
-            logger.info("knownCommands: " + knownCommands);
-            // Remove the command from the knownCommands map
-            if (knownCommands.remove(commandName) != null) {
-                logger.info("Successfully unregistered command: " + commandName);
-            } else {
-                logger.warn("Command not found: " + commandName);
-            }
-        } catch (Exception e) {
-            logger.error("Failed to unregister command: " + commandName, e);
+            if (commandMap instanceof SimpleCommandMap) {
+                SimpleCommandMap simpleCommandMap = (SimpleCommandMap) commandMap;
+
+                Field knownCommandsField = SimpleCommandMap.class.getDeclaredField("knownCommands");
+                knownCommandsField.setAccessible(true);
+                Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(simpleCommandMap);
+
+                if (knownCommands.containsKey(command)) {
+                    knownCommands.remove(command);
+
+                    knownCommands.values().removeIf(cmd -> cmd instanceof PluginCommand && ((PluginCommand) cmd).getPlugin() == plugin);
+
+                    verboseLogger.info("Successfully unregistered command: " + command);
+                } else {
+          verboseLogger.warn("Command not found: " + command);
         }
+      }
 
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            verboseLogger.error("Failed to unregister command: " + command, e);
         }
-
+    }
 }

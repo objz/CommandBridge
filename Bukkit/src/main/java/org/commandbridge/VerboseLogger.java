@@ -2,12 +2,16 @@ package org.commandbridge;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.logging.Logger;
+
 public class VerboseLogger {
     private boolean verboseOutput;
     private final CommandBridge plugin;
+    private final Logger logger;
 
-    public VerboseLogger(CommandBridge plugin) {
+    public VerboseLogger(CommandBridge plugin, Logger logger) {
         this.plugin = plugin;
+        this.logger = logger;
     }
 
     public void loadConfig() {
@@ -16,19 +20,19 @@ public class VerboseLogger {
     
     public void info(String message) {
         if (verboseOutput) {
-            plugin.getLogger().info(message);
+            logger.info(message);
         }
     }
     
     public void warn(String message) {
         if (verboseOutput) {
-            plugin.getLogger().warning(message);
+            logger.warning(message);
         }
     }
     
     public void error(String message, Throwable e) {
         if (verboseOutput) {
-            plugin.getLogger().severe(message + " : " + e.getMessage());
+            logger.severe(message + " : " + e.getMessage());
         }
     }
 }

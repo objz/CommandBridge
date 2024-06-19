@@ -1,10 +1,18 @@
 package org.commandbridge;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
 
+import javax.inject.Inject;
 import java.io.File;
 
 public final class CommandBridge extends JavaPlugin {
+    private final VerboseLogger verboseLogger;
+
+
+    public CommandBridge() {
+        this.verboseLogger = new VerboseLogger(this, getLogger());
+    }
 
 
     @Override
@@ -16,19 +24,17 @@ public final class CommandBridge extends JavaPlugin {
             getConfig().set("verbose-output", false);
             saveConfig();
         }
-        VerboseLogger logger = new VerboseLogger(this);
-        logger.loadConfig();
-        logger.info("CommandBridge has been enabled!");
+        verboseLogger.loadConfig();
+        verboseLogger.info("CommandBridge has been enabled!");
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "commandbridge:main");
         this.getServer().getMessenger().registerIncomingPluginChannel(this, "commandbridge:main", new MessageListener(this));
     }
 
     @Override
     public void onDisable() {
-        VerboseLogger logger = new VerboseLogger(this);
         this.getServer().getMessenger().unregisterOutgoingPluginChannel(this);
         this.getServer().getMessenger().unregisterIncomingPluginChannel(this);
-        logger.info("CommandBridge has been disabled!");
+        verboseLogger.info("CommandBridge has been disabled!");
     }
 
     public CommandRegister getCommandRegister() {
@@ -36,7 +42,7 @@ public final class CommandBridge extends JavaPlugin {
     }
 
     public VerboseLogger getVerboseLogger() {
-        return new VerboseLogger(this);
+        return verboseLogger;
     }
 
 
