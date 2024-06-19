@@ -30,7 +30,8 @@ public class CommandRegister {
                 @Override
                 public boolean execute(CommandSender sender, String commandLabel, String[] args) {
                     if (sender instanceof Player) {
-                        plugin.getMessageSender().sendPluginMessage(command);
+                        verboseLogger.info("Sending plugin message for command: " + command);
+                        plugin.getMessageSender().sendPluginMessage(((Player) sender).getPlayer(), command);
                         return true;
                     } else {
                         verboseLogger.warn("This command can only be used by a player.");

@@ -7,19 +7,25 @@ import java.io.DataOutputStream;
 
 public class MessageSender {
     private final CommandBridge plugin;
+    private final VerboseLogger verboseLogger;
 
     public MessageSender(CommandBridge plugin) {
         this.plugin = plugin;
+        this.verboseLogger = plugin.getVerboseLogger();
     }
 
-    public void sendPluginMessage(String command) {
+    public void sendPluginMessage(Player player, String command) {
         try {
+            verboseLogger.info("Successfully send: " + command);
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+            dataOutputStream.writeUTF(player.getUniqueId().toString());
             dataOutputStream.writeUTF(command);
 
+            player.sendPluginMessage(plugin, "commandbridge:main", byteArrayOutputStream.toByteArray());
+
         } catch (Exception e) {
-            plugin.getVerboseLogger().error("Failed to send plugin message", e);
+            verboseLogger.error("Failed to send plugin message", e);
         }
     }
 }
