@@ -116,7 +116,7 @@ jobs:
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
-          ASSET_PATH="./downloaded/bukkit/CommandBridgeBukkit-${{ github.run_number }}.jar"
+          ASSET_PATH="./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar"
           ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "CommandBridgeBukkit-${{ github.run_number }}.jar") | .browser_download_url')
           SHA512_HASH=$(sha512sum $ASSET_PATH | awk '{ print $1 }')
 
@@ -167,7 +167,7 @@ jobs:
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
-          ASSET_PATH="./downloaded/velocity/CommandBridgeVelocity-${{ github.run_number }}.jar"
+          ASSET_PATH="./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar"
           ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "CommandBridgeVelocity-${{ github.run_number }}.jar") | .browser_download_url')
           SHA512_HASH=$(sha512sum $ASSET_PATH | awk '{ print $1 }')
 
