@@ -62,48 +62,23 @@ jobs:
         with:
           name: built-velocity-jar
           path: Velocity/target/*.jar
-      - name: Get Bukkit Artifact URL
-        id: get-bukkit-artifact-url
-        uses: actions/github-script@v6
+      - name: Download Bukkit JAR Artifact
+        uses: actions/download-artifact@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId
-            });
-            const bukkitArtifact = artifacts.data.artifacts.find(artifact => artifact.name === 'built-bukkit-jar');
-            if (bukkitArtifact) {
-              return bukkitArtifact.archive_download_url;
-            } else {
-              throw new Error('Bukkit artifact not found');
-            }
-      - name: Get Velocity Artifact URL
-        id: get-velocity-artifact-url
-        uses: actions/github-script@v6
+          name: built-bukkit-jar
+          path: ./downloaded/bukkit
+      - name: Download Velocity JAR Artifact
+        uses: actions/download-artifact@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId
-            });
-            const velocityArtifact = artifacts.data.artifacts.find(artifact => artifact.name === 'built-velocity-jar');
-            if (velocityArtifact) {
-              return velocityArtifact.archive_download_url;
-            } else {
-              throw new Error('Velocity artifact not found');
-            }
+          name: built-velocity-jar
+          path: ./downloaded/velocity
       - name: Upload Bukkit JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
-          ARTIFACT_URL: ${{ steps.get-bukkit-artifact-url.outputs.result }}
         run: |
-          JAR_FILE=$(find Bukkit/target -name "*.jar")
+          JAR_FILE=$(find ./downloaded/bukkit -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_bukkit"
           README_CONTENT=$(jq -Rs . < README.md)
@@ -124,7 +99,7 @@ jobs:
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
-                  "url": "'"$ARTIFACT_URL"'",
+                  "url": "'"file://$JAR_FILE"'",
                   "filename": "artifact.jar"
                 }
               ],
@@ -135,9 +110,8 @@ jobs:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
-          ARTIFACT_URL: ${{ steps.get-velocity-artifact-url.outputs.result }}
         run: |
-          JAR_FILE=$(find Velocity/target -name "*.jar")
+          JAR_FILE=$(find ./downloaded/velocity -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_velocity"
           README_CONTENT=$(jq -Rs . < README.md)
@@ -158,7 +132,7 @@ jobs:
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
-                  "url": "'"$ARTIFACT_URL"'",
+                  "url": "'"file://$JAR_FILE"'",
                   "filename": "artifact.jar"
                 }
               ],
