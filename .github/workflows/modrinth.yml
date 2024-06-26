@@ -18,10 +18,6 @@ jobs:
           release_url="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.release.tag_name }}"
           assets=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" $release_url | jq -r '.assets[] | select(.name | test("CommandBridgeBukkit|CommandBridgeVelocity")) | .browser_download_url')
           echo "$assets" > assets_urls.txt
-          echo "ASSET_URLS=$(cat assets_urls.txt)" >> $GITHUB_ENV
-
-      - name: Set Environment Variables for Bukkit and Velocity
-        run: |
           while read -r line; do
             if [[ $line == *"CommandBridgeBukkit"* ]]; then
               echo "BUKKIT_ASSET_URL=$line" >> $GITHUB_ENV
