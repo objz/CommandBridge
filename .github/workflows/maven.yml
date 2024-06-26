@@ -71,6 +71,12 @@ jobs:
         with:
           name: built-velocity-jar
           path: ./downloaded/velocity
+      - name: List Downloaded Files
+        run: |
+          echo "Downloaded files in ./downloaded/bukkit:"
+          ls -la ./downloaded/bukkit
+          echo "Downloaded files in ./downloaded/velocity:"
+          ls -la ./downloaded/velocity
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -103,14 +109,14 @@ jobs:
       - name: Upload Bukkit JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
-          ASSET_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-bukkit.jar") | .browser_download_url')
+          ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-bukkit.jar") | .browser_download_url')
           SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
           
           JSON_PAYLOAD=$(jq -n \
@@ -151,14 +157,14 @@ jobs:
       - name: Upload Velocity JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
-          ASSET_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-velocity.jar") | .browser_download_url')
+          ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-velocity.jar") | .browser_download_url')
           SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
           
           JSON_PAYLOAD=$(jq -n \
