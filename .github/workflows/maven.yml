@@ -51,6 +51,26 @@ jobs:
               ]
             }')
           echo "$RESPONSE" | jq -r '.choices[0].message.content' > README.md
+      - name: Upload Bukkit JAR Artifacts
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: built-bukkit-jar
+          path: Bukkit/target/*.jar
+      - name: Upload Velocity JAR Artifacts
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: built-velocity-jar
+          path: Velocity/target/*.jar
+      - name: Download Bukkit JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-bukkit-jar
+          path: ./downloaded/bukkit
+      - name: Download Velocity JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-velocity-jar
+          path: ./downloaded/velocity
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -68,7 +88,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./Bukkit/target/*.jar
+          asset_path: ./downloaded/bukkit/*.jar
           asset_name: built-bukkit.jar
           asset_content_type: application/java-archive
       - name: Upload Velocity JAR to GitHub Release
@@ -77,19 +97,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./Velocity/target/*.jar
+          asset_path: ./downloaded/velocity/*.jar
           asset_name: built-velocity.jar
           asset_content_type: application/java-archive
-      - name: Download Bukkit JAR Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: built-bukkit-jar
-          path: ./downloaded/bukkit
-      - name: Download Velocity JAR Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: built-velocity-jar
-          path: ./downloaded/velocity
       - name: Upload Bukkit JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
@@ -97,12 +107,11 @@ jobs:
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
-          JAR_FILE=$(find ./downloaded/bukkit -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
-          SHA512_HASH=$(sha512sum $JAR_FILE | awk '{ print $1 }')
           ASSET_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-bukkit.jar") | .browser_download_url')
+          SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
           
           JSON_PAYLOAD=$(jq -n \
             --arg name "Bukkit Release $VERSION_NUMBER" \
@@ -146,12 +155,11 @@ jobs:
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
-          JAR_FILE=$(find ./downloaded/velocity -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
-          SHA512_HASH=$(sha512sum $JAR_FILE | awk '{ print $1 }')
           ASSET_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-velocity.jar") | .browser_download_url')
+          SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
           
           JSON_PAYLOAD=$(jq -n \
             --arg name "Velocity Release $VERSION_NUMBER" \
