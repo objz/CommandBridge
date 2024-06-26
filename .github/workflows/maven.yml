@@ -51,10 +51,7 @@ jobs:
                 }
               ]
             }')
-          README_CONTENT=$(echo $RESPONSE | jq -r '.choices[0].message.content')
-          echo "$README_CONTENT" > README.md
-          README_CONTENT_ESCAPED=$(echo "$README_CONTENT" | jq -R .)
-          echo "README_CONTENT_ESCAPED=$README_CONTENT_ESCAPED" >> $GITHUB_ENV
+          echo "$RESPONSE" | jq -r '.choices[0].message.content' > README.md
       - name: Upload Bukkit JAR Artifacts
         uses: actions/upload-artifact@v4.3.3
         with:
@@ -69,12 +66,12 @@ jobs:
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
-          README_CONTENT_ESCAPED: ${{ env.README_CONTENT_ESCAPED }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
           JAR_FILE=$(find Bukkit/target -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_bukkit"
+          README_CONTENT=$(cat README.md | jq -R .)
           
           curl -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
@@ -96,18 +93,18 @@ jobs:
                   "filename": "artifact.jar"
                 }
               ],
-              "description": '"$README_CONTENT_ESCAPED"'
+              "description": '"$README_CONTENT"'
             }'
       - name: Upload Velocity JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
-          README_CONTENT_ESCAPED: ${{ env.README_CONTENT_ESCAPED }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
           JAR_FILE=$(find Velocity/target -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_velocity"
+          README_CONTENT=$(cat README.md | jq -R .)
           
           curl -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
@@ -129,5 +126,5 @@ jobs:
                   "filename": "artifact.jar"
                 }
               ],
-              "description": '"$README_CONTENT_ESCAPED"'
+              "description": '"$README_CONTENT"'
             }'
