@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -82,32 +81,43 @@ jobs:
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
+          SHA512_HASH=$(sha512sum $JAR_FILE | awk '{ print $1 }')
           
-          curl --http1.1 -X POST https://api.modrinth.com/v2/version \
+          JSON_PAYLOAD=$(jq -n \
+            --arg name "Bukkit Release $VERSION_NUMBER" \
+            --arg version_number "$VERSION_NUMBER" \
+            --arg changelog "$COMMIT_MESSAGE" \
+            --argjson game_versions "$GAME_VERSIONS" \
+            --arg project_id "$PROJECT_ID" \
+            --arg sha512 "$SHA512_HASH" \
+            --arg url "file://$JAR_FILE" \
+            --arg filename "$(basename $JAR_FILE)" \
+            --arg description "$README_CONTENT" \
+            '{
+              name: $name,
+              version_number: $version_number,
+              changelog: $changelog,
+              game_versions: $game_versions,
+              dependencies: [],
+              project_id: $project_id,
+              loaders: ["fabric", "forge"],
+              files: [{
+                hashes: { sha512: $sha512 },
+                url: $url,
+                filename: $filename
+              }],
+              description: $description,
+              version_type: "release",
+              status: "listed",
+              requested_status: "listed"
+            }')
+
+          echo "$JSON_PAYLOAD" > payload.json
+
+          curl -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "name": "Bukkit Release '"$VERSION_NUMBER"'",
-              "version_number": "'"$VERSION_NUMBER"'",
-              "changelog": "'"$COMMIT_MESSAGE"'",
-              "game_versions": '"$GAME_VERSIONS"',
-              "dependencies": [],
-              "project_id": "'"$PROJECT_ID"'",
-              "loaders": ["fabric", "forge"],
-              "files": [
-                {
-                  "hashes": {
-                    "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
-                  },
-                  "url": "'"file://$JAR_FILE"'",
-                  "filename": "'"$(basename $JAR_FILE)"'"
-                }
-              ],
-              "description": '"$README_CONTENT"',
-              "version_type": "release",
-              "status": "listed",
-              "requested_status": "listed"
-            }'
+            -d @payload.json
       - name: Upload Velocity JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
@@ -118,29 +128,40 @@ jobs:
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
+          SHA512_HASH=$(sha512sum $JAR_FILE | awk '{ print $1 }')
           
-          curl --http1.1 -X POST https://api.modrinth.com/v2/version \
+          JSON_PAYLOAD=$(jq -n \
+            --arg name "Velocity Release $VERSION_NUMBER" \
+            --arg version_number "$VERSION_NUMBER" \
+            --arg changelog "$COMMIT_MESSAGE" \
+            --argjson game_versions "$GAME_VERSIONS" \
+            --arg project_id "$PROJECT_ID" \
+            --arg sha512 "$SHA512_HASH" \
+            --arg url "file://$JAR_FILE" \
+            --arg filename "$(basename $JAR_FILE)" \
+            --arg description "$README_CONTENT" \
+            '{
+              name: $name,
+              version_number: $version_number,
+              changelog: $changelog,
+              game_versions: $game_versions,
+              dependencies: [],
+              project_id: $project_id,
+              loaders: ["fabric", "forge"],
+              files: [{
+                hashes: { sha512: $sha512 },
+                url: $url,
+                filename: $filename
+              }],
+              description: $description,
+              version_type: "release",
+              status: "listed",
+              requested_status: "listed"
+            }')
+
+          echo "$JSON_PAYLOAD" > payload.json
+
+          curl -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "name": "Velocity Release '"$VERSION_NUMBER"'",
-              "version_number": "'"$VERSION_NUMBER"'",
-              "changelog": "'"$COMMIT_MESSAGE"'",
-              "game_versions": '"$GAME_VERSIONS"',
-              "dependencies": [],
-              "project_id": "'"$PROJECT_ID"'",
-              "loaders": ["fabric", "forge"],
-              "files": [
-                {
-                  "hashes": {
-                    "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
-                  },
-                  "url": "'"file://$JAR_FILE"'",
-                  "filename": "'"$(basename $JAR_FILE)"'"
-                }
-              ],
-              "description": '"$README_CONTENT"',
-              "version_type": "release",
-              "status": "listed",
-              "requested_status": "listed"
-            }'
+            -d @payload.json

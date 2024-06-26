@@ -13,6 +13,5 @@
     <modules>
         <module>Bukkit</module>
         <module>Velocity</module>
-        <module>Bungee</module>
     </modules>
 </project>
