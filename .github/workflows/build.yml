@@ -80,7 +80,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Bukkit/target/*.jar
+          asset_path: Bukkit/target/CommandBridgeBukkit-*.jar
           asset_name: CommandBridgeBukkit-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
 
@@ -90,6 +90,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Velocity/target/*.jar
+          asset_path: Velocity/target/CommandBridgeVelocity-*.jar
           asset_name: CommandBridgeVelocity-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
