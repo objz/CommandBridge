@@ -53,7 +53,6 @@ jobs:
             }')
           README_CONTENT=$(echo $RESPONSE | jq -r '.choices[0].message.content')
           echo "$README_CONTENT" > README.md
-          echo "README_CONTENT=$README_CONTENT" >> $GITHUB_ENV
       - name: Upload Bukkit JAR Artifacts
         uses: actions/upload-artifact@v4.3.3
         with:
@@ -68,12 +67,12 @@ jobs:
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
-          README_CONTENT: ${{ env.README_CONTENT }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
           JAR_FILE=$(find Bukkit/target -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_bukkit"
+          README_CONTENT=$(cat README.md)
           
           curl -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
@@ -101,12 +100,12 @@ jobs:
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
-          README_CONTENT: ${{ env.README_CONTENT }}
           COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
         run: |
           JAR_FILE=$(find Velocity/target -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_velocity"
+          README_CONTENT=$(cat README.md)
           
           curl -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
