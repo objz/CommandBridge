@@ -12,19 +12,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+
       - name: Build with Maven
         run: mvn -B package --file pom.xml
+
       - name: Get Last Commit Message
         id: get-commit-message
         run: |
           git log --pretty=format:'%B' -n 1 > commit_message.txt
           echo "COMMIT_MESSAGE=$(cat commit_message.txt)" >> $GITHUB_ENV
+
       - name: Generate AI-Based README for Version Change
         id: generate-readme
         env:
@@ -48,6 +52,7 @@ jobs:
               ]
             }')
           echo "$RESPONSE" | jq -r '.choices[0].message.content' > release_note.md
+          echo "Commit Message: $COMMIT_MESSAGE"
       - name: Read Release Note
         id: read-release-note
         run: |
@@ -55,32 +60,7 @@ jobs:
           echo "RELEASE_NOTE<<EOF" >> $GITHUB_ENV
           echo "$RELEASE_NOTE" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-      - name: Upload Bukkit JAR Artifacts
-        uses: actions/upload-artifact@v4.3.3
-        with:
-          name: built-bukkit-jar
-          path: Bukkit/target/*.jar
-      - name: Upload Velocity JAR Artifacts
-        uses: actions/upload-artifact@v4.3.3
-        with:
-          name: built-velocity-jar
-          path: Velocity/target/*.jar
-      - name: Download Bukkit JAR Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: built-bukkit-jar
-          path: ./downloaded/bukkit
-      - name: Download Velocity JAR Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: built-velocity-jar
-          path: ./downloaded/velocity
-      - name: List Downloaded Files
-        run: |
-          echo "Downloaded files in ./downloaded/bukkit:"
-          ls -la ./downloaded/bukkit
-          echo "Downloaded files in ./downloaded/velocity:"
-          ls -la ./downloaded/velocity
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -93,21 +73,23 @@ jobs:
           body: ${{ env.RELEASE_NOTE }}
           draft: false
           prerelease: false
+
       - name: Upload Bukkit JAR to GitHub Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
+          asset_path: Bukkit/target/*.jar
           asset_name: CommandBridgeBukkit-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
+
       - name: Upload Velocity JAR to GitHub Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
+          asset_path: Velocity/target/*.jar
           asset_name: CommandBridgeVelocity-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
