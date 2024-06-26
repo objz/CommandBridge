@@ -80,7 +80,7 @@ jobs:
         run: |
           JAR_FILE=$(find ./downloaded/bukkit -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
-          PROJECT_ID="your_project_id_for_bukkit"
+          PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
           
           curl --http1.1 -X POST https://api.modrinth.com/v2/version \
@@ -93,7 +93,6 @@ jobs:
               "game_versions": '"$GAME_VERSIONS"',
               "dependencies": [],
               "project_id": "'"$PROJECT_ID"'",
-              "file_parts": ["artifact.jar"],
               "files": [
                 {
                   "hashes": {
@@ -113,7 +112,7 @@ jobs:
         run: |
           JAR_FILE=$(find ./downloaded/velocity -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
-          PROJECT_ID="your_project_id_for_velocity"
+          PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
           
           curl --http1.1 -X POST https://api.modrinth.com/v2/version \
@@ -126,7 +125,6 @@ jobs:
               "game_versions": '"$GAME_VERSIONS"',
               "dependencies": [],
               "project_id": "'"$PROJECT_ID"'",
-              "file_parts": ["artifact.jar"],
               "files": [
                 {
                   "hashes": {
