@@ -89,7 +89,7 @@ jobs:
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
-                  "url": "'"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"',
+                  "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts",
                   "filename": "artifact.jar"
                 }
               ],
@@ -122,7 +122,7 @@ jobs:
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
-                  "url": "'"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"',
+                  "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts",
                   "filename": "artifact.jar"
                 }
               ],
