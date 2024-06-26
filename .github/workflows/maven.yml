@@ -117,6 +117,7 @@ jobs:
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
           ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-bukkit.jar") | .browser_download_url')
+          echo "ASSET_URL: $ASSET_URL"
           SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
           
           JSON_PAYLOAD=$(jq -n \
@@ -165,6 +166,7 @@ jobs:
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
           ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "built-velocity.jar") | .browser_download_url')
+          echo "ASSET_URL: $ASSET_URL"
           SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
           
           JSON_PAYLOAD=$(jq -n \
