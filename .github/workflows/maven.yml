@@ -116,9 +116,10 @@ jobs:
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
+          ASSET_PATH="./downloaded/bukkit/CommandBridgeBukkit-${{ github.run_number }}.jar"
           ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "CommandBridgeBukkit-${{ github.run_number }}.jar") | .browser_download_url')
-          SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
-          
+          SHA512_HASH=$(sha512sum $ASSET_PATH | awk '{ print $1 }')
+
           JSON_PAYLOAD=$(jq -n \
             --arg name "Bukkit Release $VERSION_NUMBER" \
             --arg version_number "$VERSION_NUMBER" \
@@ -127,7 +128,7 @@ jobs:
             --arg project_id "$PROJECT_ID" \
             --arg sha512 "$SHA512_HASH" \
             --arg url "$ASSET_URL" \
-            --arg filename "built-bukkit.jar" \
+            --arg filename "CommandBridgeBukkit-${{ github.run_number }}.jar" \
             --arg description "$README_CONTENT" \
             '{
               name: $name,
@@ -152,8 +153,10 @@ jobs:
 
           curl --http1.1 -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d @payload.json
+            -H "Content-Type: multipart/form-data" \
+            -F "data=@payload.json;type=application/json" \
+            -F "file=@$ASSET_PATH;type=application/java-archive"
+
       - name: Upload Velocity JAR to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
@@ -164,9 +167,10 @@ jobs:
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="wIuI4ru2"
           README_CONTENT=$(jq -Rs . < README.md)
+          ASSET_PATH="./downloaded/velocity/CommandBridgeVelocity-${{ github.run_number }}.jar"
           ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "CommandBridgeVelocity-${{ github.run_number }}.jar") | .browser_download_url')
-          SHA512_HASH=$(curl -sL $ASSET_URL | sha512sum | awk '{ print $1 }')
-          
+          SHA512_HASH=$(sha512sum $ASSET_PATH | awk '{ print $1 }')
+
           JSON_PAYLOAD=$(jq -n \
             --arg name "Velocity Release $VERSION_NUMBER" \
             --arg version_number "$VERSION_NUMBER" \
@@ -175,7 +179,7 @@ jobs:
             --arg project_id "$PROJECT_ID" \
             --arg sha512 "$SHA512_HASH" \
             --arg url "$ASSET_URL" \
-            --arg filename "built-velocity.jar" \
+            --arg filename "CommandBridgeVelocity-${{ github.run_number }}.jar" \
             --arg description "$README_CONTENT" \
             '{
               name: $name,
@@ -200,5 +204,6 @@ jobs:
 
           curl --http1.1 -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d @payload.json
+            -H "Content-Type: multipart/form-data" \
+            -F "data=@payload.json;type=application/json" \
+            -F "file=@$ASSET_PATH;type=application/java-archive"
