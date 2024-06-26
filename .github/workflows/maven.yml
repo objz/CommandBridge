@@ -93,16 +93,20 @@ jobs:
               "game_versions": '"$GAME_VERSIONS"',
               "dependencies": [],
               "project_id": "'"$PROJECT_ID"'",
+              "loaders": ["fabric", "forge"],
               "files": [
                 {
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
                   "url": "'"file://$JAR_FILE"'",
-                  "filename": "artifact.jar"
+                  "filename": "'"$(basename $JAR_FILE)"'"
                 }
               ],
-              "description": '"$README_CONTENT"'
+              "description": '"$README_CONTENT"',
+              "version_type": "release",
+              "status": "listed",
+              "requested_status": "listed"
             }'
       - name: Upload Velocity JAR to Modrinth
         env:
@@ -125,14 +129,18 @@ jobs:
               "game_versions": '"$GAME_VERSIONS"',
               "dependencies": [],
               "project_id": "'"$PROJECT_ID"'",
+              "loaders": ["fabric", "forge"],
               "files": [
                 {
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
                   "url": "'"file://$JAR_FILE"'",
-                  "filename": "artifact.jar"
+                  "filename": "'"$(basename $JAR_FILE)"'"
                 }
               ],
-              "description": '"$README_CONTENT"'
+              "description": '"$README_CONTENT"',
+              "version_type": "release",
+              "status": "listed",
+              "requested_status": "listed"
             }'
