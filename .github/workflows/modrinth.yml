@@ -36,19 +36,13 @@ jobs:
           echo "Bukkit Asset URL: ${{ env.BUKKIT_ASSET_URL }}"
           echo "Velocity Asset URL: ${{ env.VELOCITY_ASSET_URL }}"
 
-      - name: Get latest release tag
-        id: get-latest-release-tag
-        run: |
-          latest_release_tag=$(curl --silent "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r .tag_name)
-          echo "LATEST_RELEASE_TAG=$latest_release_tag" >> $GITHUB_ENV
-
       - name: Download Bukkit JAR Artifact
         run: |
-          curl -L -o ./downloaded/bukkit/CommandBridgeBukkit-v${{ env.LATEST_RELEASE_TAG }}.jar ${{ env.BUKKIT_ASSET_URL }}
+          curl -L -o ./downloaded/bukkit/CommandBridgeBukkit-$(echo ${{ github.event.release.tag_name }}).jar ${{ env.BUKKIT_ASSET_URL }}
 
       - name: Download Velocity JAR Artifact
         run: |
-          curl -L -o ./downloaded/velocity/CommandBridgeVelocity-v${{ env.LATEST_RELEASE_TAG }}.jar ${{ env.VELOCITY_ASSET_URL }}
+          curl -L -o ./downloaded/velocity/CommandBridgeVelocity-$(echo ${{ github.event.release.tag_name }}).jar ${{ env.VELOCITY_ASSET_URL }}
 
       - name: List Downloaded Files
         run: |
@@ -63,7 +57,7 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/bukkit/CommandBridgeBukkit-v${{ env.LATEST_RELEASE_TAG }}.jar
+          file: ./downloaded/bukkit/CommandBridgeBukkit-$(echo ${{ github.event.release.tag_name }}).jar
           loaders: '["bukkit"]'
           dependencies: '[]'
 
@@ -73,6 +67,6 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/velocity/CommandBridgeVelocity-v${{ env.LATEST_RELEASE_TAG }}.jar
+          file: ./downloaded/velocity/CommandBridgeVelocity-$(echo ${{ github.event.release.tag_name }}).jar
           loaders: '["velocity"]'
           dependencies: '[]'
