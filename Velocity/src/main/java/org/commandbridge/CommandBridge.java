@@ -7,6 +7,13 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
+import org.commandbridge.message.channel.Bridge;
+import org.commandbridge.message.channel.MessageListener;
+import org.commandbridge.command.utils.CommandRegistrar;
+import org.commandbridge.runtime.Startup;
+import org.commandbridge.runtime.VelocityRuntime;
+import org.commandbridge.utilities.Metrics;
+import org.commandbridge.utilities.VerboseLogger;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -37,7 +44,7 @@ public class CommandBridge {
     public void onProxyInitialization(ProxyInitializeEvent event) {
         int pluginId = 22008;
         Metrics metrics = metricsFactory.make(this, pluginId);
-        metrics.addCustomChart(new Metrics.SimplePie("verbose_output", () -> String.valueOf(startup.isVerboseOutput())));
+
         this.server.getChannelRegistrar().register(CHANNEL);
         server.getEventManager().register(this, new MessageListener(server, this));
         startup.loadConfig();

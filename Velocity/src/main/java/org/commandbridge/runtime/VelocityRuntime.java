@@ -1,4 +1,4 @@
-package org.commandbridge;
+package org.commandbridge.runtime;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 
@@ -7,6 +7,9 @@ import java.io.InputStream;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Map;
+
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
 import org.yaml.snakeyaml.Yaml;
 
 public class VelocityRuntime {

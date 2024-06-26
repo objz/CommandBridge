@@ -1,4 +1,4 @@
-package org.commandbridge;
+package org.commandbridge.runtime;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import net.kyori.adventure.text.Component;
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 

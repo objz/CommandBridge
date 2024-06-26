@@ -1,5 +1,6 @@
-package org.commandbridge;
+package org.commandbridge.utilities;
 
+import org.commandbridge.CommandBridge;
 import org.slf4j.Logger;
 
 public class VerboseLogger {

@@ -1,17 +1,17 @@
-package org.commandbridge;
+package org.commandbridge.message.channel;
 
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
 
 import javax.inject.Inject;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 public class MessageListener {
     private final CommandBridge plugin;

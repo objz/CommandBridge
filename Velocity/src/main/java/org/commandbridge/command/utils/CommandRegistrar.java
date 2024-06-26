@@ -1,4 +1,4 @@
-package org.commandbridge;
+package org.commandbridge.command.utils;
 
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
@@ -6,13 +6,15 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.commandbridge.Utilities.parsePlaceholders;
+import static org.commandbridge.utilities.StringParser.parsePlaceholders;
 
 public class CommandRegistrar {
 

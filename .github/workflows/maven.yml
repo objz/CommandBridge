@@ -24,11 +24,36 @@ jobs:
       - name: Get Last Commit Message
         id: get-commit-message
         run: |
-          git log --pretty=format:'%B' -n 3 > commit_message.txt
+          git log --pretty=format:'%B' -n 1 > commit_message.txt
           echo "COMMIT_MESSAGE=$(cat commit_message.txt)" >> $GITHUB_ENV
-      - name: Build Description
+      - name: Set Environment Variables
         run: |
-          echo "Deployment Description: ${{ env.COMMIT_MESSAGE }}"
+          echo "GAME_VERSIONS=['1.18.1', '1.19', '1.20']" >> $GITHUB_ENV
+      - name: Generate AI-Based README for Version Change
+        id: generate-readme
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
+        run: |
+          RESPONSE=$(curl -s -X POST https://api.openai.com/v1/chat/completions \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "model": "gpt-3.5-turbo",
+              "messages": [
+                {
+                  "role": "system",
+                  "content": "Generate a release note for a software project based on the following commit message. The release note should be written in readme."
+                },
+                {
+                  "role": "user",
+                  "content": "The commit message for the release note: \"${COMMIT_MESSAGE}\""
+                }
+              ]
+            }')
+          README_CONTENT=$(echo $RESPONSE | jq -r '.choices[0].message.content')
+          echo "$README_CONTENT" > README.md
+          echo "README_CONTENT=$README_CONTENT" >> $GITHUB_ENV
       - name: Upload Bukkit JAR Artifacts
         uses: actions/upload-artifact@v4.3.3
         with:
@@ -39,3 +64,69 @@ jobs:
         with:
           name: built-velocity-jar
           path: Velocity/target/*.jar
+      - name: Upload Bukkit JAR to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
+          README_CONTENT: ${{ env.README_CONTENT }}
+          COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
+        run: |
+          JAR_FILE=$(find Bukkit/target -name "*.jar")
+          VERSION_NUMBER="v${{ github.run_number }}"
+          PROJECT_ID="wIuI4ru2"
+          
+          curl -X POST https://api.modrinth.com/v2/version \
+            -H "Authorization: Bearer $MODRINTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "Bukkit Release '"$VERSION_NUMBER"'",
+              "version_number": "'"$VERSION_NUMBER"'",
+              "changelog": "'"$COMMIT_MESSAGE"'",
+              "game_versions": '"$GAME_VERSIONS"',
+              "dependencies": [],
+              "project_id": "'"$PROJECT_ID"'",
+              "file_parts": ["artifact.jar"],
+              "files": [
+                {
+                  "hashes": {
+                    "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
+                  },
+                  "url": "'"$JAR_FILE"'",
+                  "filename": "artifact.jar"
+                }
+              ],
+              "description": "'"$README_CONTENT"'"
+            }'
+      - name: Upload Velocity JAR to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
+          README_CONTENT: ${{ env.README_CONTENT }}
+          COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
+        run: |
+          JAR_FILE=$(find Velocity/target -name "*.jar")
+          VERSION_NUMBER="v${{ github.run_number }}"
+          PROJECT_ID="wIuI4ru2"
+          
+          curl -X POST https://api.modrinth.com/v2/version \
+            -H "Authorization: Bearer $MODRINTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "Velocity Release '"$VERSION_NUMBER"'",
+              "version_number": "'"$VERSION_NUMBER"'",
+              "changelog": "'"$COMMIT_MESSAGE"'",
+              "game_versions": '"$GAME_VERSIONS"',
+              "dependencies": [],
+              "project_id": "'"$PROJECT_ID"'",
+              "file_parts": ["artifact.jar"],
+              "files": [
+                {
+                  "hashes": {
+                    "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
+                  },
+                  "url": "'"$JAR_FILE"'",
+                  "filename": "artifact.jar"
+                }
+              ],
+              "description": "'"$README_CONTENT"'"
+            }'

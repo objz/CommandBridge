@@ -1,8 +1,11 @@
-package org.commandbridge;
+package org.commandbridge.command.utils;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
+import org.commandbridge.CommandBridge;
+import org.commandbridge.message.channel.Bridge;
+import org.commandbridge.utilities.VerboseLogger;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;

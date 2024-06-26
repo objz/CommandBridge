@@ -1,12 +1,13 @@
-package org.commandbridge;
+package org.commandbridge.message.channel;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Map;
 
 public class Bridge {
     private final ProxyServer server;
