@@ -1,4 +1,4 @@
-name: Java Build
+name: Build and Create Release
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -106,21 +106,3 @@ jobs:
           asset_path: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
           asset_name: CommandBridgeVelocity-${{ github.run_number }}.jar
           asset_content_type: application/java-archive
-      - name: Upload Bukkit JAR to Modrinth
-        uses: cloudnode-pro/modrinth-publish@1.0.0
-        with:
-          token: ${{ secrets.MODRINTH_TOKEN }}
-          project: wIuI4ru2
-          changelog: ${{ env.COMMIT_MESSAGE }}
-          file: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
-          loaders: '["bukkit"]'
-          dependencies: '[]'
-      - name: Upload Velocity JAR to Modrinth
-        uses: cloudnode-pro/modrinth-publish@1.0.0
-        with:
-          token: ${{ secrets.MODRINTH_TOKEN }}
-          project: wIuI4ru2
-          changelog: ${{ env.COMMIT_MESSAGE }}
-          file: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
-          loaders: '["velocity"]'
-          dependencies: '[]'

@@ -1,0 +1,46 @@
+name: Upload to Modrinth
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  upload-to-modrinth:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Bukkit JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-bukkit-jar
+          path: ./downloaded/bukkit
+      - name: Download Velocity JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-velocity-jar
+          path: ./downloaded/velocity
+      - name: List Downloaded Files
+        run: |
+          echo "Downloaded files in ./downloaded/bukkit:"
+          ls -la ./downloaded/bukkit
+          echo "Downloaded files in ./downloaded/velocity:"
+          ls -la ./downloaded/velocity
+      - name: Upload Bukkit JAR to Modrinth
+        uses: cloudnode-pro/modrinth-publish@1.0.0
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project: wIuI4ru2
+          changelog: ${{ github.event.release.body }}
+          file: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
+          loaders: '["bukkit"]'
+          dependencies: '[]'
+      - name: Upload Velocity JAR to Modrinth
+        uses: cloudnode-pro/modrinth-publish@1.0.0
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project: wIuI4ru2
+          changelog: ${{ github.event.release.body }}
+          file: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
+          loaders: '["velocity"]'
+          dependencies: '[]'
