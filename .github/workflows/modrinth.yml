@@ -31,6 +31,11 @@ jobs:
           mkdir -p ./downloaded/bukkit
           mkdir -p ./downloaded/velocity
 
+      - name: Debug Asset URLs
+        run: |
+          echo "Bukkit Asset URL: ${{ env.BUKKIT_ASSET_URL }}"
+          echo "Velocity Asset URL: ${{ env.VELOCITY_ASSET_URL }}"
+
       - name: Download Bukkit JAR Artifact
         run: |
           curl -L -o ./downloaded/bukkit/CommandBridgeBukkit-v${{ github.event.release.tag_name }}.jar ${{ env.BUKKIT_ASSET_URL }}

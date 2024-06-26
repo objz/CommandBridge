@@ -47,7 +47,7 @@ jobs:
                 },
                 {
                   "role": "user",
-                  "content": "The commit message for the release note: \"${COMMIT_MESSAGE}\""
+                  "content": "The commit message for the release note: $COMMIT_MESSAGE. Release Version: v${{ github.run_number }}."
                 }
               ]
             }')
