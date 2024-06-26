@@ -107,7 +107,7 @@ jobs:
           asset_name: CommandBridgeVelocity-${{ github.run_number }}.jar
           asset_content_type: application/java-archive
       - name: Upload Bukkit JAR to Modrinth
-        uses: cloudnode-pro/modrinth-publish@v1.0.0
+        uses: cloudnode-pro/modrinth-publish@1.0.0
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project_id: wIuI4ru2
@@ -120,7 +120,7 @@ jobs:
           loaders: '["bukkit"]'
           dependencies: '[]'
       - name: Upload Velocity JAR to Modrinth
-        uses: cloudnode-pro/modrinth-publish@v1.0.0
+        uses: cloudnode-pro/modrinth-publish@1.0.0
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project_id: wIuI4ru2
