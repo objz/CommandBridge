@@ -107,103 +107,28 @@ jobs:
           asset_name: CommandBridgeVelocity-${{ github.run_number }}.jar
           asset_content_type: application/java-archive
       - name: Upload Bukkit JAR to Modrinth
-        env:
-          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
-          COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
-        run: |
-          VERSION_NUMBER="v${{ github.run_number }}"
-          PROJECT_ID="wIuI4ru2"
-          README_CONTENT=$(jq -Rs . < README.md)
-          ASSET_PATH="./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar"
-          ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "CommandBridgeBukkit-${{ github.run_number }}.jar") | .browser_download_url')
-          SHA512_HASH=$(sha512sum $ASSET_PATH | awk '{ print $1 }')
-
-          JSON_PAYLOAD=$(jq -n \
-            --arg name "Bukkit Release $VERSION_NUMBER" \
-            --arg version_number "$VERSION_NUMBER" \
-            --arg changelog "$COMMIT_MESSAGE" \
-            --argjson game_versions "$GAME_VERSIONS" \
-            --arg project_id "$PROJECT_ID" \
-            --arg sha512 "$SHA512_HASH" \
-            --arg url "$ASSET_URL" \
-            --arg filename "CommandBridgeBukkit-${{ github.run_number }}.jar" \
-            --arg description "$README_CONTENT" \
-            '{
-              name: $name,
-              version_number: $version_number,
-              changelog: $changelog,
-              game_versions: $game_versions,
-              dependencies: [],
-              project_id: $project_id,
-              loaders: [],
-              files: [{
-                hashes: { sha512: $sha512 },
-                url: $url,
-                filename: $filename
-              }],
-              description: $description,
-              version_type: "release",
-              status: "listed",
-              requested_status: "listed"
-            }')
-
-          echo "$JSON_PAYLOAD" > payload.json
-
-          curl --http1.1 -X POST https://api.modrinth.com/v2/version \
-            -H "Authorization: Bearer $MODRINTH_TOKEN" \
-            -H "Content-Type: multipart/form-data" \
-            -F "data=@payload.json;type=application/json" \
-            -F "file=@$ASSET_PATH;type=application/java-archive"
-
+        uses: cloudnode-pro/modrinth-publish@v1.0.0
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project_id: wIuI4ru2
+          version_number: v${{ github.run_number }}
+          version_name: Bukkit Release v${{ github.run_number }}
+          changelog: ${{ env.COMMIT_MESSAGE }}
+          game_versions: ${{ env.GAME_VERSIONS }}
+          file_path: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
+          version_type: release
+          loaders: '["bukkit"]'
+          dependencies: '[]'
       - name: Upload Velocity JAR to Modrinth
-        env:
-          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          GAME_VERSIONS: ${{ env.GAME_VERSIONS }}
-          COMMIT_MESSAGE: ${{ env.COMMIT_MESSAGE }}
-        run: |
-          VERSION_NUMBER="v${{ github.run_number }}"
-          PROJECT_ID="wIuI4ru2"
-          README_CONTENT=$(jq -Rs . < README.md)
-          ASSET_PATH="./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar"
-          ASSET_URL=$(curl -s -H "Authorization: token $PAT_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.assets[] | select(.name == "CommandBridgeVelocity-${{ github.run_number }}.jar") | .browser_download_url')
-          SHA512_HASH=$(sha512sum $ASSET_PATH | awk '{ print $1 }')
-
-          JSON_PAYLOAD=$(jq -n \
-            --arg name "Velocity Release $VERSION_NUMBER" \
-            --arg version_number "$VERSION_NUMBER" \
-            --arg changelog "$COMMIT_MESSAGE" \
-            --argjson game_versions "$GAME_VERSIONS" \
-            --arg project_id "$PROJECT_ID" \
-            --arg sha512 "$SHA512_HASH" \
-            --arg url "$ASSET_URL" \
-            --arg filename "CommandBridgeVelocity-${{ github.run_number }}.jar" \
-            --arg description "$README_CONTENT" \
-            '{
-              name: $name,
-              version_number: $version_number,
-              changelog: $changelog,
-              game_versions: $game_versions,
-              dependencies: [],
-              project_id: $project_id,
-              loaders: [],
-              files: [{
-                hashes: { sha512: $sha512 },
-                url: $url,
-                filename: $filename
-              }],
-              description: $description,
-              version_type: "release",
-              status: "listed",
-              requested_status: "listed"
-            }')
-
-          echo "$JSON_PAYLOAD" > payload.json
-
-          curl --http1.1 -X POST https://api.modrinth.com/v2/version \
-            -H "Authorization: Bearer $MODRINTH_TOKEN" \
-            -H "Content-Type: multipart/form-data" \
-            -F "data=@payload.json;type=application/json" \
-            -F "file=@$ASSET_PATH;type=application/java-archive"
+        uses: cloudnode-pro/modrinth-publish@v1.0.0
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project_id: wIuI4ru2
+          version_number: v${{ github.run_number }}
+          version_name: Velocity Release v${{ github.run_number }}
+          changelog: ${{ env.COMMIT_MESSAGE }}
+          game_versions: ${{ env.GAME_VERSIONS }}
+          file_path: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
+          version_type: release
+          loaders: '["velocity"]'
+          dependencies: '[]'
