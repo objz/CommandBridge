@@ -53,6 +53,7 @@ jobs:
             }')
           echo "$RESPONSE" | jq -r '.choices[0].message.content' > release_note.md
           echo "Commit Message: $COMMIT_MESSAGE"
+          echo "Release Note: $(cat release_note.md)"
       - name: Read Release Note
         id: read-release-note
         run: |
@@ -80,7 +81,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Bukkit/target/CommandBridgeBukkit-*.jar
+          asset_path: Bukkit/target/CommandBridgeBukkit-1.3-SNAPSHOT.jar
           asset_name: CommandBridgeBukkit-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
 
@@ -90,6 +91,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Velocity/target/CommandBridgeVelocity-*.jar
+          asset_path: Velocity/target/CommandBridgeVelocity-1.3-SNAPSHOT.jar
           asset_name: CommandBridgeVelocity-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
