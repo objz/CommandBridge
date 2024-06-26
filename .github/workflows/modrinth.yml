@@ -26,13 +26,28 @@ jobs:
             fi
           done < assets_urls.txt
 
+      - name: Download Bukkit JAR Artifact
+        run: |
+          curl -L -o ./downloaded/bukkit/CommandBridgeBukkit.jar ${{ env.BUKKIT_ASSET_URL }}
+
+      - name: Download Velocity JAR Artifact
+        run: |
+          curl -L -o ./downloaded/velocity/CommandBridgeVelocity.jar ${{ env.VELOCITY_ASSET_URL }}
+
+      - name: List Downloaded Files
+        run: |
+          echo "Downloaded files in ./downloaded/bukkit:"
+          ls -la ./downloaded/bukkit
+          echo "Downloaded files in ./downloaded/velocity:"
+          ls -la ./downloaded/velocity
+
       - name: Upload Bukkit JAR to Modrinth
         uses: cloudnode-pro/modrinth-publish@1.0.0
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ${{ env.BUKKIT_ASSET_URL }}
+          file: ./downloaded/bukkit/CommandBridgeBukkit.jar
           loaders: '["bukkit"]'
           dependencies: '[]'
 
@@ -42,6 +57,6 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ${{ env.VELOCITY_ASSET_URL }}
+          file: ./downloaded/velocity/CommandBridgeVelocity.jar
           loaders: '["velocity"]'
           dependencies: '[]'
