@@ -25,9 +25,6 @@ jobs:
         run: |
           git log --pretty=format:'%B' -n 1 > commit_message.txt
           echo "COMMIT_MESSAGE=$(cat commit_message.txt)" >> $GITHUB_ENV
-      - name: Set Environment Variables
-        run: |
-          echo 'GAME_VERSIONS=["1.18.1", "1.19", "1.20"]' >> $GITHUB_ENV
       - name: Generate AI-Based README for Version Change
         id: generate-readme
         env:
@@ -50,7 +47,14 @@ jobs:
                 }
               ]
             }')
-          echo "$RESPONSE" | jq -r '.choices[0].message.content' > README.md
+          echo "$RESPONSE" | jq -r '.choices[0].message.content' > release_note.md
+      - name: Read Release Note
+        id: read-release-note
+        run: |
+          RELEASE_NOTE=$(cat release_note.md)
+          echo "RELEASE_NOTE<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_NOTE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
       - name: Upload Bukkit JAR Artifacts
         uses: actions/upload-artifact@v4.3.3
         with:
@@ -82,10 +86,11 @@ jobs:
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          RELEASE_NOTE: ${{ env.RELEASE_NOTE }}
         with:
           tag_name: v${{ github.run_number }}
           release_name: Release v${{ github.run_number }}
-          body: ${{ env.COMMIT_MESSAGE }}
+          body: ${{ env.RELEASE_NOTE }}
           draft: false
           prerelease: false
       - name: Upload Bukkit JAR to GitHub Release
@@ -95,7 +100,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
-          asset_name: CommandBridgeBukkit-${{ github.run_number }}.jar
+          asset_name: CommandBridgeBukkit-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive
       - name: Upload Velocity JAR to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -104,5 +109,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
-          asset_name: CommandBridgeVelocity-${{ github.run_number }}.jar
+          asset_name: CommandBridgeVelocity-v${{ github.run_number }}.jar
           asset_content_type: application/java-archive

@@ -31,14 +31,13 @@ jobs:
           mkdir -p ./downloaded/bukkit
           mkdir -p ./downloaded/velocity
 
-
       - name: Download Bukkit JAR Artifact
         run: |
-          curl -L -o ./downloaded/bukkit/CommandBridgeBukkit-v${{ env.event.release.tag_name }}.jar ${{ env.BUKKIT_ASSET_URL }}
+          curl -L -o ./downloaded/bukkit/CommandBridgeBukkit-v${{ github.event.release.tag_name }}.jar ${{ env.BUKKIT_ASSET_URL }}
 
       - name: Download Velocity JAR Artifact
         run: |
-          curl -L -o ./downloaded/velocity/CommandBridgeVelocity-v${{ env.event.release.tag_name }}.jar ${{ env.VELOCITY_ASSET_URL }}
+          curl -L -o ./downloaded/velocity/CommandBridgeVelocity-v${{ github.event.release.tag_name }}.jar ${{ env.VELOCITY_ASSET_URL }}
 
       - name: List Downloaded Files
         run: |
@@ -53,7 +52,7 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/bukkit/CommandBridgeBukkit-v${{ env.event.release.tag_name }}.jar
+          file: ./downloaded/bukkit/CommandBridgeBukkit-v${{ github.event.release.tag_name }}.jar
           loaders: '["bukkit"]'
           dependencies: '[]'
 
@@ -63,6 +62,6 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/velocity/CommandBridgeVelocity-v${{ env.event.release.tag_name }}.jar
+          file: ./downloaded/velocity/CommandBridgeVelocity-v${{ github.event.release.tag_name }}.jar
           loaders: '["velocity"]'
           dependencies: '[]'
