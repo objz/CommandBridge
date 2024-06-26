@@ -9,38 +9,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Download Bukkit JAR Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: built-bukkit-jar
-          path: ./downloaded/bukkit
-      - name: Download Velocity JAR Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: built-velocity-jar
-          path: ./downloaded/velocity
-      - name: List Downloaded Files
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Get Release Assets URLs
+        id: get-release-assets
         run: |
-          echo "Downloaded files in ./downloaded/bukkit:"
-          ls -la ./downloaded/bukkit
-          echo "Downloaded files in ./downloaded/velocity:"
-          ls -la ./downloaded/velocity
+          release_url="https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.release.tag_name }}"
+          assets=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" $release_url | jq -r '.assets[] | select(.name | test("CommandBridgeBukkit|CommandBridgeVelocity")) | .browser_download_url')
+          echo "$assets" > assets_urls.txt
+          echo "ASSET_URLS=$(cat assets_urls.txt)" >> $GITHUB_ENV
+
+      - name: Set Environment Variables for Bukkit and Velocity
+        run: |
+          while read -r line; do
+            if [[ $line == *"CommandBridgeBukkit"* ]]; then
+              echo "BUKKIT_ASSET_URL=$line" >> $GITHUB_ENV
+            elif [[ $line == *"CommandBridgeVelocity"* ]]; then
+              echo "VELOCITY_ASSET_URL=$line" >> $GITHUB_ENV
+            fi
+          done < assets_urls.txt
+
       - name: Upload Bukkit JAR to Modrinth
         uses: cloudnode-pro/modrinth-publish@1.0.0
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
+          file: ${{ env.BUKKIT_ASSET_URL }}
           loaders: '["bukkit"]'
           dependencies: '[]'
+
       - name: Upload Velocity JAR to Modrinth
         uses: cloudnode-pro/modrinth-publish@1.0.0
         with:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
+          file: ${{ env.VELOCITY_ASSET_URL }}
           loaders: '["velocity"]'
           dependencies: '[]'
