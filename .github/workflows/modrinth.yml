@@ -53,7 +53,7 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/bukkit/CommandBridgeBukkit.jar
+          file: ./downloaded/bukkit/CommandBridgeBukkit-v${{ env.event.release.tag_name }}.jar
           loaders: '["bukkit"]'
           dependencies: '[]'
 
@@ -63,6 +63,6 @@ jobs:
           token: ${{ secrets.MODRINTH_TOKEN }}
           project: wIuI4ru2
           changelog: ${{ github.event.release.body }}
-          file: ./downloaded/velocity/CommandBridgeVelocity.jar
+          file: ./downloaded/velocity/CommandBridgeVelocity-v${{ env.event.release.tag_name }}.jar
           loaders: '["velocity"]'
           dependencies: '[]'
