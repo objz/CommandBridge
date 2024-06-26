@@ -71,9 +71,9 @@ jobs:
           JAR_FILE=$(find Bukkit/target -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_bukkit"
-          README_CONTENT=$(cat README.md | jq -R .)
+          README_CONTENT=$(jq -Rs . < README.md)
           
-          curl -X POST https://api.modrinth.com/v2/version \
+          curl --http1.1 -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
@@ -89,7 +89,7 @@ jobs:
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
-                  "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts",
+                  "url": "'"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"',
                   "filename": "artifact.jar"
                 }
               ],
@@ -104,9 +104,9 @@ jobs:
           JAR_FILE=$(find Velocity/target -name "*.jar")
           VERSION_NUMBER="v${{ github.run_number }}"
           PROJECT_ID="your_project_id_for_velocity"
-          README_CONTENT=$(cat README.md | jq -R .)
+          README_CONTENT=$(jq -Rs . < README.md)
           
-          curl -X POST https://api.modrinth.com/v2/version \
+          curl --http1.1 -X POST https://api.modrinth.com/v2/version \
             -H "Authorization: Bearer $MODRINTH_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
@@ -122,7 +122,7 @@ jobs:
                   "hashes": {
                     "sha512": "'"$(sha512sum $JAR_FILE | awk '{ print $1 }')"'
                   },
-                  "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts",
+                  "url": "'"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"',
                   "filename": "artifact.jar"
                 }
               ],
