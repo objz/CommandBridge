@@ -70,7 +70,7 @@ public class Startup {
     private void copyExampleYml() {
         Path scriptFolder = dataDirectory.resolve("scripts");
         try {
-            Files.createDirectories(scriptFolder); // Stellt sicher, dass der Ordner existiert
+            Files.createDirectories(scriptFolder);
             Path exampleScript = scriptFolder.resolve("example.yml");
             Path exampleBukkitScript = scriptFolder.resolve("example-bukkit.yml");
             if (Files.notExists(exampleScript) || Files.notExists(exampleBukkitScript)) {

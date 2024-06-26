@@ -53,11 +53,11 @@ public class CommandRegistrar {
                 .executes(context -> {
                     CommandSource source = context.getSource();
 
-                    if (!disableExecutorIsPlayerCheck && !(source instanceof Player player)) {
+                    if (!disableExecutorIsPlayerCheck && !(source instanceof Player)) {
                         verboseLogger.warn("This command can only be used by a player.");
                         return 0;
                     }
-                    Player player = (Player) source; // Casting sicher durchführen
+                    Player player = (Player) source;
 
                     if (!source.hasPermission("commandbridge.command." + commandName)) {
                         source.sendMessage(Component.text("You do not have permission to use this command.", net.kyori.adventure.text.format.NamedTextColor.RED));

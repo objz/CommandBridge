@@ -46,7 +46,7 @@ public class CommandBridge {
         Metrics metrics = metricsFactory.make(this, pluginId);
 
         this.server.getChannelRegistrar().register(CHANNEL);
-        server.getEventManager().register(this, new MessageListener(server, this));
+        server.getEventManager().register(this, new MessageListener(this));
         startup.loadConfig();
         startup.registerCommands();
         verboseLogger.ForceInfo("CommandBridgeVelocity has been enabled!");

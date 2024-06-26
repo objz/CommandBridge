@@ -35,7 +35,7 @@ public class CommandExecutor {
         server.getServer(targetServerId).ifPresent(serverConnection -> {
             if (waitForOnline) {
                 serverConnection.getPlayersConnected().stream()
-                        .filter(player -> player.getUniqueId().toString().equals(playerUUID)) // Der Spielername ist das erste Argument im Befehl.
+                        .filter(player -> player.getUniqueId().toString().equals(playerUUID))
                         .findFirst()
                         .ifPresentOrElse(player -> {
                             bridge.sendCommandToBukkit(command, targetServerId, targetExecutor);
