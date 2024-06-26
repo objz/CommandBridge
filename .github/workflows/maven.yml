@@ -94,8 +94,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./downloaded/bukkit/*.jar
-          asset_name: built-bukkit.jar
+          asset_path: ./downloaded/bukkit/CommandBridgeBukkit-1.3-SNAPSHOT.jar
+          asset_name: CommandBridgeBukkit-1.3-SNAPSHOT.jar
           asset_content_type: application/java-archive
       - name: Upload Velocity JAR to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -103,8 +103,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./downloaded/velocity/*.jar
-          asset_name: built-velocity.jar
+          asset_path: ./downloaded/velocity/CommandBridgeVelocity-1.3-SNAPSHOT.jar
+          asset_name: CommandBridgeVelocity-1.3-SNAPSHOT.jar
           asset_content_type: application/java-archive
       - name: Upload Bukkit JAR to Modrinth
         env:
