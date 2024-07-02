@@ -44,7 +44,6 @@ public class CommandBridge {
     public void onProxyInitialization(ProxyInitializeEvent event) {
         int pluginId = 22008;
         Metrics metrics = metricsFactory.make(this, pluginId);
-
         this.server.getChannelRegistrar().register(CHANNEL);
         server.getEventManager().register(this, new MessageListener(this));
         startup.loadConfig();
@@ -92,6 +91,10 @@ public class CommandBridge {
 
     public Startup getStartup() {
         return startup;
+    }
+
+    public String getVersion() {
+        return "1.3-SNAPSHOT";
     }
 
     public MinecraftChannelIdentifier getChannelIdentifier() {

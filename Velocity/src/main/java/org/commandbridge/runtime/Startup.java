@@ -111,11 +111,17 @@ public class Startup {
                         .executes(context -> {
                             if (context.getSource().hasPermission("commandbridge.admin")) {
                                 plugin.getRuntime().loadScripts();
-                                context.getSource().sendMessage(Component.text("Scripts reloaded!", net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                                context.getSource().sendMessage(Component.text("Scripts lll reloaded!", net.kyori.adventure.text.format.NamedTextColor.GREEN));
                                 return 1;
                             }
                             context.getSource().sendMessage(Component.text("You do not have permission to reload scripts.", net.kyori.adventure.text.format.NamedTextColor.RED));
                             return 0;
+                        })
+                        .build())
+                .then(LiteralArgumentBuilder.<CommandSource>literal("version")
+                        .executes(context -> {
+                            context.getSource().sendMessage(Component.text("CommandBridge version: " + plugin.getVersion()));
+                            return 1;
                         })
                         .build())
                 .build();

@@ -1,9 +1,9 @@
 package org.commandbridge;
 
 import org.bukkit.plugin.java.JavaPlugin;
-import org.slf4j.Logger;
 
-import javax.inject.Inject;
+
+
 import java.io.File;
 
 public final class CommandBridge extends JavaPlugin {
