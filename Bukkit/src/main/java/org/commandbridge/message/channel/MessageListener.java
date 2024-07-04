@@ -1,10 +1,10 @@
-package org.commandbridge;
+package org.commandbridge.message.channel;
 
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
 import org.jetbrains.annotations.NotNull;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -45,28 +45,20 @@ public class MessageListener implements PluginMessageListener {
                     verboseLogger.info("Executing command as console: " + command);
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
                 }
-            } else if ("RegisterCommand".equals(subChannel)) {
-                String targetServerId = in.readUTF();
-                String command = in.readUTF();
-                verboseLogger.info("Received command to register on server " + targetServerId + ": " + command);
-
-                if (!targetServerId.equals(plugin.getConfig().getString("server-id"))) {
-                    verboseLogger.info("Command not for this server, ignoring.");
-                    return;
-                }
-                plugin.getCommandRegister().registerCommand(command);
-
             }
-            if ("UnregisterCommand".equals(subChannel)) {
-                String targetServerId = in.readUTF();
-                String command = in.readUTF();
-                verboseLogger.info("Received command to unregister on server " + targetServerId + ": " + command);
 
-                if (!targetServerId.equals(plugin.getConfig().getString("server-id"))) {
-                    verboseLogger.info("Command not for this server, ignoring.");
-                    return;
+
+
+
+            else if ("SystemCommand".equals(subChannel)) {
+                String command = in.readUTF();
+                verboseLogger.info("Received System Command: " + command);
+                if (command.equals("reload")) {
+                    plugin.reloadConfig();
+                    plugin.getScripts().loadScripts();
+                    verboseLogger.info("Reloaded configuration file.");
                 }
-                plugin.getCommandRegister().unregisterCommand(command);
+
             }
         } catch (IOException e) {
             verboseLogger.error("Failed to read plugin message" , e);

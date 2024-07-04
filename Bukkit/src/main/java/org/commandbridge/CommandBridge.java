@@ -1,46 +1,47 @@
 package org.commandbridge;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.commandbridge.command.manager.CommandRegister;
+import org.commandbridge.command.manager.CommandUnregister;
+import org.commandbridge.message.channel.MessageSender;
+import org.commandbridge.runtime.Scripts;
+import org.commandbridge.runtime.Startup;
+import org.commandbridge.utilities.VerboseLogger;
 
 
-
-import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class CommandBridge extends JavaPlugin {
     private final VerboseLogger verboseLogger;
     private final MessageSender messageSender;
+    private final Startup startup;
+    private final List<String> registeredCommands = new ArrayList<>();
 
 
     public CommandBridge() {
         this.verboseLogger = new VerboseLogger(this, getLogger());
         this.messageSender = new MessageSender(this);
+        this.startup = new Startup(this);
     }
 
 
     @Override
     public void onEnable() {
-        File configFile = new File(getDataFolder(), "config.yml");
-        if (!configFile.exists()) {
-            saveDefaultConfig();
-            getConfig().set("server-id", "REPLACE THIS WITH YOUR SERVER NAME");
-            getConfig().set("verbose-output", false);
-            saveConfig();
-        }
-        verboseLogger.loadConfig();
-        verboseLogger.info("CommandBridge has been enabled!");
-        this.getServer().getMessenger().registerOutgoingPluginChannel(this, "commandbridge:main");
-        this.getServer().getMessenger().registerIncomingPluginChannel(this, "commandbridge:main", new MessageListener(this));
+        startup.onEnable();
     }
 
     @Override
     public void onDisable() {
-        this.getServer().getMessenger().unregisterOutgoingPluginChannel(this);
-        this.getServer().getMessenger().unregisterIncomingPluginChannel(this);
-        verboseLogger.info("CommandBridge has been disabled!");
+        startup.onDisable();
     }
 
     public CommandRegister getCommandRegister() {
         return new CommandRegister(this);
+    }
+
+    public CommandUnregister getCommandUnregister() {
+        return new CommandUnregister(this);
     }
 
     public VerboseLogger getVerboseLogger() {
@@ -51,6 +52,23 @@ public final class CommandBridge extends JavaPlugin {
         return messageSender;
     }
 
+    public List<String> getRegisteredCommands() {
+        return registeredCommands;
+    }
+
+    public void clearRegisteredCommands() {
+        registeredCommands.clear();
+    }
+
+    public void addRegisteredCommand(String command) {
+        if (!registeredCommands.contains(command)) {
+            registeredCommands.add(command);
+        }
+    }
+
+    public Scripts getScripts() {
+        return new Scripts(this);
+    }
 
 
 }

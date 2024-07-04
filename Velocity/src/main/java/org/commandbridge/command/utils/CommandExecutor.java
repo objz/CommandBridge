@@ -4,7 +4,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import org.commandbridge.CommandBridge;
-import org.commandbridge.message.channel.Bridge;
+import org.commandbridge.message.channel.channel.MessageSender;
 import org.commandbridge.utilities.VerboseLogger;
 
 import java.util.concurrent.TimeUnit;
@@ -14,14 +14,14 @@ public class CommandExecutor {
     private final ProxyServer server;
     private final VerboseLogger verboseLogger;
     private final CommandBridge plugin;
-    private final Bridge bridge;
+    private final MessageSender bridge;
     private boolean timeoutMessageSent = false;
     private boolean timeoutServer = false;
 
     public CommandExecutor(ProxyServer server, CommandBridge plugin) {
         this.server = server;
         this.plugin = plugin;
-        this.bridge = new Bridge(server, plugin);
+        this.bridge = new MessageSender(server, plugin);
         this.verboseLogger = plugin.getVerboseLogger();
     }
 
@@ -82,6 +82,7 @@ public class CommandExecutor {
                                 verboseLogger.warn("Player is not online on server " + targetServerId + ": " + command);
                                 timeoutMessageSent = true;
                             }
+
                         });
             }
         });

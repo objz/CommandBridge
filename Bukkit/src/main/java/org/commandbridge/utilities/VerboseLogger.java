@@ -1,4 +1,6 @@
-package org.commandbridge;
+package org.commandbridge.utilities;
+
+import org.commandbridge.CommandBridge;
 
 import java.util.logging.Logger;
 

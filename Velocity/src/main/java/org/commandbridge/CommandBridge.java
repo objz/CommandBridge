@@ -1,14 +1,15 @@
 package org.commandbridge;
 
 import com.google.inject.Inject;
+import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
-import org.commandbridge.message.channel.Bridge;
-import org.commandbridge.message.channel.MessageListener;
+import org.commandbridge.message.channel.channel.MessageSender;
+import org.commandbridge.message.channel.channel.MessageListener;
 import org.commandbridge.command.utils.CommandRegistrar;
 import org.commandbridge.runtime.Startup;
 import org.commandbridge.runtime.VelocityRuntime;
@@ -45,7 +46,9 @@ public class CommandBridge {
         int pluginId = 22008;
         Metrics metrics = metricsFactory.make(this, pluginId);
         this.server.getChannelRegistrar().register(CHANNEL);
-        server.getEventManager().register(this, new MessageListener(this));
+        server.getEventManager().register(this, new MessageListener(this, server));
+        EventManager eventManager = server.getEventManager();
+        eventManager.register(this, startup);
         startup.loadConfig();
         startup.registerCommands();
         verboseLogger.ForceInfo("CommandBridgeVelocity has been enabled!");
@@ -83,7 +86,7 @@ public class CommandBridge {
         return new CommandRegistrar(server, this);
     }
 
-    public Bridge getBridge() { return new Bridge(server, this); }
+    public MessageSender getBridge() { return new MessageSender(server, this); }
 
     public boolean isVerboseOutputEnabled() {
         return startup.isVerboseOutput();
@@ -94,10 +97,12 @@ public class CommandBridge {
     }
 
     public String getVersion() {
+
         return "1.3-SNAPSHOT";
     }
 
     public MinecraftChannelIdentifier getChannelIdentifier() {
         return CHANNEL;
     }
+
 }

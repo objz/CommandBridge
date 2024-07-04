@@ -7,23 +7,11 @@
 name: examplebukkit
 # Whether the command is enabled
 enabled: true
-# If the command should be dispatched to the bukkit server and the commands get executed on the velocity side
-reverse-registration: true
-
-target-server-ids:
-    - 'lobby'
-    - 'hub'
-
-# The list of commands to execute
+# The list of commands to execute on the Velocty server
 commands:
   # The command to execute on the target server
   # IMPORTANT: The command must be enclosed in single quotes
-  - command: 'say Hello, world!'
+  - command: 'velocity version'
     # This can be either "player" or "console"
     target-executor: 'player'
   # Add more commands here
-  - command: 'say I love Coding!'
-    delay: 0
-    target-server-id: 'lobby'
-    target-executor: 'player'
-    wait-until-player-is-online: true

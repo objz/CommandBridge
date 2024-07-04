@@ -97,32 +97,4 @@ public class CommandRegistrar {
         verboseLogger.info("Command " + commandName + " registered successfully.");
     }
 
-    public void registerBukkitCommand(Map<String, Object> commandData) {
-        String command = (String) commandData.get("name");
-        List<String> targetServerIds = (List<String>) commandData.get("target-server-ids");
-
-        if (command == null || targetServerIds == null || targetServerIds.isEmpty()) {
-            verboseLogger.warn("Command or target server IDs are missing in config.");
-            return;
-        }
-
-        for (String targetServerId : targetServerIds) {
-            plugin.getBridge().registerBukkitCommand(command, targetServerId);
-        }
-    }
-
-    public void unregisterBukkitCommand(Map<String, Object> data) {
-        String command = (String) data.get("name");
-        List<String> targetServerIds = (List<String>) data.get("target-server-ids");
-
-        if (command == null || targetServerIds == null || targetServerIds.isEmpty()) {
-            verboseLogger.warn("Command or target server IDs are missing in config.");
-            return;
-        }
-
-        for (String targetServerId : targetServerIds) {
-            plugin.getBridge().unregisterBukkitCommand(command, targetServerId);
-        }
-
-    }
 }
