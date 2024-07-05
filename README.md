@@ -10,6 +10,9 @@
 - **Execution upon Player Join**: Wait for the player to join the target server before executing the command, with a timeout limit of 20 seconds.
 - **Multiple Command Execution**: Execute as many commands as desired.
 - **Verbose Output**: Provides detailed output for monitoring and debugging purposes.
+- **Cross-Server Command Sending**: Send commands from Bukkit servers to the Velocity server, using the same placeholders as on the Velocity side, with configuration options in `bukkit-scripts`.
+- **Automatic Version Check**: Velocity automatically checks for new versions and notifies the user, integrating with the `cb` or `commandbridge version` command.
+- **Hot Reloading**: Commands can now be hot-reloaded using the `cb reload` or `commandbridge reload` command, allowing for seamless updates without server restarts.
 
 ### Compatibility
 
@@ -33,8 +36,8 @@
 
 ### Documentation
 
-[Access detailed documentation and configuration guides here.](LINK)
+[Access detailed documentation and configuration guides here.](https://72-s.github.io/CommandBridge/)
 
-### Issues or Feature requests
+### Issues or Feature Requests
 
-[Open a Issue to report bugs or request a feature](https://github.com/72-S/CommandBridge/issues)
+[Open an issue to report bugs or request a feature](https://github.com/72-S/CommandBridge/issues)
