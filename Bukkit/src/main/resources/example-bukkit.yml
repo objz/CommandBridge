@@ -7,7 +7,7 @@
 name: examplebukkit
 # Whether the command is enabled
 enabled: true
-# The list of commands to execute on the Velocty server
+# The list of commands to execute on the Velocity server
 commands:
   # The command to execute on the target server
   # IMPORTANT: The command must be enclosed in single quotes
