@@ -7,14 +7,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.regex.Pattern;
 
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class VersionChecker {
     private static final String MODRINTH_API_URL = "https://api.modrinth.com/v2/project/wIuI4ru2/version";
     private static final Pattern VERSION_PATTERN = Pattern.compile("\\d+");
-
 
     public static String getLatestVersion() {
         HttpClient client = HttpClient.newHttpClient();
@@ -33,7 +31,6 @@ public class VersionChecker {
                 return latestVersion.getString("version_number");
             }
         } catch (IOException | InterruptedException ignored) {
-
         }
         return null;
     }
@@ -57,7 +54,7 @@ public class VersionChecker {
         return false;
     }
 
-    private static Integer parseVersionPart(String versionPart) {
+    private static int parseVersionPart(String versionPart) {
         var matcher = VERSION_PATTERN.matcher(versionPart);
         if (matcher.find()) {
             return Integer.parseInt(matcher.group());
@@ -81,7 +78,4 @@ public class VersionChecker {
         }
         return bukkitParts.length == currentParts.length;
     }
-
 }
-
-
