@@ -1044,8 +1044,15 @@ public class Metrics {
          */
         private void writeFile(File file, List<String> lines) throws IOException {
             if (!file.exists()) {
-                file.getParentFile().mkdirs();
-                file.createNewFile();
+                boolean dirsCreated = file.getParentFile().mkdirs();
+                if (!dirsCreated && !file.getParentFile().exists()) {
+                    throw new IOException("Failed to create parent directories for " + file);
+                }
+                // Check if the file was successfully created
+                boolean fileCreated = file.createNewFile();
+                if (!fileCreated && !file.exists()) {
+                    throw new IOException("Failed to create new file " + file);
+                }
             }
             try (FileWriter fileWriter = new FileWriter(file);
                  BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
