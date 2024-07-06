@@ -5,9 +5,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
-import com.velocitypowered.api.permission.Tristate;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.Player;
 import java.io.*;
@@ -16,7 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
 
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -24,7 +21,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
 import org.commandbridge.utilities.VersionChecker;
-import org.jetbrains.annotations.NotNull;
+import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
@@ -36,7 +33,7 @@ public class Startup {
     private boolean verboseOutput;
     private final VelocityRuntime velocityRuntime;
     private final Path dataDirectory = Path.of("plugins", "CommandBridgeVelocity");
-    private LoginEvent event;
+
 
     public Startup(ProxyServer server, CommandBridge plugin) {
         this.server = server;
@@ -44,11 +41,14 @@ public class Startup {
         this.verboseLogger = plugin.getVerboseLogger();
         this.velocityRuntime = new VelocityRuntime(server, plugin);
     }
-
     public void loadConfig() {
         File dataFolder = new File("plugins/CommandBridgeVelocity");
         if (!dataFolder.exists()) {
-            dataFolder.mkdirs();
+            boolean dirsCreated = dataFolder.mkdirs();
+            if (!dirsCreated) {
+                verboseLogger.warn("Failed to create the directory: " + dataFolder.getPath());
+                return; // Stop execution if the directory couldn't be created
+            }
         }
 
         File configFile = new File(dataFolder, "config.yml");
@@ -65,7 +65,9 @@ public class Startup {
         }
 
         try (FileInputStream fis = new FileInputStream(configFile)) {
-            Yaml yaml = new Yaml(new Constructor(Map.class));
+            LoaderOptions loaderOptions = new LoaderOptions();
+            loaderOptions.setAllowDuplicateKeys(false);
+            Yaml yaml = new Yaml(new Constructor(loaderOptions));
             Map<String, Object> data = yaml.load(fis);
             verboseOutput = (boolean) data.getOrDefault("verbose-output", false);
             verboseLogger.ForceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
@@ -109,24 +111,32 @@ public class Startup {
         verboseLogger.info("Checking for updates...");
 
         new Thread(() -> {
-            try {
-                String latestVersion = VersionChecker.getLatestVersion();
+            String latestVersion = VersionChecker.getLatestVersion();
 
-                if (latestVersion == null) {
-                    verboseLogger.warn("Unable to check for updates.");
-                    return;
-                }
+            if (latestVersion == null) {
+                verboseLogger.warn("Unable to check for updates.");
+                return;
+            }
 
-                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
-                    verboseLogger.warn("A new version is available: " + latestVersion);
-                    verboseLogger.warn("Please download the latest release: https://modrinth.com/plugin/YOUR_PROJECT_ID");
-                } else {
-                    verboseLogger.info("You are running the latest version: " + currentVersion);
-                }
-            } catch (IOException | InterruptedException e) {
-                verboseLogger.error("Failed to check for updates", e);
+            if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                verboseLogger.warn("A new version is available: " + latestVersion);
+                verboseLogger.warn("Please download the latest release: https://modrinth.com/plugin/YOUR_PROJECT_ID");
+            } else {
+                verboseLogger.info("You are running the latest version: " + currentVersion);
             }
         }).start();
+    }
+
+
+    private void checkForBukkitVersion() {
+        plugin.getMessageSender().sendSystemCommand("version");
+    }
+
+    public void isSameBukkitVersion(boolean version) {
+        if (version) {
+            verboseLogger.info("All bukkit servers are running on the right version");
+        } else
+            verboseLogger.warn("Please update all Bukkit server's to the version: CommandBridgeBukkit-" + plugin.getVersion());
     }
 
     public void registerCommands() {
@@ -143,7 +153,7 @@ public class Startup {
                         .executes(context -> {
                             if (context.getSource().hasPermission("commandbridge.admin")) {
                                 plugin.getRuntime().loadScripts();
-                                plugin.getBridge().sendSystemCommand("reload");
+                                plugin.getMessageSender().sendSystemCommand("reload");
                                 context.getSource().sendMessage(Component.text("Scripts reloaded!", NamedTextColor.GREEN));
                                 return 1;
                             }
@@ -158,29 +168,25 @@ public class Startup {
                                 String currentVersion = plugin.getVersion();
 
                                 source.sendMessage(Component.text("Checking for updates...").color(NamedTextColor.YELLOW));
+                                checkForBukkitVersion();
 
                                 new Thread(() -> {
-                                    try {
-                                        String latestVersion = VersionChecker.getLatestVersion();
+                                    String latestVersion = VersionChecker.getLatestVersion();
 
-                                        if (latestVersion == null) {
-                                            source.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                                            return;
-                                        }
+                                    if (latestVersion == null) {
+                                        source.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
+                                        return;
+                                    }
 
-                                        if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
-                                            source.sendMessage(Component.text("A new version is available: " + latestVersion).color(NamedTextColor.RED));
-                                            source.sendMessage(Component.text("Please download the latest release: ")
-                                                    .append(Component.text("here")
-                                                            .color(NamedTextColor.BLUE)
-                                                            .decorate(TextDecoration.UNDERLINED)
-                                                            .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
-                                        } else {
-                                            source.sendMessage(Component.text("You are running the latest version: " + currentVersion).color(NamedTextColor.GREEN));
-                                        }
-                                    } catch (IOException | InterruptedException e) {
-                                        source.sendMessage(Component.text("Failed to check for updates.").color(NamedTextColor.RED));
-                                        verboseLogger.error("Failed to check for updates", e);
+                                    if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                                        source.sendMessage(Component.text("A new version is available: " + latestVersion).color(NamedTextColor.RED));
+                                        source.sendMessage(Component.text("Please download the latest release: ")
+                                                .append(Component.text("here")
+                                                        .color(NamedTextColor.BLUE)
+                                                        .decorate(TextDecoration.UNDERLINED)
+                                                        .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                                    } else {
+                                        source.sendMessage(Component.text("You are running the latest version: " + currentVersion).color(NamedTextColor.GREEN));
                                     }
                                 }).start();
 
@@ -234,30 +240,25 @@ public class Startup {
         verboseLogger.info("Checking for updates...");
 
         server.getScheduler().buildTask(plugin, () -> {
-            try {
-                String currentVersion = plugin.getVersion();
-                String latestVersion = VersionChecker.getLatestVersion();
+            String currentVersion = plugin.getVersion();
+            String latestVersion = VersionChecker.getLatestVersion();
 
-                if (latestVersion == null) {
-                    player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                    verboseLogger.warn("Unable to check for updates: latestVersion is null.");
-                    return;
-                }
+            if (latestVersion == null) {
+                player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
+                verboseLogger.warn("Unable to check for updates: latestVersion is null.");
+                return;
+            }
 
-                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
-                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion).color(NamedTextColor.RED));
-                    player.sendMessage(Component.text("Please download the latest release: ")
-                            .append(Component.text("here")
-                                    .color(NamedTextColor.BLUE)
-                                    .decorate(TextDecoration.UNDERLINED)
-                                    .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
-                    verboseLogger.info("Notified player " + player.getUsername() + " about the new version: " + latestVersion);
-                } else {
-                    verboseLogger.info("Player " + player.getUsername() + " is running the latest version: " + currentVersion);
-                }
-            } catch (IOException | InterruptedException e) {
-                player.sendMessage(Component.text("Failed to check for updates.").color(NamedTextColor.RED));
-                verboseLogger.error("Failed to check for updates", e);
+            if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion).color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Please download the latest release: ")
+                        .append(Component.text("here")
+                                .color(NamedTextColor.BLUE)
+                                .decorate(TextDecoration.UNDERLINED)
+                                .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                verboseLogger.info("Notified player " + player.getUsername() + " about the new version: " + latestVersion);
+            } else {
+                verboseLogger.info("Player " + player.getUsername() + " is running the latest version: " + currentVersion);
             }
         }).schedule();
     }

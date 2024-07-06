@@ -57,6 +57,9 @@ public class MessageListener implements PluginMessageListener {
                     plugin.reloadConfig();
                     plugin.getScripts().loadScripts();
                     verboseLogger.info("Reloaded configuration file.");
+                } else if (command.equals("version")) {
+                    String version = plugin.getBukkitVersion();
+                    plugin.getMessageSender().sendVersion(version);
                 }
 
             }

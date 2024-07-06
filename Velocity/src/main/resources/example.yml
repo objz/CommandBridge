@@ -7,8 +7,6 @@
 name: examplecommand
 # Whether the command is enabled
 enabled: true
-# If the command should be dispatched to the bukkit server and the commands get executed on the velocity side
-reverse-registration: false
 # The list of commands to execute
 commands:
   # The command to execute on the target server

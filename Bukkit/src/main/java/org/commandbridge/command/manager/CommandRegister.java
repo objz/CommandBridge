@@ -7,6 +7,7 @@ import org.bukkit.command.defaults.BukkitCommand;
 import org.bukkit.entity.Player;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -28,7 +29,7 @@ public class CommandRegister {
     public void registerCommands(Map<String, Object> data) {
         String commandName = (String) data.get("name");
 
-        List<Map<String, Object>> commandList = (List<Map<String, Object>>) data.get("commands");
+        List<Map<String, Object>> commandList = safeCastToListOfMaps(data.get("commands"));
 
         if (commandName == null || commandList == null || commandList.isEmpty()) {
             verboseLogger.error("Command name or command list is missing or empty in config.", new IllegalArgumentException());
@@ -42,11 +43,11 @@ public class CommandRegister {
 
             Command newCommand = new BukkitCommand(commandName) {
                 @Override
-                public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+                public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
                    if (sender instanceof Player) {
                         Player player = (Player) sender;
                         for (Map<String, Object> command : commandList) {
-                            String commandString = parsePlaceholders((String) data.get("command"), player);
+                            String commandString = parsePlaceholders((String) command.get("command"), player);
                             String target_executor = (String) command.get("target-executor");
                             String permission = "commandbridge.command." + commandString;
                             if (!sender.hasPermission(permission)) {
@@ -54,7 +55,7 @@ public class CommandRegister {
                                 return false;
                             }
                             verboseLogger.info("Sending plugin message for command as Player: " + commandString);
-                            plugin.getMessageSender().sendPluginMessage(player, target_executor, commandString);
+                            plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), target_executor, commandString);
                         }
                         return true;
                     } else if (sender instanceof ConsoleCommandSender) {
@@ -63,7 +64,7 @@ public class CommandRegister {
                             verboseLogger.info("In case you want to parse Strings, that's not possible when dispatching it from the console");
                             String target_executor = (String) command.get("target-executor");
                             verboseLogger.info("Sending plugin message for command as Console: " + commandString);
-                            plugin.getMessageSender().sendPluginMessage(null, target_executor, commandString); // Assuming null player for console
+                            plugin.getMessageSender().sendPluginMessage("", target_executor, commandString); // Assuming null player for console
                         }
                         return true;
                     } else {
@@ -78,6 +79,21 @@ public class CommandRegister {
         }
         plugin.addRegisteredCommand(commandName);
 
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> safeCastToListOfMaps(Object obj) {
+        if (obj instanceof List<?>) {
+            List<?> list = (List<?>) obj;
+            if (!list.isEmpty() && list.get(0) instanceof Map) {
+                try {
+                    return (List<Map<String, Object>>) obj;
+                } catch (ClassCastException e) {
+                    verboseLogger.error("Failed to cast to List<Map<String, Object>>", e);
+                }
+            }
+        }
+        return null;
     }
 
 //    public void registerCommand(String command) {

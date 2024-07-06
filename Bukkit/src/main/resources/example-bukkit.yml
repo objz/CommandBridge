@@ -11,7 +11,7 @@ enabled: true
 commands:
   # The command to execute on the target server
   # IMPORTANT: The command must be enclosed in single quotes
-  - command: 'velocity version'
+  - command: 'velocity info'
     # This can be either "player" or "console"
     target-executor: 'player'
   # Add more commands here

@@ -44,7 +44,7 @@ public class CommandBridge {
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
         int pluginId = 22008;
-        Metrics metrics = metricsFactory.make(this, pluginId);
+        metricsFactory.make(this, pluginId);
         this.server.getChannelRegistrar().register(CHANNEL);
         server.getEventManager().register(this, new MessageListener(this, server));
         EventManager eventManager = server.getEventManager();
@@ -86,7 +86,7 @@ public class CommandBridge {
         return new CommandRegistrar(server, this);
     }
 
-    public MessageSender getBridge() { return new MessageSender(server, this); }
+    public MessageSender getMessageSender() { return new MessageSender(server, this); }
 
     public boolean isVerboseOutputEnabled() {
         return startup.isVerboseOutput();

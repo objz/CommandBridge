@@ -70,5 +70,9 @@ public final class CommandBridge extends JavaPlugin {
         return new Scripts(this);
     }
 
+    public String getBukkitVersion() {
+        return "1.3-SNAPSHOT";
+    }
+
 
 }
