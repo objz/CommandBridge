@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 
 public class Startup {
     private final CommandBridge plugin;
@@ -54,7 +55,7 @@ public class Startup {
         File exampleScript = new File(scriptsFolder, "example-bukkit.yml");
         if (!exampleScript.exists()) {
             try (InputStream in = plugin.getResource("example-bukkit.yml");
-                 OutputStream out = new FileOutputStream(exampleScript)) {
+                 OutputStream out = Files.newOutputStream(exampleScript.toPath())) {
                 if (in == null) {
                     plugin.getLogger().warning("Resource example-bukkit.yml not found.");
                     return;

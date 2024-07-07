@@ -97,8 +97,7 @@ public class CommandBridge {
     }
 
     public String getVersion() {
-
-        return "1.3-SNAPSHOT";
+        return this.getClass().getAnnotation(Plugin.class).version();
     }
 
     public MinecraftChannelIdentifier getChannelIdentifier() {
