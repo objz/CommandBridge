@@ -27,7 +27,7 @@ public class VerboseLogger {
             logger.error(message, e);
     }
 
-    public void ForceInfo(String message) {
+    public void forceInfo(String message) {
         logger.info(message);
     }
 

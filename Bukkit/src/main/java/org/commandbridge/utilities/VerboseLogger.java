@@ -23,16 +23,18 @@ public class VerboseLogger {
             logger.info(message);
         }
     }
-    
+
+    public void forceInfo(String message) {
+        logger.info(message);
+    }
+
     public void warn(String message) {
-        if (verboseOutput) {
             logger.warning(message);
-        }
     }
     
     public void error(String message, Throwable e) {
-        if (verboseOutput) {
+
             logger.severe(message + " : " + e.getMessage());
-        }
+
     }
 }
