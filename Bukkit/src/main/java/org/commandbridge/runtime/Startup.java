@@ -1,11 +1,9 @@
 package org.commandbridge.runtime;
 
-import org.bukkit.plugin.java.JavaPlugin;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.message.channel.MessageListener;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;

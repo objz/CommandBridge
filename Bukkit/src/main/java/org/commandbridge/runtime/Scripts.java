@@ -5,8 +5,8 @@ import org.commandbridge.utilities.VerboseLogger;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -24,35 +24,49 @@ public class Scripts {
     public void loadScripts() {
         verboseLogger.info("Loading scripts...");
         unloadScripts();
+
+        if (!scriptsFolder.exists() || !scriptsFolder.isDirectory()) {
+            verboseLogger.warn("Scripts folder does not exist or is not a directory: " + scriptsFolder.getPath());
+            return;
+        }
+
         File[] files = scriptsFolder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (files == null) {
-            verboseLogger.warn("No scripts found.");
+        if (files == null || files.length == 0) {
+            verboseLogger.warn("No scripts found in folder: " + scriptsFolder.getPath());
             return;
         }
 
         for (File file : files) {
-            try (InputStream input = new FileInputStream(file)) {
-                verboseLogger.info("Loading script: " + file.getName());
+            try (InputStream input = Files.newInputStream(file.toPath())) {
+                verboseLogger.info("Loading script file: " + file.getName());
+
                 Yaml yaml = new Yaml();
                 Map<String, Object> data = yaml.load(input);
+
                 if (Boolean.TRUE.equals(data.get("enabled"))) {
-                    this.plugin.getCommandRegister().registerCommands(data);
-                    verboseLogger.info("Command registered successfully: " + file.getName());
+                    plugin.getCommandRegister().registerCommands(data);
+                    verboseLogger.forceInfo("Command registered successfully from script: " + file.getName());
                 } else {
-                    verboseLogger.info("Skipping disabled command in: " + file.getName());
+                    verboseLogger.info("Script disabled, skipping file: " + file.getName());
                 }
             } catch (Exception e) {
                 verboseLogger.error("Failed to load or parse script file: " + file.getName(), e);
             }
         }
+
+        verboseLogger.info("Scripts loading process completed.");
     }
 
     public void unloadScripts() {
+        verboseLogger.info("Unloading all registered scripts...");
+
         ArrayList<String> registeredCommands = new ArrayList<>(plugin.getRegisteredCommands());
         for (String command : registeredCommands) {
             plugin.getCommandUnregister().unregisterCommand(command);
-            verboseLogger.info("Command " + command + " unregistered successfully.");
+            verboseLogger.info("Command unregistered successfully: " + command);
         }
+
         plugin.clearRegisteredCommands();
+        verboseLogger.info("All commands have been unregistered and cleared.");
     }
 }

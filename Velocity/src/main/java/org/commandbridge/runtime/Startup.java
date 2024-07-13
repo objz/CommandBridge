@@ -8,12 +8,6 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.Player;
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.Map;
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,6 +19,16 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Map;
+
 public class Startup {
 
     private final ProxyServer server;
@@ -34,13 +38,13 @@ public class Startup {
     private final VelocityRuntime velocityRuntime;
     private final Path dataDirectory = Path.of("plugins", "CommandBridgeVelocity");
 
-
     public Startup(ProxyServer server, CommandBridge plugin) {
         this.server = server;
         this.plugin = plugin;
         this.verboseLogger = plugin.getVerboseLogger();
         this.velocityRuntime = new VelocityRuntime(server, plugin);
     }
+
     public void loadConfig() {
         File dataFolder = new File("plugins/CommandBridgeVelocity");
         if (!dataFolder.exists()) {
@@ -70,11 +74,15 @@ public class Startup {
             Yaml yaml = new Yaml(new Constructor(loaderOptions));
             Map<String, Object> data = yaml.load(fis);
             verboseOutput = (boolean) data.getOrDefault("verbose-output", false);
-            verboseLogger.ForceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
+            verboseLogger.forceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
             velocityRuntime.loadScripts();
             copyExampleYml();
         } catch (IOException e) {
             verboseLogger.error("Failed to load config file", e);
+        } catch (ClassCastException e) {
+            verboseLogger.error("Invalid data type in config file", e);
+        } catch (Exception e) {
+            verboseLogger.error("Unexpected error while loading config file", e);
         }
 
         // Perform version check on startup
@@ -85,21 +93,24 @@ public class Startup {
         return verboseOutput;
     }
 
+
     private void copyExampleYml() {
         Path scriptFolder = dataDirectory.resolve("scripts");
         try {
             Files.createDirectories(scriptFolder);
             Path exampleScript = scriptFolder.resolve("example.yml");
-            Path exampleBukkitScript = scriptFolder.resolve("example-bukkit.yml");
-            if (Files.notExists(exampleScript) || Files.notExists(exampleBukkitScript)) {
+
+            if (Files.notExists(exampleScript)) {
                 try (InputStream in = getClass().getClassLoader().getResourceAsStream("example.yml")) {
                     if (in == null) {
                         verboseLogger.warn("Could not find example.yml in resources");
                         return;
                     }
-                    Files.copy(in, exampleScript, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(in, exampleScript, StandardCopyOption.COPY_ATTRIBUTES);
                     verboseLogger.info("example.yml has been copied successfully.");
                 }
+            } else {
+                verboseLogger.info("example.yml already exists at " + exampleScript);
             }
         } catch (IOException e) {
             verboseLogger.error("Failed to create scripts folder or copy example.yml", e);
@@ -120,13 +131,12 @@ public class Startup {
 
             if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
                 verboseLogger.warn("A new version is available: " + latestVersion);
-                verboseLogger.warn("Please download the latest release: https://modrinth.com/plugin/YOUR_PROJECT_ID");
+                verboseLogger.warn("Please download the latest release: https://modrinth.com/plugin/wIuI4ru2");
             } else {
                 verboseLogger.info("You are running the latest version: " + currentVersion);
             }
         }).start();
     }
-
 
     private void checkForBukkitVersion() {
         plugin.getMessageSender().sendSystemCommand("version");
@@ -134,9 +144,10 @@ public class Startup {
 
     public void isSameBukkitVersion(boolean version) {
         if (version) {
-            verboseLogger.info("All bukkit servers are running on the right version");
-        } else
-            verboseLogger.warn("Please update all Bukkit server's to the version: CommandBridgeBukkit-" + plugin.getVersion());
+            verboseLogger.info("All Bukkit servers are running on the right version");
+        } else {
+            verboseLogger.warn("Please update all Bukkit servers to the version: CommandBridgeBukkit-" + plugin.getVersion());
+        }
     }
 
     public void registerCommands() {
@@ -152,7 +163,7 @@ public class Startup {
                 .then(LiteralArgumentBuilder.<CommandSource>literal("reload")
                         .executes(context -> {
                             if (context.getSource().hasPermission("commandbridge.admin")) {
-                                plugin.getRuntime().loadScripts();
+                                plugin.getStartup().loadConfig();
                                 plugin.getMessageSender().sendSystemCommand("reload");
                                 context.getSource().sendMessage(Component.text("Scripts reloaded!", NamedTextColor.GREEN));
                                 return 1;
