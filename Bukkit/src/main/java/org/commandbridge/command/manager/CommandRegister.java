@@ -1,7 +1,5 @@
 package org.commandbridge.command.manager;
 
-
-
 import org.bukkit.command.*;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.bukkit.entity.Player;
@@ -14,17 +12,16 @@ import java.util.List;
 import java.util.Map;
 
 import static org.commandbridge.utilities.StringParser.parsePlaceholders;
+import static org.commandbridge.utilities.StringParser.parseConsoleCommands;
 
 public class CommandRegister {
     private final CommandBridge plugin;
     private final VerboseLogger verboseLogger;
 
-
     public CommandRegister(CommandBridge plugin) {
         this.plugin = plugin;
         this.verboseLogger = plugin.getVerboseLogger();
     }
-
 
     public void registerCommands(Map<String, Object> data) {
         String commandName = (String) data.get("name");
@@ -44,27 +41,29 @@ public class CommandRegister {
             Command newCommand = new BukkitCommand(commandName) {
                 @Override
                 public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
-                   if (sender instanceof Player) {
+                    verboseLogger.info("Executing command: " + commandLabel + " with arguments: " + String.join(" ", args));
+
+                    if (sender instanceof Player) {
                         Player player = (Player) sender;
                         for (Map<String, Object> command : commandList) {
                             String commandString = parsePlaceholders((String) command.get("command"), player);
-                            String target_executor = (String) command.get("target-executor");
+                            String targetExecutor = (String) command.get("target-executor");
                             String permission = "commandbridge.command." + commandString;
+
                             if (!sender.hasPermission(permission)) {
-                                verboseLogger.warn("Player does not have permission to execute command: " + commandString);
+                                verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
                                 return false;
                             }
                             verboseLogger.info("Sending plugin message for command as Player: " + commandString);
-                            plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), target_executor, commandString);
+                            plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), targetExecutor, commandString);
                         }
                         return true;
                     } else if (sender instanceof ConsoleCommandSender) {
                         for (Map<String, Object> command : commandList) {
-                            String commandString = (String) command.get("command");
-                            verboseLogger.info("In case you want to parse Strings, that's not possible when dispatching it from the console");
-                            String target_executor = (String) command.get("target-executor");
+                            String commandString = parseConsoleCommands((String) command.get("command"), (ConsoleCommandSender) sender);
+                            String targetExecutor = (String) command.get("target-executor");
                             verboseLogger.info("Sending plugin message for command as Console: " + commandString);
-                            plugin.getMessageSender().sendPluginMessage("", target_executor, commandString); // Assuming null player for console
+                            plugin.getMessageSender().sendPluginMessage("", targetExecutor, commandString); // Assuming null player for console
                         }
                         return true;
                     } else {
@@ -73,12 +72,14 @@ public class CommandRegister {
                     return false;
                 }
             };
+
             commandMap.register(plugin.getName(), newCommand);
+            verboseLogger.forceInfo("Command registered successfully: " + commandName);
         } catch (Exception e) {
             verboseLogger.error("Failed to register command: " + commandName, e);
         }
-        plugin.addRegisteredCommand(commandName);
 
+        plugin.addRegisteredCommand(commandName);
     }
 
     @SuppressWarnings("unchecked")
@@ -95,32 +96,4 @@ public class CommandRegister {
         }
         return null;
     }
-
-//    public void registerCommand(String command) {
-//        try {
-//            Field comandMapField = plugin.getServer().getClass().getDeclaredField("commandMap");
-//            comandMapField.setAccessible(true);
-//            CommandMap commandMap = (CommandMap) comandMapField.get(plugin.getServer());
-//
-//            Command newCommand = new BukkitCommand(command) {
-//                @Override
-//                public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-//                    if (sender instanceof Player) {
-//                        verboseLogger.info("Sending plugin message for command: " + command);
-//                        plugin.getMessageSender().sendPluginMessage(((Player) sender).getPlayer(), command, "");
-//                        return true;
-//                    } else {
-//                        verboseLogger.warn("This command can only be used by a player.");
-//                    }
-//                    return false;
-//                }
-//            };
-//            commandMap.register(plugin.getName(), newCommand);
-//        } catch (Exception e) {
-//            verboseLogger.error("Failed to register command: " + command, e);
-//        }
-//    }
-
-
-
 }

@@ -3,14 +3,16 @@ package org.commandbridge.command.utils;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.commandbridge.CommandBridge;
-import org.commandbridge.message.channel.channel.MessageSender;
+import org.commandbridge.message.channel.MessageSender;
 import org.commandbridge.utilities.VerboseLogger;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CommandExecutor {
+    private static final int TIMEOUT_LIMIT = 20; // seconds
     private final ProxyServer server;
     private final VerboseLogger verboseLogger;
     private final CommandBridge plugin;
@@ -30,61 +32,65 @@ public class CommandExecutor {
         timeoutServer = false;
     }
 
-
-    public void executeCommand(String command, String targetServerId, String targetExecutor, boolean waitForOnline, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disable_player_online) {
-        server.getServer(targetServerId).ifPresent(serverConnection -> {
+    public void executeCommand(String command, String targetServerId, String targetExecutor, boolean waitForOnline, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disablePlayerOnline) {
+        server.getServer(targetServerId).ifPresentOrElse(serverConnection -> {
             if (waitForOnline) {
-                serverConnection.getPlayersConnected().stream()
-                        .filter(player -> player.getUniqueId().toString().equals(playerUUID))
-                        .findFirst()
-                        .ifPresentOrElse(player -> {
-                            bridge.sendCommandToBukkit(command, targetServerId, targetExecutor);
-                            verboseLogger.info("Executing command on server " + targetServerId + ": " + command);
-                        }, () -> {
-                            if (timeElapsed.getAndIncrement() < 20) {
-                                server.getScheduler().buildTask(plugin, () -> executeCommand(command, targetServerId, targetExecutor, true, playerMessage, timeElapsed, playerUUID, disable_player_online))
+                waitForPlayerAndExecute(command, targetServerId, targetExecutor, playerMessage, timeElapsed, playerUUID, disablePlayerOnline);
+            } else {
+                executeOrSendMessage(command, targetServerId, targetExecutor, playerMessage, playerUUID, disablePlayerOnline);
+            }
+        }, () -> verboseLogger.warn("Target server not found: " + targetServerId));
+    }
+
+    private void waitForPlayerAndExecute(String command, String targetServerId, String targetExecutor, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disablePlayerOnline) {
+        server.getServer(targetServerId).ifPresent(serverConnection -> serverConnection.getPlayersConnected().stream()
+                .filter(player -> player.getUniqueId().toString().equals(playerUUID))
+                .findFirst()
+                .ifPresentOrElse(player -> executeCommand(command, targetServerId, targetExecutor),
+                        () -> {
+                            if (timeElapsed.getAndIncrement() < TIMEOUT_LIMIT) {
+                                server.getScheduler().buildTask(plugin, () -> executeCommand(command, targetServerId, targetExecutor, true, playerMessage, timeElapsed, playerUUID, disablePlayerOnline))
                                         .delay(1, TimeUnit.SECONDS)
                                         .schedule();
                                 verboseLogger.info("Waiting for player to be online on server " + targetServerId + ": " + command);
                             } else {
-                                if (!timeoutServer) {
-                                    playerMessage.sendMessage(Component.text("Timeout reached. Player not online within 20 seconds on server " + targetServerId, net.kyori.adventure.text.format.NamedTextColor.RED));
-                                    verboseLogger.warn("Timeout reached. Player not online on server " + targetServerId + ": " + command);
-                                    timeoutServer = true;
-                                }
+                                handleTimeout(playerMessage, targetServerId, command);
                             }
-                        });
-            } else {
-                checkAndExecute(command, targetServerId, targetExecutor, playerMessage, playerUUID, disable_player_online);
-            }
-        });
+                        }));
     }
 
-    private void checkAndExecute(String command, String targetServerId, String targetExecutor, Player playerMessage, String playerUUID, boolean disable_player_online) {
+    private void executeCommand(String command, String targetServerId, String targetExecutor) {
+        bridge.sendCommandToBukkit(command, targetServerId, targetExecutor);
+        verboseLogger.info("Executing command on server " + targetServerId + ": " + command);
+    }
+
+    private void handleTimeout(Player playerMessage, String targetServerId, String command) {
+        if (!timeoutServer) {
+            playerMessage.sendMessage(Component.text("Timeout reached. Player not online within 20 seconds on server " + targetServerId, NamedTextColor.RED));
+            verboseLogger.warn("Timeout reached. Player not online on server " + targetServerId + ": " + command);
+            timeoutServer = true;
+        }
+    }
+
+    private void executeOrSendMessage(String command, String targetServerId, String targetExecutor, Player playerMessage, String playerUUID, boolean disablePlayerOnline) {
         server.getServer(targetServerId).ifPresent(serverConnection -> {
-            verboseLogger.info("Player UUID: " + playerUUID);
-
-
-            if (disable_player_online) {
-                bridge.sendCommandToBukkit(command, targetServerId, targetExecutor);
-                verboseLogger.info("Executing command: " + command);
-
+            if (disablePlayerOnline) {
+                executeCommand(command, targetServerId, targetExecutor);
             } else {
                 serverConnection.getPlayersConnected().stream()
                         .filter(player -> player.getUniqueId().toString().equals(playerUUID))
                         .findFirst()
-                        .ifPresentOrElse(player -> {
-                            bridge.sendCommandToBukkit(command, targetServerId, targetExecutor);
-                            verboseLogger.info("Executing command: " + command);
-                        }, () -> {
-                            if (!timeoutMessageSent) {
-                                playerMessage.sendMessage(Component.text("You must be on the server " + targetServerId + " to use this command.", net.kyori.adventure.text.format.NamedTextColor.RED));
-                                verboseLogger.warn("Player is not online on server " + targetServerId + ": " + command);
-                                timeoutMessageSent = true;
-                            }
-
-                        });
+                        .ifPresentOrElse(player -> executeCommand(command, targetServerId, targetExecutor),
+                                () -> sendPlayerNotOnlineMessage(playerMessage, targetServerId, command));
             }
         });
+    }
+
+    private void sendPlayerNotOnlineMessage(Player playerMessage, String targetServerId, String command) {
+        if (!timeoutMessageSent) {
+            playerMessage.sendMessage(Component.text("You must be on the server " + targetServerId + " to use this command.", NamedTextColor.RED));
+            verboseLogger.warn("Player is not online on server " + targetServerId + ": " + command);
+            timeoutMessageSent = true;
+        }
     }
 }

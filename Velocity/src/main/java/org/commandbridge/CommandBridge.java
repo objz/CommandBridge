@@ -8,8 +8,8 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
-import org.commandbridge.message.channel.channel.MessageSender;
-import org.commandbridge.message.channel.channel.MessageListener;
+import org.commandbridge.message.channel.MessageSender;
+import org.commandbridge.message.channel.MessageListener;
 import org.commandbridge.command.utils.CommandRegistrar;
 import org.commandbridge.runtime.Startup;
 import org.commandbridge.runtime.VelocityRuntime;
@@ -51,13 +51,13 @@ public class CommandBridge {
         eventManager.register(this, startup);
         startup.loadConfig();
         startup.registerCommands();
-        verboseLogger.ForceInfo("CommandBridgeVelocity has been enabled!");
+        verboseLogger.forceInfo("CommandBridgeVelocity has been enabled!");
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         server.getChannelRegistrar().unregister(CHANNEL);
-        verboseLogger.ForceInfo("CommandBridgeVelocity has been disabled!");
+        verboseLogger.forceInfo("CommandBridgeVelocity has been disabled!");
     }
 
     public VerboseLogger getVerboseLogger() {
