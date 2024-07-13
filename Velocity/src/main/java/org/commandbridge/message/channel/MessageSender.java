@@ -1,4 +1,4 @@
-package org.commandbridge.message.channel.channel;
+package org.commandbridge.message.channel;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
@@ -18,38 +18,45 @@ public class MessageSender {
         this.verboseLogger = plugin.getVerboseLogger();
     }
 
-
     public void sendCommandToBukkit(String command, String targetServerId, String targetExecutor) {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        DataOutputStream out = new DataOutputStream(byteOut);
-        try {
+        try (DataOutputStream out = new DataOutputStream(byteOut)) {
             out.writeUTF("ExecuteCommand");
             out.writeUTF(targetServerId);
             out.writeUTF(targetExecutor);
             out.writeUTF(command);
+
             server.getAllServers().stream()
                     .filter(serverConnection -> serverConnection.getServerInfo().getName().equals(targetServerId))
                     .forEach(serverConnection -> {
-                        serverConnection.sendPluginMessage(MinecraftChannelIdentifier.create("commandbridge", "main"), byteOut.toByteArray());
-                        verboseLogger.info("Command sent to Bukkit server " + targetServerId + ": " + command);
+                        try {
+                            serverConnection.sendPluginMessage(MinecraftChannelIdentifier.create("commandbridge", "main"), byteOut.toByteArray());
+                            verboseLogger.info("Command sent to Bukkit server " + targetServerId + ": " + command);
+                        } catch (Exception e) {
+                            verboseLogger.error("Failed to send command to Bukkit server " + targetServerId, e);
+                        }
                     });
         } catch (IOException e) {
-            verboseLogger.error("Failed to send command to Bukkit", e);
+            verboseLogger.error("Failed to serialize command for Bukkit", e);
         }
     }
 
     public void sendSystemCommand(String command) {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        DataOutputStream out = new DataOutputStream(byteOut);
-        try {
+        try (DataOutputStream out = new DataOutputStream(byteOut)) {
             out.writeUTF("SystemCommand");
             out.writeUTF(command);
+
             server.getAllServers().forEach(serverConnection -> {
-                serverConnection.sendPluginMessage(MinecraftChannelIdentifier.create("commandbridge", "main"), byteOut.toByteArray());
-                verboseLogger.info("System command sent to Bukkit server: " + command);
+                try {
+                    serverConnection.sendPluginMessage(MinecraftChannelIdentifier.create("commandbridge", "main"), byteOut.toByteArray());
+                    verboseLogger.info("System command sent to Bukkit server: " + command);
+                } catch (Exception e) {
+                    verboseLogger.error("Failed to send system command to Bukkit server " + serverConnection.getServerInfo().getName(), e);
+                }
             });
         } catch (IOException e) {
-            verboseLogger.error("Failed to send system command to Bukkit", e);
+            verboseLogger.error("Failed to serialize system command for Bukkit", e);
         }
     }
 }
