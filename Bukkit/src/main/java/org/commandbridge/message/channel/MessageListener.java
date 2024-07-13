@@ -6,10 +6,10 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
 import org.jetbrains.annotations.NotNull;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
-
 
 public class MessageListener implements PluginMessageListener {
     private final CommandBridge plugin;
@@ -22,50 +22,80 @@ public class MessageListener implements PluginMessageListener {
 
     @Override
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte[] message) {
-        verboseLogger.info("Received plugin message on channel " + channel);
-        if (!"commandbridge:main".equals(channel)) return;
+        verboseLogger.info("Received plugin message on channel: " + channel);
+
+        if (!"commandbridge:main".equals(channel)) {
+            verboseLogger.warn("Received message on unknown channel: " + channel);
+            return;
+        }
+
         try (ByteArrayInputStream stream = new ByteArrayInputStream(message);
              DataInputStream in = new DataInputStream(stream)) {
+
             String subChannel = in.readUTF();
-            if ("ExecuteCommand".equals(subChannel)) {
-                String targetServerId = in.readUTF();
-                String targetExecutor = in.readUTF();
-                String command = in.readUTF();
-                verboseLogger.info("Received command to execute on server " + targetServerId + " as " + targetExecutor + ": " + command);
+            verboseLogger.info("SubChannel: " + subChannel);
 
-                if (!targetServerId.equals(plugin.getConfig().getString("server-id"))) {
-                    verboseLogger.info("Command not for this server, ignoring.");
-                    return;
-                }
-
-                if ("player".equals(targetExecutor)) {
-                    verboseLogger.info("Executing command as player: " + command);
-                    Bukkit.dispatchCommand(player, command);
-                } else if ("console".equals(targetExecutor)) {
-                    verboseLogger.info("Executing command as console: " + command);
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-                }
+            switch (subChannel) {
+                case "ExecuteCommand":
+                    handleExecuteCommand(in, player);
+                    break;
+                case "SystemCommand":
+                    handleSystemCommand(in);
+                    break;
+                default:
+                    verboseLogger.warn("Unknown subChannel: " + subChannel);
+                    break;
             }
 
-
-
-
-            else if ("SystemCommand".equals(subChannel)) {
-                String command = in.readUTF();
-                verboseLogger.info("Received System Command: " + command);
-                if (command.equals("reload")) {
-                    plugin.reloadConfig();
-                    plugin.getScripts().loadScripts();
-                    verboseLogger.info("Reloaded configuration file.");
-                } else if (command.equals("version")) {
-                    String version = plugin.getBukkitVersion();
-                    plugin.getMessageSender().sendVersion(version);
-                }
-
-            }
         } catch (IOException e) {
-            verboseLogger.error("Failed to read plugin message" , e);
+            verboseLogger.error("Failed to read plugin message", e);
         }
     }
 
+    private void handleExecuteCommand(DataInputStream in, Player player) throws IOException {
+        String targetServerId = in.readUTF();
+        String targetExecutor = in.readUTF();
+        String command = in.readUTF();
+        verboseLogger.info("Received command to execute on server " + targetServerId + " as " + targetExecutor + ": " + command);
+
+        if (!targetServerId.equals(plugin.getConfig().getString("server-id"))) {
+            verboseLogger.info("Command not for this server, ignoring.");
+            return;
+        }
+
+        switch (targetExecutor) {
+            case "player":
+                verboseLogger.info("Executing command as player: " + command);
+                Bukkit.dispatchCommand(player, command);
+                break;
+            case "console":
+                verboseLogger.info("Executing command as console: " + command);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+                break;
+            default:
+                verboseLogger.warn("Unknown target executor: " + targetExecutor);
+                break;
+        }
+    }
+
+    private void handleSystemCommand(DataInputStream in) throws IOException {
+        String command = in.readUTF();
+        verboseLogger.info("Received System Command: " + command);
+
+        switch (command) {
+            case "reload":
+                plugin.reloadConfig();
+                plugin.getScripts().loadScripts();
+                verboseLogger.info("Reloaded configuration and scripts.");
+                break;
+            case "version":
+                String version = plugin.getBukkitVersion();
+                plugin.getMessageSender().sendVersion(version);
+                verboseLogger.info("Sent plugin version: " + version);
+                break;
+            default:
+                verboseLogger.warn("Unknown system command: " + command);
+                break;
+        }
+    }
 }
