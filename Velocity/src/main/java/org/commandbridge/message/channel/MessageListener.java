@@ -29,6 +29,12 @@ public class MessageListener {
 
     @Subscribe
     public void onPluginMessageReceived(PluginMessageEvent event) {
+
+        if (event.getSource() instanceof Player) {
+            logger.warn("Plugin message received on a player from the server");
+            return;
+        }
+
         logger.info("Received plugin message on channel " + event.getIdentifier().getId());
 
         if (!event.getIdentifier().equals(plugin.getChannelIdentifier())) {
@@ -36,7 +42,7 @@ public class MessageListener {
             return;
         }
 
-        logger.info("Received valid plugin message on channel " + plugin.getChannelIdentifier().getId());
+        logger.info("Received valid plugin message on channel " + event.getIdentifier().getId());
         decodePluginMessage(event.getData());
     }
 

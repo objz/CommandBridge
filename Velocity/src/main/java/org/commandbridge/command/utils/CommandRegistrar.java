@@ -36,6 +36,7 @@ public class CommandRegistrar {
         String commandName = (String) commandData.get("name");
         List<Map<String, Object>> commandList = safeCastToListOfMaps(commandData.get("commands"));
         boolean disableExecutorIsPlayerCheck = (boolean) commandData.getOrDefault("disable-check-if-executor-is-player", false);
+        boolean registerOnBukkitServer = (boolean) commandData.getOrDefault("register-on-bukkit-server", false);
 
         logExecutorCheckState(commandName, disableExecutorIsPlayerCheck);
 
@@ -50,6 +51,10 @@ public class CommandRegistrar {
         server.getCommandManager().register(brigadierCommand);
         plugin.addRegisteredCommand(commandName);
         verboseLogger.info("Command " + commandName + " registered successfully.");
+
+        if (registerOnBukkitServer) {
+            registerCommandOnBukkit(commandName, commandList);
+        }
     }
 
     private void logExecutorCheckState(String commandName, boolean disableExecutorIsPlayerCheck) {
@@ -102,7 +107,7 @@ public class CommandRegistrar {
 
         logPlayerOnlineCheckState(commandName, disablePlayerOnline);
 
-        if (delay > 0) {
+        if (delay > 0 ) {
             scheduleCommandExecution(cmd, targetServerId, targetExecutor, waitForOnline, player, disablePlayerOnline, delay);
         } else {
             commandExecutor.executeCommand(cmd, targetServerId, targetExecutor, waitForOnline, player, new AtomicInteger(0), player.getUniqueId().toString(), disablePlayerOnline);
@@ -131,5 +136,9 @@ public class CommandRegistrar {
             }
         }
         return null;
+    }
+
+    private void registerCommandOnBukkit(String commandName, List<Map<String, Object>> commandList) {
+
     }
 }

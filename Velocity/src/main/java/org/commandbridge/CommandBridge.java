@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.4-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
+@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.5-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
 public class CommandBridge {
 
     private final ProxyServer server;
@@ -46,7 +46,7 @@ public class CommandBridge {
         int pluginId = 22008;
         metricsFactory.make(this, pluginId);
         this.server.getChannelRegistrar().register(CHANNEL);
-        server.getEventManager().register(this, new MessageListener(this, server));
+        this.server.getEventManager().register(this, new MessageListener(this, server));
         EventManager eventManager = server.getEventManager();
         eventManager.register(this, startup);
         startup.loadConfig();
