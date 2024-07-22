@@ -43,15 +43,6 @@
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <minimizeJar>true</minimizeJar>
-                    <relocations>
-                        <relocation>
-                            <pattern>dev.jorel.commandapi</pattern>
-                            <shadedPattern>org.72S.CommandBridge</shadedPattern>
-                        </relocation>
-                    </relocations>
-                </configuration>
             </plugin>
         </plugins>
         <resources>
