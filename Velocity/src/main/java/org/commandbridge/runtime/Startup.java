@@ -248,29 +248,32 @@ public class Startup {
             return;
         }
 
-        verboseLogger.info("Checking for updates...");
+        if (player.hasPermission("commandbridge.admin")) {
+            verboseLogger.info("Checking for updates...");
 
-        server.getScheduler().buildTask(plugin, () -> {
-            String currentVersion = plugin.getVersion();
-            String latestVersion = VersionChecker.getLatestVersion();
+            server.getScheduler().buildTask(plugin, () -> {
+                String currentVersion = plugin.getVersion();
+                String latestVersion = VersionChecker.getLatestVersion();
 
-            if (latestVersion == null) {
-                player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                verboseLogger.warn("Unable to check for updates: latestVersion is null.");
-                return;
-            }
+                if (latestVersion == null) {
+                    player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
+                    verboseLogger.warn("Unable to check for updates: latestVersion is null.");
+                    return;
+                }
 
-            if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
-                player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion).color(NamedTextColor.RED));
-                player.sendMessage(Component.text("Please download the latest release: ")
-                        .append(Component.text("here")
-                                .color(NamedTextColor.BLUE)
-                                .decorate(TextDecoration.UNDERLINED)
-                                .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
-                verboseLogger.info("Notified player " + player.getUsername() + " about the new version: " + latestVersion);
-            } else {
-                verboseLogger.info("Player " + player.getUsername() + " is running the latest version: " + currentVersion);
-            }
-        }).schedule();
+                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion).color(NamedTextColor.RED));
+                    player.sendMessage(Component.text("Please download the latest release: ")
+                            .append(Component.text("here")
+                                    .color(NamedTextColor.BLUE)
+                                    .decorate(TextDecoration.UNDERLINED)
+                                    .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                    verboseLogger.info("Notified player " + player.getUsername() + " about the new version: " + latestVersion);
+                } else {
+                    verboseLogger.info("Player " + player.getUsername() + " is running the latest version: " + currentVersion);
+                }
+            }).schedule();
+        }
+
     }
 }
