@@ -1,6 +1,7 @@
 package org.commandbridge.runtime;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
@@ -154,8 +155,7 @@ public class Startup {
         LiteralCommandNode<CommandSource> commandBridgeNode = LiteralArgumentBuilder.<CommandSource>literal("commandbridge")
                 .executes(context -> {
                     if (context.getSource().hasPermission("commandbridge.admin")) {
-                        context.getSource().sendMessage(Component.text("Use /commandbridge reload to reload scripts."));
-                        return 1;
+                        return sendHelpMessage(context);
                     }
                     context.getSource().sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
                     return 0;
@@ -208,35 +208,36 @@ public class Startup {
                         })
                         .build())
                 .then(LiteralArgumentBuilder.<CommandSource>literal("help")
-                        .executes(context -> {
-                            CommandSource source = context.getSource();
-                            source.sendMessage(Component.text("===== CommandBridge Help =====").color(NamedTextColor.GOLD));
-                            source.sendMessage(Component.text(""));
-
-                            source.sendMessage(Component.text("Commands:").color(NamedTextColor.YELLOW));
-                            source.sendMessage(Component.text("  - ").append(Component.text("/commandbridge reload").color(NamedTextColor.GREEN))
-                                    .append(Component.text(" - Reloads scripts").color(NamedTextColor.WHITE)));
-                            source.sendMessage(Component.text("  - ").append(Component.text("/commandbridge version").color(NamedTextColor.GREEN))
-                                    .append(Component.text(" - Displays the plugin version").color(NamedTextColor.WHITE)));
-                            source.sendMessage(Component.text("  - ").append(Component.text("/commandbridge help").color(NamedTextColor.GREEN))
-                                    .append(Component.text(" - Displays this help message").color(NamedTextColor.WHITE)));
-                            source.sendMessage(Component.text(""));
-
-                            source.sendMessage(Component.text("Detailed Documentation: ")
-                                    .append(Component.text("https://72-s.github.io/CommandBridge/")
-                                            .color(NamedTextColor.LIGHT_PURPLE)
-                                            .decorate(TextDecoration.UNDERLINED)
-                                            .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
-
-                            source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
-
-                            return 1;
-                        })
+                        .executes(this::sendHelpMessage)
                         .build())
                 .build();
 
         BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
         server.getCommandManager().register("commandbridge", brigadierCommand, "cb");
+    }
+
+    private int sendHelpMessage(CommandContext<CommandSource> context) {
+        CommandSource source = context.getSource();
+        source.sendMessage(Component.text("===== CommandBridge Help =====").color(NamedTextColor.GOLD));
+        source.sendMessage(Component.text(""));
+
+        source.sendMessage(Component.text("Commands:").color(NamedTextColor.YELLOW));
+        source.sendMessage(Component.text("  - ").append(Component.text("/commandbridge reload").color(NamedTextColor.GREEN))
+                .append(Component.text(" - Reloads scripts").color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("  - ").append(Component.text("/commandbridge version").color(NamedTextColor.GREEN))
+                .append(Component.text(" - Displays the plugin version").color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("  - ").append(Component.text("/commandbridge help").color(NamedTextColor.GREEN))
+                .append(Component.text(" - Displays this help message").color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text(""));
+
+        source.sendMessage(Component.text("Detailed Documentation: ")
+                .append(Component.text("https://72-s.github.io/CommandBridge/")
+                        .color(NamedTextColor.LIGHT_PURPLE)
+                        .decorate(TextDecoration.UNDERLINED)
+                        .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
+
+        source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
+        return 1;
     }
 
     @Subscribe
