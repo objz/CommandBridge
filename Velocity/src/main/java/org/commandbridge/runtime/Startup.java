@@ -107,7 +107,7 @@ public class Startup {
                         verboseLogger.warn("Could not find example.yml in resources");
                         return;
                     }
-                    Files.copy(in, exampleScript, StandardCopyOption.COPY_ATTRIBUTES);
+                    Files.copy(in, exampleScript);
                     verboseLogger.info("example.yml has been copied successfully.");
                 }
             } else {
