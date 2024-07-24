@@ -97,9 +97,9 @@ public class MessageListener {
                 }
             }
             case "console" -> {
+                String playerUUID = dataInputStream.readUTF();
                 String command = dataInputStream.readUTF();
-                logger.info("Received command for console: " + command);
-
+                logger.info("Received command for console: " + command + ", player UUID: " + playerUUID);
                 proxyServer.getCommandManager().executeAsync(proxyServer.getConsoleCommandSource(), command);
                 logger.info("Executed command as console: " + command);
             }
