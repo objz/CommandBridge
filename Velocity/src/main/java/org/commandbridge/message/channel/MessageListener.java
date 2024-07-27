@@ -38,7 +38,7 @@ public class MessageListener {
         logger.info("Received plugin message on channel " + event.getIdentifier().getId());
 
         if (!event.getIdentifier().equals(plugin.getChannelIdentifier())) {
-            logger.warn("Message received on unrecognized channel: " + event.getIdentifier().getId());
+            logger.info("Message received on unrecognized channel: " + event.getIdentifier().getId());
             return;
         }
 
