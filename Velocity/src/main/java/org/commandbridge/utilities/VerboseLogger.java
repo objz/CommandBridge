@@ -7,7 +7,6 @@ public class VerboseLogger {
     private final CommandBridge plugin;
     private final Logger logger;
 
-
     public VerboseLogger(CommandBridge plugin, Logger logger) {
         this.plugin = plugin;
         this.logger = logger;
@@ -20,19 +19,19 @@ public class VerboseLogger {
     }
 
     public void warn(String message) {
-            logger.warn(message);
+        logger.warn(message);
     }
 
     public void error(String message, Throwable e) {
+        if (plugin.isVerboseOutputEnabled()) {
             logger.error(message, e);
+        } else {
+            logger.error(message);
+        }
     }
 
     public void forceInfo(String message) {
         logger.info(message);
     }
 
-
-
 }
-
-

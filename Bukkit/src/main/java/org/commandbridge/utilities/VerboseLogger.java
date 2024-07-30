@@ -33,8 +33,10 @@ public class VerboseLogger {
     }
     
     public void error(String message, Throwable e) {
-
+        if (verboseOutput) {
             logger.severe(message + " : " + e.getMessage());
-
+        } else {
+            logger.severe(message);
+        }
     }
 }
