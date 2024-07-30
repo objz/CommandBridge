@@ -9,6 +9,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
+import org.w3c.dom.DOMStringList;
 
 import java.util.List;
 import java.util.Map;
@@ -100,17 +101,17 @@ public class CommandRegistrar {
     private void processCommandData(Map<String, Object> cmdData, Player player, String commandName) {
         String cmd = parsePlaceholders((String) cmdData.get("command"), player);
         int delay = (int) cmdData.getOrDefault("delay", 0);
-        String targetServerId = (String) cmdData.get("target-server-id");
-        String targetExecutor = (String) cmdData.getOrDefault("target-executor", "console");
+        List<String> targetServerIds = safeCastToListOfStrings(cmdData.get("target-server-id"));
+        String targetExecutor = (String) cmdData.getOrDefault("target-executor", "player");
         boolean waitForOnline = (boolean) cmdData.getOrDefault("wait-until-player-is-online", false);
         boolean disablePlayerOnline = (boolean) cmdData.getOrDefault("disable-check-if-executor-is-on-server", false);
 
         logPlayerOnlineCheckState(commandName, disablePlayerOnline);
 
         if (delay > 0 ) {
-            scheduleCommandExecution(cmd, targetServerId, targetExecutor, waitForOnline, player, disablePlayerOnline, delay);
+            scheduleCommandExecution(cmd, targetServerIds, targetExecutor, waitForOnline, player, disablePlayerOnline, delay);
         } else {
-            commandExecutor.executeCommand(cmd, targetServerId, targetExecutor, waitForOnline, player, new AtomicInteger(0), player.getUniqueId().toString(), disablePlayerOnline);
+            commandExecutor.executeCommand(cmd, targetServerIds, targetExecutor, waitForOnline, player, new AtomicInteger(0), player.getUniqueId().toString(), disablePlayerOnline);
         }
     }
 
@@ -122,7 +123,7 @@ public class CommandRegistrar {
         }
     }
 
-    private void scheduleCommandExecution(String cmd, String targetServerId, String targetExecutor, boolean waitForOnline, Player player, boolean disablePlayerOnline, int delay) {
+    private void scheduleCommandExecution(String cmd, List<String> targetServerId, String targetExecutor, boolean waitForOnline, Player player, boolean disablePlayerOnline, int delay) {
         server.getScheduler().buildTask(plugin, () -> commandExecutor.executeCommand(cmd, targetServerId, targetExecutor, waitForOnline, player, new AtomicInteger(0), player.getUniqueId().toString(), disablePlayerOnline))
                 .delay(delay, TimeUnit.SECONDS)
                 .schedule();
@@ -133,6 +134,16 @@ public class CommandRegistrar {
         if (obj instanceof List<?> list) {
             if (!list.isEmpty() && list.getFirst() instanceof Map) {
                 return (List<Map<String, Object>>) list;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> safeCastToListOfStrings(Object obj) {
+        if (obj instanceof List<?> list) {
+            if (!list.isEmpty() && list.getFirst() instanceof String) {
+                return (List<String>) list;
             }
         }
         return null;

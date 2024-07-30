@@ -8,6 +8,7 @@ import org.commandbridge.CommandBridge;
 import org.commandbridge.message.channel.MessageSender;
 import org.commandbridge.utilities.VerboseLogger;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -32,14 +33,16 @@ public class CommandExecutor {
         timeoutServer = false;
     }
 
-    public void executeCommand(String command, String targetServerId, String targetExecutor, boolean waitForOnline, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disablePlayerOnline) {
-        server.getServer(targetServerId).ifPresentOrElse(serverConnection -> {
-            if (waitForOnline) {
-                waitForPlayerAndExecute(command, targetServerId, targetExecutor, playerMessage, timeElapsed, playerUUID, disablePlayerOnline);
-            } else {
-                executeOrSendMessage(command, targetServerId, targetExecutor, playerMessage, playerUUID, disablePlayerOnline);
-            }
-        }, () -> verboseLogger.warn("Target server not found: " + targetServerId));
+    public void executeCommand(String command, List<String> targetServerIds, String targetExecutor, boolean waitForOnline, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disablePlayerOnline) {
+        for (String targetServerId : targetServerIds) {
+            server.getServer(targetServerId).ifPresentOrElse(serverConnection -> {
+                if (waitForOnline) {
+                    waitForPlayerAndExecute(command, targetServerId, targetExecutor, playerMessage, timeElapsed, playerUUID, disablePlayerOnline);
+                } else {
+                    executeOrSendMessage(command, targetServerId, targetExecutor, playerMessage, playerUUID, disablePlayerOnline);
+                }
+            }, () -> verboseLogger.warn("Target server not found: " + targetServerId));
+        }
     }
 
     private void waitForPlayerAndExecute(String command, String targetServerId, String targetExecutor, Player playerMessage, AtomicInteger timeElapsed, String playerUUID, boolean disablePlayerOnline) {
@@ -49,7 +52,7 @@ public class CommandExecutor {
                 .ifPresentOrElse(player -> executeCommand(command, targetServerId, targetExecutor),
                         () -> {
                             if (timeElapsed.getAndIncrement() < TIMEOUT_LIMIT) {
-                                server.getScheduler().buildTask(plugin, () -> executeCommand(command, targetServerId, targetExecutor, true, playerMessage, timeElapsed, playerUUID, disablePlayerOnline))
+                                server.getScheduler().buildTask(plugin, () -> executeCommand(command, List.of(targetServerId), targetExecutor, true, playerMessage, timeElapsed, playerUUID, disablePlayerOnline))
                                         .delay(1, TimeUnit.SECONDS)
                                         .schedule();
                                 verboseLogger.info("Waiting for player to be online on server " + targetServerId + ": " + command);
