@@ -76,8 +76,8 @@ public class Startup {
             Map<String, Object> data = yaml.load(fis);
             verboseOutput = (boolean) data.getOrDefault("verbose-output", false);
             verboseLogger.forceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
-            velocityRuntime.loadScripts();
             copyExampleYml();
+            velocityRuntime.loadScripts();
         } catch (IOException e) {
             verboseLogger.error("Failed to load config file", e);
         } catch (ClassCastException e) {

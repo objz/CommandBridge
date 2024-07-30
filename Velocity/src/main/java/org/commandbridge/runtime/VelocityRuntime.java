@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Objects;
 
 public class VelocityRuntime {
 
@@ -48,17 +49,26 @@ public class VelocityRuntime {
                 Map<String, Object> data = yaml.load(input);
 
                 if (Boolean.TRUE.equals(data.get("enabled"))) {
-                    plugin.getCommandRegistrar().registerCommand(data);
-                    verboseLogger.forceInfo("Command registered successfully from script: " + file.getName());
+                    if (data.get("script-version") == null) {
+                        verboseLogger.warn("Script version not found, skipping file: " + file.getName());
+                    } else if (Objects.equals(data.get("script-version"), plugin.getScript_version())) {
+                        plugin.getCommandRegistrar().registerCommand(data);
+                        verboseLogger.forceInfo("Command registered successfully from script: " + file.getName());
+                    }
+                    else if ((Integer)data.get("script-version") < plugin.getScript_version()){
+                        verboseLogger.warn("Your config version is older than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+                    } else {
+                        verboseLogger.warn("Your config version is newer than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+                    }
                 } else {
                     verboseLogger.info("Script disabled, skipping file: " + file.getName());
                 }
             } catch (IOException e) {
-                verboseLogger.error("IOException occurred while accessing script file: " + file.getName(), e);
+                verboseLogger.error("Failed to access script file: " + file.getName(), e);
             } catch (YAMLException e) {
-                verboseLogger.error("YAMLException occurred while parsing script file: " + file.getName(), e);
+                verboseLogger.error("Invalid YAML syntax in script file: " + file.getName(), e);
             } catch (ClassCastException e) {
-                verboseLogger.error("ClassCastException occurred - invalid format in script file: " + file.getName(), e);
+                verboseLogger.error("Invalid format in script file: " + file.getName(), e);
             } catch (Exception e) {
                 verboseLogger.error("Unexpected error occurred while loading script file: " + file.getName(), e);
             }

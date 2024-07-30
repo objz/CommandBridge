@@ -104,4 +104,12 @@ public class CommandBridge {
         return CHANNEL;
     }
 
+    public Integer getScript_version() {
+        return 1; }
+
+    public Integer getConfig_version() {
+        return 1; }
+
+
+
 }

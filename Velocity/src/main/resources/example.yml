@@ -1,3 +1,5 @@
+#DO NOT CHANGE THIS:
+script-version: 1
 ##########################################################################
 # THIS IS AN EXAMPLE WHEN A COMMAND IS DISPATCHED TO THE VELOCITY SERVER
 # AND THE COMMANDS GET EXECUTED ON THE BUKKIT SERVER
@@ -17,7 +19,7 @@ commands:
     delay: 0
     # The ID of the target server.
     # Use the server-id from the config.yml file of the target server
-    target-server-id: 'lobby'
+    target-server-id: ['lobby', 'survival'] # You can specify multiple server IDs
     # The executor of the command.
     # This can be either "player" or "console"
     target-executor: 'player'
@@ -31,6 +33,6 @@ commands:
   # Add more commands here
   - command: 'say I love Coding!'
     delay: 0
-    target-server-id: 'lobby'
+    target-server-id: ['lobby']
     target-executor: 'player'
     wait-until-player-is-online: true
