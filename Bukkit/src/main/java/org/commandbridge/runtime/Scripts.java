@@ -43,11 +43,24 @@ public class Scripts {
                 Yaml yaml = new Yaml();
                 Map<String, Object> data = yaml.load(input);
 
-                if (Boolean.TRUE.equals(data.get("enabled"))) {
-                    plugin.getCommandRegister().registerCommands(data);
-                    verboseLogger.forceInfo("Command registered successfully from script: " + file.getName());
+                String scriptName = file.getName();
+                Integer scriptVersion = (Integer)data.get("script-version");
+                verboseLogger.info("Script version: " + scriptVersion);
+                Integer pluginVersion = plugin.getScript_version();
+
+                if (scriptVersion < pluginVersion) {
+                    verboseLogger.warn("Script version " + scriptVersion + " is older than the plugin version " + pluginVersion + ". Please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+                    return;
+                } else if (scriptVersion > pluginVersion) {
+                    verboseLogger.warn("Script version " + scriptVersion + " is newer than the plugin version " + pluginVersion + ". Please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+                    return;
                 } else {
-                    verboseLogger.info("Script disabled, skipping file: " + file.getName());
+                    if (Boolean.TRUE.equals(data.get("enabled"))) {
+                        plugin.getCommandRegister().registerCommands(data);
+                        verboseLogger.forceInfo("Command registered successfully from script: " + scriptName);
+                    } else {
+                        verboseLogger.info("Script " + scriptName + " is disabled, skipping file.");
+                    }
                 }
             } catch (Exception e) {
                 verboseLogger.error("Failed to load or parse script file: " + file.getName(), e);

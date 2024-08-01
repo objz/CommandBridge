@@ -30,6 +30,8 @@ public class CommandBridge {
     private final VelocityRuntime velocityRuntime;
     private final Startup startup;
     private final Metrics.Factory metricsFactory;
+    private String serverId;
+
 
     @Inject
     public CommandBridge(ProxyServer server, Logger logger, Metrics.Factory metricsFactory) {
@@ -110,6 +112,12 @@ public class CommandBridge {
     public Integer getConfig_version() {
         return 1; }
 
+    public String getServerId() {
+        return serverId;
+    }
 
+    public void setServerId(String serverId) {
+        this.serverId = serverId;
+    }
 
 }

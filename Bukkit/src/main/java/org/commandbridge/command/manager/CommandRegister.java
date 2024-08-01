@@ -48,22 +48,40 @@ public class CommandRegister {
                         for (Map<String, Object> command : commandList) {
                             String commandString = parsePlaceholders((String) command.get("command"), player);
                             String targetExecutor = (String) command.get("target-executor");
+                            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-servers"));
                             String permission = "commandbridge.command." + commandString;
+
+                            if (targetServerIds == null) {
+                                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
+                                continue;
+                            }
 
                             if (!sender.hasPermission(permission)) {
                                 verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
                                 return false;
                             }
                             verboseLogger.info("Sending plugin message for command as Player: " + commandString);
-                            plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), targetExecutor, commandString);
+                            for (String targetServerId : targetServerIds) {
+                                plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), targetExecutor, commandString, targetServerId);
+                            }
+
                         }
                         return true;
                     } else if (sender instanceof ConsoleCommandSender) {
                         for (Map<String, Object> command : commandList) {
                             String commandString = parseConsoleCommands((String) command.get("command"), (ConsoleCommandSender) sender);
                             String targetExecutor = (String) command.get("target-executor");
+                            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-servers"));
+
+                            if (targetServerIds == null) {
+                                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
+                                continue;
+                            }
+
                             verboseLogger.info("Sending plugin message for command as Console: " + commandString);
-                            plugin.getMessageSender().sendPluginMessage("", targetExecutor, commandString); // Assuming null player for console
+                            for (String targetServerId : targetServerIds) {
+                                plugin.getMessageSender().sendPluginMessage("", targetExecutor, commandString, targetServerId); // Assuming null player for console
+                            }
                         }
                         return true;
                     } else {
@@ -91,6 +109,21 @@ public class CommandRegister {
                     return (List<Map<String, Object>>) obj;
                 } catch (ClassCastException e) {
                     verboseLogger.error("Failed to cast to List<Map<String, Object>>", e);
+                }
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> safeCastToListOfStrings(Object obj) {
+        if (obj instanceof List<?>) {
+            List<?> list = (List<?>) obj;
+            if (!list.isEmpty() && list.get(0) instanceof String) {
+                try {
+                    return (List<String>) obj;
+                } catch (ClassCastException e) {
+                    verboseLogger.error("Failed to cast to List<String>", e);
                 }
             }
         }

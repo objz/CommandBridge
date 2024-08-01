@@ -30,10 +30,6 @@ public class MessageListener {
     @Subscribe
     public void onPluginMessageReceived(PluginMessageEvent event) {
 
-        if (event.getSource() instanceof Player) {
-            logger.warn("Plugin message received on a player from the server");
-            return;
-        }
 
         logger.info("Received plugin message on channel " + event.getIdentifier().getId());
 
@@ -56,7 +52,13 @@ public class MessageListener {
             }
 
             String messageType = dataInputStream.readUTF();
+            String targetVelocityServer = dataInputStream.readUTF();
+            if (!targetVelocityServer.equals(plugin.getServerId())) {
+                logger.warn("Received message for a different server: " + targetVelocityServer);
+                return;
+            }
             logger.info("Message type: " + messageType);
+
 
             switch (messageType) {
                 case "ExecuteCommand":

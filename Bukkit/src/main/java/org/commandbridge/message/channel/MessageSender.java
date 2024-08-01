@@ -19,16 +19,18 @@ public class MessageSender {
         this.verboseLogger = plugin.getVerboseLogger();
     }
 
-    public void sendPluginMessage(String playerUUID, String executor, String command) {
+    public void sendPluginMessage(String playerUUID, String executor, String command, String targetVelocityServer) {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(byteOut);
         verboseLogger.info("Preparing to send plugin message: Command = " + command + ", Executor = " + executor + ", PlayerUUID = " + playerUUID);
 
         try {
             out.writeUTF("ExecuteCommand");
+            out.writeUTF(targetVelocityServer);
             out.writeUTF(executor);
             out.writeUTF(playerUUID);
             out.writeUTF(command);
+
 
 
             if ("player".equals(executor)) {

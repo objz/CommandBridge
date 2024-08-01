@@ -56,9 +56,9 @@ public class VelocityRuntime {
                         verboseLogger.forceInfo("Command registered successfully from script: " + file.getName());
                     }
                     else if ((Integer)data.get("script-version") < plugin.getScript_version()){
-                        verboseLogger.warn("Your config version is older than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+                        verboseLogger.warn("Your script version is older than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
                     } else {
-                        verboseLogger.warn("Your config version is newer than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+                        verboseLogger.warn("Your script version is newer than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
                     }
                 } else {
                     verboseLogger.info("Script disabled, skipping file: " + file.getName());

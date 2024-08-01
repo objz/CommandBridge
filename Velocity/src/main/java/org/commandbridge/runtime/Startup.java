@@ -39,6 +39,7 @@ public class Startup {
     private final VelocityRuntime velocityRuntime;
     private final Path dataDirectory = Path.of("plugins", "CommandBridgeVelocity");
 
+
     public Startup(ProxyServer server, CommandBridge plugin) {
         this.server = server;
         this.plugin = plugin;
@@ -61,7 +62,10 @@ public class Startup {
             try {
                 Files.createFile(configFile.toPath());
                 try (FileWriter writer = new FileWriter(configFile)) {
+                    writer.write("#DO NOT CHANGE THIS VALUE\n");
+                    writer.write("config-version: 1\n");
                     writer.write("verbose-output: false\n");
+                    writer.write("server-id: REPLACE_THIS_WITH_YOUR_SERVER_NAME\n");
                 }
                 verboseLogger.info("Config file created with default settings.");
             } catch (IOException e) {
@@ -75,9 +79,23 @@ public class Startup {
             Yaml yaml = new Yaml(new Constructor(loaderOptions));
             Map<String, Object> data = yaml.load(fis);
             verboseOutput = (boolean) data.getOrDefault("verbose-output", false);
-            verboseLogger.forceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
-            copyExampleYml();
-            velocityRuntime.loadScripts();
+            plugin.setServerId((String) data.get("server-id"));
+            if (plugin.getServerId().equals("REPLACE_THIS_WITH_YOUR_SERVER")) {
+                verboseLogger.warn("Please replace the server-id in the config.yml file with your Velocity server name.");
+            }
+            if (data.get("config-version") == null) {
+                verboseLogger.warn("Config version not found. Please update your config file.");
+            } else {
+                int configVersion = (int) data.get("config-version");
+                if (configVersion != plugin.getConfig_version()) {
+                    verboseLogger.warn("Config version is not up-to-date. Please update your config file.");
+                } else {
+                    verboseLogger.forceInfo("Config loaded. Verbose output is " + (verboseOutput ? "enabled" : "disabled"));
+                    copyExampleYml();
+                    velocityRuntime.loadScripts();
+                }
+            }
+
         } catch (IOException e) {
             verboseLogger.error("Failed to load config file", e);
         } catch (ClassCastException e) {

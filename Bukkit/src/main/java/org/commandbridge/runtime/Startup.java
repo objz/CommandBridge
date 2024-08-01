@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.Objects;
 
 public class Startup {
     private final CommandBridge plugin;
@@ -21,11 +22,21 @@ public class Startup {
         File configFile = new File(plugin.getDataFolder(), "config.yml");
         if (!configFile.exists()) {
             plugin.saveDefaultConfig();
+            plugin.getConfig().set("#DO NOT CHANGE THIS VALUE", null);
+            plugin.getConfig().set("script-version", 1);
             plugin.getConfig().set("server-id", "REPLACE THIS WITH YOUR SERVER NAME");
             plugin.getConfig().set("verbose-output", false);
             plugin.saveConfig();
         }
         plugin.getVerboseLogger().loadConfig();
+        if (Objects.equals(plugin.getConfig().getString("server-id"), "REPLACE THIS WITH YOUR SERVER NAME")) {
+            plugin.getVerboseLogger().warn("Please replace the server-id in the config.yml file with your server name.");
+        }
+        if (plugin.getConfig().getInt("script-version") < plugin.getScript_version()) {
+            plugin.getVerboseLogger().warn("Your config version is older than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+        } else if (plugin.getConfig().getInt("script-version") > plugin.getScript_version()) {
+            plugin.getVerboseLogger().warn("Your config version is newer than the plugin version, please update the plugin to use this script. Wiki: https://72-s.github.io/CommandBridge");
+        }
         plugin.getVerboseLogger().info("CommandBridge has been enabled!");
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, "commandbridge:main");
         plugin.getServer().getMessenger().registerIncomingPluginChannel(plugin, "commandbridge:main", new MessageListener(plugin));
