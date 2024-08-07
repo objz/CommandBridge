@@ -1,6 +1,6 @@
 package org.commandbridge.command.manager;
 
-import org.bukkit.block.CommandBlock;
+
 import org.bukkit.command.*;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.bukkit.entity.Player;
@@ -47,15 +47,15 @@ public class CommandRegister {
                     if (sender instanceof Player) {
                         Player player = (Player) sender;
                         verboseLogger.info("Command sender is a player: " + player.getName());
-                        handlePlayerCommand(player, commandList);
+                        handlePlayerCommand(player, commandList, args);
                         return true;
                     } else if (sender instanceof BlockCommandSender) {
                         verboseLogger.info("Command sender is a command block.");
-                        handleCommandBlockCommand((BlockCommandSender) sender, commandList);
+                        handleCommandBlockCommand((BlockCommandSender) sender, commandList, args);
                         return true;
                     } else if (sender instanceof ConsoleCommandSender) {
                         verboseLogger.info("Command sender is the console.");
-                        handleConsoleCommand((ConsoleCommandSender) sender, commandList);
+                        handleConsoleCommand((ConsoleCommandSender) sender, commandList, args);
                         return true;
                     } else {
                         verboseLogger.warn("This command can only be used by a player, console, or command block.");
@@ -73,10 +73,10 @@ public class CommandRegister {
         plugin.addRegisteredCommand(commandName);
     }
 
-    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList) {
+    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList, String[] args) {
         verboseLogger.info("Player command sender: " + player.getName());
         for (Map<String, Object> command : commandList) {
-            String commandString = parsePlaceholders((String) command.get("command"), player);
+            String commandString = parsePlaceholders((String) command.get("command"), player, args);
             String targetExecutor = (String) command.get("target-executor");
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
             String permission = "commandbridge.command." + commandString;
@@ -97,10 +97,10 @@ public class CommandRegister {
         }
     }
 
-    private void handleConsoleCommand(ConsoleCommandSender sender, List<Map<String, Object>> commandList) {
+    private void handleConsoleCommand(ConsoleCommandSender sender, List<Map<String, Object>> commandList, String[] args) {
         verboseLogger.info("Console command sender: " + sender.getName());
         for (Map<String, Object> command : commandList) {
-            String commandString = parseConsoleCommands((String) command.get("command"), sender);
+            String commandString = parseConsoleCommands((String) command.get("command"), sender, args);
             String targetExecutor = (String) command.get("target-executor");
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
 
@@ -116,12 +116,10 @@ public class CommandRegister {
         }
     }
 
-
-    //TODO: Does not get called in the current implementation
-    private void handleCommandBlockCommand(BlockCommandSender sender, List<Map<String, Object>> commandList) {
+    private void handleCommandBlockCommand(BlockCommandSender sender, List<Map<String, Object>> commandList, String[] args) {
         verboseLogger.info("Command block command sender: " + sender.getName());
         for (Map<String, Object> command : commandList) {
-            String commandString = parseBlockCommands((String) command.get("command"), sender);
+            String commandString = parseBlockCommands((String) command.get("command"), sender, args);
             String targetExecutor = (String) command.get("target-executor");
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
 
