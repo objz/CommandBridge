@@ -101,7 +101,7 @@ public class CommandRegistrar {
     private void processCommandData(Map<String, Object> cmdData, Player player, String commandName) {
         String cmd = parsePlaceholders((String) cmdData.get("command"), player);
         int delay = (int) cmdData.getOrDefault("delay", 0);
-        List<String> targetServerIds = safeCastToListOfStrings(cmdData.get("target-server-id"));
+        List<String> targetServerIds = safeCastToListOfStrings(cmdData.get("target-server-ids"));
         String targetExecutor = (String) cmdData.getOrDefault("target-executor", "player");
         boolean waitForOnline = (boolean) cmdData.getOrDefault("wait-until-player-is-online", false);
         boolean disablePlayerOnline = (boolean) cmdData.getOrDefault("disable-check-if-executor-is-on-server", false);

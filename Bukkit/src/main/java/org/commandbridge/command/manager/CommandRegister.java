@@ -1,5 +1,6 @@
 package org.commandbridge.command.manager;
 
+import org.bukkit.block.CommandBlock;
 import org.bukkit.command.*;
 import org.bukkit.command.defaults.BukkitCommand;
 import org.bukkit.entity.Player;
@@ -10,9 +11,9 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import static org.commandbridge.utilities.StringParser.parsePlaceholders;
-import static org.commandbridge.utilities.StringParser.parseConsoleCommands;
+import static org.commandbridge.utilities.StringParser.*;
 
 public class CommandRegister {
     private final CommandBridge plugin;
@@ -45,47 +46,19 @@ public class CommandRegister {
 
                     if (sender instanceof Player) {
                         Player player = (Player) sender;
-                        for (Map<String, Object> command : commandList) {
-                            String commandString = parsePlaceholders((String) command.get("command"), player);
-                            String targetExecutor = (String) command.get("target-executor");
-                            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-servers"));
-                            String permission = "commandbridge.command." + commandString;
-
-                            if (targetServerIds == null) {
-                                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
-                                continue;
-                            }
-
-                            if (!sender.hasPermission(permission)) {
-                                verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
-                                return false;
-                            }
-                            verboseLogger.info("Sending plugin message for command as Player: " + commandString);
-                            for (String targetServerId : targetServerIds) {
-                                plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), targetExecutor, commandString, targetServerId);
-                            }
-
-                        }
+                        verboseLogger.info("Command sender is a player: " + player.getName());
+                        handlePlayerCommand(player, commandList);
+                        return true;
+                    } else if (sender instanceof BlockCommandSender) {
+                        verboseLogger.info("Command sender is a command block.");
+                        handleCommandBlockCommand((BlockCommandSender) sender, commandList);
                         return true;
                     } else if (sender instanceof ConsoleCommandSender) {
-                        for (Map<String, Object> command : commandList) {
-                            String commandString = parseConsoleCommands((String) command.get("command"), (ConsoleCommandSender) sender);
-                            String targetExecutor = (String) command.get("target-executor");
-                            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-servers"));
-
-                            if (targetServerIds == null) {
-                                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
-                                continue;
-                            }
-
-                            verboseLogger.info("Sending plugin message for command as Console: " + commandString);
-                            for (String targetServerId : targetServerIds) {
-                                plugin.getMessageSender().sendPluginMessage("", targetExecutor, commandString, targetServerId); // Assuming null player for console
-                            }
-                        }
+                        verboseLogger.info("Command sender is the console.");
+                        handleConsoleCommand((ConsoleCommandSender) sender, commandList);
                         return true;
                     } else {
-                        verboseLogger.warn("This command can only be used by a player or console.");
+                        verboseLogger.warn("This command can only be used by a player, console, or command block.");
                     }
                     return false;
                 }
@@ -99,6 +72,71 @@ public class CommandRegister {
 
         plugin.addRegisteredCommand(commandName);
     }
+
+    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList) {
+        verboseLogger.info("Player command sender: " + player.getName());
+        for (Map<String, Object> command : commandList) {
+            String commandString = parsePlaceholders((String) command.get("command"), player);
+            String targetExecutor = (String) command.get("target-executor");
+            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
+            String permission = "commandbridge.command." + commandString;
+
+            if (targetServerIds == null) {
+                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
+                continue;
+            }
+
+            if (!player.hasPermission(permission)) {
+                verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
+                return;
+            }
+            verboseLogger.info("Sending plugin message for command as Player: " + commandString);
+            for (String targetServerId : targetServerIds) {
+                plugin.getMessageSender().sendPluginMessage(player.getUniqueId().toString(), targetExecutor, commandString, targetServerId);
+            }
+        }
+    }
+
+    private void handleConsoleCommand(ConsoleCommandSender sender, List<Map<String, Object>> commandList) {
+        verboseLogger.info("Console command sender: " + sender.getName());
+        for (Map<String, Object> command : commandList) {
+            String commandString = parseConsoleCommands((String) command.get("command"), sender);
+            String targetExecutor = (String) command.get("target-executor");
+            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
+
+            if (targetServerIds == null) {
+                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
+                continue;
+            }
+
+            verboseLogger.info("Sending plugin message for command as Console: " + commandString);
+            for (String targetServerId : targetServerIds) {
+                plugin.getMessageSender().sendPluginMessage("", targetExecutor, commandString, targetServerId); // Assuming null player for console
+            }
+        }
+    }
+
+
+    //TODO: Does not get called in the current implementation
+    private void handleCommandBlockCommand(BlockCommandSender sender, List<Map<String, Object>> commandList) {
+        verboseLogger.info("Command block command sender: " + sender.getName());
+        for (Map<String, Object> command : commandList) {
+            String commandString = parseBlockCommands((String) command.get("command"), sender);
+            String targetExecutor = (String) command.get("target-executor");
+            List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
+
+            if (targetServerIds == null) {
+                verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
+                continue;
+            }
+
+            verboseLogger.info("Sending plugin message for command as CommandBlock: " + commandString);
+            for (String targetServerId : targetServerIds) {
+                plugin.getMessageSender().sendPluginMessage((Objects.requireNonNull(sender.getServer().getPlayer(sender.getName())).getUniqueId().toString()), targetExecutor, commandString, targetServerId); // Assuming null player for command block
+            }
+        }
+    }
+
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> safeCastToListOfMaps(Object obj) {
