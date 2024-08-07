@@ -19,6 +19,8 @@ public class MessageListener {
     private final CommandBridge plugin;
     private final VerboseLogger logger;
     private final ProxyServer proxyServer;
+    private String lastUUID;
+    private String lastVersionUUID;
 
     @Inject
     public MessageListener(CommandBridge plugin, ProxyServer proxyServer) {
@@ -53,12 +55,18 @@ public class MessageListener {
 
             String messageType = dataInputStream.readUTF();
             String targetVelocityServer = dataInputStream.readUTF();
+            String currentUUID = dataInputStream.readUTF();
             if (!targetVelocityServer.equals(plugin.getServerId())) {
-                logger.warn("Received message for a different server: " + targetVelocityServer);
+                logger.warn("Received message for a different server: " + targetVelocityServer + ", current server name: " + plugin.getServerId());
                 return;
             }
             logger.info("Message type: " + messageType);
 
+            if (currentUUID.equals(lastUUID)) {
+                logger.info("Received message multiply times - canceling");
+                return;
+            }
+            lastUUID = currentUUID;
 
             switch (messageType) {
                 case "ExecuteCommand":
@@ -115,7 +123,12 @@ public class MessageListener {
     }
 
     private void handleVersion(DataInputStream dataInputStream) throws IOException {
+        String currentUUID = dataInputStream.readUTF();
         String version = dataInputStream.readUTF();
-        plugin.getStartup().isSameBukkitVersion(VersionChecker.checkBukkitVersion(version, plugin.getVersion()));
+
+        if (currentUUID.equals(lastVersionUUID)) {
+            plugin.getStartup().isSameBukkitVersion(VersionChecker.checkBukkitVersion(version, plugin.getVersion()));
+        }
+        lastVersionUUID = currentUUID;
     }
 }
