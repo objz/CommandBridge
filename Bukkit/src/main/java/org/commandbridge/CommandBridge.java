@@ -25,6 +25,8 @@ public final class CommandBridge extends JavaPlugin {
         this.startup = new Startup(this);
     }
 
+    @Override
+    public void onLoad() { startup.onLoad(); }
 
     @Override
     public void onEnable() {

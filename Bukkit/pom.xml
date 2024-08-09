@@ -29,6 +29,13 @@
                 <configuration>
                     <source>9</source>
                     <target>9</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>dev.jorel</groupId>
+                            <artifactId>commandapi-annotations</artifactId>
+                            <version>9.5.1</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -43,6 +50,15 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <minimizeJar>true</minimizeJar>
+                    <relocations>
+                        <relocation>
+                            <pattern>dev.jorel.commandapi</pattern>
+                            <shadedPattern>org.commandbridge.commandapi</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
             </plugin>
         </plugins>
         <resources>
@@ -92,6 +108,18 @@
             <scope>compile</scope>
         </dependency>
 
+        <dependency>
+            <groupId>dev.jorel</groupId>
+            <artifactId>commandapi-bukkit-shade</artifactId>
+            <version>9.5.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.jorel</groupId>
+            <artifactId>commandapi-annotations</artifactId>
+            <version>9.5.1</version>
+            <scope>provided</scope>
+        </dependency>
 
     </dependencies>
 </project>

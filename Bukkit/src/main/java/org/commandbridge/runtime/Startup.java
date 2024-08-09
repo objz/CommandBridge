@@ -1,5 +1,7 @@
 package org.commandbridge.runtime;
 
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.message.channel.MessageListener;
 
@@ -18,6 +20,7 @@ public class Startup {
     }
 
     public void onEnable() {
+        CommandAPI.onEnable();
         copyExampleScripts();
         File configFile = new File(plugin.getDataFolder(), "config.yml");
         if (!configFile.exists()) {
@@ -45,9 +48,14 @@ public class Startup {
 
 
     public void onDisable() {
+        CommandAPI.onDisable();
         plugin.getServer().getMessenger().unregisterOutgoingPluginChannel(plugin);
         plugin.getServer().getMessenger().unregisterIncomingPluginChannel(plugin);
         plugin.getVerboseLogger().info("CommandBridge has been disabled!");
+    }
+
+    public void onLoad() {
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(plugin).verboseOutput(false).usePluginNamespace().silentLogs(true));
     }
 
 

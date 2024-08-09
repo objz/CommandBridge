@@ -1,13 +1,11 @@
 package org.commandbridge.message.channel;
 
-import org.bukkit.entity.Player;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.UUID;
 
 public class MessageSender {

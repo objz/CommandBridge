@@ -1,14 +1,13 @@
 package org.commandbridge.command.manager;
 
 
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
 import org.bukkit.command.*;
-import org.bukkit.command.defaults.BukkitCommand;
 import org.bukkit.entity.Player;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
-import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,45 +34,95 @@ public class CommandRegister {
         }
 
         try {
-            Field commandMapField = plugin.getServer().getClass().getDeclaredField("commandMap");
-            commandMapField.setAccessible(true);
-            CommandMap commandMap = (CommandMap) commandMapField.get(plugin.getServer());
 
-            Command newCommand = new BukkitCommand(commandName) {
-                @Override
-                public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
-                    verboseLogger.info("Executing command: " + commandLabel + " with arguments: " + String.join(" ", args));
+            new CommandAPICommand(commandName)
+                    .withOptionalArguments(new GreedyStringArgument("args")
+                    )
+                    .executes((sender, args) -> {
+                        String arguments = (String) args.get("args");
+                        if (sender instanceof Player) {
+                            Player player = (Player) sender;
+                            handlePlayerCommand(player, commandList, arguments);
+                        } else if (sender instanceof BlockCommandSender) {
+                            handleCommandBlockCommand((BlockCommandSender) sender, commandList, arguments);
+                        } else if (sender instanceof ConsoleCommandSender) {
+                            handleConsoleCommand((ConsoleCommandSender) sender, commandList, arguments);
+                        } else {
+                            verboseLogger.warn("This command can only be used by a player, console, or command block.");
+                        }
+                    })
+                    .executesProxy((proxy, args) -> {
+                        String arguments = (String) args.get("args");
+                            if (proxy.getCallee() instanceof Player) {
+                                verboseLogger.info("Command sender is a proxied command player sender.");
+                                handlePlayerCommand((Player) proxy.getCallee(), commandList, arguments);
+                            } else
+                            if (proxy.getCallee() instanceof BlockCommandSender) {
+                                verboseLogger.info("Command sender is a proxied command commandblock sender.");
+                                handleCommandBlockCommand((BlockCommandSender) proxy.getCallee(), commandList, arguments);
+                            } else
+                            if (proxy.getCallee() instanceof ConsoleCommandSender) {
+                                verboseLogger.info("Command sender is a proxied command console sender.");
+                                handleConsoleCommand((ConsoleCommandSender) proxy.getCallee(), commandList, arguments);
+                            } else {
+                                verboseLogger.warn("This command can only be used by a player, console, or command block.");
+                            }
 
-                    if (sender instanceof Player) {
-                        Player player = (Player) sender;
-                        verboseLogger.info("Command sender is a player: " + player.getName());
-                        handlePlayerCommand(player, commandList, args);
-                        return true;
-                    } else if (sender instanceof BlockCommandSender) {
-                        verboseLogger.info("Command sender is a command block.");
-                        handleCommandBlockCommand((BlockCommandSender) sender, commandList, args);
-                        return true;
-                    } else if (sender instanceof ConsoleCommandSender) {
-                        verboseLogger.info("Command sender is the console.");
-                        handleConsoleCommand((ConsoleCommandSender) sender, commandList, args);
-                        return true;
-                    } else {
-                        verboseLogger.warn("This command can only be used by a player, console, or command block.");
-                    }
-                    return false;
-                }
-            };
 
-            commandMap.register(plugin.getName(), newCommand);
-            verboseLogger.forceInfo("Command registered successfully: " + commandName);
+                    }).register();
+
         } catch (Exception e) {
             verboseLogger.error("Failed to register command: " + commandName, e);
         }
-
         plugin.addRegisteredCommand(commandName);
+//            Field commandMapField = plugin.getServer().getClass().getDeclaredField("commandMap");
+//            commandMapField.setAccessible(true);
+//            CommandMap commandMap = (CommandMap) commandMapField.get(plugin.getServer());
+//
+//            Command newCommand = new BukkitCommand(commandName) {
+//                @Override
+//                public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
+//                    verboseLogger.info("Executing command: " + commandLabel + " with arguments: " + String.join(" ", args));
+//
+//                    if (sender instanceof Player) {
+//                        Player player = (Player) sender;
+//                        verboseLogger.info("Command sender is a player: " + player.getName());
+//                        handlePlayerCommand(player, commandList, args);
+//                        return true;
+//                    } else if (sender instanceof BlockCommandSender) {
+//                        verboseLogger.info("Command sender is a command block.");
+//                        handleCommandBlockCommand((BlockCommandSender) sender, commandList, args);
+//                        return true;
+//                    } else if (sender instanceof ConsoleCommandSender) {
+//                        // If the console is using 'execute as <player>' check if we can retrieve the player
+//                        if (args.length > 1 && args[0].equalsIgnoreCase("as")) {
+//                            Player targetPlayer = plugin.getServer().getPlayer(args[1]);
+//                            if (targetPlayer != null) {
+//                                verboseLogger.info("Executing command as player: " + targetPlayer.getName());
+//                                handlePlayerCommand(targetPlayer, commandList, args);
+//                                return true;
+//                            }
+//                        }
+//                        verboseLogger.info("Command sender is the console.");
+//                        handleConsoleCommand((ConsoleCommandSender) sender, commandList, args);
+//                        return true;
+//                    } else {
+//                        verboseLogger.warn("This command can only be used by a player, console, or command block.");
+//                    }
+//                    return false;
+//                }
+//            };
+//
+//            commandMap.register(plugin.getName(), newCommand);
+//            verboseLogger.forceInfo("Command registered successfully: " + commandName);
+//        } catch (Exception e) {
+//            verboseLogger.error("Failed to register command: " + commandName, e);
+//        }
+//
+//        plugin.addRegisteredCommand(commandName);
     }
 
-    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList, String[] args) {
+    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList, String args) {
         verboseLogger.info("Player command sender: " + player.getName());
         for (Map<String, Object> command : commandList) {
             String commandString = parsePlaceholders((String) command.get("command"), player, args);
@@ -97,7 +146,7 @@ public class CommandRegister {
         }
     }
 
-    private void handleConsoleCommand(ConsoleCommandSender sender, List<Map<String, Object>> commandList, String[] args) {
+    private void handleConsoleCommand(ConsoleCommandSender sender, List<Map<String, Object>> commandList, String args) {
         verboseLogger.info("Console command sender: " + sender.getName());
         for (Map<String, Object> command : commandList) {
             String commandString = parseConsoleCommands((String) command.get("command"), sender, args);
@@ -116,7 +165,7 @@ public class CommandRegister {
         }
     }
 
-    private void handleCommandBlockCommand(BlockCommandSender sender, List<Map<String, Object>> commandList, String[] args) {
+    private void handleCommandBlockCommand(BlockCommandSender sender, List<Map<String, Object>> commandList, String args) {
         verboseLogger.info("Command block command sender: " + sender.getName());
         for (Map<String, Object> command : commandList) {
             String commandString = parseBlockCommands((String) command.get("command"), sender, args);
