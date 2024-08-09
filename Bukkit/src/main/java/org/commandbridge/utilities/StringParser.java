@@ -25,14 +25,14 @@ public class StringParser {
                 .replace("%world%", blockCommandSender.getBlock().getWorld().getName())
                 .replace("%player%", Objects.requireNonNull(blockCommandSender.getServer().getPlayer(blockCommandSender.getName())).getName())
                 .replace("%uuid%", Objects.requireNonNull(blockCommandSender.getServer().getPlayer(blockCommandSender.getName())).getUniqueId().toString())
-                .replace("%args%", Objects.requireNonNull(appendArguments(args)));
+                .replace("%args%", appendArguments(args));
     }
 
 
     private static String appendArguments(String[] args) {
-        if (args.length > 0) {
-            return String.join(" ", args);
+        if (args == null || args.length == 0) {
+            return "";
         }
-        return null;
+        return String.join(" ", args);
     }
 }
