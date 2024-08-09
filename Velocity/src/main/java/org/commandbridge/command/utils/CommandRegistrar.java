@@ -1,12 +1,16 @@
 package org.commandbridge.command.utils;
 
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.command.VelocityBrigadierMessage;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
 import org.w3c.dom.DOMStringList;
@@ -91,15 +95,38 @@ public class CommandRegistrar {
                     commandExecutor.resetState();
 
                     for (Map<String, Object> cmdData : commandList) {
-                        processCommandData(cmdData, player, commandName);
+                        processCommandData(cmdData, player, commandName, new String[0]);
                     }
-                    return 1;
+                    return Command.SINGLE_SUCCESS;
                 })
-                .build();
+                .then(BrigadierCommand.requiredArgumentBuilder("args", StringArgumentType.greedyString())
+                .executes(context -> {
+                            CommandSource source = context.getSource();
+
+                            if (!disableExecutorIsPlayerCheck && !(source instanceof Player)) {
+                                verboseLogger.warn("This command can only be used by a player.");
+                                return 0;
+                            }
+
+                            Player player = (Player) source;
+
+                            if (!source.hasPermission("commandbridge.command." + commandName)) {
+                                source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                                return 0;
+                            }
+
+                            String[] args = context.getArgument("args", String.class).split(" ");
+                            commandExecutor.resetState();
+
+                            for (Map<String, Object> cmdData : commandList) {
+                                processCommandData(cmdData, player, commandName, args);
+                            }
+                            return Command.SINGLE_SUCCESS;
+                        })).build();
     }
 
-    private void processCommandData(Map<String, Object> cmdData, Player player, String commandName) {
-        String cmd = parsePlaceholders((String) cmdData.get("command"), player);
+    private void processCommandData(Map<String, Object> cmdData, Player player, String commandName, String[] args) {
+        String cmd = parsePlaceholders((String) cmdData.get("command"), player, args);
         int delay = (int) cmdData.getOrDefault("delay", 0);
         List<String> targetServerIds = safeCastToListOfStrings(cmdData.get("target-server-ids"));
         String targetExecutor = (String) cmdData.getOrDefault("target-executor", "player");
