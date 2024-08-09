@@ -1,5 +1,5 @@
 #DO NOT CHANGE THIS:
-script-version: 1
+script-version: 2
 ##########################################################################
 # THIS IS AN EXAMPLE WHEN A COMMAND IS DISPATCHED TO THE BUKKIT SERVER OR
 # SERVERS AND THE COMMANDS GET EXECUTED ON THE VELOCITY SERVER
@@ -17,5 +17,5 @@ commands:
     # This can be either "player" or "console"
     target-executor: 'player'
     # Target Velocity server ID
-    target-server-id: ['main']
+    target-server-ids: ['main']
   # Add more commands here

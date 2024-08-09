@@ -74,8 +74,12 @@ public final class CommandBridge extends JavaPlugin {
         return this.getPluginMeta().getVersion();
     }
 
+    public Integer getConfig_version() {
+        return 2;
+    }
+
     public Integer getScript_version() {
-        return 1;
+        return 2;
     }
 
 }
