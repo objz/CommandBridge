@@ -41,11 +41,14 @@ public class CommandRegister {
                     .executes((sender, args) -> {
                         String arguments = (String) args.get("args");
                         if (sender instanceof Player) {
+                            verboseLogger.info("Command sender is a player: " + sender.getName());
                             Player player = (Player) sender;
                             handlePlayerCommand(player, commandList, arguments);
                         } else if (sender instanceof BlockCommandSender) {
+                            verboseLogger.info("Command sender is a command block.");
                             handleCommandBlockCommand((BlockCommandSender) sender, commandList, arguments);
                         } else if (sender instanceof ConsoleCommandSender) {
+                            verboseLogger.info("Command sender is a console.");
                             handleConsoleCommand((ConsoleCommandSender) sender, commandList, arguments);
                         } else {
                             verboseLogger.warn("This command can only be used by a player, console, or command block.");
