@@ -56,17 +56,19 @@ public class MessageListener {
             String messageType = dataInputStream.readUTF();
             String targetVelocityServer = dataInputStream.readUTF();
             String currentUUID = dataInputStream.readUTF();
-            if (!targetVelocityServer.equals(plugin.getServerId())) {
-                logger.warn("Received message for a different server: " + targetVelocityServer + ", current server name: " + plugin.getServerId());
-                return;
-            }
-            logger.info("Message type: " + messageType);
+
 
             if (currentUUID.equals(lastUUID)) {
                 logger.info("Received message multiply times - canceling");
                 return;
             }
             lastUUID = currentUUID;
+
+            if (!targetVelocityServer.equals(plugin.getServerId())) {
+                logger.info("Received message for a different server: " + targetVelocityServer + ", current server name: " + plugin.getServerId());
+                return;
+            }
+            logger.info("Message type: " + messageType);
 
             switch (messageType) {
                 case "ExecuteCommand":
