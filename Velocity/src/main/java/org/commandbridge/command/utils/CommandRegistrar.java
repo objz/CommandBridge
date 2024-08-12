@@ -10,10 +10,8 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.commandbridge.CommandBridge;
 import org.commandbridge.utilities.VerboseLogger;
-import org.w3c.dom.DOMStringList;
 
 import java.util.List;
 import java.util.Map;

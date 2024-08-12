@@ -75,51 +75,51 @@ public class CommandRegister {
             verboseLogger.error("Failed to register command: " + commandName, e);
         }
         plugin.addRegisteredCommand(commandName);
-//            Field commandMapField = plugin.getServer().getClass().getDeclaredField("commandMap");
-//            commandMapField.setAccessible(true);
-//            CommandMap commandMap = (CommandMap) commandMapField.get(plugin.getServer());
-//
-//            Command newCommand = new BukkitCommand(commandName) {
-//                @Override
-//                public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
-//                    verboseLogger.info("Executing command: " + commandLabel + " with arguments: " + String.join(" ", args));
-//
-//                    if (sender instanceof Player) {
-//                        Player player = (Player) sender;
-//                        verboseLogger.info("Command sender is a player: " + player.getName());
-//                        handlePlayerCommand(player, commandList, args);
-//                        return true;
-//                    } else if (sender instanceof BlockCommandSender) {
-//                        verboseLogger.info("Command sender is a command block.");
-//                        handleCommandBlockCommand((BlockCommandSender) sender, commandList, args);
-//                        return true;
-//                    } else if (sender instanceof ConsoleCommandSender) {
-//                        // If the console is using 'execute as <player>' check if we can retrieve the player
-//                        if (args.length > 1 && args[0].equalsIgnoreCase("as")) {
-//                            Player targetPlayer = plugin.getServer().getPlayer(args[1]);
-//                            if (targetPlayer != null) {
-//                                verboseLogger.info("Executing command as player: " + targetPlayer.getName());
-//                                handlePlayerCommand(targetPlayer, commandList, args);
-//                                return true;
-//                            }
-//                        }
-//                        verboseLogger.info("Command sender is the console.");
-//                        handleConsoleCommand((ConsoleCommandSender) sender, commandList, args);
-//                        return true;
-//                    } else {
-//                        verboseLogger.warn("This command can only be used by a player, console, or command block.");
-//                    }
-//                    return false;
-//                }
-//            };
-//
-//            commandMap.register(plugin.getName(), newCommand);
-//            verboseLogger.forceInfo("Command registered successfully: " + commandName);
-//        } catch (Exception e) {
-//            verboseLogger.error("Failed to register command: " + commandName, e);
-//        }
-//
-//        plugin.addRegisteredCommand(commandName);
+/*            Field commandMapField = plugin.getServer().getClass().getDeclaredField("commandMap");
+            commandMapField.setAccessible(true);
+            CommandMap commandMap = (CommandMap) commandMapField.get(plugin.getServer());
+
+            Command newCommand = new BukkitCommand(commandName) {
+                @Override
+                public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, String[] args) {
+                    verboseLogger.info("Executing command: " + commandLabel + " with arguments: " + String.join(" ", args));
+
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        verboseLogger.info("Command sender is a player: " + player.getName());
+                        handlePlayerCommand(player, commandList, args);
+                        return true;
+                    } else if (sender instanceof BlockCommandSender) {
+                        verboseLogger.info("Command sender is a command block.");
+                        handleCommandBlockCommand((BlockCommandSender) sender, commandList, args);
+                        return true;
+                    } else if (sender instanceof ConsoleCommandSender) {
+                        // If the console is using 'execute as <player>' check if we can retrieve the player
+                        if (args.length > 1 && args[0].equalsIgnoreCase("as")) {
+                            Player targetPlayer = plugin.getServer().getPlayer(args[1]);
+                            if (targetPlayer != null) {
+                                verboseLogger.info("Executing command as player: " + targetPlayer.getName());
+                                handlePlayerCommand(targetPlayer, commandList, args);
+                                return true;
+                            }
+                        }
+                        verboseLogger.info("Command sender is the console.");
+                        handleConsoleCommand((ConsoleCommandSender) sender, commandList, args);
+                        return true;
+                    } else {
+                        verboseLogger.warn("This command can only be used by a player, console, or command block.");
+                    }
+                    return false;
+                }
+            };
+
+            commandMap.register(plugin.getName(), newCommand);
+            verboseLogger.forceInfo("Command registered successfully: " + commandName);
+        } catch (Exception e) {
+            verboseLogger.error("Failed to register command: " + commandName, e);
+        }
+
+        plugin.addRegisteredCommand(commandName);*/
     }
 
     private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList, String args) {
