@@ -5,6 +5,7 @@ import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.commandbridge.CommandBridge;
+import org.commandbridge.message.UUIDManager;
 import org.commandbridge.utilities.VerboseLogger;
 import org.commandbridge.utilities.VersionChecker;
 
@@ -19,20 +20,18 @@ public class MessageListener {
     private final CommandBridge plugin;
     private final VerboseLogger logger;
     private final ProxyServer proxyServer;
-    private String lastUUID;
-    private String lastVersionUUID;
+    private final UUIDManager uuidManager; // Separate UUID management
 
     @Inject
     public MessageListener(CommandBridge plugin, ProxyServer proxyServer) {
         this.plugin = plugin;
         this.logger = plugin.getVerboseLogger();
         this.proxyServer = proxyServer;
+        this.uuidManager = new UUIDManager(); // Instantiate UUIDManager
     }
 
     @Subscribe
     public void onPluginMessageReceived(PluginMessageEvent event) {
-
-
         logger.info("Received plugin message on channel " + event.getIdentifier().getId());
 
         if (!event.getIdentifier().equals(plugin.getChannelIdentifier())) {
@@ -57,12 +56,11 @@ public class MessageListener {
             String targetVelocityServer = dataInputStream.readUTF();
             String currentUUID = dataInputStream.readUTF();
 
-
-            if (currentUUID.equals(lastUUID)) {
-                logger.info("Received message multiply times - canceling");
+            if (uuidManager.isUUIDProcessed(currentUUID)) {
+                logger.info("Received message multiple times - canceling");
                 return;
             }
-            lastUUID = currentUUID;
+            uuidManager.addUUID(currentUUID);
 
             if (!targetVelocityServer.equals(plugin.getServerId())) {
                 logger.info("Received message for a different server: " + targetVelocityServer + ", current server name: " + plugin.getServerId());
@@ -128,9 +126,10 @@ public class MessageListener {
         String currentUUID = dataInputStream.readUTF();
         String version = dataInputStream.readUTF();
 
-        if (currentUUID.equals(lastVersionUUID)) {
+        if (uuidManager.isUUIDProcessed(currentUUID)) {
             plugin.getStartup().isSameBukkitVersion(VersionChecker.checkBukkitVersion(version, plugin.getVersion()));
+        } else {
+            uuidManager.addUUID(currentUUID);
         }
-        lastVersionUUID = currentUUID;
     }
 }

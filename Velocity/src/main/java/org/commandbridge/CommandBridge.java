@@ -8,6 +8,7 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
+import org.commandbridge.message.UUIDManager;
 import org.commandbridge.message.channel.MessageSender;
 import org.commandbridge.message.channel.MessageListener;
 import org.commandbridge.command.utils.CommandRegistrar;
@@ -31,15 +32,17 @@ public class CommandBridge {
     private final Startup startup;
     private final Metrics.Factory metricsFactory;
     private String serverId;
+    private final UUIDManager uuidManager;
 
 
     @Inject
-    public CommandBridge(ProxyServer server, Logger logger, Metrics.Factory metricsFactory) {
+    public CommandBridge(ProxyServer server, Logger logger, Metrics.Factory metricsFactory, UUIDManager uuidManager) {
         this.server = server;
         this.verboseLogger = new VerboseLogger(this, logger);
         this.velocityRuntime = new VelocityRuntime(server, this);
         this.startup = new Startup(server, this);
         this.metricsFactory = metricsFactory;
+        this.uuidManager = uuidManager;
     }
 
 
@@ -59,6 +62,7 @@ public class CommandBridge {
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         server.getChannelRegistrar().unregister(CHANNEL);
+        uuidManager.shutdown();
         verboseLogger.forceInfo("CommandBridgeVelocity has been disabled!");
     }
 
