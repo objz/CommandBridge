@@ -1,4 +1,4 @@
-package org.commandbridge.command.utils;
+package org.commandbridge.handler;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;

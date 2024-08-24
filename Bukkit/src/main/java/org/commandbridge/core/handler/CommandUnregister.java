@@ -1,4 +1,4 @@
-package org.commandbridge.core.command.manager;
+package org.commandbridge.core.handler;
 
 import dev.jorel.commandapi.CommandAPI;
 import org.commandbridge.CommandBridge;

@@ -1,11 +1,10 @@
-package org.commandbridge.command.utils;
+package org.commandbridge.handler;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.command.VelocityBrigadierMessage;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
@@ -157,7 +156,7 @@ public class CommandRegistrar {
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> safeCastToListOfMaps(Object obj) {
         if (obj instanceof List<?> list) {
-            if (!list.isEmpty() && list.getFirst() instanceof Map) {
+            if (!list.isEmpty() && list.get(0) instanceof Map) {
                 return (List<Map<String, Object>>) list;
             }
         }
@@ -167,7 +166,7 @@ public class CommandRegistrar {
     @SuppressWarnings("unchecked")
     private List<String> safeCastToListOfStrings(Object obj) {
         if (obj instanceof List<?> list) {
-            if (!list.isEmpty() && list.getFirst() instanceof String) {
+            if (!list.isEmpty() && list.get(0) instanceof String) {
                 return (List<String>) list;
             }
         }
