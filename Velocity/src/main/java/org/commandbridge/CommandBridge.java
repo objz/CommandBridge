@@ -11,7 +11,7 @@ import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import org.commandbridge.message.UUIDManager;
 import org.commandbridge.message.channel.MessageSender;
 import org.commandbridge.message.channel.MessageListener;
-import org.commandbridge.command.utils.CommandRegistrar;
+import org.commandbridge.handler.CommandRegistrar;
 import org.commandbridge.runtime.Startup;
 import org.commandbridge.runtime.VelocityRuntime;
 import org.commandbridge.utilities.Metrics;
