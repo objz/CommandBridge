@@ -1,7 +1,7 @@
-package org.commandbridge.runtime;
+package org.commandbridge.core.runtime;
 
 import org.commandbridge.CommandBridge;
-import org.commandbridge.utilities.VerboseLogger;
+import org.commandbridge.core.utilities.VerboseLogger;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;

@@ -1,12 +1,12 @@
 package org.commandbridge;
 
 import org.bukkit.plugin.java.JavaPlugin;
-import org.commandbridge.command.manager.CommandRegister;
-import org.commandbridge.command.manager.CommandUnregister;
-import org.commandbridge.message.channel.MessageSender;
-import org.commandbridge.runtime.Scripts;
-import org.commandbridge.runtime.Startup;
-import org.commandbridge.utilities.VerboseLogger;
+import org.commandbridge.core.command.manager.CommandRegister;
+import org.commandbridge.core.command.manager.CommandUnregister;
+import org.commandbridge.core.message.channel.MessageSender;
+import org.commandbridge.core.runtime.Scripts;
+import org.commandbridge.core.runtime.Startup;
+import org.commandbridge.core.utilities.VerboseLogger;
 
 
 import java.util.ArrayList;

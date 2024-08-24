@@ -1,8 +1,8 @@
-package org.commandbridge.command.manager;
+package org.commandbridge.core.command.manager;
 
 import dev.jorel.commandapi.CommandAPI;
 import org.commandbridge.CommandBridge;
-import org.commandbridge.utilities.VerboseLogger;
+import org.commandbridge.core.utilities.VerboseLogger;
 
 public class CommandUnregister {
     private final VerboseLogger verboseLogger;

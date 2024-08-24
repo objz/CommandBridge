@@ -1,7 +1,7 @@
-package org.commandbridge.message.channel;
+package org.commandbridge.core.message.channel;
 
 import org.commandbridge.CommandBridge;
-import org.commandbridge.utilities.VerboseLogger;
+import org.commandbridge.core.utilities.VerboseLogger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

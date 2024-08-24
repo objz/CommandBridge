@@ -1,4 +1,4 @@
-package org.commandbridge.command.manager;
+package org.commandbridge.core.command.manager;
 
 
 import dev.jorel.commandapi.CommandAPICommand;
@@ -6,13 +6,13 @@ import dev.jorel.commandapi.arguments.GreedyStringArgument;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.commandbridge.CommandBridge;
-import org.commandbridge.utilities.VerboseLogger;
+import org.commandbridge.core.utilities.VerboseLogger;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.commandbridge.utilities.StringParser.*;
+import static org.commandbridge.core.utilities.StringParser.*;
 
 public class CommandRegister {
     private final CommandBridge plugin;

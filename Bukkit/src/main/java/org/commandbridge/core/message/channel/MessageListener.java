@@ -1,10 +1,10 @@
-package org.commandbridge.message.channel;
+package org.commandbridge.core.message.channel;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.commandbridge.CommandBridge;
-import org.commandbridge.utilities.VerboseLogger;
+import org.commandbridge.core.utilities.VerboseLogger;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayInputStream;

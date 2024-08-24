@@ -1,4 +1,4 @@
-package org.commandbridge.utilities;
+package org.commandbridge.core.utilities;
 
 import org.commandbridge.CommandBridge;
 
