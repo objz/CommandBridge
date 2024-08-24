@@ -1,4 +1,4 @@
-package org.commandbridge.core.message.channel;
+package org.commandbridge.core.channel;
 
 import org.commandbridge.CommandBridge;
 import org.commandbridge.core.utilities.VerboseLogger;

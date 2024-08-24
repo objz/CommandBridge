@@ -10,13 +10,13 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class Scripts {
+public class ScriptHandler {
 
     private final File scriptsFolder = new File("plugins/CommandBridge/bukkit-scripts");
     private final CommandBridge plugin;
     private final VerboseLogger verboseLogger;
 
-    public Scripts(CommandBridge plugin) {
+    public ScriptHandler(CommandBridge plugin) {
         this.plugin = plugin;
         this.verboseLogger = plugin.getVerboseLogger();
     }

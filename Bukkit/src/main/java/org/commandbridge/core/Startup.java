@@ -1,9 +1,9 @@
-package org.commandbridge.core.runtime;
+package org.commandbridge.core;
 
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import org.commandbridge.CommandBridge;
-import org.commandbridge.core.message.channel.MessageListener;
+import org.commandbridge.core.channel.MessageListener;
 
 import java.io.File;
 import java.io.InputStream;
