@@ -1,5 +1,6 @@
-## Commandbridge
-**Commandbridge** is a versatile plugin that enables remote execution of server commands across the Velocity network. It uses a predefined set of commands specified in a configuration file, enhancing server management and interaction.
+## CommandBridge
+
+**CommandBridge** is a versatile plugin that enables remote execution of server commands across the Velocity network. It uses a predefined set of commands specified in a configuration file, enhancing server management and interaction.
 
 ### Features
 
@@ -21,16 +22,20 @@
   - Bukkit-based servers (Spigot, Paper, Pufferfish, Purpur, etc.)
   - Velocity
 
+### Requirements
+
+CommandBridge requires Java 17 since the version `1.7.1`. To use the versions before you need java 21 to function properly. If your server is running on a version lower than Java 17, you will encounter errors.
+
 ### Setup
 
-1. Download the latest releases of Commandbridge.
+1. Download the latest releases of CommandBridge.
 2. Install `commandbridge-bukkit` on your Bukkit server.
 3. Install `commandbridge-velocity` on your Velocity server.
 4. Restart the servers to apply changes.
 
 ### Permissions
 
-> `commandbridge.admin` 
+> `commandbridge.admin`
 > 
 > `commandbridge.command.<specific-command>`
 
