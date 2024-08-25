@@ -10,6 +10,11 @@
     <version>1.7.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
+
     <modules>
         <module>Bukkit</module>
         <module>Velocity</module>
