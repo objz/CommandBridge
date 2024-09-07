@@ -131,6 +131,7 @@ public class CommandRegister {
             String commandString = parsePlaceholders((String) command.get("command"), player, args);
             String targetExecutor = (String) command.get("target-executor");
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
+            //TODO: Fix Permission String
             String permission = "commandbridge.command." + commandString;
 
             if (targetServerIds == null) {
