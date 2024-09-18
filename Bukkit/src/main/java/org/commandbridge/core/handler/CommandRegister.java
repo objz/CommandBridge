@@ -43,7 +43,7 @@ public class CommandRegister {
                         if (sender instanceof Player) {
                             verboseLogger.info("Command sender is a player: " + sender.getName());
                             Player player = (Player) sender;
-                            handlePlayerCommand(player, commandList, arguments);
+                            handlePlayerCommand(player, commandList, arguments, commandName);
                         } else if (sender instanceof BlockCommandSender) {
                             verboseLogger.info("Command sender is a command block.");
                             handleCommandBlockCommand((BlockCommandSender) sender, commandList, arguments);

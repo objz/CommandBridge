@@ -1,6 +1,8 @@
 ### Java template
 # Compiled class file
 *.class
+.vscode/*
+.vscode
 
 # Log file
 *.log
@@ -25,3 +27,4 @@ hs_err_pid*
 replay_pid*
 
 Bukkit/target/*
+Velocity/target/*
