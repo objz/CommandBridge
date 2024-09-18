@@ -58,7 +58,7 @@ public class CommandRegister {
                         String arguments = (String) args.get("args");
                             if (proxy.getCallee() instanceof Player) {
                                 verboseLogger.info("Command sender is a proxied command player sender.");
-                                handlePlayerCommand((Player) proxy.getCallee(), commandList, arguments);
+                                handlePlayerCommand((Player) proxy.getCallee(), commandList, arguments, commandName);
                             } else
                             if (proxy.getCallee() instanceof BlockCommandSender) {
                                 verboseLogger.info("Command sender is a proxied command commandblock sender.");
@@ -125,14 +125,14 @@ public class CommandRegister {
         plugin.addRegisteredCommand(commandName);*/
     }
 
-    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList, String args) {
+    private void handlePlayerCommand(Player player, List<Map<String, Object>> commandList, String args, String Name) {
         verboseLogger.info("Player command sender: " + player.getName());
         for (Map<String, Object> command : commandList) {
             String commandString = parsePlaceholders((String) command.get("command"), player, args);
             String targetExecutor = (String) command.get("target-executor");
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
             //TODO: Fix Permission String
-            String permission = "commandbridge.command." + commandString;
+            String permission = "commandbridge.command." + Name;
 
             if (targetServerIds == null) {
                 verboseLogger.warn("Target server IDs are not specified or invalid for command: " + commandString);
