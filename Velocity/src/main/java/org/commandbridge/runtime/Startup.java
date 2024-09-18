@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
@@ -27,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Map;
 
 public class Startup {
@@ -230,8 +230,10 @@ public class Startup {
                         .build())
                 .build();
 
+        CommandMeta commandMeta = server.getCommandManager().metaBuilder("commandbridge").aliases("cb").plugin(plugin).build();
+
         BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
-        server.getCommandManager().register("commandbridge", brigadierCommand, "cb");
+        server.getCommandManager().register(commandMeta, brigadierCommand);
     }
 
     private int sendHelpMessage(CommandContext<CommandSource> context) {

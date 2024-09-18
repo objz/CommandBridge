@@ -4,6 +4,7 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -49,8 +50,9 @@ public class CommandRegistrar {
 
         LiteralCommandNode<CommandSource> rootNode = createRootNode(commandName, commandList, disableExecutorIsPlayerCheck);
         BrigadierCommand brigadierCommand = new BrigadierCommand(rootNode);
+        CommandMeta commandMeta = server.getCommandManager().metaBuilder(commandName).plugin(this).build();
 
-        server.getCommandManager().register(brigadierCommand);
+        server.getCommandManager().register(commandMeta, brigadierCommand);
         plugin.addRegisteredCommand(commandName);
         verboseLogger.info("Command " + commandName + " registered successfully.");
 
