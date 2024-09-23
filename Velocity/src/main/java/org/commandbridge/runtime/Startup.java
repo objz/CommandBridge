@@ -63,7 +63,7 @@ public class Startup {
                 Files.createFile(configFile.toPath());
                 try (FileWriter writer = new FileWriter(configFile)) {
                     writer.write("#DO NOT CHANGE THIS VALUE\n");
-                    writer.write("config-version: 1\n");
+                    writer.write("config-version: 2\n");
                     writer.write("verbose-output: false\n");
                     writer.write("server-id: REPLACE_THIS_WITH_YOUR_SERVER_NAME\n");
                 }
