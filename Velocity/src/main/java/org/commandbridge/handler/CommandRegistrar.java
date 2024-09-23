@@ -50,7 +50,7 @@ public class CommandRegistrar {
 
         LiteralCommandNode<CommandSource> rootNode = createRootNode(commandName, commandList, disableExecutorIsPlayerCheck);
         BrigadierCommand brigadierCommand = new BrigadierCommand(rootNode);
-        CommandMeta commandMeta = server.getCommandManager().metaBuilder(commandName).plugin(this).build();
+        CommandMeta commandMeta = server.getCommandManager().metaBuilder(commandName).plugin(plugin).build();
 
         server.getCommandManager().register(commandMeta, brigadierCommand);
         plugin.addRegisteredCommand(commandName);
