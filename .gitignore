@@ -28,3 +28,4 @@ replay_pid*
 
 Bukkit/target/*
 Velocity/target/*
+Bukkit/dependency-reduced-pom.xml
