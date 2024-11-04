@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.8.1-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
+@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.8.2-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
 public class CommandBridge {
 
     private final ProxyServer server;
@@ -115,7 +115,7 @@ public class CommandBridge {
     }
 
     public Integer getScript_version() {
-        return 2; }
+        return 3; }
 
     public Integer getConfig_version() {
         return 2; }

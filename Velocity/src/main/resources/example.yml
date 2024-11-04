@@ -30,9 +30,12 @@ commands:
     disable-check-if-executor-is-player: false
     # Whether to disable the check if the executor is on the server
     disable-check-if-executor-is-on-server: false
+    # Ignore permission check
+    ignore-permission-check: false
   # Add more commands here
   - command: 'say I love Coding!'
     delay: 0
     target-server-id: ['lobby']
     target-executor: 'player'
     wait-until-player-is-online: true
+    ignore-permission-check: true

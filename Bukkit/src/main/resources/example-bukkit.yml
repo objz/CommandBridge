@@ -18,4 +18,6 @@ commands:
     target-executor: 'player'
     # Target Velocity server ID
     target-server-ids: ['main']
+    # Ignore permission check
+    ignore-permission-check: false
   # Add more commands here

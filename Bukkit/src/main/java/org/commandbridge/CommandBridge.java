@@ -112,7 +112,7 @@ public final class CommandBridge extends JavaPlugin {
     }
 
     public Integer getScript_version() {
-        return 2;
+        return 3;
     }
 
 }

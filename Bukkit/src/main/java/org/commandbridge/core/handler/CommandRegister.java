@@ -130,6 +130,7 @@ public class CommandRegister {
         for (Map<String, Object> command : commandList) {
             String commandString = parsePlaceholders((String) command.get("command"), player, args);
             String targetExecutor = (String) command.get("target-executor");
+            boolean ignorePermissionCheck = (boolean) command.getOrDefault("ignore-permission-check", false);
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
             String permission = "commandbridge.command." + Name;
 
@@ -138,7 +139,7 @@ public class CommandRegister {
                 continue;
             }
 
-            if (!player.hasPermission(permission)) {
+            if (!player.hasPermission(permission) && !ignorePermissionCheck) {
                 verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
                 return;
             }
