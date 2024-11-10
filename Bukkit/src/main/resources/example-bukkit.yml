@@ -1,5 +1,5 @@
 #DO NOT CHANGE THIS:
-script-version: 2
+script-version: 3
 ##########################################################################
 # THIS IS AN EXAMPLE WHEN A COMMAND IS DISPATCHED TO THE BUKKIT SERVER OR
 # SERVERS AND THE COMMANDS GET EXECUTED ON THE VELOCITY SERVER
@@ -9,6 +9,8 @@ script-version: 2
 name: examplebukkit
 # Whether the command is enabled
 enabled: true
+# Ignore permission check
+ignore-permission-check: false
 # The list of commands to execute on the Velocity server
 commands:
   # The command to execute on the target server
@@ -18,6 +20,4 @@ commands:
     target-executor: 'player'
     # Target Velocity server ID
     target-server-ids: ['main']
-    # Ignore permission check
-    ignore-permission-check: false
   # Add more commands here
