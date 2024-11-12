@@ -1,5 +1,15 @@
 package org.commandbridge.handler;
 
+import static org.commandbridge.utilities.StringParser.parsePlaceholders;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.commandbridge.CommandBridge;
+import org.commandbridge.utilities.VerboseLogger;
+
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -8,17 +18,9 @@ import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.commandbridge.CommandBridge;
-import org.commandbridge.utilities.VerboseLogger;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.commandbridge.utilities.StringParser.parsePlaceholders;
 
 public class CommandRegistrar {
 
@@ -41,7 +43,7 @@ public class CommandRegistrar {
         boolean disableExecutorIsPlayerCheck = (boolean) commandData.getOrDefault("disable-check-if-executor-is-player", false);
         boolean registerOnBukkitServer = (boolean) commandData.getOrDefault("register-on-bukkit-server", false);
         boolean ignorePermissionCheck = (boolean) commandData.getOrDefault("ignore-permission-check", false);
-        boolean hidePermissionWarning = (boolean) command.getOrDefault("hide-permission-warning", false);
+        boolean hidePermissionWarning = (boolean) commandData.getOrDefault("hide-permission-warning", false);
 
         logExecutorCheckState(commandName, disableExecutorIsPlayerCheck);
 
