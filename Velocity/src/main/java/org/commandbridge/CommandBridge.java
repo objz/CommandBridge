@@ -1,5 +1,18 @@
 package org.commandbridge;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.commandbridge.handler.CommandRegistrar;
+import org.commandbridge.message.UUIDManager;
+import org.commandbridge.message.channel.MessageListener;
+import org.commandbridge.message.channel.MessageSender;
+import org.commandbridge.runtime.Startup;
+import org.commandbridge.runtime.VelocityRuntime;
+import org.commandbridge.utilities.Metrics;
+import org.commandbridge.utilities.VerboseLogger;
+import org.slf4j.Logger;
+
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.event.Subscribe;
@@ -8,20 +21,8 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
-import org.commandbridge.message.UUIDManager;
-import org.commandbridge.message.channel.MessageSender;
-import org.commandbridge.message.channel.MessageListener;
-import org.commandbridge.handler.CommandRegistrar;
-import org.commandbridge.runtime.Startup;
-import org.commandbridge.runtime.VelocityRuntime;
-import org.commandbridge.utilities.Metrics;
-import org.commandbridge.utilities.VerboseLogger;
-import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.8.3-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
+@Plugin(id = "commandbridge", name = "CommandBridgeVelocity", version = "1.8.4-SNAPSHOT", description = "A plugin to bridge commands between servers", authors = {"72S_"}, url = "https://modrinth.com/plugin/commandbridge")
 public class CommandBridge {
 
     private final ProxyServer server;
