@@ -35,3 +35,4 @@ Bukkit/dependency-reduced-pom.xml
 
 Bukkit/.*
 Velocity/.*
+.project
