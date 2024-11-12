@@ -11,6 +11,8 @@ name: examplebukkit
 enabled: true
 # Ignore permission check
 ignore-permission-check: false
+# Hide permission warning
+hide-permission-warning: false
 # The list of commands to execute on the Velocity server
 commands:
   # The command to execute on the target server

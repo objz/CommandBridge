@@ -131,6 +131,7 @@ public class CommandRegister {
             String commandString = parsePlaceholders((String) command.get("command"), player, args);
             String targetExecutor = (String) command.get("target-executor");
             boolean ignorePermissionCheck = (boolean) command.getOrDefault("ignore-permission-check", false);
+            boolean hidePermissionWarning = (boolean) command.getOrDefault("hide-permission-warning", false);
             List<String> targetServerIds = safeCastToListOfStrings(command.get("target-server-ids"));
             String permission = "commandbridge.command." + Name;
 
@@ -140,7 +141,9 @@ public class CommandRegister {
             }
 
             if (!player.hasPermission(permission) && !ignorePermissionCheck) {
-                verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
+                if(!hidePermissionWarning){
+                    verboseLogger.warn("Player " + player.getName() + " does not have permission to execute command: " + commandString);
+                }
                 return;
             }
             verboseLogger.info("Sending plugin message for command as Player: " + commandString);

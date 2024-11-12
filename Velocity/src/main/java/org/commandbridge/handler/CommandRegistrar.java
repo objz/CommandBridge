@@ -41,6 +41,7 @@ public class CommandRegistrar {
         boolean disableExecutorIsPlayerCheck = (boolean) commandData.getOrDefault("disable-check-if-executor-is-player", false);
         boolean registerOnBukkitServer = (boolean) commandData.getOrDefault("register-on-bukkit-server", false);
         boolean ignorePermissionCheck = (boolean) commandData.getOrDefault("ignore-permission-check", false);
+        boolean hidePermissionWarning = (boolean) command.getOrDefault("hide-permission-warning", false);
 
         logExecutorCheckState(commandName, disableExecutorIsPlayerCheck);
 
@@ -49,7 +50,7 @@ public class CommandRegistrar {
             return;
         }
 
-        LiteralCommandNode<CommandSource> rootNode = createRootNode(commandName, commandList, disableExecutorIsPlayerCheck, ignorePermissionCheck);
+        LiteralCommandNode<CommandSource> rootNode = createRootNode(commandName, commandList, disableExecutorIsPlayerCheck, ignorePermissionCheck, hidePermissionWarning);
         BrigadierCommand brigadierCommand = new BrigadierCommand(rootNode);
         CommandMeta commandMeta = server.getCommandManager().metaBuilder(commandName).plugin(plugin).build();
 
@@ -74,7 +75,7 @@ public class CommandRegistrar {
         return commandName != null && commandList != null && !commandList.isEmpty();
     }
 
-    private LiteralCommandNode<CommandSource> createRootNode(String commandName, List<Map<String, Object>> commandList, boolean disableExecutorIsPlayerCheck, boolean ignorePermissionCheck) {
+    private LiteralCommandNode<CommandSource> createRootNode(String commandName, List<Map<String, Object>> commandList, boolean disableExecutorIsPlayerCheck, boolean ignorePermissionCheck, boolean hidePermissionWarning) {
         return BrigadierCommand.literalArgumentBuilder(commandName)
                 .requires(source -> disableExecutorIsPlayerCheck || source instanceof Player)
                 .executes(context -> {
@@ -88,7 +89,9 @@ public class CommandRegistrar {
                     Player player = (Player) source;
 
                     if (!source.hasPermission("commandbridge.command." + commandName) && !ignorePermissionCheck) {
-                        source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                        if(!hidePermissionWarning){
+                            source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                        }
                         return 0;
                     }
 
@@ -111,7 +114,9 @@ public class CommandRegistrar {
                             Player player = (Player) source;
 
                             if (!source.hasPermission("commandbridge.command." + commandName) && !ignorePermissionCheck) {
-                                source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                                if(!hidePermissionWarning){
+                                    source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                                }
                                 return 0;
                             }
 

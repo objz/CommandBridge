@@ -11,6 +11,8 @@ name: examplecommand
 enabled: true
 # Ignore the permission check
 ignore-permission-check: false
+# Hide permission warning
+hide-permission-warning: false
 # The list of commands to execute
 commands:
   # The command to execute on the target server
