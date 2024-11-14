@@ -15,7 +15,7 @@ import utils.ConfigManager;
 import utils.ConfigProvider;
 
 
-@Plugin(id = "commandbridge", name = "CommandBridge", version = "1.0.0", authors = "72-S")
+@Plugin(id = "commandbridge", name = "CommandBridge", version = "2.0.0", authors = "72-S")
 public class VelocityMain{
     private final ProxyServer server;
     private VelocityStartup startup;

@@ -2,16 +2,13 @@ package dev.consti.bukkit;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-import client.ClientProvider;
-import client.WebSocketClientImpl;
-import utils.ConfigManager;
-import utils.ConfigProvider;
 
-public class BukkitMain extends JavaPlugin {
+
+public class Main extends JavaPlugin {
     WebSocketClientImpl webSocketClient;
     private BukkitStartup startup;
 
-    public BukkitMain() {
+    public Main() {
     }
 
     @Override

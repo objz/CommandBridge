@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.consti"
-version = "1.0.0"
+version = "2.0.0"
 
 repositories {
     mavenCentral()
@@ -26,8 +26,7 @@ tasks {
     // Configure the existing shadowJar task, don't register a new one
     shadowJar {
 
-        archiveClassifier.set("")
-        // Include the compiled outputs of core, bukkit, and velQocity
+        // Include the compiled outputs of core, bukkit, and velocity
         from(project(":bukkit").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
         from(project(":velocity").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
 

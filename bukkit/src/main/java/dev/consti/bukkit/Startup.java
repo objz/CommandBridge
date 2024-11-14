@@ -1,15 +1,12 @@
 package dev.consti.bukkit;
 
-import client.ClientProvider;
-import utils.ConfigProvider;
-import utils.Logger;
 
-public class BukkitStartup {
+public class Startup {
     private final ConfigProvider config;
     private final ClientProvider clientProvider;
     private final Logger logger;
 
-    public BukkitStartup(ConfigProvider config, ClientProvider clientProvider, Logger logger) {
+    public Startup(ConfigProvider config, ClientProvider clientProvider, Logger logger) {
         this.config = config;
         this.clientProvider = clientProvider;
         this.logger = logger;
