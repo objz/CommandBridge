@@ -1,0 +1,5 @@
+#
+debug: false
+remote: "127.0.0.1"
+port: 8080
+secret: "CHANGE_ME"
