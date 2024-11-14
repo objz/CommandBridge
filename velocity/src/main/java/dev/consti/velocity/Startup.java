@@ -1,14 +1,13 @@
 package dev.consti.velocity;
 
-import com.velocitypowered.api.proxy.ProxyServer;
+
 import dev.consti.logging.Logger;
 import dev.consti.utils.ConfigManager;
 import dev.consti.velocity.websocket.Server;
-import org.slf4j.LoggerFactory;
+
 
 
 public class Startup {
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(Startup.class);
     private final Logger logger;
     private final ConfigManager config;
     private final Server server;
