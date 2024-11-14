@@ -2,14 +2,8 @@ package dev.consti.bukkit;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-
-
 public class Main extends JavaPlugin {
-    WebSocketClientImpl webSocketClient;
-    private BukkitStartup startup;
-
-    public Main() {
-    }
+    private Startup startup;
 
     @Override
     public void onEnable() {

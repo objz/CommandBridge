@@ -1,38 +1,37 @@
-package dev.consti;
+package dev.consti.velocity;
 
 import com.velocitypowered.api.proxy.ProxyServer;
+import dev.consti.logging.Logger;
+import dev.consti.utils.ConfigManager;
+import dev.consti.velocity.websocket.Server;
+import org.slf4j.LoggerFactory;
 
-import server.ServerProvider;
-import utils.ConfigProvider;
-import utils.Logger;
 
-public class VelocityStartup {
-    private final ProxyServer server;
-    private final ConfigProvider config;
-    private final ServerProvider serverProvider;
+public class Startup {
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(Startup.class);
     private final Logger logger;
+    private final ConfigManager config;
+    private final Server server;
 
-    public VelocityStartup(ProxyServer server, ConfigProvider config, Logger logger, ServerProvider serverProvider) {
-        this.server = server; 
-        this.config = config;
-        this.serverProvider = serverProvider;
-        this.logger = logger;
 
+    public Startup() {
+        this.logger = new Logger();
+        this.config = new ConfigManager(logger, "CommandBridge");
+        this.server = new Server(logger, config.getSecret());
     }
 
     public void start() {
-        config.loadConfig("velocity-config.yml", "config.yml");
-        config.loadSecret("secret.key");
-        logger.setDebug(Boolean.parseBoolean(config.getKey("debug")));
-        logger.info("Starting SocketLib");
-        logger.debug("Debug mode enabled");
-        serverProvider.startServer(Integer.parseInt(config.getKey("port")), config.getKey("host"), config.getSecret());
-
+        logger.info("Starting CommandBridge");
+        String configName = "config.yml";
+        logger.setDebug(Boolean.parseBoolean(config.getKey(configName, "debug")));
+        config.loadConfig("velocity-config.yml", configName);
+        config.loadSecret();
+        server.startServer(Integer.parseInt(config.getKey(configName, "port")), config.getKey(configName, "host"));
     }
 
     public void stop() {
         logger.info("Stopping SocketLib");
-        serverProvider.stopServer(Integer.parseInt(config.getKey("delay")));
+        server.stopServer(Integer.parseInt(config.getKey("config.yml", "timeout")));
     }
 
 

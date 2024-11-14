@@ -3,5 +3,5 @@ debug: false
 hostname: "main"
 host: "127.0.0.1"
 port: 8080
-delay: 0
+timeout: 0
 

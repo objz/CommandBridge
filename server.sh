@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Server paths
-SERVER1_DIR="/mnt/FastStorage/Server-TEST/SocketLib/Velocity/"
-SERVER2_DIR="/mnt/FastStorage/Server-TEST/SocketLib/Bukkit/"
+SERVER1_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Velocity/"
+SERVER2_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Bukkit/"
 
 # Server JAR files
 SERVER1_JAR="velocity-3.3.0-SNAPSHOT-436.jar"
