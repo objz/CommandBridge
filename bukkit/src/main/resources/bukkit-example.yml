@@ -1,0 +1,23 @@
+##########################################################################
+# THIS IS AN EXAMPLE WHEN A COMMAND IS DISPATCHED TO THE BUKKIT SERVER OR
+# SERVERS AND THE COMMANDS GET EXECUTED ON THE VELOCITY SERVER
+##########################################################################
+
+# The name of the command that will be dispatched
+name: examplebukkit
+# Whether the command is enabled
+enabled: true
+# Ignore permission check
+ignore-permission-check: false
+# Hide permission warning
+hide-permission-warning: false
+# The list of commands to execute on the Velocity server
+commands:
+  # The command to execute on the target server
+  # IMPORTANT: The command must be enclosed in single quotes
+  - command: 'velocity info'
+    # This can be either "player" or "console"
+    target-executor: 'player'
+    # Target Velocity server ID
+    target-server-ids: ['main']
+  # Add more commands here

@@ -1,6 +1,6 @@
-# 
+#
 debug: false
-hostname: "main"
+server-id: "main"
 host: "127.0.0.1"
 port: 8080
 timeout: 0
