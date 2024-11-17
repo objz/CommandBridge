@@ -2,8 +2,8 @@ package dev.consti.bukkit;
 
 import dev.consti.bukkit.utils.Script;
 import dev.consti.bukkit.websocket.Client;
-import dev.consti.utils.ConfigManager;
 import dev.consti.logging.Logger;
+import dev.consti.utils.ConfigManager;
 import dev.consti.utils.VersionChecker;
 
 public class Startup {
@@ -14,13 +14,13 @@ public class Startup {
     private final Client client;
 
     private Startup() {
-        this.logger = new Logger();
+        this.logger = new Logger("CommandBridge");
         this.config = new ConfigManager(logger, "CommandBridge");
         this.script = new Script(logger, "CommandBridge");
         config.copyConfig("bukkit-config.yml", "config.yml");
         config.loadAllConfigs();
         logger.setDebug(Boolean.parseBoolean(config.getKey("config.yml", "debug")));
-        this.client = new Client(logger, config.getSecret());
+        this.client = new Client(logger, config.getKey("config.yml", "secret"));
     }
 
     public static synchronized Startup getInstance() {

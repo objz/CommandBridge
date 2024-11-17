@@ -1,6 +1,6 @@
 package dev.consti.velocity;
 
-import com.velocitypowered.api.event.EventManager;
+import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -8,6 +8,7 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+
 import dev.consti.logging.Logger;
 import dev.consti.utils.VersionChecker;
 import dev.consti.velocity.utils.Helper;
@@ -18,10 +19,13 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "2.0.0", authors = "72-S")
+
+
 public class Main{
     private final Startup startup = Startup.getInstance();
     private final ProxyServer server;
-
+    
+    @Inject
     public Main(ProxyServer server) {
         this.server = server;
     }
