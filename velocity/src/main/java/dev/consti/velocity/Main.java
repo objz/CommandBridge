@@ -12,6 +12,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.consti.logging.Logger;
 import dev.consti.utils.VersionChecker;
 import dev.consti.velocity.utils.Helper;
+import dev.consti.velocity.utils.ProxyServerHolder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -22,25 +23,32 @@ import net.kyori.adventure.text.format.TextDecoration;
 
 
 public class Main{
-    private final Startup startup = Startup.getInstance();
-    private final ProxyServer server;
-    
+    private static Main instance;
+    private final Runtime runtime = Runtime.getInstance();
+    private final ProxyServer proxy;
+
     @Inject
-    public Main(ProxyServer server) {
-        this.server = server;
+    public Main(ProxyServer proxy) {
+        this.proxy = proxy;
+        instance = this;
+        ProxyServerHolder.setProxyServer(proxy);
+    }
+
+    public static Main getInstance() {
+        return instance;
     }
 
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        startup.start();
-        Helper helper = new Helper(server, this);
+        runtime.start();
+        Helper helper = new Helper(proxy, this);
         helper.registerCommands();
     }    
     
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
-        startup.stop();
+        runtime.stop();
     }
 
     public static String getVersion() {
@@ -50,7 +58,7 @@ public class Main{
 
     @Subscribe
     public void onPlayerJoin(PostLoginEvent event) {
-        Logger logger = Startup.getInstance().getLogger();
+        Logger logger = Runtime.getInstance().getLogger();
         Player player = event.getPlayer();
 
         if (player == null) {
@@ -61,7 +69,7 @@ public class Main{
         if (player.hasPermission("commandbridge.admin")) {
             logger.debug("Checking for updates...");
 
-            server.getScheduler().buildTask(this, () -> {
+            proxy.getScheduler().buildTask(this, () -> {
                 String currentVersion = Main.getVersion();
                 String latestVersion = VersionChecker.getLatestVersion();
 

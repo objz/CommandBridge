@@ -6,25 +6,21 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.connection.PostLoginEvent;
-import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.consti.logging.Logger;
 import dev.consti.utils.VersionChecker;
 import dev.consti.velocity.Main;
-import dev.consti.velocity.Startup;
+import dev.consti.velocity.Runtime;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
 public class Helper {
-    private final ProxyServer server;
+    private final ProxyServer proxy;
     private final Main plugin;
 
-    public Helper(ProxyServer server, Main plugin) {
-        this.server = server;
+    public Helper(ProxyServer proxy, Main plugin) {
+        this.proxy = proxy;
         this.plugin = plugin;
     }
 
@@ -40,8 +36,8 @@ public class Helper {
                 .then(LiteralArgumentBuilder.<CommandSource>literal("reload")
                         .executes(context -> {
                             if (context.getSource().hasPermission("commandbridge.admin")) {
-                                Startup.getInstance().getConfig().reload();
-                                Startup.getInstance().getScript().reload();
+                                Runtime.getInstance().getConfig().reload();
+                                Runtime.getInstance().getScript().reload();
                                 //TODO: send message to Bukkit and reload the scripts and config there also
                                 context.getSource().sendMessage(Component.text("Scripts reloaded!", NamedTextColor.GREEN));
                                 return 1;
@@ -89,10 +85,10 @@ public class Helper {
                         .build())
                 .build();
 
-        CommandMeta commandMeta = server.getCommandManager().metaBuilder("commandbridge").aliases("cb").plugin(plugin).build();
+        CommandMeta commandMeta = proxy.getCommandManager().metaBuilder("commandbridge").aliases("cb").plugin(plugin).build();
 
         BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
-        server.getCommandManager().register(commandMeta, brigadierCommand);
+        proxy.getCommandManager().register(commandMeta, brigadierCommand);
     }
 
     private int sendHelpMessage(CommandContext<CommandSource> context) {

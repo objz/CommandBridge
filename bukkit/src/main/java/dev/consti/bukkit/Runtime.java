@@ -1,52 +1,47 @@
-package dev.consti.velocity;
+package dev.consti.bukkit;
 
-
-
+import dev.consti.bukkit.utils.onScript;
+import dev.consti.bukkit.websocket.Client;
 import dev.consti.logging.Logger;
 import dev.consti.utils.ConfigManager;
 import dev.consti.utils.VersionChecker;
-import dev.consti.velocity.utils.Script;
-import dev.consti.velocity.websocket.Server;
 
-
-public class Startup {
-    private static Startup instance;
+public class Runtime {
+    private static Runtime instance;
     private final Logger logger;
     private final ConfigManager config;
-    private final Script script;
-    private final Server server;
+    private final onScript onScript;
+    private final Client client;
 
-
-    private Startup() {
+    private Runtime() {
         this.logger = new Logger("CommandBridge");
         this.config = new ConfigManager(logger, "CommandBridge");
-        this.script = new Script(logger, "CommandBridge");
-        config.copyConfig("velocity-config.yml", "config.yml");
+        this.onScript = new onScript(logger, "CommandBridge");
+        config.copyConfig("bukkit-config.yml", "config.yml");
         config.loadAllConfigs();
-        config.loadSecret();
         logger.setDebug(Boolean.parseBoolean(config.getKey("config.yml", "debug")));
-        this.server = new Server(logger, config.getSecret());
+        this.client = new Client(logger, config.getKey("config.yml", "secret"));
     }
 
-    public static synchronized Startup getInstance() {
+    public static synchronized Runtime getInstance() {
         if (instance == null) {
-            instance = new Startup();
+            instance = new Runtime();
         }
         return instance;
     }
 
     public void start() {
         logger.info("Starting CommandBridge");
-        script.copyDefaultScript("velocity-example.yml", "example.yml");
-        script.loadAllScripts();
-        server.startServer(Integer.parseInt(config.getKey("config.yml", "port")), config.getKey("config.yml", "host"));
+        onScript.copyDefaultScript("bukkit-example.yml", "example.yml");
+        onScript.loadAllScripts();
+        client.connect(config.getKey("config.yml", "remote"), Integer.parseInt(config.getKey("config.yml", "port")));
         VersionChecker.setProjectId("wIuI4ru2");
         checkForUpdates();
     }
 
     public void stop() {
-        logger.info("Stopping SocketLib");
-        server.stopServer(Integer.parseInt(config.getKey("config.yml", "timeout")));
+        logger.info("Stopping CommandBridge");
+        client.disconnect();
     }
 
     private void checkForUpdates() {
@@ -70,17 +65,15 @@ public class Startup {
         }).start();
     }
 
-
     public ConfigManager getConfig() {
         return config;
     }
 
-    public Script getScript() {
-        return script;
+    public onScript getScript() {
+        return onScript;
     }
 
     public Logger getLogger() {
         return logger;
     }
-
 }

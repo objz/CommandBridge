@@ -3,16 +3,16 @@ package dev.consti.bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Main extends JavaPlugin {
-    private final Startup startup = Startup.getInstance();
+    private final Runtime runtime = Runtime.getInstance();
 
     @Override
     public void onEnable() {
-        startup.start();
+        runtime.start();
     }
 
     @Override
     public void onDisable() {
-        startup.stop();
+        runtime.stop();
     }
 
     public static String getVersion() {

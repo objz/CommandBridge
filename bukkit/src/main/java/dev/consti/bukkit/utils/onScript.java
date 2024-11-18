@@ -1,12 +1,12 @@
-package dev.consti.velocity.utils;
+package dev.consti.bukkit.utils;
 
 import dev.consti.logging.Logger;
 import dev.consti.utils.ScriptManager;
 
-public class Script extends ScriptManager {
+public class onScript extends ScriptManager {
     private final Logger logger;
 
-    public Script(Logger logger, String pluginName) {
+    public onScript(Logger logger, String pluginName) {
         super(logger, pluginName);
         this.logger = logger;
     }
