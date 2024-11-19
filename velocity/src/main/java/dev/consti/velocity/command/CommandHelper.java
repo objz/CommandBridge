@@ -111,13 +111,12 @@ public class CommandHelper {
         if (!cmd.getTargetServerIds().isEmpty()) {
             logger.debug("Handling server-specific execution for command: {}", cmd.getCommand());
             for (String serverId : cmd.getTargetServerIds()) {
-                proxy.getServer(serverId).ifPresentOrElse(
-                        server -> {
-                            logger.info("Sending command to server: {}", serverId);
-                            Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player);
-                        },
-                        () -> logger.warn("Server {} not found", serverId)
-                );
+                if (Runtime.getInstance().getServer().isServerConnected(serverId)) {
+                    logger.info("Sending command to server: {}", serverId);
+                    Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player);
+                } else {
+                    logger.warn("Server {} not found", serverId);
+                }
             }
         } else {
             logger.warn("Target server ids are empty. Command: {}", cmd.getCommand());

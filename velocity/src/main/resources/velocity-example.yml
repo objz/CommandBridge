@@ -34,7 +34,7 @@ commands:
   # Add more commands here
   - command: 'say I love Coding!'
     delay: 0
-    target-server-id: ['lobby']
+    target-server-ids: ['lobby']
     target-executor: 'player'
     wait-until-player-is-online: true
     check-if-executor-is-player: false

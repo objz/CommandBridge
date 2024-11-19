@@ -6,12 +6,17 @@ import dev.consti.websocket.SimpleWebSocketServer;
 import org.java_websocket.WebSocket;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Server extends SimpleWebSocketServer {
     private final Logger logger;
+    private final List<String> connectedClients;
 
     public Server(Logger logger, String secret) {
         super(logger, secret);
         this.logger = logger;
+        this.connectedClients = new ArrayList<>();
         logger.debug("WebSocket server initialized with secret.");
     }
 
@@ -24,11 +29,11 @@ public class Server extends SimpleWebSocketServer {
             logger.info("Processing message of type: {}", type);
 
             switch (type) {
-                case "commandResponse":
-                    handleCommandResponse(webSocket, jsonObject);
+                case "command":
+                    handleCommandRequest(webSocket, jsonObject);
                     break;
-                case "status":
-                    handleStatusRequest(webSocket);
+                case "system":
+                    handleSystemRequest(webSocket, jsonObject);
                     break;
                 default:
                     logger.warn("Unknown message type received: {}", type);
@@ -40,17 +45,33 @@ public class Server extends SimpleWebSocketServer {
         }
     }
 
-    private void handleCommandResponse(WebSocket webSocket, JSONObject jsonObject) {
+    private void handleCommandRequest(WebSocket webSocket, JSONObject jsonObject) {
         logger.info("Handling command response: {}", jsonObject.toString());
         // Add your handling logic here
     }
 
-    private void handleStatusRequest(WebSocket webSocket) {
-        logger.info("Handling status request.");
-        JSONObject response = new JSONObject();
-        response.put("status", "running");
-        response.put("timestamp", java.time.Instant.now().toString());
-        sendMessage(response);
+    private void handleSystemRequest(WebSocket webSocket, JSONObject jsonObject) {
+        logger.info("Handling system request.");
+        String type = jsonObject.getString("type");
+        String message = jsonObject.getString("message");
+
+
+        if (type.equals("name")) {
+            if (message != null) {
+                connectedClients.add(message);
+                logger.info("Added connected client: {}", message);
+            } else {
+                logger.warn("No name provided in system request.");
+            }
+        } else {
+            logger.warn("No type provided");
+        }
+    }
+
+    public boolean isServerConnected(String serverName) {
+        boolean exists = connectedClients.contains(serverName);
+        logger.debug("Checking if server '{}' is connected: {}", serverName, exists);
+        return exists;
     }
 
     private void sendError(WebSocket webSocket, String errorMessage) {
