@@ -8,66 +8,74 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-
 import dev.consti.logging.Logger;
 import dev.consti.utils.VersionChecker;
-import dev.consti.velocity.utils.Helper;
-import dev.consti.velocity.utils.ProxyServerHolder;
+import dev.consti.velocity.core.Runtime;
+import dev.consti.velocity.utils.GeneralUtils;
+import dev.consti.velocity.utils.ProxyUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "2.0.0", authors = "72-S")
-
-
-public class Main{
+public class Main {
     private static Main instance;
-    private final Runtime runtime = Runtime.getInstance();
+    private Runtime runtime;
     private final ProxyServer proxy;
 
     @Inject
     public Main(ProxyServer proxy) {
         this.proxy = proxy;
         instance = this;
-        ProxyServerHolder.setProxyServer(proxy);
+        ProxyUtils.setProxyServer(proxy);
     }
 
     public static Main getInstance() {
         return instance;
     }
 
-
-    @Subscribe
-    public void onProxyInitialization(ProxyInitializeEvent event) {
-        runtime.start();
-        Helper helper = new Helper(proxy, this);
-        helper.registerCommands();
-    }    
-    
-    @Subscribe
-    public void onProxyShutdown(ProxyShutdownEvent event) {
-        runtime.stop();
-    }
-
     public static String getVersion() {
         return Main.class.getAnnotation(Plugin.class).version();
     }
 
+    private Logger getLogger() {
+        return Runtime.getInstance().getLogger();
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        getLogger().info("Initializing CommandBridge...");
+        runtime = Runtime.getInstance();
+        try {
+            runtime.getStartup().start();
+            getLogger().info("CommandBridge initialized successfully.");
+        } catch (Exception e) {
+            getLogger().error("Failed to initialize CommandBridge: {}", e.getMessage(), e);
+        }
+    }
+
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent event) {
+        getLogger().info("Stopping CommandBridge...");
+        try {
+            runtime.getStartup().stop();
+            getLogger().info("CommandBridge stopped successfully.");
+        } catch (Exception e) {
+            getLogger().error("Failed to stop CommandBridge: {}", e.getMessage(), e);
+        }
+    }
 
     @Subscribe
     public void onPlayerJoin(PostLoginEvent event) {
-        Logger logger = Runtime.getInstance().getLogger();
         Player player = event.getPlayer();
-
         if (player == null) {
-            logger.warn("Player object is null");
+            getLogger().warn("PostLoginEvent triggered with a null player object.");
             return;
         }
 
         if (player.hasPermission("commandbridge.admin")) {
-            logger.debug("Checking for updates...");
+            getLogger().debug("Player {} has admin permissions. Checking for updates...", player.getUsername());
 
             proxy.getScheduler().buildTask(this, () -> {
                 String currentVersion = Main.getVersion();
@@ -75,7 +83,7 @@ public class Main{
 
                 if (latestVersion == null) {
                     player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                    logger.warn("Unable to check for updates: latestVersion is null.");
+                    getLogger().warn("Update check failed: Unable to retrieve the latest version.");
                     return;
                 }
 
@@ -86,13 +94,13 @@ public class Main{
                                     .color(NamedTextColor.BLUE)
                                     .decorate(TextDecoration.UNDERLINED)
                                     .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
-                    logger.debug("Notified player " + player.getUsername() + " about the new version: " + latestVersion);
+                    getLogger().info("Notified player {} about the new version: {}", player.getUsername(), latestVersion);
                 } else {
-                    logger.debug("Player " + player.getUsername() + " is running the latest version: " + currentVersion);
+                    getLogger().info("Player {} is running the latest version: {}", player.getUsername(), currentVersion);
                 }
             }).schedule();
+        } else {
+            getLogger().debug("Player {} does not have admin permissions. No update check performed.", player.getUsername());
         }
-
     }
-
 }
