@@ -1,24 +1,22 @@
-package dev.consti.velocity.core;
+package dev.consti.bukkit.core;
 
+import dev.consti.bukkit.Main;
+import dev.consti.bukkit.utils.ScriptUtils;
+import dev.consti.bukkit.websocket.Client;
 import dev.consti.logging.Logger;
 import dev.consti.utils.ConfigManager;
-import dev.consti.velocity.Main;
-import dev.consti.velocity.command.CommandHelper;
-import dev.consti.velocity.command.CommandRegistrar;
-import dev.consti.velocity.utils.GeneralUtils;
-import dev.consti.velocity.utils.ScriptUtils;
-import dev.consti.velocity.websocket.Server;
+import dev.consti.utils.VersionChecker;
 
 public class Runtime {
     private static Runtime instance;
     private Logger logger;
     private ConfigManager config;
     private ScriptUtils scriptUtils;
-    private Server server;
+    private Client client;
     private Startup startup;
-    private CommandHelper helper;
-    private CommandRegistrar registrar;
-    private GeneralUtils generalUtils;
+//    private CommandHelper helper;
+//    private CommandRegistrar registrar;
+//    private GeneralUtils generalUtils;
 
     private Runtime() {}
 
@@ -54,12 +52,12 @@ public class Runtime {
         return scriptUtils;
     }
 
-    public synchronized Server getServer() {
-        if (server == null) {
-            server = new Server(getLogger(), getConfig().getSecret());
+    public synchronized Client getClient() {
+        if (client == null) {
+            client = new Client(getLogger(), getConfig().getSecret());
             getLogger().debug("Server initialized.");
         }
-        return server;
+        return client;
     }
 
     public synchronized Startup getStartup() {
@@ -70,27 +68,27 @@ public class Runtime {
         return startup;
     }
 
-    public synchronized CommandHelper getHelper() {
-        if (helper == null) {
-            helper = new CommandHelper(getLogger(), Main.getInstance());
-            getLogger().debug("CommandHelper initialized.");
-        }
-        return helper;
-    }
-
-    public synchronized CommandRegistrar getRegistrar() {
-        if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
-            getLogger().debug("CommandRegistrar initialized.");
-        }
-        return registrar;
-    }
-
-    public synchronized GeneralUtils getGeneralUtils() {
-        if (generalUtils == null) {
-            generalUtils = new GeneralUtils(getLogger());
-            getLogger().debug("GeneralUtils initialized.");
-        }
-        return generalUtils;
-    }
+//    public synchronized CommandHelper getHelper() {
+//        if (helper == null) {
+//            helper = new CommandHelper(getLogger(), Main.getInstance());
+//            getLogger().debug("CommandHelper initialized.");
+//        }
+//        return helper;
+//    }
+//
+//    public synchronized CommandRegistrar getRegistrar() {
+//        if (registrar == null) {
+//            registrar = new CommandRegistrar(getLogger());
+//            getLogger().debug("CommandRegistrar initialized.");
+//        }
+//        return registrar;
+//    }
+//
+//    public synchronized GeneralUtils getGeneralUtils() {
+//        if (generalUtils == null) {
+//            generalUtils = new GeneralUtils(getLogger());
+//            getLogger().debug("GeneralUtils initialized.");
+//        }
+//        return generalUtils;
+//    }
 }

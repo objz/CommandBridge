@@ -1,18 +1,19 @@
 package dev.consti.bukkit;
 
+import dev.consti.bukkit.core.Runtime;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class Main extends JavaPlugin {
-    private final Runtime runtime = Runtime.getInstance();
+    private final dev.consti.bukkit.core.Runtime runtime = Runtime.getInstance();
 
     @Override
     public void onEnable() {
-        runtime.start();
+
     }
 
     @Override
     public void onDisable() {
-        runtime.stop();
+        ;
     }
 
     public static String getVersion() {

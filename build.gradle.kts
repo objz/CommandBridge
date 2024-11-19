@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":bukkit"))
+    implementation(project(":bukkit", configuration = "shadowAPI"))
     implementation(project(":velocity"))
 }
 
@@ -26,6 +26,7 @@ java {
 tasks {
     // Configure the existing shadowJar task, don't register a new one
     shadowJar {
+        dependsOn(":bukkit:shadowJar")
 
         // Include the compiled outputs of core, bukkit, and velocity
         from(project(":bukkit").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
