@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.3"
 }
 
 group = "dev.consti"
@@ -21,6 +21,7 @@ java {
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT")
+    implementation("org.ow2.asm:asm:9.4")
     implementation("com.github.72-S:FoundationLib:master-SNAPSHOT")
     implementation("dev.jorel:commandapi-bukkit-shade:9.6.0")
     compileOnly("dev.jorel:commandapi-annotations:9.6.0")
@@ -29,20 +30,10 @@ dependencies {
 
 tasks {
     shadowJar {
-        archiveClassifier.set("shadowAPI")
-        relocate("dev.jorel.commandapi", "dev.consti.commandapi")
     }
 
     build {
         dependsOn(shadowJar)
     }
-}
-
-configurations {
-    create("shadowAPI")
-}
-
-artifacts {
-    add("shadowAPI", tasks.shadowJar)
 }
 

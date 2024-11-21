@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.3"
     id("maven-publish")
 }
 
@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":bukkit", configuration = "shadowAPI"))
+    implementation(project(":bukkit"))
     implementation(project(":velocity"))
 }
 
@@ -27,6 +27,9 @@ tasks {
     // Configure the existing shadowJar task, don't register a new one
     shadowJar {
         dependsOn(":bukkit:shadowJar")
+
+        relocate("dev.jorel.commandapi", "dev.consti.commandapi")
+
 
         // Include the compiled outputs of core, bukkit, and velocity
         from(project(":bukkit").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
