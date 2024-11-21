@@ -43,48 +43,48 @@ public class Client extends SimpleWebSocketClient {
         logger.info("Handling command response: {}", jsonObject.toString());
     }
 
-        private void handleSystemRequest(JSONObject jsonObject) {
-        logger.info("Handling system request.");
-        String type = jsonObject.getString("type");
-        String message = jsonObject.getString("message");
-
-
-        if (type.equals("name")) {
-            if (message != null) {
-                logger.info("Added connected client: {}", message);
-            } else {
-                logger.warn("No name provided in system request.");
-            }
-        } else {
-            logger.warn("No type provided");
-        }
+        private void handleSystemRequest(JSONObject jsonObject) {
+        logger.info("Handling system request.");
+        String type = jsonObject.getString("type");
+        String message = jsonObject.getString("message");
+
+
+        if (type.equals("name")) {
+            if (message != null) {
+                logger.info("Added connected client: {}", message);
+            } else {
+                logger.warn("No name provided in system request.");
+            }
+        } else {
+            logger.warn("No type provided");
+        }
     }
 
-    private void sendError(String errorMessage) {
-        JSONObject errorResponse = new JSONObject();
-        errorResponse.put("type", "error");
-        errorResponse.put("message", errorMessage);
-        sendMessage(errorResponse);
+    private void sendError(String errorMessage) {
+        JSONObject errorResponse = new JSONObject();
+        errorResponse.put("type", "error");
+        errorResponse.put("message", errorMessage);
+        sendMessage(errorResponse);
     }
 
     public void sendJSON(String command, String server, String[] arguments, Player executor) {
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("type", "command");
-        jsonObject.put("command", command);
-        jsonObject.put("server", server);
-        jsonObject.put("arguments", arguments);
-
-        if (executor != null) {
-            JSONObject executorDetails = new JSONObject();
-            //executorDetails.put("name", executor.getUsername());
-            executorDetails.put("uuid", executor.getUniqueId().toString());
-            jsonObject.put("executor", executorDetails);
-        }
-
-        jsonObject.put("timestamp", java.time.Instant.now().toString());
-        jsonObject.put("status", "success");
-
-        logger.info("Sending JSON command to server: {} | Payload: {}", server, jsonObject.toString());
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("type", "command");
+        jsonObject.put("command", command);
+        jsonObject.put("server", server);
+        jsonObject.put("arguments", arguments);
+
+        if (executor != null) {
+            JSONObject executorDetails = new JSONObject();
+            executorDetails.put("name", executor.getName());
+            executorDetails.put("uuid", executor.getUniqueId().toString());
+            jsonObject.put("executor", executorDetails);
+        }
+
+        jsonObject.put("timestamp", java.time.Instant.now().toString());
+        jsonObject.put("status", "success");
+
+        logger.info("Sending JSON command to server: {} | Payload: {}", server, jsonObject.toString());
         sendMessage(jsonObject);
     }
 }

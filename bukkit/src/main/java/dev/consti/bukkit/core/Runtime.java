@@ -56,7 +56,7 @@ public class Runtime {
 
     public synchronized Client getClient() {
         if (client == null) {
-            client = new Client(getLogger(), getConfig().getSecret());
+            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
             getLogger().debug("Server initialized.");
         }
         return client;
@@ -80,7 +80,7 @@ public class Runtime {
 
     public synchronized CommandRegistrar getRegistrar() {
         if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
+            registrar = new CommandRegistrar(getLogger(), Main.getInstance());
             getLogger().debug("CommandRegistrar initialized.");
         }
         return registrar;

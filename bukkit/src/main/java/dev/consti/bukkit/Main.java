@@ -4,6 +4,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.consti.bukkit.core.Runtime;
 import dev.consti.logging.Logger;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIBukkitConfig;
 
 public class Main extends JavaPlugin {
     private static Main instance;
@@ -23,8 +25,14 @@ public class Main extends JavaPlugin {
     public Logger getLoggerInst() {
         return Runtime.getInstance().getLogger();
     }
+
+    @Override
+    public void onLoad() {
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).usePluginNamespace().silentLogs(true));
+    }
     @Override
     public void onEnable() {
+        CommandAPI.onEnable();
         getLoggerInst().info("Initializing CommandBridge...");
         runtime = Runtime.getInstance();
         try {
@@ -37,6 +45,7 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        CommandAPI.onDisable();
         getLoggerInst().info("Stopping CommandBridge");
         try {
             runtime.getStartup().stop();

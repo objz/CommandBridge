@@ -1,5 +1,7 @@
 package dev.consti.bukkit.core;
 
+import org.json.JSONObject;
+
 import dev.consti.bukkit.Main;
 import dev.consti.logging.Logger;
 import dev.consti.utils.VersionChecker;
@@ -32,9 +34,14 @@ public class Startup {
                     runtime.getConfig().getKey("config.yml", "remote"),
                     Integer.parseInt(runtime.getConfig().getKey("config.yml", "port"))
             );
+            
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("type", "name");
+            jsonObject.put("message", runtime.getConfig().getKey("config.yml", "name"));
+            runtime.getClient().sendMessage(jsonObject);
 
             logger.debug("Setting up version checker...");
-            VersionChecker.setProjectId("wiuI4ru2");
+            VersionChecker.setProjectId("wIuI4ru2");
 
             logger.debug("Checking for updates...");
             checkForUpdates();
