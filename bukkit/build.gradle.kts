@@ -29,9 +29,6 @@ dependencies {
 }
 
 tasks {
-    shadowJar {
-    }
-
     build {
         dependsOn(shadowJar)
     }

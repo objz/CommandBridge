@@ -3,10 +3,8 @@ package dev.consti.bukkit.core;
 import dev.consti.bukkit.Main;
 import dev.consti.logging.Logger;
 import dev.consti.utils.VersionChecker;
-import org.slf4j.LoggerFactory;
 
 public class Startup {
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(Startup.class);
     private final Logger logger;
 
     public Startup(Logger logger) {

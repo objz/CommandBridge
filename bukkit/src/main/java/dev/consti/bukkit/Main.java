@@ -1,22 +1,49 @@
 package dev.consti.bukkit;
 
-import dev.consti.bukkit.core.Runtime;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class Main extends JavaPlugin {
-    private final dev.consti.bukkit.core.Runtime runtime = Runtime.getInstance();
+import dev.consti.bukkit.core.Runtime;
+import dev.consti.logging.Logger;
 
+public class Main extends JavaPlugin {
+    private static Main instance;
+    private Runtime runtime;
+
+    public Main() {
+        instance = this;
+    }
+    public static String getVersion() {
+        return "2.0.0";
+    }
+
+    public static Main getInstance() {
+        return instance;
+    }
+
+    public Logger getLoggerInst() {
+        return Runtime.getInstance().getLogger();
+    }
     @Override
     public void onEnable() {
-
+        getLoggerInst().info("Initializing CommandBridge...");
+        runtime = Runtime.getInstance();
+        try {
+            runtime.getStartup().start();
+            getLoggerInst().info("CommandBridge initialized successfully.");
+        } catch (Exception e) {
+            getLoggerInst().error("Failed to initialize CommandBridge: {}", e);
+        }
     }
 
     @Override
     public void onDisable() {
-    }
-
-    public static String getVersion() {
-        return "2.0.0";
+        getLoggerInst().info("Stopping CommandBridge");
+        try {
+            runtime.getStartup().stop();
+            getLoggerInst().info("CommandBridge stopped successfully.");
+        } catch (Exception e) {
+            getLoggerInst().error("Failed to stop CommandBridge: {}", e);
+        }
     }
 
 }

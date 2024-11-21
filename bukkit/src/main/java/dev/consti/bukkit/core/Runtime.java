@@ -1,11 +1,13 @@
 package dev.consti.bukkit.core;
 
 import dev.consti.bukkit.Main;
+import dev.consti.bukkit.command.CommandHelper;
+import dev.consti.bukkit.command.CommandRegistrar;
+import dev.consti.bukkit.utils.GeneralUtils;
 import dev.consti.bukkit.utils.ScriptUtils;
 import dev.consti.bukkit.websocket.Client;
 import dev.consti.logging.Logger;
 import dev.consti.utils.ConfigManager;
-import dev.consti.utils.VersionChecker;
 
 public class Runtime {
     private static Runtime instance;
@@ -14,9 +16,9 @@ public class Runtime {
     private ScriptUtils scriptUtils;
     private Client client;
     private Startup startup;
-//    private CommandHelper helper;
-//    private CommandRegistrar registrar;
-//    private GeneralUtils generalUtils;
+    private CommandHelper helper;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
 
     private Runtime() {}
 
@@ -68,27 +70,27 @@ public class Runtime {
         return startup;
     }
 
-//    public synchronized CommandHelper getHelper() {
-//        if (helper == null) {
-//            helper = new CommandHelper(getLogger(), Main.getInstance());
-//            getLogger().debug("CommandHelper initialized.");
-//        }
-//        return helper;
-//    }
-//
-//    public synchronized CommandRegistrar getRegistrar() {
-//        if (registrar == null) {
-//            registrar = new CommandRegistrar(getLogger());
-//            getLogger().debug("CommandRegistrar initialized.");
-//        }
-//        return registrar;
-//    }
-//
-//    public synchronized GeneralUtils getGeneralUtils() {
-//        if (generalUtils == null) {
-//            generalUtils = new GeneralUtils(getLogger());
-//            getLogger().debug("GeneralUtils initialized.");
-//        }
-//        return generalUtils;
-//    }
+    public synchronized CommandHelper getHelper() {
+        if (helper == null) {
+            helper = new CommandHelper(getLogger(), Main.getInstance());
+            getLogger().debug("CommandHelper initialized.");
+        }
+        return helper;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("CommandRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
 }
