@@ -34,11 +34,6 @@ public class Startup {
                     runtime.getConfig().getKey("config.yml", "remote"),
                     Integer.parseInt(runtime.getConfig().getKey("config.yml", "port"))
             );
-            
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("type", "name");
-            jsonObject.put("message", runtime.getConfig().getKey("config.yml", "name"));
-            runtime.getClient().sendMessage(jsonObject);
 
             logger.debug("Setting up version checker...");
             VersionChecker.setProjectId("wIuI4ru2");

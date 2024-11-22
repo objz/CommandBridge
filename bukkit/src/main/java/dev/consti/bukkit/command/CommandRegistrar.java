@@ -31,7 +31,7 @@ public class CommandRegistrar {
                         return helper.executeScriptCommands(sender, script, new String[0]);
                     })
                     // Add optional arguments
-                    .withArguments(new GreedyStringArgument("args"))
+                    .withOptionalArguments(new GreedyStringArgument("args"))
                     .executes((sender, args) -> {
                         String argsString = (String) args.get("args");
                         logger.debug("Command {} called with arguments: {}", commandName, argsString);

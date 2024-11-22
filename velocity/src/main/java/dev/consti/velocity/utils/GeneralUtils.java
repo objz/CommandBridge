@@ -12,9 +12,13 @@ import dev.consti.utils.VersionChecker;
 import dev.consti.velocity.Main;
 import dev.consti.velocity.core.Runtime;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+
+import java.util.List;
+import java.util.function.Consumer;
 
 public class GeneralUtils {
     private final Logger logger;
@@ -96,6 +100,9 @@ public class GeneralUtils {
                     .then(LiteralArgumentBuilder.<CommandSource>literal("help")
                             .executes(this::sendHelpMessage)
                             .build())
+                    .then(LiteralArgumentBuilder.<CommandSource>literal("list")
+                            .executes(this::listServers)
+                            .build())
                     .build();
 
             CommandMeta commandMeta = proxy.getCommandManager()
@@ -111,6 +118,27 @@ public class GeneralUtils {
             logger.error("Failed to register CommandBridge commands: {}", e.getMessage(), e);
         }
     }
+
+    private int listServers(CommandContext<CommandSource> context) {
+        CommandSource source = context.getSource();
+        List<String> connectedClients = Runtime.getInstance().getServer().getConnectedClients();
+
+        if (connectedClients.isEmpty()) {
+            source.sendMessage(Component.text("No clients are currently connected.").color(NamedTextColor.RED));
+        } else {
+            // Convert the list of clients to a single string, separated by commas
+            String clientsString = String.join(", ", connectedClients);
+
+            // Send the message with the connected clients
+            source.sendMessage(Component.text("===== Connected Clients =====").color(NamedTextColor.GOLD));
+            source.sendMessage(Component.text(clientsString).color(NamedTextColor.GREEN));
+            source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
+        }
+
+        return 1;
+    }
+
+
 
     private int sendHelpMessage(CommandContext<CommandSource> context) {
         CommandSource source = context.getSource();
