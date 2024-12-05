@@ -1,17 +1,19 @@
-package dev.consti.velocity.websocket;
-
-import com.velocitypowered.api.proxy.Player;
-import dev.consti.json.MessageBuilder;
-import dev.consti.json.MessageParser;
-import dev.consti.logging.Logger;
-import dev.consti.websocket.SimpleWebSocketServer;
-import org.java_websocket.WebSocket;
-import org.json.JSONObject;
+package dev.consti.commandbridge.velocity.websocket;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.java_websocket.WebSocket;
+
+import com.velocitypowered.api.proxy.Player;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.json.MessageBuilder;
+import dev.consti.foundationlib.json.MessageParser;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.websocket.SimpleWebSocketServer;
 
 public class Server extends SimpleWebSocketServer {
     private final Logger logger;
@@ -22,7 +24,6 @@ public class Server extends SimpleWebSocketServer {
         super(logger, secret);
         this.logger = logger;
         this.connectedClients = new ArrayList<>();
-        logger.debug("WebSocket server initialized with secret.");
     }
 
     @Override
@@ -44,7 +45,7 @@ public class Server extends SimpleWebSocketServer {
                     sendError(webSocket, "Unknown message type");
             }
         } catch (Exception e) {
-            logger.error("Error while processing message: {}. Error: {}", message, e.getMessage(), e);
+            logger.error("Error while processing message: {}: {}", e.getMessage(), e);
             sendError(webSocket, "Internal server error");
         }
     }
@@ -64,18 +65,19 @@ public class Server extends SimpleWebSocketServer {
         if (disconnectedClientName != null) {
             connectedClients.remove(disconnectedClientName);
             clientConnections.remove(disconnectedClientName);
-            logger.info("Removed disconnected client: {}", disconnectedClientName);
+            logger.debug("Removed disconnected client: {}", disconnectedClientName);
         } else {
             logger.warn("Disconnected client not found in client connections map.");
         }
     }
 
     private void handleCommandRequest(WebSocket webSocket, String message) {
-        logger.info("Handling command response: {}", message);
+        logger.debug("Handling command request.");
+        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
     }
 
     private void handleSystemRequest(WebSocket webSocket, String message) {
-        logger.info("Handling system request.");
+        logger.debug("Handling system request.");
         MessageParser parser = new MessageParser(message);
         String channel = parser.getBodyValueAsString("channel");
         String name = parser.getBodyValueAsString("name");
@@ -114,24 +116,25 @@ public class Server extends SimpleWebSocketServer {
         sendMessage(builder.build(), webSocket);
     }
 
-    public void sendJSON(String command, String server, String[] arguments, Player executor) {
-        WebSocket conn = clientConnections.get(server);
+    public void sendJSON(String command, String client, String[] arguments, Player executor, Boolean targetplayer) {
+        WebSocket conn = clientConnections.get(client);
         if (conn == null) {
-            logger.warn("Server '{}' is not connected, cannot send message.", server);
+            logger.warn("Server '{}' is not connected, cannot send message.", client);
             return;
         }
 
         MessageBuilder builder = new MessageBuilder("command");
         builder.addToBody("command", command);
-        builder.addToBody("server", server);
+        builder.addToBody("client", client);
         builder.addToBody("arguments", arguments);
 
         if (executor != null) {
+            builder.addToBody("target", targetplayer);
             builder.addToBody("name", executor.getUsername());
             builder.addToBody("uuid", executor.getUniqueId());
         }
-
-        logger.info("Sending JSON command to client: {} | Payload: {}", server, builder.build().toString());
+        logger.info("Senging JSON command to client: {}", client);
+        logger.debug("Payload: {}", builder.build().toString());
         sendMessage(builder.build(), conn);
     }
 

@@ -1,20 +1,20 @@
-package dev.consti.velocity.core;
+package dev.consti.commandbridge.bukkit.core;
 
-import dev.consti.logging.Logger;
-import dev.consti.utils.ConfigManager;
-import dev.consti.velocity.Main;
-import dev.consti.velocity.command.CommandHelper;
-import dev.consti.velocity.command.CommandRegistrar;
-import dev.consti.velocity.utils.GeneralUtils;
-import dev.consti.velocity.utils.ScriptUtils;
-import dev.consti.velocity.websocket.Server;
+import dev.consti.commandbridge.bukkit.Main;
+import dev.consti.commandbridge.bukkit.command.CommandHelper;
+import dev.consti.commandbridge.bukkit.command.CommandRegistrar;
+import dev.consti.commandbridge.bukkit.utils.GeneralUtils;
+import dev.consti.commandbridge.bukkit.utils.ScriptUtils;
+import dev.consti.commandbridge.bukkit.websocket.Client;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ConfigManager;
 
 public class Runtime {
     private static Runtime instance;
     private Logger logger;
     private ConfigManager config;
     private ScriptUtils scriptUtils;
-    private Server server;
+    private Client client;
     private Startup startup;
     private CommandHelper helper;
     private CommandRegistrar registrar;
@@ -25,7 +25,7 @@ public class Runtime {
     public static synchronized Runtime getInstance() {
         if (instance == null) {
             instance = new Runtime();
-            instance.getLogger().info("Runtime singleton instance initialized.");
+            instance.getLogger().debug("Runtime singleton instance initialized.");
         }
         return instance;
     }
@@ -54,12 +54,12 @@ public class Runtime {
         return scriptUtils;
     }
 
-    public synchronized Server getServer() {
-        if (server == null) {
-            server = new Server(getLogger(), getConfig().getSecret());
+    public synchronized Client getClient() {
+        if (client == null) {
+            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
             getLogger().debug("Server initialized.");
         }
-        return server;
+        return client;
     }
 
     public synchronized Startup getStartup() {
@@ -80,7 +80,7 @@ public class Runtime {
 
     public synchronized CommandRegistrar getRegistrar() {
         if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
+            registrar = new CommandRegistrar(getLogger(), Main.getInstance());
             getLogger().debug("CommandRegistrar initialized.");
         }
         return registrar;

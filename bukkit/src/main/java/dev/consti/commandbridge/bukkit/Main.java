@@ -1,9 +1,9 @@
-package dev.consti.bukkit;
+package dev.consti.commandbridge.bukkit;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-import dev.consti.bukkit.core.Runtime;
-import dev.consti.logging.Logger;
+import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
 

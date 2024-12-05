@@ -1,4 +1,4 @@
-package dev.consti.velocity.command;
+package dev.consti.commandbridge.velocity.command;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -7,12 +7,12 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
-import dev.consti.logging.Logger;
-import dev.consti.utils.ScriptManager;
-import dev.consti.velocity.Main;
-import dev.consti.velocity.core.Runtime;
-import dev.consti.velocity.utils.ProxyUtils;
 import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.utils.ProxyUtils;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
 
 public class CommandRegistrar {
     private final Logger logger;
@@ -23,7 +23,6 @@ public class CommandRegistrar {
         this.logger = logger;
         this.proxy = ProxyUtils.getProxyServer();
         this.helper = Runtime.getInstance().getHelper();
-        logger.debug("CommandRegistrar initialized with helper: {}", helper.getClass().getSimpleName());
     }
 
     public void registerCommand(ScriptManager.ScriptConfig script) {

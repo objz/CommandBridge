@@ -28,7 +28,7 @@ tasks {
     shadowJar {
         dependsOn(":bukkit:shadowJar")
 
-        relocate("dev.jorel.commandapi", "dev.consti.commandapi")
+        relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
 
 
         // Include the compiled outputs of core, bukkit, and velocity

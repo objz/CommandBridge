@@ -1,12 +1,12 @@
-package dev.consti.bukkit.websocket;
+package dev.consti.commandbridge.bukkit.websocket;
 
-import dev.consti.bukkit.core.Runtime;
-import dev.consti.json.MessageBuilder;
-import dev.consti.json.MessageParser;
 import org.bukkit.entity.Player;
 
-import dev.consti.logging.Logger;
-import dev.consti.websocket.SimpleWebSocketClient;
+import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.foundationlib.json.MessageBuilder;
+import dev.consti.foundationlib.json.MessageParser;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.websocket.SimpleWebSocketClient;
 
 public class Client extends SimpleWebSocketClient {
     private final Logger logger;
@@ -14,7 +14,6 @@ public class Client extends SimpleWebSocketClient {
     public Client(Logger logger, String secret) {
         super(logger, secret);
         this.logger = logger;
-        logger.debug("WebSocket client initialized.");
     }
 
     @Override
@@ -36,7 +35,7 @@ public class Client extends SimpleWebSocketClient {
                 sendError("Unknown message type");
             }
         } catch (Exception e) {
-            logger.error("Error while processing message: {}. Error: {}", message, e.getMessage(), e);
+            logger.error("Error while processing message: {}: {}", e.getMessage(), e);
             sendError("Internal server error");
         }
     }
@@ -52,12 +51,12 @@ public class Client extends SimpleWebSocketClient {
     }
 
     private void handleCommandRequest(String message) {
-        logger.info("Handling command response: {}", message);
+        logger.debug("Handling command response: {}", message);
 
     }
 
     private void handleSystemRequest(String message) {
-        logger.info("Handling system request.");
+        logger.debug("Handling system request.");
         MessageParser parser = new MessageParser(message);
         String channel = parser.getBodyValueAsString("channel");
         String status = parser.getStatus();
@@ -77,18 +76,19 @@ public class Client extends SimpleWebSocketClient {
         sendMessage(builder.build());
     }
 
-    public void sendJSON(String command, String server, String[] arguments, Player executor) {
+    public void sendJSON(String command, String server, String[] arguments, Player executor, Boolean targetplayer) {
         MessageBuilder builder = new MessageBuilder("command");
         builder.addToBody("command", command);
         builder.addToBody("server", server);
         builder.addToBody("arguments", arguments);
 
         if (executor != null) {
+            builder.addToBody("target", targetplayer);
             builder.addToBody("name", executor.getName());
             builder.addToBody("uuid", executor.getUniqueId());
         }
-
-        logger.info("Sending JSON command to server: {} | Payload: {}", server, builder.build().toString());
+        logger.info("Sending JSON command to server: {}", server);
+        logger.debug("Payload: {}", builder.build().toString());
         sendMessage(builder.build());
     }
 }

@@ -1,4 +1,6 @@
-package dev.consti.velocity.utils;
+package dev.consti.commandbridge.velocity.utils;
+
+import java.util.List;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -7,18 +9,15 @@ import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.consti.logging.Logger;
-import dev.consti.utils.VersionChecker;
-import dev.consti.velocity.Main;
-import dev.consti.velocity.core.Runtime;
+
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-
-import java.util.List;
-import java.util.function.Consumer;
 
 public class GeneralUtils {
     private final Logger logger;
@@ -50,7 +49,7 @@ public class GeneralUtils {
                                     Runtime.getInstance().getScriptUtils().reload();
                                     // TODO: Send message to Bukkit and reload the scripts and config there also
                                     context.getSource().sendMessage(Component.text("Scripts reloaded!", NamedTextColor.GREEN));
-                                    logger.info("Scripts reloaded by: {}", context.getSource());
+                                    logger.debug("Scripts reloaded by: {}", context.getSource());
                                     return 1;
                                 }
                                 context.getSource().sendMessage(Component.text("You do not have permission to reload scripts.", NamedTextColor.RED));
@@ -87,7 +86,6 @@ public class GeneralUtils {
                                             logger.warn("A newer version is available: {}", latestVersion);
                                         } else {
                                             source.sendMessage(Component.text("You are running the latest version: " + currentVersion).color(NamedTextColor.GREEN));
-                                            logger.info("Latest version is already installed: {}", currentVersion);
                                         }
                                     }).start();
 
@@ -102,6 +100,9 @@ public class GeneralUtils {
                             .build())
                     .then(LiteralArgumentBuilder.<CommandSource>literal("list")
                             .executes(this::listServers)
+                            .build())
+                    .then(LiteralArgumentBuilder.<CommandSource>literal("stop")
+                            .executes(this::stopProxy)
                             .build())
                     .build();
 
@@ -135,6 +136,15 @@ public class GeneralUtils {
             source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
         }
 
+        return 1;
+    }
+
+    private int stopProxy(CommandContext<CommandSource> context) {
+        CommandSource source = context.getSource();
+
+        Runtime.getInstance().getStartup().stop();
+
+        source.sendMessage(Component.text("Websocket Server stopped.").color(NamedTextColor.YELLOW));
         return 1;
     }
 

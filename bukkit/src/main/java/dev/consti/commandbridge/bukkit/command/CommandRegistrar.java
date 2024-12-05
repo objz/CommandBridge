@@ -1,9 +1,9 @@
-package dev.consti.bukkit.command;
+package dev.consti.commandbridge.bukkit.command;
 
-import dev.consti.bukkit.Main;
-import dev.consti.bukkit.core.Runtime;
-import dev.consti.logging.Logger;
-import dev.consti.utils.ScriptManager;
+import dev.consti.commandbridge.bukkit.Main;
+import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.GreedyStringArgument;
 
@@ -16,7 +16,6 @@ public class CommandRegistrar {
         this.logger = logger;
         this.plugin = plugin;
         this.helper = Runtime.getInstance().getHelper();
-        logger.debug("CommandRegistrar initialized with helper: {}", helper.getClass().getSimpleName());
     }
 
     public void registerCommand(ScriptManager.ScriptConfig script) {

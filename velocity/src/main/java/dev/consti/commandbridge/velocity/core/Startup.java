@@ -1,10 +1,8 @@
-package dev.consti.bukkit.core;
+package dev.consti.commandbridge.velocity.core;
 
-import org.json.JSONObject;
-
-import dev.consti.bukkit.Main;
-import dev.consti.logging.Logger;
-import dev.consti.utils.VersionChecker;
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
 
 public class Startup {
     private final Logger logger;
@@ -18,8 +16,9 @@ public class Startup {
         var runtime = Runtime.getInstance();
 
         try {
-            runtime.getConfig().copyConfig("bukkit-config.yml", "config.yml");
+            runtime.getConfig().copyConfig("velocity-config.yml", "config.yml");
             runtime.getConfig().loadAllConfigs();
+            runtime.getConfig().loadSecret();
 
             boolean debugMode = Boolean.parseBoolean(runtime.getConfig().getKey("config.yml", "debug"));
             logger.setDebug(debugMode);
@@ -30,9 +29,9 @@ public class Startup {
             runtime.getScriptUtils().loadAllScripts();
 
             logger.debug("Starting WebSocket server...");
-            runtime.getClient().connect(
-                    runtime.getConfig().getKey("config.yml", "remote"),
-                    Integer.parseInt(runtime.getConfig().getKey("config.yml", "port"))
+            runtime.getServer().startServer(
+                    Integer.parseInt(runtime.getConfig().getKey("config.yml", "port")),
+                    runtime.getConfig().getKey("config.yml", "host")
             );
 
             logger.debug("Setting up version checker...");
@@ -41,10 +40,12 @@ public class Startup {
             logger.debug("Checking for updates...");
             checkForUpdates();
 
-            logger.info("CommandBridge started successfully");
+            logger.debug("Registering CommandBridge commands...");
+            runtime.getGeneralUtils().registerCommands();
+
+            logger.info("CommandBridge started successfully.");
         } catch (Exception e) {
             logger.error("Failed to start CommandBridge. Error: {}", e.getMessage(), e);
-
         }
     }
 
@@ -54,7 +55,9 @@ public class Startup {
 
         try {
             logger.debug("Stopping WebSocket server...");
-            runtime.getClient().disconnect();
+            runtime.getServer().stopServer(
+                    Integer.parseInt(runtime.getConfig().getKey("config.yml", "timeout"))
+            );
             logger.info("CommandBridge stopped successfully.");
         } catch (Exception e) {
             logger.error("Failed to stop CommandBridge. Error: {}", e.getMessage(), e);

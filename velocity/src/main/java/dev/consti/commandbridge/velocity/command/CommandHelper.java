@@ -1,18 +1,19 @@
-package dev.consti.velocity.command;
+package dev.consti.commandbridge.velocity.command;
+
+import java.util.concurrent.TimeUnit;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.consti.logging.Logger;
-import dev.consti.utils.ScriptManager;
-import dev.consti.utils.StringParser;
-import dev.consti.velocity.Main;
-import dev.consti.velocity.core.Runtime;
-import dev.consti.velocity.utils.ProxyUtils;
+
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.utils.ProxyUtils;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.foundationlib.utils.StringParser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-
-import java.util.concurrent.TimeUnit;
 
 public class CommandHelper {
     private final Logger logger;
@@ -23,7 +24,6 @@ public class CommandHelper {
         this.logger = logger;
         this.proxy = ProxyUtils.getProxyServer();
         this.plugin = plugin;
-        logger.debug("CommandHelper initialized with plugin: {}", plugin.getClass().getSimpleName());
     }
 
     public int executeScriptCommands(CommandSource source, ScriptManager.ScriptConfig script, String[] args) {
@@ -112,8 +112,7 @@ public class CommandHelper {
             logger.debug("Handling server-specific execution for command: {}", cmd.getCommand());
             for (String serverId : cmd.getTargetServerIds()) {
                 if (Runtime.getInstance().getServer().isServerConnected(serverId)) {
-                    logger.info("Sending command to server: {}", serverId);
-                    Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player);
+                    Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player, Boolean.parseBoolean(cmd.getTargetExecutor()));
                 } else {
                     logger.warn("Server {} not found", serverId);
                 }

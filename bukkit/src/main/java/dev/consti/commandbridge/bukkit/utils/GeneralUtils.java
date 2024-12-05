@@ -1,6 +1,6 @@
-package dev.consti.bukkit.utils;
+package dev.consti.commandbridge.bukkit.utils;
 
-import dev.consti.logging.Logger;
+import dev.consti.foundationlib.logging.Logger;
 
 public class GeneralUtils {
     private final Logger logger;

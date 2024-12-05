@@ -7,17 +7,25 @@
 name: examplebukkit
 # Whether the command is enabled
 enabled: true
-# Ignore permission check
+# Ignore the permission check
 ignore-permission-check: false
 # Hide permission warning
 hide-permission-warning: false
-# The list of commands to execute on the Velocity server
+# The list of commands to execute
 commands:
-  # The command to execute on the target server
-  # IMPORTANT: The command must be enclosed in single quotes
-  - command: 'velocity info'
+  # The command to execute
+  - command: 'say Hello, world!'
+    # The delay in seconds before executing the command
+    delay: 0
+    # The executor of the command.
     # This can be either "player" or "console"
     target-executor: 'player'
-    # Target Velocity server ID
-    target-server-ids: ['main']
-  # Add more commands here
+    # Whether to disable the check if the executor is a player
+    check-if-executor-is-player: true
+    # Whether to disable the check if the executor is on the server
+    check-if-executor-is-on-server: true
+  - command: 'say I love Coding!'
+    delay: 0
+    target-executor: 'console'
+    check-if-executor-is-player: false
+    check-if-executor-is-on-server: false

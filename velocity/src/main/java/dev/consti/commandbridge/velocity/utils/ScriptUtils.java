@@ -1,9 +1,9 @@
-package dev.consti.bukkit.utils;
+package dev.consti.commandbridge.velocity.utils;
 
-import dev.consti.bukkit.command.CommandRegistrar;
-import dev.consti.bukkit.core.Runtime;
-import dev.consti.logging.Logger;
-import dev.consti.utils.ScriptManager;
+import dev.consti.commandbridge.velocity.command.CommandRegistrar;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
 
 public class ScriptUtils extends ScriptManager {
     private final Logger logger;
@@ -13,7 +13,6 @@ public class ScriptUtils extends ScriptManager {
         super(logger, pluginName);
         this.logger = logger;
         this.registrar = Runtime.getInstance().getRegistrar();
-        logger.debug("ScriptUtils initialized for plugin: {}", pluginName);
     }
 
     @Override

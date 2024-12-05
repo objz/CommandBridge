@@ -1,15 +1,15 @@
-package dev.consti.bukkit.command;
+package dev.consti.commandbridge.bukkit.command;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import dev.consti.bukkit.Main;
-import dev.consti.bukkit.core.Runtime;
-import dev.consti.logging.Logger;
-import dev.consti.utils.ScriptManager;
-import dev.consti.utils.StringParser;
+import dev.consti.commandbridge.bukkit.Main;
+import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.foundationlib.utils.StringParser;
 
 public class CommandHelper {
     private final Logger logger;
@@ -18,7 +18,6 @@ public class CommandHelper {
     public CommandHelper(Logger logger, Main plugin) {
         this.logger = logger;
         this.plugin = plugin;
-        logger.debug("CommandHelper initialized with plugin: {}", plugin.getClass().getSimpleName());
     }
 
     public int executeScriptCommands(CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
@@ -42,7 +41,7 @@ public class CommandHelper {
             processCommand(cmd, sender, args);
         }
         logger.info("Script commands executed successfully for script: {}", script.getName());
-        return 1; // CommandAPI expects 1 for success
+        return 1; 
     }
 
     private void processCommand(ScriptManager.Command cmd, CommandSender sender, String[] args) {
@@ -91,8 +90,12 @@ public class CommandHelper {
         if (!cmd.getTargetServerIds().isEmpty()) {
             logger.debug("Handling server-specific execution for command: {}", cmd.getCommand());
             for (String serverId : cmd.getTargetServerIds()) {
-                logger.info("Sending command to server: {}", serverId);
-                Runtime.getInstance().getClient().sendJSON(commandStr, serverId, args, player);
+                try {
+                    logger.info("Sending command to server: {}", serverId);
+                    Runtime.getInstance().getClient().sendJSON(commandStr, serverId, args, player, Boolean.parseBoolean(cmd.getTargetExecutor()));
+                } catch (Exception e) {
+                    logger.error("Failed to send command to server {}: {}", serverId, e.getMessage());
+                }
             }
         } else {
             logger.warn("Target server IDs are empty. Command: {}", cmd.getCommand());

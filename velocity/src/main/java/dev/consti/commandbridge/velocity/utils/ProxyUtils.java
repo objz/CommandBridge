@@ -1,20 +1,20 @@
-package dev.consti.velocity.utils;
+package dev.consti.commandbridge.velocity.utils;
 
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.consti.logging.Logger;
+
+import dev.consti.foundationlib.logging.Logger;
 
 public class ProxyUtils {
     private static ProxyServer proxyServer;
     private static final Logger logger = new Logger("ProxyUtils");
 
     private ProxyUtils() {
-        logger.debug("ProxyUtils initialized.");
     }
 
     public static synchronized void setProxyServer(ProxyServer server) {
         if (proxyServer == null) {
             proxyServer = server;
-            logger.info("ProxyServer instance set successfully.");
+            logger.debug("ProxyServer instance set successfully.");
         } else {
             logger.error("Attempted to set ProxyServer instance more than once!");
             throw new IllegalStateException("Proxy instance is already set!");

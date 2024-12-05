@@ -1,4 +1,4 @@
-package dev.consti.velocity;
+package dev.consti.commandbridge.velocity;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
@@ -8,11 +8,11 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.consti.logging.Logger;
-import dev.consti.utils.VersionChecker;
-import dev.consti.velocity.core.Runtime;
-import dev.consti.velocity.utils.GeneralUtils;
-import dev.consti.velocity.utils.ProxyUtils;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.utils.ProxyUtils;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;

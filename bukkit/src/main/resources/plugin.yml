@@ -1,5 +1,5 @@
 name: CommandBridge
 version: 2.0.0
-main: dev.consti.bukkit.Main
+main: dev.consti.commandbridge.bukkit.Main
 api-version: 1.20
 author: 72-S
