@@ -92,7 +92,7 @@ public class CommandHelper {
             for (String serverId : cmd.getTargetServerIds()) {
                 try {
                     logger.info("Sending command to server: {}", serverId);
-                    Runtime.getInstance().getClient().sendJSON(commandStr, serverId, args, player, Boolean.parseBoolean(cmd.getTargetExecutor()));
+                    Runtime.getInstance().getClient().sendJSON(commandStr, serverId, args, player, cmd.getTargetExecutor());
                 } catch (Exception e) {
                     logger.error("Failed to send command to server {}: {}", serverId, e.getMessage());
                 }

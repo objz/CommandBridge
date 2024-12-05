@@ -116,7 +116,7 @@ public class Server extends SimpleWebSocketServer {
         sendMessage(builder.build(), webSocket);
     }
 
-    public void sendJSON(String command, String client, String[] arguments, Player executor, Boolean targetplayer) {
+    public void sendJSON(String command, String client, String[] arguments, Player executor, String target) {
         WebSocket conn = clientConnections.get(client);
         if (conn == null) {
             logger.warn("Server '{}' is not connected, cannot send message.", client);
@@ -127,9 +127,9 @@ public class Server extends SimpleWebSocketServer {
         builder.addToBody("command", command);
         builder.addToBody("client", client);
         builder.addToBody("arguments", arguments);
+        builder.addToBody("target", target);
 
-        if (executor != null) {
-            builder.addToBody("target", targetplayer);
+        if (target.equals("player")) {
             builder.addToBody("name", executor.getUsername());
             builder.addToBody("uuid", executor.getUniqueId());
         }

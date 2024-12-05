@@ -112,7 +112,7 @@ public class CommandHelper {
             logger.debug("Handling server-specific execution for command: {}", cmd.getCommand());
             for (String serverId : cmd.getTargetServerIds()) {
                 if (Runtime.getInstance().getServer().isServerConnected(serverId)) {
-                    Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player, Boolean.parseBoolean(cmd.getTargetExecutor()));
+                    Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player, cmd.getTargetExecutor());
                 } else {
                     logger.warn("Server {} not found", serverId);
                 }

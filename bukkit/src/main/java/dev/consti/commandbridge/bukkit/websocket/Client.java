@@ -45,14 +45,14 @@ public class Client extends SimpleWebSocketClient {
         logger.debug("Sending server information's...");
         MessageBuilder builder = new MessageBuilder("system");
         builder.addToBody("channel", "name");
-        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "name"));
+        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
         logger.debug("Payload: {}", builder.build().toString());
         sendMessage(builder.build());
     }
 
     private void handleCommandRequest(String message) {
         logger.debug("Handling command response: {}", message);
-
+        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
     }
 
     private void handleSystemRequest(String message) {
@@ -76,14 +76,14 @@ public class Client extends SimpleWebSocketClient {
         sendMessage(builder.build());
     }
 
-    public void sendJSON(String command, String server, String[] arguments, Player executor, Boolean targetplayer) {
+    public void sendJSON(String command, String server, String[] arguments, Player executor, String target) {
         MessageBuilder builder = new MessageBuilder("command");
         builder.addToBody("command", command);
         builder.addToBody("server", server);
         builder.addToBody("arguments", arguments);
+        builder.addToBody("target", target);
 
-        if (executor != null) {
-            builder.addToBody("target", targetplayer);
+        if (target.equals("player")) {
             builder.addToBody("name", executor.getName());
             builder.addToBody("uuid", executor.getUniqueId());
         }

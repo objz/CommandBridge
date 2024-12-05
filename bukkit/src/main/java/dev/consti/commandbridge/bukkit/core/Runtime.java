@@ -8,6 +8,7 @@ import dev.consti.commandbridge.bukkit.utils.ScriptUtils;
 import dev.consti.commandbridge.bukkit.websocket.Client;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ConfigManager;
+import dev.consti.commandbridge.bukkit.command.CommandExecutor;
 
 public class Runtime {
     private static Runtime instance;
@@ -19,6 +20,7 @@ public class Runtime {
     private CommandHelper helper;
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
+    private CommandExecutor commandExecutor;
 
     private Runtime() {}
 
@@ -92,5 +94,13 @@ public class Runtime {
             getLogger().debug("GeneralUtils initialized.");
         }
         return generalUtils;
+    }
+
+    public synchronized CommandExecutor getCommandExecutor() {
+        if (commandExecutor == null) {
+            commandExecutor = new CommandExecutor();
+            getLogger().debug("CommandExecutor initialized.");
+        }
+        return commandExecutor;
     }
 }
