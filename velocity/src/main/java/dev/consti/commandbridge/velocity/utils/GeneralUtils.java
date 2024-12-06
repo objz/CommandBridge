@@ -1,6 +1,9 @@
 package dev.consti.commandbridge.velocity.utils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -12,6 +15,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.json.MessageBuilder;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.VersionChecker;
 import net.kyori.adventure.text.Component;
@@ -23,12 +27,90 @@ public class GeneralUtils {
     private final Logger logger;
     private final ProxyServer proxy;
     private final Main plugin;
+    private Map<String, String> statusMap = new HashMap<>();
+    private List<String> connectedClients = Runtime.getInstance().getServer().getConnectedClients();
 
     public GeneralUtils(Logger logger) {
         this.logger = logger;
         this.proxy = ProxyUtils.getProxyServer();
         this.plugin = Main.getInstance();
     }
+
+    public void addClientToStatus(String clientId, String status) {
+        statusMap.put(clientId, status);
+    logger.debug("Updated statusMap: {}", statusMap);
+    }
+
+    
+private String checkForFailures() {
+    logger.debug("Checking for failures...");
+
+    // Check for missing clients
+    List<String> missingClients = connectedClients.stream()
+        .filter(client -> !statusMap.containsKey(client))
+        .toList();
+
+    if (!missingClients.isEmpty()) {
+        String missingClientString = String.join(", ", missingClients);
+        logger.warn("Waiting for responses from clients: {}", missingClientString);
+        return "Missing responses from: " + missingClientString;
+    }
+
+    // Check for clients with a "failure" status
+    String failedClients = statusMap.entrySet().stream()
+        .filter(entry -> !"success".equals(entry.getValue())) // Check for non-success statuses
+        .map(Map.Entry::getKey)
+        .reduce((a, b) -> a + ", " + b)
+        .orElse(null);
+
+    if (failedClients != null) {
+        logger.error("Failure detected on clients: {}", failedClients);
+        return "Failure detected on: " + failedClients;
+    }
+
+    // All clients are operational
+    logger.debug("No failures detected. All clients are operational.");
+    return null;
+}
+
+private void startFailureCheck(CommandSource source) {
+statusMap.clear();
+
+    final int maxRetries = 8;
+    final int[] retries = {0}; // Use an array to allow modification in the lambda
+
+    Runnable checkTask = new Runnable() {
+        @Override
+        public void run() {
+            retries[0]++;
+            logger.debug("Failure check attempt {}/{}", retries[0], maxRetries);
+
+            // Check for missing or failed clients
+            String failedClients = checkForFailures();
+
+            if (failedClients == null) {
+                // All clients responded successfully
+                source.sendMessage(Component.text("Everything has reloaded successfully!").color(NamedTextColor.GREEN));
+                logger.info("Scripts reloaded successfully.");
+                statusMap.clear();
+            } else if (retries[0] >= maxRetries) {
+                // Timeout after 8 seconds
+                source.sendMessage(Component.text("Reload failed: " + failedClients).color(NamedTextColor.RED));
+                statusMap.clear();
+                logger.error("Reload failed: {}", failedClients);
+            } else {
+                // Reschedule the check
+                
+                proxy.getScheduler().buildTask(plugin, this).delay(0, TimeUnit.SECONDS).schedule();
+
+                return; // Exit early to avoid stopping the scheduler
+            }
+        }
+    };
+
+    // Start the first check immediately
+    proxy.getScheduler().buildTask(plugin, checkTask).delay(1, TimeUnit.SECONDS).schedule();
+}
 
     public void registerCommands() {
         logger.info("Registering commands for CommandBridge...");
@@ -45,11 +127,18 @@ public class GeneralUtils {
                     .then(LiteralArgumentBuilder.<CommandSource>literal("reload")
                             .executes(context -> {
                                 if (context.getSource().hasPermission("commandbridge.admin")) {
+                                    Runtime.getInstance().getRegistrar().unregisterAllCommands();
                                     Runtime.getInstance().getConfig().reload();
                                     Runtime.getInstance().getScriptUtils().reload();
-                                    // TODO: Send message to Bukkit and reload the scripts and config there also
-                                    context.getSource().sendMessage(Component.text("Scripts reloaded!", NamedTextColor.GREEN));
-                                    logger.debug("Scripts reloaded by: {}", context.getSource());
+
+                                    MessageBuilder builder = new MessageBuilder("system");
+                                    builder.addToBody("channel", "command");
+                                    builder.addToBody("command", "reload");
+                                    Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
+                                    context.getSource().sendMessage(Component.text("Waiting for clients to respond...").color(NamedTextColor.YELLOW));
+                                    logger.debug("Waiting for clients to respond...");
+                                    startFailureCheck(context.getSource());
+
                                     return 1;
                                 }
                                 context.getSource().sendMessage(Component.text("You do not have permission to reload scripts.", NamedTextColor.RED));
@@ -122,8 +211,6 @@ public class GeneralUtils {
 
     private int listServers(CommandContext<CommandSource> context) {
         CommandSource source = context.getSource();
-        List<String> connectedClients = Runtime.getInstance().getServer().getConnectedClients();
-
         if (connectedClients.isEmpty()) {
             source.sendMessage(Component.text("No clients are currently connected.").color(NamedTextColor.RED));
         } else {

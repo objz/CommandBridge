@@ -1,7 +1,6 @@
 package dev.consti.commandbridge.bukkit.command;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -10,6 +9,7 @@ import dev.consti.commandbridge.bukkit.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 public class CommandHelper {
     private final Logger logger;
@@ -26,7 +26,7 @@ public class CommandHelper {
         if (!script.shouldIgnorePermissionCheck() && !sender.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for sender: {}", sender.getName());
             if (!script.shouldHidePermissionWarning()) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                sender.sendMessage(NamedTextColor.RED + "You do not have permission to use this command.");
             }
             return 0;
         }

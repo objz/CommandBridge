@@ -8,7 +8,7 @@ version = "2.0.0"
 
 repositories {
     mavenCentral()
-    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots") }
+    maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.codemc.org/repository/maven-public/") }
     maven { url = uri("https://jitpack.io") }
 }
@@ -20,7 +20,7 @@ java {
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.4")
     implementation("com.github.72-S:FoundationLib:master-SNAPSHOT")
     implementation("dev.jorel:commandapi-bukkit-shade:9.6.0")

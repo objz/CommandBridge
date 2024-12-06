@@ -82,7 +82,7 @@ public class Runtime {
 
     public synchronized CommandRegistrar getRegistrar() {
         if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger(), Main.getInstance());
+            registrar = new CommandRegistrar(getLogger());
             getLogger().debug("CommandRegistrar initialized.");
         }
         return registrar;

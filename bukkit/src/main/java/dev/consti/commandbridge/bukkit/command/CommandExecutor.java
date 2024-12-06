@@ -98,10 +98,33 @@ public class CommandExecutor {
         }
     }
 
-    private boolean isCommandValid(String command) {
-        String baseCommand = command.split(" ")[0]; // Extract the base command
-        PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
-        return pluginCommand != null;
+
+private boolean isCommandValid(String command) {
+    String baseCommand = command.split(" ")[0]; // Extract the base command
+
+    // Check if it is a plugin command
+    PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
+    if (pluginCommand != null) {
+        return true;
     }
+
+    // Check if it is a built-in Minecraft command
+    try {
+        // Access the CommandMap using reflection
+        Object server = Bukkit.getServer();
+        java.lang.reflect.Method getCommandMap = server.getClass().getMethod("getCommandMap");
+        Object commandMap = getCommandMap.invoke(server);
+
+        if (commandMap instanceof org.bukkit.command.CommandMap) {
+            org.bukkit.command.CommandMap map = (org.bukkit.command.CommandMap) commandMap;
+            return map.getCommand(baseCommand) != null;
+        }
+    } catch (Exception e) {
+        logger.error("Error accessing CommandMap for command validation", e);
+    }
+
+    return false;
+}
+
 }
 

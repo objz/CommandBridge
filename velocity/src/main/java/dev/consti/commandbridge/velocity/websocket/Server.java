@@ -96,6 +96,15 @@ public class Server extends SimpleWebSocketServer {
             logger.warn("Error Message from client: {}: {}", webSocket.toString(), status);
         } else if (channel.equals("info")) {
             logger.info("Info from client: {}: {}", webSocket.toString(), status);
+        } else if (channel.equals("command")) {
+            systemCommand(parser);
+        }
+    }
+
+
+    private void systemCommand(MessageParser parser) {
+        if (parser.getBodyValueAsString("command").equals("reload")) {
+            Runtime.getInstance().getGeneralUtils().addClientToStatus(parser.getBodyValueAsString("client-id"), parser.getStatus());
         }
     }
 
