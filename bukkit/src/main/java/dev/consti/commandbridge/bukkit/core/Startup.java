@@ -6,10 +6,11 @@ import dev.consti.foundationlib.utils.VersionChecker;
 
 public class Startup {
     private final Logger logger;
-    private final Runtime runtime = Runtime.getInstance();
+    private final Runtime runtime;
 
     public Startup(Logger logger) {
         this.logger = logger;
+        this.runtime = Runtime.getInstance();
     }
 
     public void start() {
@@ -25,7 +26,7 @@ public class Startup {
             runtime.getScriptUtils().copyDefaultScript("velocity-example.yml", "example.yml");
             runtime.getScriptUtils().loadAllScripts();
 
-            logger.debug("Starting WebSocket server...");
+            logger.debug("Connecting to WebSocket server...");
             runtime.getClient().connect(
                     runtime.getConfig().getKey("config.yml", "remote"),
                     Integer.parseInt(runtime.getConfig().getKey("config.yml", "port"))
@@ -45,7 +46,7 @@ public class Startup {
 
     public void stop() {
         try {
-            logger.debug("Stopping WebSocket server...");
+            logger.debug("Disconnecting from WebSocket server...");
             runtime.getClient().disconnect();
         } catch (Exception e) {
             logger.error("Failed to stop CommandBridge: {}",
@@ -61,7 +62,7 @@ public class Startup {
             try {
                 String latestVersion = VersionChecker.getLatestVersion();
                 if (latestVersion == null) {
-                    logger.warn("Unable to check for updates.");
+                    logger.warn("Unable to check for updates");
                     return;
                 }
                 if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {

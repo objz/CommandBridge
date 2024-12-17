@@ -21,12 +21,14 @@ import net.kyori.adventure.text.format.TextDecoration;
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "2.0.0", authors = "72-S")
 public class Main {
     private static Main instance;
-    private Runtime runtime;
     private final ProxyServer proxy;
+    private final Logger logger;
+
 
     @Inject
     public Main(ProxyServer proxy) {
         this.proxy = proxy;
+        this.logger = Runtime.getInstance().getLogger();
         instance = this;
         ProxyUtils.setProxyServer(proxy);
     }
@@ -39,43 +41,30 @@ public class Main {
         return Main.class.getAnnotation(Plugin.class).version();
     }
 
-    private Logger getLogger() {
-        return Runtime.getInstance().getLogger();
-    }
-
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        getLogger().info("Initializing CommandBridge...");
-        runtime = Runtime.getInstance();
-        try {
-            runtime.getStartup().start();
-            getLogger().info("CommandBridge initialized successfully.");
-        } catch (Exception e) {
-            getLogger().error("Failed to initialize CommandBridge: {}", e.getMessage(), e);
-        }
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+        logger.info("CommandBridge initialized successfully.");
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
-        getLogger().info("Stopping CommandBridge...");
-        try {
-            runtime.getStartup().stop();
-            getLogger().info("CommandBridge stopped successfully.");
-        } catch (Exception e) {
-            getLogger().error("Failed to stop CommandBridge: {}", e.getMessage(), e);
-        }
+        logger.info("Stopping CommandBridge...");
+        Runtime.getInstance().getStartup().stop();
+        logger.info("CommandBridge stopped successfully.");
     }
 
     @Subscribe
     public void onPlayerJoin(PostLoginEvent event) {
         Player player = event.getPlayer();
         if (player == null) {
-            getLogger().warn("PostLoginEvent triggered with a null player object.");
+            logger.warn("PostLoginEvent triggered with a null player object.");
             return;
         }
 
         if (player.hasPermission("commandbridge.admin")) {
-            getLogger().debug("Player {} has admin permissions. Checking for updates...", player.getUsername());
+            logger.debug("Player '{}' has admin permissions. Checking for updates...", player.getUsername());
 
             proxy.getScheduler().buildTask(this, () -> {
                 String currentVersion = Main.getVersion();
@@ -83,7 +72,7 @@ public class Main {
 
                 if (latestVersion == null) {
                     player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                    getLogger().warn("Update check failed: Unable to retrieve the latest version.");
+                    logger.warn("Update check failed: Unable to retrieve the latest version.");
                     return;
                 }
 
@@ -94,13 +83,13 @@ public class Main {
                                     .color(NamedTextColor.BLUE)
                                     .decorate(TextDecoration.UNDERLINED)
                                     .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
-                    getLogger().info("Notified player {} about the new version: {}", player.getUsername(), latestVersion);
+                    logger.debug("Notified player '{}' about the new version: {}", player.getUsername(), latestVersion);
                 } else {
-                    getLogger().info("Player {} is running the latest version: {}", player.getUsername(), currentVersion);
+                    logger.debug("Player '{}' is running the latest version: {}", player.getUsername(), currentVersion);
                 }
             }).schedule();
         } else {
-            getLogger().debug("Player {} does not have admin permissions. No update check performed.", player.getUsername());
+            logger.debug("Player {} does not have admin permissions. No update check performed.", player.getUsername());
         }
     }
 }

@@ -1,5 +1,6 @@
 package dev.consti.commandbridge.velocity.command;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.velocitypowered.api.command.CommandSource;
@@ -29,101 +30,137 @@ public class CommandHelper {
     public int executeScriptCommands(CommandSource source, ScriptManager.ScriptConfig script, String[] args) {
         logger.debug("Executing script commands for script: {}", script.getName());
 
-        if (!script.shouldIgnorePermissionCheck() && !source.hasPermission("commandbridge.command." + script.getName())) {
-            logger.warn("Permission check failed for source: {}", source);
-            if (!script.shouldHidePermissionWarning()) {
-                source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
-            }
+        if (isPermissionDenied(source, script)) {
             return 0;
         }
 
         for (ScriptManager.Command cmd : script.getCommands()) {
             logger.debug("Processing command: {}", cmd.getCommand());
-            if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player) && cmd.getTargetExecutor().equals("player")) {
-                logger.warn("This command can only be used by a player.");
-                return 0;
-            }
 
-            processCommand(cmd, source, args);
+            switch (cmd.getTargetExecutor().toLowerCase()) {
+                case "player" -> handlePlayerExecutor(cmd, source, args);
+                case "console" -> handleConsoleExecutor(cmd, source, args);
+                default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
+            }
         }
+
         logger.info("Script commands executed successfully for script: {}", script.getName());
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
-    private void processCommand(ScriptManager.Command cmd, CommandSource source, String[] args) {
-        logger.debug("Starting processCommand for: {}", cmd.getCommand());
-
-        Player player = (source instanceof Player) ? (Player) source : null;
-        StringParser parser = StringParser.create();
-
-        if (player != null && cmd.getTargetExecutor().equals("player")) {
-            logger.debug("Adding placeholders for player: {}", player.getUsername());
-            parser.addPlaceholder("%player%", player.getUsername());
-            parser.addPlaceholder("%uuid%", player.getUniqueId().toString());
-            parser.addPlaceholder("%server%", player.getCurrentServer()
-                    .map(serverConnection -> serverConnection.getServerInfo().getName())
-                    .orElse("defaultServerName"));
-
-            if (cmd.isCheckIfExecutorIsOnServer() && player.getCurrentServer().isPresent()) {
-                String currentServer = player.getCurrentServer().get().getServerInfo().getName();
-                if (!cmd.getTargetServerIds().contains(currentServer)) {
-                    logger.warn("Player {} is not on the required server for this command.", player.getUsername());
-                    return;
-                }
+    private boolean isPermissionDenied(CommandSource source, ScriptManager.ScriptConfig script) {
+        if (!script.shouldIgnorePermissionCheck() && !source.hasPermission("commandbridge.command." + script.getName())) {
+            logger.warn("Permission check failed for source: {}", source);
+            if (!script.shouldHidePermissionWarning()) {
+                source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             }
-        } else if (cmd.getTargetExecutor().equals("player") && player == null) {
-            logger.warn("Player is null or not executing as a player.");
+            return true;
+        }
+        return false;
+    }
+
+    private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
+        if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
+            logger.warn("This command requires a player as executor, but source is not a player.");
             return;
-        } else {
-            logger.debug("Executing as console.");
         }
 
-        String commandStr = parser.parsePlaceholders(cmd.getCommand(), args);
-        logger.debug("Parsed command: {}", commandStr);
+        Player player = (Player) source;
+
+        // Check if the player is on the required server if needed
+        if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(player, cmd)) {
+            logger.warn("Player {} is not on the required server for this command.", player.getUsername());
+            return;
+        }
+
+        String parsedCommand = parseCommand(cmd, args, player);
+        if (parsedCommand == null) return;
 
         if (cmd.getDelay() > 0) {
-            logger.debug("Scheduling command with delay: {} seconds", cmd.getDelay());
-            proxy.getScheduler().buildTask(plugin, () -> executeCommand(cmd, commandStr, args, player))
-                    .delay(cmd.getDelay(), TimeUnit.SECONDS)
-                    .schedule();
+            scheduleCommand(cmd, parsedCommand, args, player, 0);
         } else {
-            logger.debug("Executing command immediately.");
-            executeCommand(cmd, commandStr, args, player);
+            sendCommand(cmd, parsedCommand, args, player, 0);
         }
     }
 
-    private void executeCommand(ScriptManager.Command cmd, String commandStr, String[] args, Player player, int retryCount) {
+    private void handleConsoleExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
+        // No player placeholders needed
+        String parsedCommand = parseCommand(cmd, args, null);
+        if (parsedCommand == null) return;
+
+        if (cmd.getDelay() > 0) {
+            scheduleCommand(cmd, parsedCommand, args, null, 0);
+        } else {
+            sendCommand(cmd, parsedCommand, args, null, 0);
+        }
+    }
+
+    private boolean isPlayerOnTargetServer(Player player, ScriptManager.Command cmd) {
+        return player.getCurrentServer()
+                .map(serverConn -> cmd.getTargetServerIds().contains(serverConn.getServerInfo().getName()))
+                .orElse(false);
+    }
+
+    private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
+        StringParser parser = StringParser.create();
+
+        if (player != null && cmd.getTargetExecutor().equalsIgnoreCase("player")) {
+            addPlayerPlaceholders(parser, player);
+        }
+
+        return parser.parsePlaceholders(cmd.getCommand(), args);
+    }
+
+    private void addPlayerPlaceholders(StringParser parser, Player player) {
+        logger.debug("Adding placeholders for player: {}", player.getUsername());
+        parser.addPlaceholder("%player%", player.getUsername());
+        parser.addPlaceholder("%uuid%", player.getUniqueId().toString());
+        parser.addPlaceholder("%server%", player.getCurrentServer()
+                .map(srv -> srv.getServerInfo().getName())
+                .orElse("defaultServerName"));
+    }
+
+    private void scheduleCommand(ScriptManager.Command cmd, String command, String[] args, Player player, int retryCount) {
+        logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
+        proxy.getScheduler().buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount))
+                .delay(cmd.getDelay(), TimeUnit.SECONDS)
+                .schedule();
+    }
+
+    private void sendCommand(ScriptManager.Command cmd, String command, String[] args, Player player, int retryCount) {
         logger.debug("Executing command: {} with retryCount: {}", cmd.getCommand(), retryCount);
 
+        // Prevent infinite loops
         if (retryCount >= 30) {
             logger.warn("Max retries reached for command: {}", cmd.getCommand());
             return;
         }
 
-        if (cmd.shouldWaitUntilPlayerIsOnline() && cmd.getTargetExecutor().equals("player") && (player == null || !player.isActive())) {
-            logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
-            proxy.getScheduler().buildTask(plugin, () -> executeCommand(cmd, commandStr, args, player, retryCount + 1))
-                    .delay(1, TimeUnit.SECONDS)
-                    .schedule();
+        // If we need the player to be online, check it here
+        if (cmd.shouldWaitUntilPlayerIsOnline() && "player".equalsIgnoreCase(cmd.getTargetExecutor())) {
+            if (player == null || !player.isActive()) {
+                logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
+                proxy.getScheduler().buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount + 1))
+                        .delay(1, TimeUnit.SECONDS)
+                        .schedule();
+                return;
+            }
+        }
+
+        List<String> targetClients = cmd.getTargetServerIds();
+        if (targetClients.isEmpty()) {
+            logger.warn("No target clients defined for command: {}", cmd.getCommand());
             return;
         }
 
-        if (!cmd.getTargetServerIds().isEmpty()) {
-            logger.debug("Handling server-specific execution for command: {}", cmd.getCommand());
-            for (String serverId : cmd.getTargetServerIds()) {
-                if (Runtime.getInstance().getServer().isServerConnected(serverId)) {
-                    Runtime.getInstance().getServer().sendJSON(commandStr, serverId, args, player, cmd.getTargetExecutor());
-                } else {
-                    logger.warn("Server {} not found", serverId);
-                }
+        for (String clientId : targetClients) {
+            if (Runtime.getInstance().getServer().isServerConnected(clientId)) {
+                logger.info("Sending command to client '{}' as {}", clientId, player == null ? "console" : "player");
+                Runtime.getInstance().getServer().sendCommand(command, clientId, cmd.getTargetExecutor(), player);
+            } else {
+                logger.warn("Client '{}' not found", clientId);
             }
-        } else {
-            logger.warn("Target server ids are empty. Command: {}", cmd.getCommand());
         }
     }
-
-    private void executeCommand(ScriptManager.Command cmd, String commandStr, String[] args, Player player) {
-        logger.debug("Initial execution for command: {}", cmd.getCommand());
-        executeCommand(cmd, commandStr, args, player, 0);
-    }
 }
+

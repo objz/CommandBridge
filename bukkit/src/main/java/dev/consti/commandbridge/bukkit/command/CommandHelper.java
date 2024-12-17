@@ -23,14 +23,20 @@ public class CommandHelper {
     }
 
     public int executeScriptCommands(CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
-        if (isPermissionDenied(sender, script)) return 0;
+        if (isPermissionDenied(sender, script)) {
+            return 0;
+        }
 
         for (ScriptManager.Command cmd : script.getCommands()) {
             logger.debug("Processing command: {}", cmd.getCommand());
-            if (isInvalidPlayerExecutor(sender, cmd)) return 0;
 
-            processCommand(cmd, sender, args);
+            switch (cmd.getTargetExecutor().toLowerCase()) {
+                case "player" -> handlePlayerExecutor(cmd, sender, args);
+                case "console" -> handleConsoleExecutor(cmd, args);
+                default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
+            }
         }
+
         return 1;
     }
 
@@ -45,35 +51,43 @@ public class CommandHelper {
         return false;
     }
 
-    private boolean isInvalidPlayerExecutor(CommandSender sender, ScriptManager.Command cmd) {
-        if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player) && "player".equals(cmd.getTargetExecutor())) {
-            logger.warn("This command can only be used by a player.");
-            return true;
+    private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
+        if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
+            logger.warn("This command requires a player as executor, but sender is not a player.");
+            return;
         }
-        return false;
-    }
 
-    private void processCommand(ScriptManager.Command cmd, CommandSender sender, String[] args) {
-        Player player = sender instanceof Player ? (Player) sender : null;
-        String commandStr = prepareCommandString(cmd, args, player);
+        Player player = (Player) sender;
+        String parsedCommand = parseCommand(cmd, args, player);
 
-        if (commandStr == null) return;
+        if (parsedCommand == null) return;
 
         if (cmd.getDelay() > 0) {
-            scheduleCommandWithDelay(cmd, commandStr, args, player);
+            scheduleCommand(cmd, parsedCommand, player);
         } else {
-            executeCommand(cmd, commandStr, args, player);
+            sendCommand(cmd, parsedCommand, player);
         }
     }
 
-    private String prepareCommandString(ScriptManager.Command cmd, String[] args, Player player) {
-        StringParser parser = StringParser.create();
-        if (player != null && "player".equals(cmd.getTargetExecutor())) {
-            addPlayerPlaceholders(parser, player);
-        } else if ("player".equals(cmd.getTargetExecutor()) && player == null) {
-            logger.warn("Player is null or not executing as a player: {}", cmd.getCommand());
-            return null;
+    private void handleConsoleExecutor(ScriptManager.Command cmd, String[] args) {
+        String parsedCommand = parseCommand(cmd, args, null);
+
+        if (parsedCommand == null) return;
+
+        if (cmd.getDelay() > 0) {
+            scheduleCommand(cmd, parsedCommand, null);
+        } else {
+            sendCommand(cmd, parsedCommand, null);
         }
+    }
+
+    private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
+        StringParser parser = StringParser.create();
+
+        if (player != null) {
+            addPlayerPlaceholders(parser, player);
+        }
+
         return parser.parsePlaceholders(cmd.getCommand(), args);
     }
 
@@ -84,40 +98,30 @@ public class CommandHelper {
         parser.addPlaceholder("%world%", player.getWorld().getName());
     }
 
-    private void scheduleCommandWithDelay(ScriptManager.Command cmd, String commandStr, String[] args, Player player) {
+    private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
         logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
-        Bukkit.getScheduler().runTaskLater(plugin, () -> executeCommand(cmd, commandStr, args, player), cmd.getDelay() * 20L);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
     }
 
-    private void executeCommand(ScriptManager.Command cmd, String commandStr, String[] args, Player player) {
-        if (shouldRetryForOfflinePlayer(cmd, player)) return;
+    private void sendCommand(ScriptManager.Command cmd, String command, Player player) {
+//        List<String> targetServers = cmd.getTargetServerIds();
+//
+//        if (targetServers.isEmpty()) {
+//            logger.warn("No target servers defined for command: {}", cmd.getCommand());
+//            return;
+//        }
+//
+//        for (String serverId : targetServers) {
+//            try {
+//                logger.info("Sending command to server '{}' as {}", serverId, player == null ? "console" : "player");
+//                Runtime.getInstance().getClient().sendCommand(command, serverId, cmd.getTargetExecutor(), player);
+//            } catch (Exception e) {
+//                logger.error("Failed to send command to server '{}': {}", serverId, e.getMessage());
+//            }
+//        }
 
-        List<String> targetServers = cmd.getTargetServerIds();
-        if (targetServers.isEmpty()) {
-            logger.warn("Target server IDs are empty. Command: {}", cmd.getCommand());
-            return;
-        }
-
-        sendCommandToServers(cmd, commandStr, args, player, targetServers);
-    }
-
-    private boolean shouldRetryForOfflinePlayer(ScriptManager.Command cmd, Player player) {
-        if (cmd.shouldWaitUntilPlayerIsOnline() && "player".equals(cmd.getTargetExecutor()) && (player == null || !player.isOnline())) {
-            logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
-            Bukkit.getScheduler().runTaskLater(plugin, () -> executeCommand(cmd, cmd.getCommand(), null, player), 20L);
-            return true;
-        }
-        return false;
-    }
-
-    private void sendCommandToServers(ScriptManager.Command cmd, String commandStr, String[] args, Player player, List<String> targetServers) {
-        for (String serverId : targetServers) {
-            try {
-                logger.info("Sending command to server: {}", serverId);
-                Runtime.getInstance().getClient().sendCommand(commandStr, serverId, args, player, cmd.getTargetExecutor());
-            } catch (Exception e) {
-                logger.error("Failed to send command to server {}: {}", serverId, e.getMessage());
-            }
-        }
+        logger.info("Sending command to server as {}", player == null ? "console" : "player");
+        Runtime.getInstance().getClient().sendCommand(command, "", cmd.getTargetExecutor(), player);
     }
 }
+

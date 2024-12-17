@@ -18,12 +18,15 @@ public class ScriptUtils extends ScriptManager {
     @Override
     public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
         if (scriptConfig.isEnabled()) {
-            logger.info("Loaded script: {}", scriptConfig.getName());
+            logger.info("Loaded script: {}", fileName);
             try {
                 registrar.registerCommand(getScriptConfig(fileName));
-                logger.debug("Registered command for script: {}", scriptConfig.getName());
+                logger.debug("Registered command: {}", scriptConfig.getName());
             } catch (Exception e) {
-                logger.error("Failed to register command for script: {}. Error: {}", scriptConfig.getName(), e.getMessage(), e);
+                logger.error("Failed to register script '{}' : {}",
+                        scriptConfig.getName(),
+                        logger.getDebug() ? e : e.getMessage()
+                );
             }
         } else {
             logger.info("Skipped disabled script: {}", scriptConfig.getName());

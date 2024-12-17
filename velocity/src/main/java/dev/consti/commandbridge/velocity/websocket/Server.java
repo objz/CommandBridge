@@ -1,9 +1,6 @@
 package dev.consti.commandbridge.velocity.websocket;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.java_websocket.WebSocket;
 
@@ -17,13 +14,11 @@ import dev.consti.foundationlib.websocket.SimpleWebSocketServer;
 
 public class Server extends SimpleWebSocketServer {
     private final Logger logger;
-    private final List<String> connectedClients;
     private final Map<String, WebSocket> clientConnections = new HashMap<>();
 
     public Server(Logger logger, String secret) {
         super(logger, secret);
         this.logger = logger;
-        this.connectedClients = new ArrayList<>();
     }
 
     @Override
@@ -32,120 +27,136 @@ public class Server extends SimpleWebSocketServer {
         logger.debug("Received message: {}", message);
         try {
             String type = parser.getType();
-            logger.info("Processing message of type: {}", type);
             switch (type) {
-                case "command":
-                    handleCommandRequest(webSocket, message);
-                    break;
-                case "system":
-                    handleSystemRequest(webSocket, message);
-                    break;
-                default:
-                    logger.warn("Unknown message type received: {}", type);
-                    sendError(webSocket, "Unknown message type");
-            }
+                case "command" -> handleCommandRequest(webSocket, message);
+                case "system" -> handleSystemRequest(webSocket, message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError(webSocket, "Invalid type: " + type);
+                }
+           }
         } catch (Exception e) {
-            logger.error("Error while processing message: {}: {}", e.getMessage(), e);
-            sendError(webSocket, "Internal server error");
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage()
+                    );
+            sendError(webSocket, "Internal server error: " + e.getMessage());
         }
     }
 
     @Override
     protected void onConnectionClose(WebSocket conn, int code, String reason) {
-        logger.info("Client {} disconnected with reason: {}", conn.getRemoteSocketAddress(), reason);
+        String clientAddress = conn.getRemoteSocketAddress().toString();
+        logger.info("Client '{}' disconnected", clientAddress);
 
-        String disconnectedClientName = null;
-        for (Map.Entry<String, WebSocket> entry : clientConnections.entrySet()) {
-            if (entry.getValue().equals(conn)) {
-                disconnectedClientName = entry.getKey();
-                break;
-            }
-        }
+        String disconnectedClientName = clientConnections.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(conn))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
 
         if (disconnectedClientName != null) {
-            connectedClients.remove(disconnectedClientName);
             clientConnections.remove(disconnectedClientName);
             logger.debug("Removed disconnected client: {}", disconnectedClientName);
         } else {
-            logger.warn("Disconnected client not found in client connections map.");
+            logger.warn("Disconnected client '{}' not found in client connections map.", clientAddress);
         }
     }
 
     private void handleCommandRequest(WebSocket webSocket, String message) {
-        logger.debug("Handling command request.");
+        logger.debug("Handling command request");
         Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
     }
 
     private void handleSystemRequest(WebSocket webSocket, String message) {
-        logger.debug("Handling system request.");
+        logger.debug("Handling system request");
         MessageParser parser = new MessageParser(message);
         String channel = parser.getBodyValueAsString("channel");
         String name = parser.getBodyValueAsString("name");
+        String client = parser.getBodyValueAsString("client");
         String status = parser.getStatus();
 
-
-        if (channel.equals("name")) {
-            if (name != null) {
-                connectedClients.add(name);
-                clientConnections.put(name, webSocket);
-                logger.info("Added connected client: {}", name);
-            } else {
-                logger.warn("No name provided in system request.");
+        switch (channel) {
+            case "name" -> {
+                if (name != null) {
+                    clientConnections.put(name, webSocket);
+                    logger.info("Added connected client: {}", name);
+                } else {
+                    logger.warn("Client did not provide 'name' in system request");
+                }
             }
-        } else if (channel.equals("error")) {
-            logger.warn("Error Message from client: {}: {}", webSocket.toString(), status);
-        } else if (channel.equals("info")) {
-            logger.info("Info from client: {}: {}", webSocket.toString(), status);
-        } else if (channel.equals("command")) {
-            systemCommand(parser);
+            case "error" -> logger.warn("Error Message from client '{}' : {}", client, status);
+            case "info" -> logger.info("Info from client '{}' : {}", client, status);
+            case "task" -> systemTask(parser, client);
+            default -> logger.warn("Invalid channel: {}", channel);
         }
     }
 
 
-    private void systemCommand(MessageParser parser) {
-        if (parser.getBodyValueAsString("command").equals("reload")) {
-            Runtime.getInstance().getGeneralUtils().addClientToStatus(parser.getBodyValueAsString("client-id"), parser.getStatus());
+    private void systemTask(MessageParser parser, String client) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
+            default -> logger.warn("Invalid task: {}", task);
         }
     }
 
-    public boolean isServerConnected(String serverName) {
-        boolean exists = connectedClients.contains(serverName);
-        logger.debug("Checking if server '{}' is connected: {}", serverName, exists);
-        return exists;
-    }
 
-    public List<String> getConnectedClients() {
-        return connectedClients;
-    }
-
-    private void sendError(WebSocket webSocket, String errorMessage) {
+    public void sendError(WebSocket webSocket, String errorMessage) {
         MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "error");
-        builder.withStatus(errorMessage);
+        builder.addToBody("channel", "error").
+                addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id")).
+                withStatus(errorMessage);
         sendMessage(builder.build(), webSocket);
     }
 
-    public void sendJSON(String command, String client, String[] arguments, Player executor, String target) {
+    public void sendInfo(WebSocket webSocket, String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info").
+                addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id")).
+                withStatus(infoMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendTask(WebSocket webSocket, String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").
+                addToBody("task", task).
+                addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id")).
+                withStatus(status);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
         WebSocket conn = clientConnections.get(client);
         if (conn == null) {
-            logger.warn("Server '{}' is not connected, cannot send message.", client);
+            logger.warn("Client '{}' is not connected, cannot send message.", client);
             return;
         }
 
         MessageBuilder builder = new MessageBuilder("command");
-        builder.addToBody("command", command);
-        builder.addToBody("client", client);
-        builder.addToBody("arguments", arguments);
-        builder.addToBody("target", target);
+        builder.addToBody("command", command).
+                addToBody("client", client).
+                addToBody("target", target);
 
         if (target.equals("player")) {
-            builder.addToBody("name", executor.getUsername());
-            builder.addToBody("uuid", executor.getUniqueId());
+            builder.addToBody("name", executor.getUsername()).
+                    addToBody("uuid", executor.getUniqueId());
         }
-        logger.info("Senging JSON command to client: {}", client);
-        logger.debug("Payload: {}", builder.build().toString());
+        logger.info("Sending command '{}' to client: {}", command, client);
+        logger.debug("Sending payload: {}", builder.build().toString());
         sendMessage(builder.build(), conn);
     }
 
+
+
+    public boolean isServerConnected(String clientName) {
+        boolean exists = clientConnections.containsKey(clientName);
+        logger.debug("Checking if client '{}' is connected: {}", clientName, exists);
+        return exists;
+    }
+
+    public Set<String> getConnectedClients() {
+        return clientConnections.keySet();
+    }
 
 }

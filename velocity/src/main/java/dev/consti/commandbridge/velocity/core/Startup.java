@@ -6,15 +6,14 @@ import dev.consti.foundationlib.utils.VersionChecker;
 
 public class Startup {
     private final Logger logger;
+    private final Runtime runtime;
 
     public Startup(Logger logger) {
         this.logger = logger;
+        this.runtime = Runtime.getInstance();
     }
 
     public void start() {
-        logger.info("Starting CommandBridge...");
-        var runtime = Runtime.getInstance();
-
         try {
             runtime.getConfig().copyConfig("velocity-config.yml", "config.yml");
             runtime.getConfig().loadAllConfigs();
@@ -40,43 +39,36 @@ public class Startup {
             logger.debug("Checking for updates...");
             checkForUpdates();
 
-            logger.debug("Registering CommandBridge commands...");
+            logger.debug("Registering internal commands...");
             runtime.getGeneralUtils().registerCommands();
-
-            logger.info("CommandBridge started successfully.");
         } catch (Exception e) {
-            logger.error("Failed to start CommandBridge. Error: {}", e.getMessage(), e);
+            logger.error("Failed to initialize CommandBridge: {}",
+                    logger.getDebug() ? e : e.getMessage()
+            );
         }
     }
 
     public void stop() {
-        logger.info("Stopping CommandBridge...");
-        var runtime = Runtime.getInstance();
-
         try {
             logger.debug("Stopping WebSocket server...");
             runtime.getServer().stopServer(
                     Integer.parseInt(runtime.getConfig().getKey("config.yml", "timeout"))
             );
-            logger.info("CommandBridge stopped successfully.");
         } catch (Exception e) {
-            logger.error("Failed to stop CommandBridge. Error: {}", e.getMessage(), e);
+            logger.error("Failed to stop CommandBridge: {}", logger.getDebug() ? e : e.getMessage());
         }
     }
 
     private void checkForUpdates() {
         String currentVersion = Main.getVersion();
         logger.debug("Current version: {}", currentVersion);
-
         new Thread(() -> {
             try {
                 String latestVersion = VersionChecker.getLatestVersion();
                 if (latestVersion == null) {
-                    logger.info("Unable to check for updates.");
+                    logger.warn("Unable to check for updates");
                     return;
                 }
-
-                logger.debug("Latest version retrieved: {}", latestVersion);
                 if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
                     logger.warn("A new version is available: {}", latestVersion);
                     logger.warn("Please download the latest release: {}", VersionChecker.getDownloadUrl());
@@ -84,7 +76,7 @@ public class Startup {
                     logger.info("You are running the latest version: {}", currentVersion);
                 }
             } catch (Exception e) {
-                logger.error("Error while checking for updates: {}", e.getMessage(), e);
+                logger.error("Error while checking for updates: {}", logger.getDebug() ? e : e.getMessage());
             }
         }).start();
     }

@@ -9,10 +9,11 @@ import dev.jorel.commandapi.CommandAPIBukkitConfig;
 
 public class Main extends JavaPlugin {
     private static Main instance;
-    private final Logger logger = Runtime.getInstance().getLogger();
+    private final Logger logger;
 
     public Main() {
         instance = this;
+        logger = Runtime.getInstance().getLogger();
     }
     public static String getVersion() {
         return "2.0.0";
@@ -38,7 +39,7 @@ public class Main extends JavaPlugin {
     @Override
     public void onDisable() {
         CommandAPI.onDisable();
-        logger.info("Stopping CommandBridge");
+        logger.info("Stopping CommandBridge...");
         Runtime.getInstance().getStartup().stop();
         logger.info("CommandBridge stopped successfully.");
     }

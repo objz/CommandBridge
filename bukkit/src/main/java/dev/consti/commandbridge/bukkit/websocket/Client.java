@@ -60,8 +60,8 @@ public class Client extends SimpleWebSocketClient {
     String status = parser.getStatus();
 
       switch (channel) {
-          case "error" -> logger.warn("Error from server '{}': {}",parser.getBodyValueAsString("server"), status);
-          case "info" -> logger.info("Info from server '{}': {}",parser.getBodyValueAsString("server"), status);
+          case "error" -> logger.warn("Error from server '{}' : {}",parser.getBodyValueAsString("server"), status);
+          case "info" -> logger.info("Info from server '{}' : {}",parser.getBodyValueAsString("server"), status);
           case "task" -> systemTask(parser);
           default -> logger.warn("Invalid channel: {}", channel);
       }
@@ -99,17 +99,17 @@ public class Client extends SimpleWebSocketClient {
       sendMessage(builder.build());
   }
 
-  public void sendCommand(String command, String server, String target, Player executor) {
+  public void sendCommand(String command, String client, String target, Player executor) {
     MessageBuilder builder = new MessageBuilder("command");
     builder.addToBody("command", command).
-            addToBody("server", server).
+            addToBody("client", client).
             addToBody("target", target);
 
     if (target.equals("player")) {
       builder.addToBody("name", executor.getName()).
               addToBody("uuid", executor.getUniqueId());
     }
-    logger.info("Sending command '{}' to server: {}", command, server);
+    logger.info("Sending command '{}' to server", command);
     logger.debug("Sending payload: {}", builder.build().toString());
     sendMessage(builder.build());
   }
