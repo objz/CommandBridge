@@ -9,7 +9,7 @@ import dev.jorel.commandapi.CommandAPIBukkitConfig;
 
 public class Main extends JavaPlugin {
     private static Main instance;
-    private Runtime runtime;
+    private final Logger logger = Runtime.getInstance().getLogger();
 
     public Main() {
         instance = this;
@@ -22,9 +22,6 @@ public class Main extends JavaPlugin {
         return instance;
     }
 
-    public Logger getLoggerInst() {
-        return Runtime.getInstance().getLogger();
-    }
 
     @Override
     public void onLoad() {
@@ -33,26 +30,17 @@ public class Main extends JavaPlugin {
     @Override
     public void onEnable() {
         CommandAPI.onEnable();
-        getLoggerInst().info("Initializing CommandBridge...");
-        runtime = Runtime.getInstance();
-        try {
-            runtime.getStartup().start();
-            getLoggerInst().info("CommandBridge initialized successfully.");
-        } catch (Exception e) {
-            getLoggerInst().error("Failed to initialize CommandBridge: {}", e);
-        }
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+        logger.info("CommandBridge initialized successfully.");
     }
 
     @Override
     public void onDisable() {
         CommandAPI.onDisable();
-        getLoggerInst().info("Stopping CommandBridge");
-        try {
-            runtime.getStartup().stop();
-            getLoggerInst().info("CommandBridge stopped successfully.");
-        } catch (Exception e) {
-            getLoggerInst().error("Failed to stop CommandBridge: {}", e);
-        }
+        logger.info("Stopping CommandBridge");
+        Runtime.getInstance().getStartup().stop();
+        logger.info("CommandBridge stopped successfully.");
     }
 
 }

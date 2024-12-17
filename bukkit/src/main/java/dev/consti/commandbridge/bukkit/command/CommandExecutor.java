@@ -1,5 +1,6 @@
 package dev.consti.commandbridge.bukkit.command;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -22,108 +23,88 @@ public class CommandExecutor {
     }
 
     public void dispatchCommand(String message) {
-        logger.debug("Received message: {}", message);
-
         MessageParser parser = new MessageParser(message);
-
-        // Validate client
         String serverId = Runtime.getInstance().getConfig().getKey("config.yml", "client-id");
         if (!parser.getBodyValueAsString("client").equals(serverId)) {
-            logger.debug("Message not intended for this client. Server ID: {}", serverId);
+            logger.debug("Message not intended for this client: {}", serverId);
             return;
         }
-
         String command = parser.getBodyValueAsString("command");
         String target = parser.getBodyValueAsString("target");
+        logger.info("Dispatching command '{}' for executor: {}", command, target);
 
-        logger.info("Dispatching command: '{}' for target: {}", command, target);
-
-        switch (target.toLowerCase()) {
-            case "console":
-                executeConsoleCommand(command);
-                break;
-            case "player":
-                executePlayerCommand(parser, command);
-                break;
-            default:
-                logger.warn("Invalid target value: '{}'", target);
+        switch (target) {
+            case "console" -> executeConsoleCommand(command);
+            case "player" -> executePlayerCommand(parser, command);
+            default -> logger.warn("Invalid target: {}", target);
         }
     }
 
     private void executeConsoleCommand(String command) {
-        logger.debug("Executing command on console: {}", command);
+        logger.debug("Executing command '{}' as console", command);
+
         if (isCommandValid(command)) {
-            CommandSender console = Bukkit.getConsoleSender();
-            boolean success = Bukkit.dispatchCommand(console, command);
-            if (success) {
-                logger.info("Successfully executed command on console: {}", command);
-            } else {
-                logger.error("Failed to execute command on console: {}", command);
-            }
-        } else {
-            logger.warn("Invalid command: '{}'", command);
+            logger.warn("Invalid command: {}", command);
+            Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+            return;
         }
-    }
+
+        CommandSender console = Bukkit.getConsoleSender();
+        boolean status = Bukkit.dispatchCommand(console, command);
+
+        logResult("console", command, status);
+   }
 
     private void executePlayerCommand(MessageParser parser, String command) {
+        logger.debug("Executing command '{}' as player", command);
         String uuidStr = parser.getBodyValueAsString("uuid");
         String name = parser.getBodyValueAsString("name");
 
-        logger.debug("Looking for player UUID: {}, Name: {}", uuidStr, name);
-
         try {
-            UUID playerUuid = UUID.fromString(uuidStr);
-            Player player = Bukkit.getPlayer(playerUuid);
+            UUID uuid = UUID.fromString(uuidStr);
+            Optional<Player> playerOptional = Optional.ofNullable(Bukkit.getPlayer(uuid));
 
-            if (player != null && player.isOnline()) {
-                if (isCommandValid(command)) {
-                    logger.info("Executing command for player {}: {}", name, command);
-                    Bukkit.getScheduler().runTask(plugin, () -> {
-                        boolean success = Bukkit.dispatchCommand(player, command);
-                        if (success) {
-                            logger.info("Successfully executed command for player {}: {}", name, command);
-                        } else {
-                            logger.warn("Failed to execute command for player {}: {}", name, command);
-                        }
-                    });
-                } else {
-                    logger.warn("Invalid command: '{}' for player {}", command, name);
-                    player.sendMessage("§cThe command '" + command + "' is invalid.");
-                }
-            } else {
-                logger.warn("Player not found or offline. UUID: {}, Name: {}", uuidStr, name);
-            }
-        } catch (IllegalArgumentException e) {
-            logger.error("Invalid UUID format: {}", uuidStr, e);
+            playerOptional.ifPresentOrElse(player -> handlePlayerCommand(player, command),
+                    () -> logger.warn("Player '{}' not found or offline", name));
+        } catch (Exception e) {
+            logger.error("Error while processing player: {}",
+                    logger.getDebug() ? e : e.getMessage()
+                    );
+            Runtime.getInstance().getClient().sendError("Error while processing player: " + e.getMessage());
         }
+   }
+
+private void handlePlayerCommand(Player player, String command) {
+    if (isCommandValid(command)) {
+        logger.warn("Invalid command: {}", command);
+        Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+        player.sendMessage("§cThe command '" + command + "' is invalid");
+        return;
     }
+
+    Bukkit.getScheduler().runTask(plugin, () -> {
+      boolean status = Bukkit.dispatchCommand(player, command);
+      logResult("player", command, status);
+    });
+}
 
 
 private boolean isCommandValid(String command) {
-    String baseCommand = command.split(" ")[0]; // Extract the base command
-
-    // Check if it is a plugin command
+    String baseCommand = command.split(" ")[0];
     PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
     if (pluginCommand != null) {
-        return true;
+        return false;
     }
+    return Bukkit.getServer().getCommandMap().getCommand(baseCommand) == null;
+}
 
-    // Check if it is a built-in Minecraft command
-    try {
-        // Access the CommandMap using reflection
-        Object server = Bukkit.getServer();
-        java.lang.reflect.Method getCommandMap = server.getClass().getMethod("getCommandMap");
-        Object commandMap = getCommandMap.invoke(server);
-
-        if (commandMap instanceof org.bukkit.command.CommandMap) {
-            org.bukkit.command.CommandMap map = (org.bukkit.command.CommandMap) commandMap;
-            return map.getCommand(baseCommand) != null;
-        }
-    } catch (Exception e) {
-        logger.error("Error accessing CommandMap for command validation", e);
+private void logResult(String target, String command, boolean status) {
+    if (status) {
+        logger.info("Successfully executed command '{}' as {}", command, target);
+    } else {
+        logger.warn("Failed to execute command '{}' as {}", command, target);
+        Runtime.getInstance().getClient().sendError("Failed to execute command '" + command + "' as " + target);
     }
-
-    return false;
 }
 
 }

@@ -20,24 +20,21 @@ public class Client extends SimpleWebSocketClient {
   @Override
   protected void onMessage(String message) {
     MessageParser parser = new MessageParser(message);
-    logger.debug("Received message: {}", message);
+    logger.debug("Received payload: {}", message);
     try {
       String type = parser.getType();
-      logger.info("Processing message of type: {}", type);
       switch (type) {
-        case "command":
-          handleCommandRequest(message);
-          break;
-        case "system":
-          handleSystemRequest(message);
-          break;
-        default:
-          logger.warn("Unknown message type received: {}", type);
-          sendError("Unknown message type");
+        case "command" -> handleCommandRequest(message);
+        case "system" -> handleSystemRequest(message);
+        default -> {
+          logger.warn("Invalid type: {}", type);
+          sendError("Invalid type: " + type);
+        }
       }
     } catch (Exception e) {
-      logger.error("Error while processing message: {}: {}", e.getMessage(), e);
-      sendError("Internal client error");
+      logger.error("Error while processing message: {}",
+              logger.getDebug() ? e : e.getMessage());
+      sendError("Internal client error: " + e.getMessage());
     }
   }
 
@@ -47,111 +44,73 @@ public class Client extends SimpleWebSocketClient {
     MessageBuilder builder = new MessageBuilder("system");
     builder.addToBody("channel", "name");
     builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-    logger.debug("Payload: {}", builder.build().toString());
+    logger.debug("Sending payload: {}", builder.build().toString());
     sendMessage(builder.build());
   }
 
   private void handleCommandRequest(String message) {
-    logger.debug("Handling command response: {}", message);
+    logger.debug("Handling command response");
     Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
   }
 
   private void handleSystemRequest(String message) {
-    logger.debug("Handling system request.");
+    logger.debug("Handling system request");
     MessageParser parser = new MessageParser(message);
     String channel = parser.getBodyValueAsString("channel");
     String status = parser.getStatus();
 
-    if (channel.equals("error")) {
-      logger.warn("Error Message from server: {}", status);
-    } else if (channel.equals("info")) {
-      logger.info("Info from server: {}", status);
-    } else if (channel.equals("command")) {
-      systemCommand(parser);
-    }
+      switch (channel) {
+          case "error" -> logger.warn("Error from server '{}': {}",parser.getBodyValueAsString("server"), status);
+          case "info" -> logger.info("Info from server '{}': {}",parser.getBodyValueAsString("server"), status);
+          case "task" -> systemTask(parser);
+          default -> logger.warn("Invalid channel: {}", channel);
+      }
   }
 
-  private void systemCommand(MessageParser parser) {
-    if (parser.getBodyValueAsString("command").equals("reload")) {
-      logger.debug("Running on thread: {}", Thread.currentThread().getName());
-      unloadCommands(
-          () -> {
-            Bukkit.getScheduler()
-                .runTaskLater(Main.getInstance(), this::reloadConfigsAndScripts, 10L);
-          });
-    }
+  private void systemTask(MessageParser parser) {
+      String task = parser.getBodyValueAsString("task");
+      switch (task) {
+          case "reload" -> Runtime.getInstance().getScriptUtils().unloadCommands(() -> Bukkit.getScheduler()
+                  .runTaskLater(Main.getInstance(), Runtime.getInstance().getScriptUtils()::reloadAll, 10L));
+          default -> logger.warn("Invalid task: {}", task);
+      }
   }
 
-  private void unloadCommands(Runnable callback) {
-    Bukkit.getScheduler()
-        .runTask(
-            Main.getInstance(),
-            () -> {
-              logger.debug("Running on thread (unload): {}", Thread.currentThread().getName());
-              Runtime.getInstance().getRegistrar().unregisterAllCommands();
-              logger.debug("All commands have been unloaded");
-              callback.run();
-            });
-  }
-
-
-private void reloadConfigsAndScripts() {
-    Bukkit.getScheduler()
-        .runTask(
-            Main.getInstance(),
-            () -> {
-                logger.debug("Running on thread (reload): {}", Thread.currentThread().getName());
-                try {
-                    Runtime.getInstance().getConfig().reload();
-                    logger.debug("All configs have been reloaded");
-                    Runtime.getInstance().getScriptUtils().reload();
-                    logger.debug("All scripts have been reloaded");
-                    logger.info("Everything Reloaded!");
-
-                    // Send success message
-                    MessageBuilder builder = new MessageBuilder("system");
-                    builder.addToBody("channel", "command");
-                    builder.addToBody("command", "reload");
-                    builder.addToBody("client-id", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-                    builder.withStatus("success");
-                    Runtime.getInstance().getClient().sendMessage(builder.build());
-                } catch (Exception e) {
-                    logger.error("Error occurred while reloading: {}", e.getMessage(), e);
-
-                    // Send failure message
-                    MessageBuilder builder = new MessageBuilder("system");
-                    builder.addToBody("channel", "command");
-                    builder.addToBody("command", "reload");
-                    builder.addToBody("client-id", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-                    builder.withStatus("failure");
-                    builder.addToBody("error", e.getMessage());
-                    Runtime.getInstance().getClient().sendMessage(builder.build());
-                }
-            });
-}
-
-
-  private void sendError(String errorMessage) {
+  public void sendError(String errorMessage) {
     MessageBuilder builder = new MessageBuilder("system");
-    builder.addToBody("channel", "error");
-    builder.withStatus(errorMessage);
+    builder.addToBody("channel", "error").withStatus(errorMessage).
+            addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
     sendMessage(builder.build());
   }
 
-  public void sendJSON(
-      String command, String server, String[] arguments, Player executor, String target) {
+  public void sendInfo(String infoMessage) {
+      MessageBuilder builder = new MessageBuilder("system");
+      builder.addToBody("channel", "info").withStatus(infoMessage).
+              addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+      sendMessage(builder.build());
+  }
+
+  public void sendTask(String task, String status) {
+      MessageBuilder builder = new MessageBuilder("system");
+      builder.addToBody("channel", "task").
+              addToBody("task", task).
+              addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id")).
+              withStatus(status);
+      sendMessage(builder.build());
+  }
+
+  public void sendCommand(String command, String server, String target, Player executor) {
     MessageBuilder builder = new MessageBuilder("command");
-    builder.addToBody("command", command);
-    builder.addToBody("server", server);
-    builder.addToBody("arguments", arguments);
-    builder.addToBody("target", target);
+    builder.addToBody("command", command).
+            addToBody("server", server).
+            addToBody("target", target);
 
     if (target.equals("player")) {
-      builder.addToBody("name", executor.getName());
-      builder.addToBody("uuid", executor.getUniqueId());
+      builder.addToBody("name", executor.getName()).
+              addToBody("uuid", executor.getUniqueId());
     }
-    logger.info("Sending JSON command to server: {}", server);
-    logger.debug("Payload: {}", builder.build().toString());
+    logger.info("Sending command '{}' to server: {}", command, server);
+    logger.debug("Sending payload: {}", builder.build().toString());
     sendMessage(builder.build());
   }
 }

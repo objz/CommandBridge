@@ -1,9 +1,11 @@
 package dev.consti.commandbridge.bukkit.utils;
 
+import dev.consti.commandbridge.bukkit.Main;
 import dev.consti.commandbridge.bukkit.command.CommandRegistrar;
 import dev.consti.commandbridge.bukkit.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
+import org.bukkit.Bukkit;
 
 public class ScriptUtils extends ScriptManager {
     private final Logger logger;
@@ -18,15 +20,54 @@ public class ScriptUtils extends ScriptManager {
     @Override
     public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
         if (scriptConfig.isEnabled()) {
-            logger.info("Loaded script: {}", scriptConfig.getName());
+            logger.info("Loaded script: {}", fileName);
             try {
                 registrar.registerCommand(getScriptConfig(fileName));
-                logger.debug("Registered command for script: {}", scriptConfig.getName());
+                logger.info("Registered command: {}", scriptConfig.getName());
             } catch (Exception e) {
-                logger.error("Failed to register command for script: {}. Error: {}", scriptConfig.getName(), e.getMessage(), e);
+                logger.error("Failed to register script '{}' : {}",
+                        scriptConfig.getName(),
+                        logger.getDebug() ? e : e.getMessage()
+                );
             }
         } else {
             logger.info("Skipped disabled script: {}", scriptConfig.getName());
         }
     }
+
+    public void unloadCommands(Runnable callback) {
+        Bukkit.getScheduler()
+                .runTask(
+                        Main.getInstance(),
+                        () -> {
+                            logger.debug("Running on thread (unload): {}", Thread.currentThread().getName());
+                            Runtime.getInstance().getRegistrar().unregisterAllCommands();
+                            logger.debug("All commands have been unloaded");
+                            callback.run();
+                });
+    }
+
+
+    public void reloadAll() {
+        Bukkit.getScheduler()
+                .runTask(
+                        Main.getInstance(),
+                        () -> {
+                            logger.debug("Running on thread (reload): {}", Thread.currentThread().getName());
+                            try {
+                                Runtime.getInstance().getConfig().reload();
+                                logger.debug("All configs have been reloaded");
+                                Runtime.getInstance().getScriptUtils().reload();
+                                logger.debug("All scripts have been reloaded");
+                                logger.info("Everything Reloaded!");
+                                Runtime.getInstance().getClient().sendTask("reload","success");
+                            } catch (Exception e) {
+                                logger.error("Error occurred while reloading: {}",
+                                        logger.getDebug() ? e : e.getMessage()
+                                        );
+                                Runtime.getInstance().getClient().sendTask("reload", "failure");
+                            }
+                        });
+    }
+
 }

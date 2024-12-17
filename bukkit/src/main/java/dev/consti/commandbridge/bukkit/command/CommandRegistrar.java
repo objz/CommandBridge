@@ -23,13 +23,15 @@ public class CommandRegistrar {
     
 
 public void unregisterAllCommands() {
-        logger.debug("Starting the process of unregistering all commands...");
         for (String command : registeredCommands) {
             try {
                 CommandAPI.unregister(command);
-                logger.debug("Successfully unregistered command: {}", command);
+                logger.debug("Unregistered command: {}", command);
             } catch (Exception e) {
-                logger.error("Failed to unregister command: {}. Error: {}", command, e);
+                logger.error("Failed to unregister command '{}' : {}",
+                        command,
+                        logger.getDebug() ? e : e.getMessage()
+                );
             }
         }
         registeredCommands.clear();
@@ -39,8 +41,6 @@ public void unregisterAllCommands() {
 
 public void registerCommand(ScriptManager.ScriptConfig script) {
         String commandName = script.getName();
-        logger.debug("Starting registration for command: {}", commandName);
-
         try {
             CommandAPICommand command = new CommandAPICommand(commandName)
                     .executes((sender, args) -> {
@@ -50,16 +50,19 @@ public void registerCommand(ScriptManager.ScriptConfig script) {
                     .withOptionalArguments(new GreedyStringArgument("args"))
                     .executes((sender, args) -> {
                         String argsString = (String) args.get("args");
-                        logger.debug("Command {} called with arguments: {}", commandName, argsString);
+                        logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
                         String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
                         return helper.executeScriptCommands(sender, script, splitArgs);
                     });
 
             command.register();
             registeredCommands.add(commandName);
-            logger.info("Command {} registered successfully.", commandName);
         } catch (Exception e) {
-            logger.error("Failed to register command {}. Error: {}", commandName, e.getMessage(), e);
+            logger.error(
+                    "Failed to register command '{}' : {}",
+                    commandName,
+                    logger.getDebug() ? e : e.getMessage()
+            );
         }
 }
 
