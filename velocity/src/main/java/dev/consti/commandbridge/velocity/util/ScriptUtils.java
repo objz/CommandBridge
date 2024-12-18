@@ -1,4 +1,4 @@
-package dev.consti.commandbridge.velocity.utils;
+package dev.consti.commandbridge.velocity.util;
 
 import dev.consti.commandbridge.velocity.command.CommandRegistrar;
 import dev.consti.commandbridge.velocity.core.Runtime;

@@ -10,7 +10,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.commandbridge.velocity.utils.ProxyUtils;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.VersionChecker;
 import net.kyori.adventure.text.Component;

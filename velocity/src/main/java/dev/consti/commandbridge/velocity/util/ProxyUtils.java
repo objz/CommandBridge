@@ -1,4 +1,4 @@
-package dev.consti.commandbridge.velocity.utils;
+package dev.consti.commandbridge.velocity.util;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 

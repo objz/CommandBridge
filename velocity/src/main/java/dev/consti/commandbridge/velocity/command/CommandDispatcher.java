@@ -7,15 +7,15 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.commandbridge.velocity.utils.ProxyUtils;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;
 
-public class CommandExecutor {
+public class CommandDispatcher {
     private final ProxyServer proxy;
     private final Logger logger;
 
-    public CommandExecutor() {
+    public CommandDispatcher() {
         this.proxy = ProxyUtils.getProxyServer();
         this.logger = Runtime.getInstance().getLogger();
     }

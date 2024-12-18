@@ -1,11 +1,11 @@
 package dev.consti.commandbridge.velocity.core;
 
 import dev.consti.commandbridge.velocity.Main;
-import dev.consti.commandbridge.velocity.command.CommandExecutor;
-import dev.consti.commandbridge.velocity.command.CommandHelper;
+import dev.consti.commandbridge.velocity.command.CommandDispatcher;
+import dev.consti.commandbridge.velocity.command.CommandForwarder;
 import dev.consti.commandbridge.velocity.command.CommandRegistrar;
-import dev.consti.commandbridge.velocity.utils.GeneralUtils;
-import dev.consti.commandbridge.velocity.utils.ScriptUtils;
+import dev.consti.commandbridge.velocity.util.GeneralUtils;
+import dev.consti.commandbridge.velocity.util.ScriptUtils;
 import dev.consti.commandbridge.velocity.websocket.Server;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ConfigManager;
@@ -17,10 +17,10 @@ public class Runtime {
     private ScriptUtils scriptUtils;
     private Server server;
     private Startup startup;
-    private CommandHelper helper;
+    private CommandForwarder helper;
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
-    private CommandExecutor commandExecutor;
+    private CommandDispatcher commandDispatcher;
 
     private Runtime() {}
 
@@ -72,10 +72,10 @@ public class Runtime {
         return startup;
     }
 
-    public synchronized CommandHelper getHelper() {
+    public synchronized CommandForwarder getHelper() {
         if (helper == null) {
-            helper = new CommandHelper(getLogger(), Main.getInstance());
-            getLogger().debug("CommandHelper initialized.");
+            helper = new CommandForwarder(getLogger(), Main.getInstance());
+            getLogger().debug("CommandForwarder initialized.");
         }
         return helper;
     }
@@ -83,7 +83,7 @@ public class Runtime {
     public synchronized CommandRegistrar getRegistrar() {
         if (registrar == null) {
             registrar = new CommandRegistrar(getLogger());
-            getLogger().debug("CommandRegistrar initialized.");
+            getLogger().debug("InternalRegistrar initialized.");
         }
         return registrar;
     }
@@ -96,11 +96,11 @@ public class Runtime {
         return generalUtils;
     }
 
-    public synchronized CommandExecutor getCommandExecutor() {
-        if (commandExecutor == null) {
-            commandExecutor = new CommandExecutor();
-            getLogger().debug("CommandExecutor initialized.");
+    public synchronized CommandDispatcher getCommandExecutor() {
+        if (commandDispatcher == null) {
+            commandDispatcher = new CommandDispatcher();
+            getLogger().debug("CommandDispatcher initialized.");
         }
-        return commandExecutor;
+        return commandDispatcher;
     }
 }

@@ -9,19 +9,19 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.commandbridge.velocity.utils.ProxyUtils;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-public class CommandHelper {
+public class CommandForwarder {
     private final Logger logger;
     private final ProxyServer proxy;
     private final Main plugin;
 
-    public CommandHelper(Logger logger, Main plugin) {
+    public CommandForwarder(Logger logger, Main plugin) {
         this.logger = logger;
         this.proxy = ProxyUtils.getProxyServer();
         this.plugin = plugin;
