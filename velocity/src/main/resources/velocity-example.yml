@@ -19,8 +19,8 @@ commands:
     # The delay in seconds before executing the command
     delay: 0
     # The ID of the target server.
-    # Use the server-id from the config.yml file of the target server
-    target-server-ids: ['lobby', 'survival'] # You can specify multiple server IDs
+    # Use the client-id from the config.yml file of the target client
+    target-client-ids: ['lobby', 'survival'] # You can specify multiple server IDs
     # The executor of the command.
     # This can be either "player" or "console"
     target-executor: 'player'
@@ -34,7 +34,7 @@ commands:
   # Add more commands here
   - command: 'say I love Coding!'
     delay: 0
-    target-server-ids: ['lobby']
+    target-client-ids: ['lobby']
     target-executor: 'player'
     wait-until-player-is-online: true
     check-if-executor-is-player: false
