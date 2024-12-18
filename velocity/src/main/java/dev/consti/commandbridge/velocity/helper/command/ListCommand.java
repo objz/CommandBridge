@@ -13,6 +13,12 @@ public class ListCommand {
         return LiteralArgumentBuilder.<CommandSource>literal("list")
                 .executes(context -> {
                     CommandSource source = context.getSource();
+
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to list connected clients", NamedTextColor.RED));
+                        return 0;
+                    }
+
                     if (connectedClients.isEmpty()) {
                         source.sendMessage(
                                 Component.text("No clients are currently connected").color(NamedTextColor.RED));

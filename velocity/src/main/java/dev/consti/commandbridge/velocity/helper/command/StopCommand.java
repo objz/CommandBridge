@@ -13,9 +13,13 @@ public class StopCommand {
         return LiteralArgumentBuilder.<CommandSource>literal("stop")
                 .executes(context -> {
                     CommandSource source = context.getSource();
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to stop the WebSocket server", NamedTextColor.RED));
+                        return 0;
+                    }
 
                     Runtime.getInstance().getStartup().stop();
-                    source.sendMessage(Component.text("Websocket Server stopped").color(NamedTextColor.YELLOW));
+                    source.sendMessage(Component.text("WebSocket Server stopped").color(NamedTextColor.YELLOW));
                     return 1;
                 });
     }

@@ -97,7 +97,7 @@ public class CommandForwarder {
 
     private boolean isPlayerOnTargetServer(Player player, ScriptManager.Command cmd) {
         return player.getCurrentServer()
-                .map(serverConn -> cmd.getTargetServerIds().contains(serverConn.getServerInfo().getName()))
+                .map(serverConn -> cmd.getTargetClientIds().contains(serverConn.getServerInfo().getName()))
                 .orElse(false);
     }
 
@@ -147,7 +147,7 @@ public class CommandForwarder {
             }
         }
 
-        List<String> targetClients = cmd.getTargetServerIds();
+        List<String> targetClients = cmd.getTargetClientIds();
         if (targetClients.isEmpty()) {
             logger.warn("No target clients defined for command: {}", cmd.getCommand());
             return;

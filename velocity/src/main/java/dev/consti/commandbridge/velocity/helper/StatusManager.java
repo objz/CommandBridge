@@ -50,7 +50,7 @@ public class StatusManager {
             return "Failure detected on: " + failedClients;
         }
 
-        logger.debug("No failures detected. All clients are operational.");
+        logger.debug("No failures detected. All clients are operational");
         return null;
     }
 }

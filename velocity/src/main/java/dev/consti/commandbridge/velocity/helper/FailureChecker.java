@@ -41,7 +41,7 @@ public class FailureChecker implements Runnable {
                         Component.text("Everything has reloaded successfully!")
                                 .color(NamedTextColor.GREEN)
                 );
-                logger.info("Scripts reloaded successfully.");
+                logger.info("Scripts reloaded successfully");
                 statusManager.clearStatusMap();
             } else if (retries[0] >= maxRetries) {
                 // Timeout after 8 seconds
@@ -55,9 +55,9 @@ public class FailureChecker implements Runnable {
                 proxy.getScheduler().buildTask(plugin, this).delay(1, TimeUnit.SECONDS).schedule();
             }
         } catch (Exception e) {
-            logger.error("An error occurred during the reload process: {}", e.getMessage(), e);
+            logger.error("An error occurred during the reload process: {}", logger.getDebug() ? e : e.getMessage());
             source.sendMessage(
-                    Component.text("ReloadCommand failed due to an internal error. Check logs for details.")
+                    Component.text("ReloadCommand failed due to an internal error. Check logs for details")
                             .color(NamedTextColor.RED)
             );
         }

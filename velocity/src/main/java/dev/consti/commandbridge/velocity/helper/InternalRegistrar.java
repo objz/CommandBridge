@@ -8,7 +8,6 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.commandbridge.velocity.helper.command.HelpCommand;
 import dev.consti.commandbridge.velocity.helper.command.ListCommand;
 import dev.consti.commandbridge.velocity.helper.command.ReloadCommand;
 import dev.consti.commandbridge.velocity.helper.command.StopCommand;
@@ -44,7 +43,7 @@ public class InternalRegistrar {
                                     return HelpCommand.sendHelpMessage(context.getSource(), logger);
                                 }
                                 context.getSource().sendMessage(
-                                        Component.text("You do not have permission to use this command.", NamedTextColor.RED)
+                                        Component.text("You do not have permission to use this command", NamedTextColor.RED)
                                 );
                                 return 0;
                             });
@@ -67,9 +66,9 @@ public class InternalRegistrar {
 
             BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
             proxy.getCommandManager().register(commandMeta, brigadierCommand);
-            logger.info("CommandBridge commands registered successfully.");
+            logger.info("CommandBridge commands registered successfully");
         } catch (Exception e) {
-            logger.error("Failed to register CommandBridge commands: {}", e.getMessage(), e);
+            logger.error("Failed to register CommandBridge commands: {}", logger.getDebug() ? e : e.getMessage());
         }
     }
 }

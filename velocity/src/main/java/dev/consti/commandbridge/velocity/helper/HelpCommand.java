@@ -1,4 +1,4 @@
-package dev.consti.commandbridge.velocity.helper.command;
+package dev.consti.commandbridge.velocity.helper;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
@@ -15,8 +15,8 @@ public class HelpCommand {
                 .executes(context -> sendHelpMessage(context.getSource(), logger));
     }
 
-    // Extracted from original sendHelpMessage method
     public static int sendHelpMessage(CommandSource source, Logger logger) {
+
         logger.debug("Sending help message to: {}", source);
 
         source.sendMessage(Component.text("===== CommandBridge HelpCommand =====").color(NamedTextColor.GOLD));
