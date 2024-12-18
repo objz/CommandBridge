@@ -68,6 +68,7 @@ public class Startup {
                 if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
                     logger.warn("A new version is available: {}", latestVersion);
                     logger.warn("Please download the latest release: {}", VersionChecker.getDownloadUrl());
+                    runtime.getClient().sendError("Please update CommandBridge on the client: " + runtime.getConfig().getKey("config.yml", "client-id"));
                 } else {
                     logger.info("You are running the latest version: {}", currentVersion);
                 }
