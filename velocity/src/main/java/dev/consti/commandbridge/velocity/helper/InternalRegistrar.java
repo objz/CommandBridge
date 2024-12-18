@@ -3,13 +3,13 @@ package dev.consti.commandbridge.velocity.helper;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
-import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.commandbridge.velocity.helper.command.ListCommand;
 import dev.consti.commandbridge.velocity.helper.command.ReloadCommand;
+import dev.consti.commandbridge.velocity.helper.command.StartCommand;
 import dev.consti.commandbridge.velocity.helper.command.StopCommand;
 import dev.consti.commandbridge.velocity.helper.command.VersionCommand;
 import dev.consti.foundationlib.logging.Logger;
@@ -35,40 +35,42 @@ public class InternalRegistrar {
         logger.info("Registering commands for CommandBridge...");
         try {
             // Build the main command
-            LiteralArgumentBuilder<CommandSource> commandBridgeBuilder =
-                    LiteralArgumentBuilder.<CommandSource>literal("commandbridge")
-                            .executes(context -> {
-                                // Default action, for example show help
-                                if (context.getSource().hasPermission("commandbridge.admin")) {
-                                    return HelpCommand.sendHelpMessage(context.getSource(), logger);
-                                }
-                                context.getSource().sendMessage(
-                                        Component.text("You do not have permission to use this command", NamedTextColor.RED)
-                                );
-                                return 0;
-                            });
+            LiteralArgumentBuilder<CommandSource> commandBridgeBuilder = LiteralArgumentBuilder
+                    .<CommandSource>literal("commandbridge")
+                    .executes(context -> {
+                        // Default action, for example show help
+                        if (context.getSource().hasPermission("commandbridge.admin")) {
+                            return HelpCommand.sendHelpMessage(context.getSource(), logger);
+                        }
+                        context.getSource().sendMessage(
+                                Component.text("You do not have permission to use this command", NamedTextColor.RED));
+                        return 0;
+                    });
 
             // Append subcommands
             commandBridgeBuilder.then(ReloadCommand.build(Runtime.getInstance().getGeneralUtils(), logger));
             commandBridgeBuilder.then(VersionCommand.build(logger));
             commandBridgeBuilder.then(HelpCommand.build(logger));
             commandBridgeBuilder.then(ListCommand.build(connectedClients, logger));
-            commandBridgeBuilder.then(StopCommand.build(logger));
+            if (logger.getDebug()) {
+                commandBridgeBuilder.then(StopCommand.build(logger));
+                commandBridgeBuilder.then(StartCommand.build(logger));
+            }
 
             LiteralCommandNode<CommandSource> commandBridgeNode = commandBridgeBuilder.build();
 
-            CommandMeta commandMeta =
-                    proxy.getCommandManager()
-                            .metaBuilder("commandbridge")
-                            .aliases("cb")
-                            .plugin(plugin)
-                            .build();
+             Runtime.getInstance().getGeneralUtils().setMeta(proxy.getCommandManager()
+                    .metaBuilder("commandbridge")
+                    .aliases("cb")
+                    .plugin(plugin)
+                    .build());
 
             BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
-            proxy.getCommandManager().register(commandMeta, brigadierCommand);
+            proxy.getCommandManager().register(Runtime.getInstance().getGeneralUtils().getMeta(), brigadierCommand);
             logger.info("CommandBridge commands registered successfully");
         } catch (Exception e) {
             logger.error("Failed to register CommandBridge commands: {}", logger.getDebug() ? e : e.getMessage());
         }
     }
+
 }

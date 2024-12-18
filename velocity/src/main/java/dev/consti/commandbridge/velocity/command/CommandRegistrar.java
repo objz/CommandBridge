@@ -72,7 +72,6 @@ public class CommandRegistrar {
 
             proxy.getCommandManager().register(commandMeta, brigadierCommand);
             registeredCommands.put(commandName, commandMeta);
-            logger.debug("Added command '{}' to registeredCommands: {}",commandName, commandMeta);
         } catch (Exception e) {
             logger.error(
                     "Failed to register command '{}' : {}",

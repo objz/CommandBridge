@@ -15,7 +15,6 @@ public class ProxyUtils {
     public static synchronized void setProxyServer(ProxyServer server) {
         if (proxyServer == null) {
             proxyServer = server;
-            logger.debug("ProxyServer instance set successfully.");
         } else {
             logger.error("Attempted to set ProxyServer instance more than once!");
             throw new IllegalStateException("Proxy instance is already set!");
@@ -27,7 +26,6 @@ public class ProxyUtils {
             logger.error("Attempted to retrieve ProxyServer instance before initialization!");
             throw new IllegalStateException("Proxy instance is not initialized!");
         }
-        logger.debug("ProxyServer instance retrieved successfully.");
         return proxyServer;
     }
 }

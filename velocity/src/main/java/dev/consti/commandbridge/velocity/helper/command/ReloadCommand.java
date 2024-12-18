@@ -16,7 +16,8 @@ public class ReloadCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     if (!source.hasPermission("commandbridge.admin")) {
-                        source.sendMessage(Component.text("You do not have permission to reload the plugin", NamedTextColor.RED));
+                        source.sendMessage(
+                                Component.text("You do not have permission to reload the plugin", NamedTextColor.RED));
                         return 0;
                     }
 
@@ -28,20 +29,27 @@ public class ReloadCommand {
                         Runtime.getInstance().getConfig().reload();
                         logger.debug("Configuration files have been reloaded");
 
+                        logger.setDebug(
+                                Boolean.parseBoolean(Runtime.getInstance().getConfig().getKey("config.yml", "debug")));
+                        logger.info("Debug mode set to:", Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
+
                         Runtime.getInstance().getScriptUtils().reload();
                         logger.debug("Scripts have been reloaded");
 
-                        MessageBuilder builder = new MessageBuilder("system");
-                        builder.addToBody("channel", "command");
-                        builder.addToBody("command", "reload");
-                        Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
+                        Runtime.getInstance().getGeneralUtils().unregisterCommands();
+                        logger.debug("Internal commands have been unregistered");
 
+                        Runtime.getInstance().getGeneralUtils().registerCommands();
+                        logger.debug("Internal commands have been registered");
+
+                        MessageBuilder builder = new MessageBuilder("system");
+                        builder.addToBody("channel", "task").addToBody("task", "reload").addToBody("server",
+                                Runtime.getInstance().getConfig().getKey("config.yml", "server-id"));
+                        Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
                         source.sendMessage(
                                 Component.text("Waiting for clients to respond...")
                                         .color(NamedTextColor.YELLOW));
                         logger.debug("Waiting for clients to respond...");
-
-                        // Use the utils method to start the failure check
                         utils.startFailureCheck(source);
                         return 1;
                     } catch (Exception e) {
@@ -55,4 +63,3 @@ public class ReloadCommand {
                 });
     }
 }
-
