@@ -15,7 +15,7 @@ public class StopCommand {
                     CommandSource source = context.getSource();
 
                     Runtime.getInstance().getStartup().stop();
-                    source.sendMessage(Component.text("Websocket Server stopped.").color(NamedTextColor.YELLOW));
+                    source.sendMessage(Component.text("Websocket Server stopped").color(NamedTextColor.YELLOW));
                     return 1;
                 });
     }

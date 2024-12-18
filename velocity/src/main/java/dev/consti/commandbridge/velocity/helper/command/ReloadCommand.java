@@ -19,13 +19,13 @@ public class ReloadCommand {
                         try {
                             // Logic from original reload command
                             Runtime.getInstance().getRegistrar().unregisterAllCommands();
-                            logger.debug("All commands have been unregistered.");
+                            logger.debug("All commands have been unregistered");
 
                             Runtime.getInstance().getConfig().reload();
-                            logger.debug("Configuration files have been reloaded.");
+                            logger.debug("Configuration files have been reloaded");
 
                             Runtime.getInstance().getScriptUtils().reload();
-                            logger.debug("Scripts have been reloaded.");
+                            logger.debug("Scripts have been reloaded");
 
                             MessageBuilder builder = new MessageBuilder("system");
                             builder.addToBody("channel", "command");
@@ -43,13 +43,13 @@ public class ReloadCommand {
                         } catch (Exception e) {
                             logger.error("An error occurred during the reload process: {}", e.getMessage(), e);
                             source.sendMessage(
-                                    Component.text("ReloadCommand failed due to an internal error. Check logs for details.")
+                                    Component.text("ReloadCommand failed due to an internal error. Check logs for details")
                                             .color(NamedTextColor.RED));
                         }
                         return 1;
                     }
                     source.sendMessage(
-                            Component.text("You do not have permission to reload scripts.")
+                            Component.text("You do not have permission to reload scripts")
                                     .color(NamedTextColor.RED));
                     return 0;
                 });

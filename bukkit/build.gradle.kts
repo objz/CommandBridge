@@ -15,17 +15,17 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
-    implementation("org.ow2.asm:asm:9.4")
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    implementation("org.ow2.asm:asm:9.7")
     implementation("com.github.72-S:FoundationLib:master-SNAPSHOT")
-    implementation("dev.jorel:commandapi-bukkit-shade:9.6.0")
-    compileOnly("dev.jorel:commandapi-annotations:9.6.0")
-    annotationProcessor("dev.jorel:commandapi-annotations:9.6.0")
+    implementation("dev.jorel:commandapi-bukkit-shade-mojang-mapped:9.7.0")
+    compileOnly("dev.jorel:commandapi-annotations:9.7.0")
+    annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")
 }
 
 tasks {

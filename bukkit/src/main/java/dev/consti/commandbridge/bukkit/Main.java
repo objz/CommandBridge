@@ -33,7 +33,7 @@ public class Main extends JavaPlugin {
         CommandAPI.onEnable();
         logger.info("Initializing CommandBridge...");
         Runtime.getInstance().getStartup().start();
-        logger.info("CommandBridge initialized successfully.");
+        logger.info("CommandBridge initialized successfully");
     }
 
     @Override
@@ -41,7 +41,7 @@ public class Main extends JavaPlugin {
         CommandAPI.onDisable();
         logger.info("Stopping CommandBridge...");
         Runtime.getInstance().getStartup().stop();
-        logger.info("CommandBridge stopped successfully.");
+        logger.info("CommandBridge stopped successfully");
     }
 
 }

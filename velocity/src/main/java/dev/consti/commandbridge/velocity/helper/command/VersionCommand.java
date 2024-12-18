@@ -17,7 +17,7 @@ public class VersionCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     if (!source.hasPermission("commandbridge.admin")) {
-                        source.sendMessage(Component.text("You do not have permission to check the version.", NamedTextColor.RED));
+                        source.sendMessage(Component.text("You do not have permission to check the version", NamedTextColor.RED));
                         return 0;
                     }
 
@@ -30,8 +30,8 @@ public class VersionCommand {
 
                         if (latestVersion == null) {
                             source.sendMessage(
-                                    Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                            logger.warn("Failed to retrieve latest version for update check.");
+                                    Component.text("Unable to check for updates").color(NamedTextColor.RED));
+                            logger.warn("Failed to retrieve latest version for update check");
                             return;
                         }
 

@@ -45,14 +45,14 @@ public class Main {
     public void onProxyInitialization(ProxyInitializeEvent event) {
         logger.info("Initializing CommandBridge...");
         Runtime.getInstance().getStartup().start();
-        logger.info("CommandBridge initialized successfully.");
+        logger.info("CommandBridge initialized successfully");
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         logger.info("Stopping CommandBridge...");
         Runtime.getInstance().getStartup().stop();
-        logger.info("CommandBridge stopped successfully.");
+        logger.info("CommandBridge stopped successfully");
     }
 
     @Subscribe

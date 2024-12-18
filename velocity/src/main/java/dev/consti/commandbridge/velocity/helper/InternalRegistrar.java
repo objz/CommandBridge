@@ -41,7 +41,6 @@ public class InternalRegistrar {
                             .executes(context -> {
                                 // Default action, for example show help
                                 if (context.getSource().hasPermission("commandbridge.admin")) {
-                                    logger.debug("Help command executed by: {}", context.getSource());
                                     return HelpCommand.sendHelpMessage(context.getSource(), logger);
                                 }
                                 context.getSource().sendMessage(

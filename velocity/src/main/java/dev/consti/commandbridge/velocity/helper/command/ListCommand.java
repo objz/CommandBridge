@@ -15,7 +15,7 @@ public class ListCommand {
                     CommandSource source = context.getSource();
                     if (connectedClients.isEmpty()) {
                         source.sendMessage(
-                                Component.text("No clients are currently connected.").color(NamedTextColor.RED));
+                                Component.text("No clients are currently connected").color(NamedTextColor.RED));
                     } else {
                         String clientsString = String.join(", ", connectedClients);
                         source.sendMessage(Component.text("===== Connected Clients =====").color(NamedTextColor.GOLD));
