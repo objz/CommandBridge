@@ -99,9 +99,9 @@ public class CommandHelper {
         } catch (Exception e) {
             logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
             if (player != null) {
-                player.sendMessage(Component.text("Error accurred while parsing command").color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
             }
-            Runtime.getInstance().getClient().sendError("Error accurred while parsing commands");
+            Runtime.getInstance().getClient().sendError("Error occurred while parsing commands");
         }
 
         return null;

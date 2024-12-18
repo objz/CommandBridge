@@ -118,11 +118,11 @@ public class CommandForwarder {
         } catch (Exception e) {
             logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
             if (player != null) {
-                player.sendMessage(Component.text("Error accurred while parsing command").color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
             }
             for (String conn : cmd.getTargetClientIds()) {
                 Runtime.getInstance().getServer().sendError(Runtime.getInstance().getServer().getWebSocket(conn),
-                        "Error accurred while parsing commands");
+                        "Error occurred while parsing commands");
             }
         }
 
