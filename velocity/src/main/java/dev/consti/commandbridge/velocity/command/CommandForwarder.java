@@ -49,10 +49,12 @@ public class CommandForwarder {
     }
 
     private boolean isPermissionDenied(CommandSource source, ScriptManager.ScriptConfig script) {
-        if (!script.shouldIgnorePermissionCheck() && !source.hasPermission("commandbridge.command." + script.getName())) {
+        if (!script.shouldIgnorePermissionCheck()
+                && !source.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for source: {}", source);
             if (!script.shouldHidePermissionWarning()) {
-                source.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                source.sendMessage(
+                        Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             }
             return true;
         }
@@ -74,7 +76,8 @@ public class CommandForwarder {
         }
 
         String parsedCommand = parseCommand(cmd, args, player);
-        if (parsedCommand == null) return;
+        if (parsedCommand == null)
+            return;
 
         if (cmd.getDelay() > 0) {
             scheduleCommand(cmd, parsedCommand, args, player, 0);
@@ -86,7 +89,8 @@ public class CommandForwarder {
     private void handleConsoleExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
         // No player placeholders needed
         String parsedCommand = parseCommand(cmd, args, null);
-        if (parsedCommand == null) return;
+        if (parsedCommand == null)
+            return;
 
         if (cmd.getDelay() > 0) {
             scheduleCommand(cmd, parsedCommand, args, null, 0);
@@ -104,11 +108,25 @@ public class CommandForwarder {
     private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
         StringParser parser = StringParser.create();
 
-        if (player != null && cmd.getTargetExecutor().equalsIgnoreCase("player")) {
+        if (player != null && cmd.getTargetExecutor().equals("player")) {
             addPlayerPlaceholders(parser, player);
         }
+        try {
+            String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
+            return parsedCommand;
 
-        return parser.parsePlaceholders(cmd.getCommand(), args);
+        } catch (Exception e) {
+            logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
+            if (player != null) {
+                player.sendMessage(Component.text("Error accurred while parsing command").color(NamedTextColor.RED));
+            }
+            for (String conn : cmd.getTargetClientIds()) {
+                Runtime.getInstance().getServer().sendError(Runtime.getInstance().getServer().getWebSocket(conn),
+                        "Error accurred while parsing commands");
+            }
+        }
+
+        return null;
     }
 
     private void addPlayerPlaceholders(StringParser parser, Player player) {
@@ -120,7 +138,8 @@ public class CommandForwarder {
                 .orElse("defaultServerName"));
     }
 
-    private void scheduleCommand(ScriptManager.Command cmd, String command, String[] args, Player player, int retryCount) {
+    private void scheduleCommand(ScriptManager.Command cmd, String command, String[] args, Player player,
+            int retryCount) {
         logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
         proxy.getScheduler().buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount))
                 .delay(cmd.getDelay(), TimeUnit.SECONDS)
@@ -163,4 +182,3 @@ public class CommandForwarder {
         }
     }
 }
-

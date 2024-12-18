@@ -159,4 +159,8 @@ public class Server extends SimpleWebSocketServer {
         return clientConnections.keySet();
     }
 
+    public WebSocket getWebSocket(String client) {
+        return clientConnections.get(client);
+    }
+
 }

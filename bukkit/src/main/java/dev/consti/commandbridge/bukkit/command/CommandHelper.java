@@ -89,7 +89,7 @@ public class CommandHelper {
     private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
         StringParser parser = StringParser.create();
 
-        if (player != null) {
+        if (player != null && cmd.getTargetExecutor().equals("player")) {
             addPlayerPlaceholders(parser, player);
         }
         try {
@@ -97,11 +97,11 @@ public class CommandHelper {
             return parsedCommand;
 
         } catch (Exception e) {
-            logger.error("Unexpected error while parsing commands: {}", logger.getDebug() ? e : e.getMessage());
+            logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
             if (player != null) {
-                player.sendMessage(Component.text("Unexpected error while parsing commands").color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Error accurred while parsing command").color(NamedTextColor.RED));
             }
-            Runtime.getInstance().getClient().sendError("Unexpected error while parsing commands");
+            Runtime.getInstance().getClient().sendError("Error accurred while parsing commands");
         }
 
         return null;
