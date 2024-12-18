@@ -15,6 +15,7 @@ import dev.consti.foundationlib.utils.VersionChecker;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -26,7 +27,7 @@ public class GeneralUtils {
   private final ProxyServer proxy;
   private final Main plugin;
   private Map<String, String> statusMap = new HashMap<>();
-  private List<String> connectedClients = Runtime.getInstance().getServer().getConnectedClients();
+  private Set<String> connectedClients = Runtime.getInstance().getServer().getConnectedClients();
 
   public GeneralUtils(Logger logger) {
     this.logger = logger;

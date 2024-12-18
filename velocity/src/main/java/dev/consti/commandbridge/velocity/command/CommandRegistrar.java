@@ -1,9 +1,7 @@
 package dev.consti.commandbridge.velocity.command;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.List;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;

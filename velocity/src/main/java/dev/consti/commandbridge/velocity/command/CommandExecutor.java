@@ -6,7 +6,6 @@ import java.util.UUID;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 
-import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.commandbridge.velocity.utils.ProxyUtils;
 import dev.consti.foundationlib.json.MessageParser;
