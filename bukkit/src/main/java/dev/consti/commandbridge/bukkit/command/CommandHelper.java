@@ -11,9 +11,7 @@ import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 
-import java.util.List;
 
 public class CommandHelper {
     private final Logger logger;
@@ -47,7 +45,7 @@ public class CommandHelper {
                 && !sender.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for sender: {}", sender.getName());
             if (!script.shouldHidePermissionWarning()) {
-                sender.sendMessage(NamedTextColor.RED + "You do not have permission to use this command.");
+                sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             }
             return true;
         }
