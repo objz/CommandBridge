@@ -48,26 +48,6 @@ public class ScriptUtils extends ScriptManager {
     }
 
 
-    public void reloadAll() {
-        Bukkit.getScheduler()
-                .runTask(
-                        Main.getInstance(),
-                        () -> {
-                            logger.debug("Running on thread (reload): {}", Thread.currentThread().getName());
-                            try {
-                                Runtime.getInstance().getConfig().reload();
-                                logger.debug("All configs have been reloaded");
-                                Runtime.getInstance().getScriptUtils().reload();
-                                logger.debug("All scripts have been reloaded");
-                                logger.info("Everything Reloaded!");
-                                Runtime.getInstance().getClient().sendTask("reload","success");
-                            } catch (Exception e) {
-                                logger.error("Error occurred while reloading: {}",
-                                        logger.getDebug() ? e : e.getMessage()
-                                        );
-                                Runtime.getInstance().getClient().sendTask("reload", "failure");
-                            }
-                        });
-    }
+
 
 }

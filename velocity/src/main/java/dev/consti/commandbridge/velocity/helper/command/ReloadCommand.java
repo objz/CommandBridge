@@ -31,7 +31,7 @@ public class ReloadCommand {
 
                         logger.setDebug(
                                 Boolean.parseBoolean(Runtime.getInstance().getConfig().getKey("config.yml", "debug")));
-                        logger.info("Debug mode set to:", Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
+                        logger.info("Debug mode set to: {}", Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
 
                         Runtime.getInstance().getScriptUtils().reload();
                         logger.debug("Scripts have been reloaded");

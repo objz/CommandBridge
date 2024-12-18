@@ -71,7 +71,7 @@ public class Client extends SimpleWebSocketClient {
       String task = parser.getBodyValueAsString("task");
       switch (task) {
           case "reload" -> Runtime.getInstance().getScriptUtils().unloadCommands(() -> Bukkit.getScheduler()
-                  .runTaskLater(Main.getInstance(), Runtime.getInstance().getScriptUtils()::reloadAll, 10L));
+                  .runTaskLater(Main.getInstance(), Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
           default -> logger.warn("Invalid task: {}", task);
       }
   }
