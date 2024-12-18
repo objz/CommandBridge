@@ -44,7 +44,7 @@ public class CommandForwarder {
             }
         }
 
-        logger.info("Script commands executed successfully for script: {}", script.getName());
+        logger.info("Script commands executed successfully for command: {}", script.getName());
         return com.mojang.brigadier.Command.SINGLE_SUCCESS;
     }
 
@@ -54,7 +54,7 @@ public class CommandForwarder {
             logger.warn("Permission check failed for source: {}", source);
             if (!script.shouldHidePermissionWarning()) {
                 source.sendMessage(
-                        Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                        Component.text("You do not have permission to use this command", NamedTextColor.RED));
             }
             return true;
         }
@@ -63,7 +63,7 @@ public class CommandForwarder {
 
     private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
-            logger.warn("This command requires a player as executor, but source is not a player.");
+            logger.warn("This command requires a player as executor, but source is not a player");
             return;
         }
 
@@ -71,7 +71,8 @@ public class CommandForwarder {
 
         // Check if the player is on the required server if needed
         if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(player, cmd)) {
-            logger.warn("Player {} is not on the required server for this command.", player.getUsername());
+            logger.warn("Player '{}' is not on the required server for this command.", player.getUsername());
+            source.sendMessage(Component.text("Player " + player.getUsername() + " is not on the required server", NamedTextColor.YELLOW));
             return;
         }
 
