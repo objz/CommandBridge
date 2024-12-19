@@ -4,6 +4,10 @@ import org.bukkit.Bukkit;
 
 import dev.consti.commandbridge.bukkit.Main;
 import dev.consti.foundationlib.logging.Logger;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.CommandTree;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
+import dev.jorel.commandapi.arguments.LiteralArgument;
 import dev.consti.commandbridge.bukkit.core.Runtime;
 
 public class GeneralUtils {

@@ -49,7 +49,7 @@ public class FailureChecker implements Runnable {
                         Component.text("ReloadCommand failed: " + failedClients)
                                 .color(NamedTextColor.RED)
                 );
-                logger.error("ReloadCommand failed: {}", failedClients);
+                logger.error("Reload command failed '{}'", failedClients);
                 statusManager.clearStatusMap();
             } else {
                 proxy.getScheduler().buildTask(plugin, this).delay(1, TimeUnit.SECONDS).schedule();
@@ -57,7 +57,7 @@ public class FailureChecker implements Runnable {
         } catch (Exception e) {
             logger.error("An error occurred during the reload process: {}", logger.getDebug() ? e : e.getMessage());
             source.sendMessage(
-                    Component.text("ReloadCommand failed due to an internal error. Check logs for details")
+                    Component.text("Reload command failed due to an internal error. Check logs for details")
                             .color(NamedTextColor.RED)
             );
         }
