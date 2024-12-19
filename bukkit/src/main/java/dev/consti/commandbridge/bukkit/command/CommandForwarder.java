@@ -13,11 +13,11 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 
-public class CommandHelper {
+public class CommandForwarder {
     private final Logger logger;
     private final Main plugin;
 
-    public CommandHelper(Logger logger, Main plugin) {
+    public CommandForwarder(Logger logger, Main plugin) {
         this.logger = logger;
         this.plugin = plugin;
     }
@@ -55,6 +55,7 @@ public class CommandHelper {
     private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
             logger.warn("This command requires a player as executor, but sender is not a player.");
+            sender.sendMessage(Component.text("This command requires a player as executor, but source is not a player object", NamedTextColor.RED));
             return;
         }
 
@@ -114,6 +115,9 @@ public class CommandHelper {
 
     private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
         logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
+        if (player != null) {
+            player.sendMessage(Component.text("Scheduling command with '" + cmd.getDelay() + "' seconds"));
+        }
         Bukkit.getScheduler().runTaskLater(plugin, () -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
     }
 

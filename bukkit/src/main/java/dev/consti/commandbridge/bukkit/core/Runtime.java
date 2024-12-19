@@ -1,7 +1,6 @@
 package dev.consti.commandbridge.bukkit.core;
 
 import dev.consti.commandbridge.bukkit.Main;
-import dev.consti.commandbridge.bukkit.command.CommandHelper;
 import dev.consti.commandbridge.bukkit.command.CommandRegistrar;
 import dev.consti.commandbridge.bukkit.utils.GeneralUtils;
 import dev.consti.commandbridge.bukkit.utils.ScriptUtils;
@@ -9,6 +8,7 @@ import dev.consti.commandbridge.bukkit.websocket.Client;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ConfigManager;
 import dev.consti.commandbridge.bukkit.command.CommandExecutor;
+import dev.consti.commandbridge.bukkit.command.CommandForwarder;
 
 public class Runtime {
     private static Runtime instance;
@@ -17,7 +17,7 @@ public class Runtime {
     private ScriptUtils scriptUtils;
     private Client client;
     private Startup startup;
-    private CommandHelper helper;
+    private CommandForwarder forwarder;
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
     private CommandExecutor commandExecutor;
@@ -72,12 +72,12 @@ public class Runtime {
         return startup;
     }
 
-    public synchronized CommandHelper getHelper() {
-        if (helper == null) {
-            helper = new CommandHelper(getLogger(), Main.getInstance());
+    public synchronized CommandForwarder getForwarder() {
+        if (forwarder == null) {
+            forwarder = new CommandForwarder(getLogger(), Main.getInstance());
             getLogger().debug("CommandHelper initialized.");
         }
-        return helper;
+        return forwarder;
     }
 
     public synchronized CommandRegistrar getRegistrar() {

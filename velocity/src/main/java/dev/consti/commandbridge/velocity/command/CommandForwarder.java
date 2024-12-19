@@ -52,6 +52,7 @@ public class CommandForwarder {
         if (!script.shouldIgnorePermissionCheck()
                 && !source.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for source: {}", source);
+            source.sendMessage(Component.text("An internal error occurred, see console for more details", NamedTextColor.RED));
             if (!script.shouldHidePermissionWarning()) {
                 source.sendMessage(
                         Component.text("You do not have permission to use this command", NamedTextColor.RED));
@@ -64,6 +65,7 @@ public class CommandForwarder {
     private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
             logger.warn("This command requires a player as executor, but source is not a player");
+            source.sendMessage(Component.text("This command requires a player as executor, but source is not a player object", NamedTextColor.RED));
             return;
         }
 
@@ -153,6 +155,9 @@ public class CommandForwarder {
         // Prevent infinite loops
         if (retryCount >= 30) {
             logger.warn("Max retries reached for command: {}", cmd.getCommand());
+            if (player != null) {
+                player.sendMessage(Component.text("Max retries reached", NamedTextColor.YELLOW));
+            }
             return;
         }
 
@@ -160,6 +165,7 @@ public class CommandForwarder {
         if (cmd.shouldWaitUntilPlayerIsOnline() && "player".equalsIgnoreCase(cmd.getTargetExecutor())) {
             if (player == null || !player.isActive()) {
                 logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
+                player.sendMessage(Component.text("Player is not online. Retrying command", NamedTextColor.YELLOW));
                 proxy.getScheduler().buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount + 1))
                         .delay(1, TimeUnit.SECONDS)
                         .schedule();
@@ -170,6 +176,9 @@ public class CommandForwarder {
         List<String> targetClients = cmd.getTargetClientIds();
         if (targetClients.isEmpty()) {
             logger.warn("No target clients defined for command: {}", cmd.getCommand());
+            if (player != null) {
+                player.sendMessage(Component.text("No target clients are defined for this command", NamedTextColor.RED));
+            }
             return;
         }
 
@@ -179,6 +188,9 @@ public class CommandForwarder {
                 Runtime.getInstance().getServer().sendCommand(command, clientId, cmd.getTargetExecutor(), player);
             } else {
                 logger.warn("Client '{}' not found", clientId);
+                if (player != null) {
+                    player.sendMessage(Component.text("Client '" + clientId + "' not found", NamedTextColor.RED));
+                }
             }
         }
     }

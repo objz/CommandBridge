@@ -12,12 +12,12 @@ import dev.jorel.commandapi.arguments.GreedyStringArgument;
 
 public class CommandRegistrar {
     private final Logger logger;
-    private final CommandHelper helper;
+    private final CommandForwarder forwarder;
     private final List<String> registeredCommands = new ArrayList<>();
 
     public CommandRegistrar(Logger logger) {
         this.logger = logger;
-        this.helper = Runtime.getInstance().getHelper();
+        this.forwarder = Runtime.getInstance().getForwarder();
     }
 
     
@@ -45,14 +45,14 @@ public void registerCommand(ScriptManager.ScriptConfig script) {
             CommandAPICommand command = new CommandAPICommand(commandName)
                     .executes((sender, args) -> {
                         logger.debug("Executing base command: {}", commandName);
-                        return helper.executeScriptCommands(sender, script, new String[0]);
+                        return forwarder.executeScriptCommands(sender, script, new String[0]);
                     })
                     .withOptionalArguments(new GreedyStringArgument("args"))
                     .executes((sender, args) -> {
                         String argsString = (String) args.get("args");
                         logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
                         String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
-                        return helper.executeScriptCommands(sender, script, splitArgs);
+                        return forwarder.executeScriptCommands(sender, script, splitArgs);
                     });
 
             command.register();
