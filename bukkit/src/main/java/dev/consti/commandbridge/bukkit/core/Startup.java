@@ -23,7 +23,7 @@ public class Startup {
             logger.info("Debug mode set to: {}", debugMode);
 
             logger.debug("Copying default scripts...");
-            runtime.getScriptUtils().copyDefaultScript("velocity-example.yml", "example.yml");
+            runtime.getScriptUtils().copyDefaultScript("bukkit-example.yml", "example.yml");
             runtime.getScriptUtils().loadAllScripts();
 
             logger.debug("Connecting to WebSocket server...");
