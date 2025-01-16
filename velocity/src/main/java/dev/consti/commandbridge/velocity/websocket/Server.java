@@ -34,11 +34,10 @@ public class Server extends SimpleWebSocketServer {
                     logger.warn("Invalid type: {}", type);
                     sendError(webSocket, "Invalid type: " + type);
                 }
-           }
+            }
         } catch (Exception e) {
             logger.error("Error while processing message: {}",
-                    logger.getDebug() ? e : e.getMessage()
-                    );
+                    logger.getDebug() ? e : e.getMessage());
             sendError(webSocket, "Internal server error: " + e.getMessage());
         }
     }
@@ -91,7 +90,6 @@ public class Server extends SimpleWebSocketServer {
         }
     }
 
-
     private void systemTask(MessageParser parser, String client) {
         String task = parser.getBodyValueAsString("task");
         switch (task) {
@@ -100,29 +98,27 @@ public class Server extends SimpleWebSocketServer {
         }
     }
 
-
     public void sendError(WebSocket webSocket, String errorMessage) {
         MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "error").
-                addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id")).
-                withStatus(errorMessage);
+        builder.addToBody("channel", "error")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(errorMessage);
         sendMessage(builder.build(), webSocket);
     }
 
     public void sendInfo(WebSocket webSocket, String infoMessage) {
         MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "info").
-                addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id")).
-                withStatus(infoMessage);
+        builder.addToBody("channel", "info")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(infoMessage);
         sendMessage(builder.build(), webSocket);
     }
 
     public void sendTask(WebSocket webSocket, String task, String status) {
         MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "task").
-                addToBody("task", task).
-                addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id")).
-                withStatus(status);
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(status);
         sendMessage(builder.build(), webSocket);
     }
 
@@ -134,20 +130,15 @@ public class Server extends SimpleWebSocketServer {
         }
 
         MessageBuilder builder = new MessageBuilder("command");
-        builder.addToBody("command", command).
-                addToBody("client", client).
-                addToBody("target", target);
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
 
         if (target.equals("player")) {
-            builder.addToBody("name", executor.getUsername()).
-                    addToBody("uuid", executor.getUniqueId());
+            builder.addToBody("name", executor.getUsername()).addToBody("uuid", executor.getUniqueId());
         }
         logger.info("Sending command '{}' to client: {}", command, client);
         logger.debug("Sending payload: {}", builder.build().toString());
         sendMessage(builder.build(), conn);
     }
-
-
 
     public boolean isServerConnected(String clientName) {
         boolean exists = clientConnections.containsKey(clientName);
