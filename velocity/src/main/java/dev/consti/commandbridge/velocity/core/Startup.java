@@ -30,7 +30,8 @@ public class Startup {
             logger.debug("Starting WebSocket server...");
             runtime.getServer().startServer(
                     Integer.parseInt(runtime.getConfig().getKey("config.yml", "port")),
-                    runtime.getConfig().getKey("config.yml", "host")
+                    runtime.getConfig().getKey("config.yml", "host"),
+                    runtime.getConfig().getKey("config.yml", "san")
             );
 
             logger.debug("Setting up version checker...");
