@@ -46,6 +46,7 @@ public class ReloadCommand {
                         builder.addToBody("channel", "task").addToBody("task", "reload").addToBody("server",
                                 Runtime.getInstance().getConfig().getKey("config.yml", "server-id"));
                         Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
+                        logger.debug("Sending payload: {}", builder.build());
                         source.sendMessage(
                                 Component.text("Waiting for clients to respond...")
                                         .color(NamedTextColor.YELLOW));

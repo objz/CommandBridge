@@ -43,18 +43,13 @@ public void registerCommand(ScriptManager.ScriptConfig script) {
         String commandName = script.getName();
         try {
             CommandAPICommand command = new CommandAPICommand(commandName)
-                    .executes((sender, args) -> {
-                        logger.debug("Executing base command: {}", commandName);
-                        return forwarder.executeScriptCommands(sender, script, new String[0]);
-                    })
                     .withOptionalArguments(new GreedyStringArgument("args"))
-                    .executes((sender, args) -> {
-                        String argsString = (String) args.get("args");
-                        logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
-                        String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
-                        return forwarder.executeScriptCommands(sender, script, splitArgs);
-                    });
-
+                            .executes((sender, args) -> {
+                                String argsString = (String) args.get("args");
+                                logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
+                                String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
+                                return forwarder.executeScriptCommands(sender, script, splitArgs);
+                            });
             command.register();
             registeredCommands.add(commandName);
         } catch (Exception e) {

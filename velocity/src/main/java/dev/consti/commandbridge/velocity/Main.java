@@ -19,7 +19,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-@Plugin(id = "commandbridge", name = "CommandBridge", version = "2.0.1", authors = "72-S")
+@Plugin(id = "commandbridge", name = "CommandBridge", version = "2.1.0", authors = "72-S")
 public class Main {
     private static Main instance;
     private final ProxyServer proxy;

@@ -50,9 +50,10 @@ public class CommandExecutor {
         }
 
         CommandSender console = Bukkit.getConsoleSender();
-        boolean status = Bukkit.dispatchCommand(console, command);
-
-        logResult("console", command, status);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            boolean status = Bukkit.dispatchCommand(console, command);
+            logResult("console", command, status);
+        });
    }
 
     private void executePlayerCommand(MessageParser parser, String command) {
