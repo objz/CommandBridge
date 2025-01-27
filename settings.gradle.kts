@@ -1,3 +1,3 @@
 rootProject.name = "CommandBridge"
-include("bukkit")
+include("paper")
 include("velocity")

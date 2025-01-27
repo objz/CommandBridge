@@ -1,7 +1,7 @@
-package dev.consti.commandbridge.bukkit.websocket;
+package dev.consti.commandbridge.paper.websocket;
 
-import dev.consti.commandbridge.bukkit.Main;
-import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.json.MessageBuilder;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;

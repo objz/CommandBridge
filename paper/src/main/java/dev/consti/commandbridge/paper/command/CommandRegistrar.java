@@ -1,9 +1,9 @@
-package dev.consti.commandbridge.bukkit.command;
+package dev.consti.commandbridge.paper.command;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.jorel.commandapi.CommandAPI;

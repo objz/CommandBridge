@@ -1,14 +1,14 @@
-package dev.consti.commandbridge.bukkit.core;
+package dev.consti.commandbridge.paper.core;
 
-import dev.consti.commandbridge.bukkit.Main;
-import dev.consti.commandbridge.bukkit.command.CommandRegistrar;
-import dev.consti.commandbridge.bukkit.utils.GeneralUtils;
-import dev.consti.commandbridge.bukkit.utils.ScriptUtils;
-import dev.consti.commandbridge.bukkit.websocket.Client;
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.command.CommandRegistrar;
+import dev.consti.commandbridge.paper.utils.GeneralUtils;
+import dev.consti.commandbridge.paper.utils.ScriptUtils;
+import dev.consti.commandbridge.paper.websocket.Client;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ConfigManager;
-import dev.consti.commandbridge.bukkit.command.CommandExecutor;
-import dev.consti.commandbridge.bukkit.command.CommandForwarder;
+import dev.consti.commandbridge.paper.command.CommandExecutor;
+import dev.consti.commandbridge.paper.command.CommandForwarder;
 
 public class Runtime {
     private static Runtime instance;

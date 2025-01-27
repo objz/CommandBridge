@@ -1,11 +1,11 @@
-package dev.consti.commandbridge.bukkit.command;
+package dev.consti.commandbridge.paper.command;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import dev.consti.commandbridge.bukkit.Main;
-import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;

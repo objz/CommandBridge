@@ -1,8 +1,8 @@
-package dev.consti.commandbridge.bukkit.utils;
+package dev.consti.commandbridge.paper.utils;
 
-import dev.consti.commandbridge.bukkit.Main;
-import dev.consti.commandbridge.bukkit.command.CommandRegistrar;
-import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.command.CommandRegistrar;
+import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import org.bukkit.Bukkit;

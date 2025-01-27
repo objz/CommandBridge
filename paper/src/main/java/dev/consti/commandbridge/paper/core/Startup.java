@@ -1,6 +1,6 @@
-package dev.consti.commandbridge.bukkit.core;
+package dev.consti.commandbridge.paper.core;
 
-import dev.consti.commandbridge.bukkit.Main;
+import dev.consti.commandbridge.paper.Main;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.VersionChecker;
 

@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":bukkit"))
+    implementation(project(":paper"))
     implementation(project(":velocity"))
 }
 
@@ -26,20 +26,20 @@ java {
 tasks {
     // Configure the existing shadowJar task, don't register a new one
     shadowJar {
-        dependsOn(":bukkit:shadowJar")
+        dependsOn(":paper:shadowJar")
 
         relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
 
 
-        // Include the compiled outputs of core, bukkit, and velocity
-        from(project(":bukkit").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
+        // Include the compiled outputs of core, paper, and velocity
+        from(project(":paper").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
         from(project(":velocity").takeIf { it.plugins.hasPlugin("java") }?.sourceSets?.main?.get()?.output ?: files())
 
         configurations = listOf(project.configurations.runtimeClasspath.get())
         mergeServiceFiles()
     }
 
-    val copyToBukkitPlugins by creating(Copy::class) {
+    val copyToPaperPlugins by creating(Copy::class) {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
         into("/mnt/FastStorage/Server-TEST/CommandBridge/Bukkit/plugins")
@@ -52,7 +52,7 @@ tasks {
     }
 
     register("dev") {
-        dependsOn(copyToBukkitPlugins, copyToVelocityPlugins)
+        dependsOn(copyToPaperPlugins, copyToVelocityPlugins)
     }
 }
 

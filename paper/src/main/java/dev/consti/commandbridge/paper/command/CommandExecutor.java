@@ -1,4 +1,4 @@
-package dev.consti.commandbridge.bukkit.command;
+package dev.consti.commandbridge.paper.command;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -8,8 +8,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 
-import dev.consti.commandbridge.bukkit.Main;
-import dev.consti.commandbridge.bukkit.core.Runtime;
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;
 
