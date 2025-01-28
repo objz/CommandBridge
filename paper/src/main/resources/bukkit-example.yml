@@ -1,31 +1,37 @@
 ##########################################################################
-# THIS IS AN EXAMPLE WHEN A COMMAND IS DISPATCHED TO THE BUKKIT SERVER OR
-# SERVERS AND THE COMMANDS GET EXECUTED ON THE VELOCITY SERVER
+# EXAMPLE CONFIGURATION
+# This file demonstrates how to dispatch a command to the Bukkit server
+# or servers, where the command gets executed on the Velocity server.
 ##########################################################################
 
-# The name of the command that will be dispatched
+# The name of the command to be dispatched.
+# This is the identifier for the command configuration.
 name: examplebukkit
-# Whether the command is enabled
+
+# Enable or disable this command.
+# Set to true to allow the command to be executed, or false to disable it.
 enabled: true
-# Ignore the permission check
+
+# Ignore permission checks for this command.
+# Set to true to bypass permission validation, or false to enforce it.
 ignore-permission-check: false
-# Hide permission warning
+
+# Hide permission warnings when the executor does not have the required permissions.
+# Set to true to suppress warnings, or false to show them.
 hide-permission-warning: false
-# The list of commands to execute
+
+# A list of commands to execute on the server.
 commands:
-  # The command to execute
-  - command: 'say Hello, world!'
-    # The delay in seconds before executing the command
-    delay: 0
-    # The executor of the command.
-    # This can be either "player" or "console"
-    target-executor: 'player'
-    # Whether to disable the check if the executor is a player
-    check-if-executor-is-player: true
-    # Whether to disable the check if the executor is on the server
-    check-if-executor-is-on-server: true
-  - command: 'say I love Coding!'
-    delay: 0
-    target-executor: 'console'
-    check-if-executor-is-player: false
-    check-if-executor-is-on-server: false
+  # Command 1
+  - command: 'say Hello, world!' # The command string to be executed.
+    delay: 0                     # Delay (in seconds) before executing the command.
+    target-executor: 'player'    # Who executes the command: 'player' or 'console'.
+    check-if-executor-is-player: true  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: true # If true, ensures the executor is online.
+
+  # Command 2
+  - command: 'say I love Coding!' # The command string to be executed.
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-executor: 'console'    # Who executes the command: 'player' or 'console'.
+    check-if-executor-is-player: false  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: false # If true, ensures the executor is online.

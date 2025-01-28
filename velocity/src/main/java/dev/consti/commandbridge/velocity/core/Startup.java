@@ -52,9 +52,7 @@ public class Startup {
     public void stop() {
         try {
             logger.debug("Stopping WebSocket server...");
-            runtime.getServer().stopServer(
-                    Integer.parseInt(runtime.getConfig().getKey("config.yml", "timeout"))
-            );
+            runtime.getServer().stopServer(0);
         } catch (Exception e) {
             logger.error("Failed to stop CommandBridge: {}", logger.getDebug() ? e : e.getMessage());
         }

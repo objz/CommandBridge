@@ -1,42 +1,44 @@
 ##########################################################################
-# THIS IS AN EXAMPLE WHEN A COMMAND IS DISPATCHED TO THE VELOCITY SERVER
-# AND THE COMMANDS GET EXECUTED ON THE BUKKIT SERVER
+# EXAMPLE CONFIGURATION
+# This file demonstrates how to dispatch a command to the Velocity server,
+# where the commands are executed on the Bukkit servers.
 ##########################################################################
 
-# The name of the command that will be dispatched
+# The name of the command to be dispatched.
+# This is the identifier for the command configuration.
 name: examplecommand
-# Whether the command is enabled
-enabled: true
-# Ignore the permission check
-ignore-permission-check: false
-# Hide permission warning
-hide-permission-warning: false
-# The list of commands to execute
-commands:
-  # The command to execute on the target server
-  # IMPORTANT: The command must be enclosed in single quotes
-  - command: 'say Hello, world!'
-    # The delay in seconds before executing the command
-    delay: 0
-    # The ID of the target server.
-    # Use the client-id from the config.yml file of the target client
-    target-client-ids: ['lobby', 'survival'] # You can specify multiple server IDs
-    # The executor of the command.
-    # This can be either "player" or "console"
-    target-executor: 'player'
-    # Whether to wait until the player
-    # is online on the target server before executing the command
-    wait-until-player-is-online: true
-    # Whether to disable the check if the executor is a player
-    check-if-executor-is-player: true
-    # Whether to disable the check if the executor is on the server
-    check-if-executor-is-on-server: true
-  # Add more commands here
-  - command: 'say I love Coding!'
-    delay: 0
-    target-client-ids: ['lobby']
-    target-executor: 'player'
-    wait-until-player-is-online: true
-    check-if-executor-is-player: false
-    check-if-executor-is-on-server: false
 
+# Enable or disable this command.
+# Set to true to allow the command to be executed, or false to disable it.
+enabled: true
+
+# Ignore permission checks for this command.
+# Set to true to bypass permission validation, or false to enforce it.
+ignore-permission-check: false
+
+# Hide permission warnings when the executor does not have the required permissions.
+# Set to true to suppress warnings, or false to show them.
+hide-permission-warning: false
+
+# A list of commands to execute on the target servers.
+commands:
+  # Command 1
+  - command: 'say Hello, world!'  # The command string to be executed (use single quotes).
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-client-ids:            # List of target server IDs where the command will be executed.
+      - 'lobby'
+      - 'survival'
+    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
+    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
+    check-if-executor-is-player: true  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: true # If true, ensures the executor is online on the server.
+
+  # Command 2
+  - command: 'say I love Coding!' # The command string to be executed (use single quotes).
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-client-ids:            # List of target server IDs where the command will be executed.
+      - 'lobby'
+    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
+    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
+    check-if-executor-is-player: false # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: false # If true, ensures the executor is online on the server.

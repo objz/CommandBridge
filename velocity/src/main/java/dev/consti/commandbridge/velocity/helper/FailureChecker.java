@@ -3,6 +3,7 @@ package dev.consti.commandbridge.velocity.helper;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -24,7 +25,7 @@ public class FailureChecker implements Runnable {
         this.plugin = plugin;
         this.statusManager = statusManager;
         this.source = source;
-        this.maxRetries = 8;
+        this.maxRetries = Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "timeout"));
         this.retries = new int[]{0};
     }
 
