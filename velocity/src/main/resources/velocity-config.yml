@@ -12,7 +12,7 @@ server-id: "main"
 # You can use "127.0.0.1" to bind to the localhost interface (local connections only),
 # or "0.0.0.0" to bind to all available network interfaces (accepts connections from all IPs).
 # Change only if you know what you're doing.
-host: "127.0.0.1"
+host: "0.0.0.0"
 
 # Server Address Name (SAN).
 # Specify your server's public IP or domain name here if accessible from external networks.
