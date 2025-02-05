@@ -9,7 +9,6 @@ val pversion: String by gradle.extra
 val pluginType: String by gradle.extra
 val pluginVersions: List<String> by gradle.extra
 val pluginLoaders: List<String> by gradle.extra
-val loadersStr = pluginLoaders.joinToString(", ")
 
 group = "dev.consti"
 version = pversion
@@ -63,16 +62,20 @@ tasks {
     }
 }
 
-modrinth {
-    token.set(System.getenv("MODRINTH_TOKEN"))
-    projectId.set("wIuI4ru2")
-    versionName.set("CommandBridge " + pversion)
-    changelog = rootProject.file("CHANGELOG.md").readText()
-    versionNumber.set(pversion)
-    versionType.set(pluginType)
-    uploadFile.set(tasks.shadowJar)
-    gameVersions.addAll(pluginVersions)
-    loaders.add(loadersStr)
-    debugMode.set(false)
+
+afterEvaluate {
+    modrinth {
+        token.set(System.getenv("MODRINTH_TOKEN"))
+        projectId.set("wIuI4ru2")
+        versionName.set("CommandBridge $pversion")
+        changelog.set(rootProject.file("CHANGELOG.md").readText())
+        versionNumber.set(pversion)
+        versionType.set(pluginType)
+        uploadFile.set(tasks.shadowJar)
+        gameVersions.set(pluginVersions)
+        loaders.set(pluginLoaders)
+        debugMode.set(true)
+    }
 }
+
 
