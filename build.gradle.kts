@@ -74,7 +74,7 @@ afterEvaluate {
         uploadFile.set(tasks.shadowJar)
         gameVersions.set(pluginVersions)
         loaders.set(pluginLoaders)
-        debugMode.set(true)
+        debugMode.set(false)
     }
 }
 
