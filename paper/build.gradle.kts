@@ -22,7 +22,7 @@ java {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.7")
-    implementation("com.github.72-S:FoundationLib:master-SNAPSHOT")
+    implementation("com.github.72-S:FoundationLib:-SNAPSHOT")
     implementation("dev.jorel:commandapi-bukkit-shade-mojang-mapped:9.7.0")
     compileOnly("dev.jorel:commandapi-annotations:9.7.0")
     annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")

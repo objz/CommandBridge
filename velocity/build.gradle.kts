@@ -20,6 +20,6 @@ java {
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    implementation("com.github.72-S:FoundationLib:master-SNAPSHOT")
+    implementation("com.github.72-S:FoundationLib:-SNAPSHOT")
 }
 
