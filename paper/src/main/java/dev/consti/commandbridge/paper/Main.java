@@ -16,7 +16,7 @@ public class Main extends JavaPlugin {
         logger = Runtime.getInstance().getLogger();
     }
     public static String getVersion() {
-        return "2.1.0";
+        return "2.1.1";
     }
 
     public static Main getInstance() {

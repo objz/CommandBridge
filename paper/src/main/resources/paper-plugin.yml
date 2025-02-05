@@ -1,5 +1,5 @@
 name: CommandBridge
-version: '2.1.0'
+version: '2.1.1'
 main: dev.consti.commandbridge.paper.Main
 author: 72-S
 api-version: '1.21'
