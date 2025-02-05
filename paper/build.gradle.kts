@@ -1,10 +1,25 @@
+buildscript {
+    repositories {
+      mavenCentral()
+    }
+    dependencies {
+        classpath("org.yaml:snakeyaml:2.3")
+
+    }
+}
+
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+
 plugins {
     id("java")
     id("com.gradleup.shadow") version "8.3.3"
 }
 
+val pversion: String by gradle.extra
+
 group = "dev.consti"
-version = "2.1.1"
+version = pversion
 
 repositories {
     mavenCentral()
@@ -32,5 +47,37 @@ tasks {
     build {
         dependsOn(shadowJar)
     }
+}
+
+tasks.register("modifyPaperPluginYaml") {
+    doLast {
+        
+        val yamlFile = file("src/main/resources/paper-plugin.yml") 
+
+        if (yamlFile.exists()) {
+            println("Found paper-plugin.yml")
+
+            val options = DumperOptions().apply {
+                defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+            }
+            val yaml = Yaml(options)
+
+            val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
+
+            yamlContent["version"] = pversion
+
+            yamlFile.writer().use { writer ->
+                yaml.dump(yamlContent, writer)
+            }
+
+            println("paper-plugin.yml updated successfully with version ${pversion}")
+        } else {
+            println("paper-plugin.yml not found!")
+        }
+    }
+}
+
+tasks.named("processResources") {
+    dependsOn("modifyPaperPluginYaml")
 }
 

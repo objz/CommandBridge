@@ -1,5 +1,8 @@
 package dev.consti.commandbridge.paper;
 
+import java.io.InputStream;
+import java.util.Properties;
+
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.consti.commandbridge.paper.core.Runtime;
@@ -15,8 +18,19 @@ public class Main extends JavaPlugin {
         instance = this;
         logger = Runtime.getInstance().getLogger();
     }
+    
     public static String getVersion() {
-        return "2.1.1";
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
     }
 
     public static Main getInstance() {

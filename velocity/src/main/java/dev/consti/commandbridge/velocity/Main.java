@@ -1,5 +1,8 @@
 package dev.consti.commandbridge.velocity;
 
+import java.io.InputStream;
+import java.util.Properties;
+
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
@@ -19,7 +22,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-@Plugin(id = "commandbridge", name = "CommandBridge", version = "2.1.1", authors = "72-S")
+@Plugin(id = "commandbridge", name = "CommandBridge", version = "Unknown", authors = "72-S")
 public class Main {
     private static Main instance;
     private final ProxyServer proxy;
@@ -41,7 +44,17 @@ public class Main {
     }
 
     public static String getVersion() {
-        return Main.class.getAnnotation(Plugin.class).version();
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
     }
 
     @Subscribe

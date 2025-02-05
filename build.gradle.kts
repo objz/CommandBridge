@@ -5,8 +5,14 @@ plugins {
     id("com.modrinth.minotaur") version "2.+"
 }
 
+val pversion: String by gradle.extra
+val versionType: String by gradle.extra
+val gameVersions: List<String> by gradle.extra
+val loaders: List<String> by gradle.extra
+val loadersStr = loaders.joinToString(", ")
+
 group = "dev.consti"
-version = "2.1.1"
+version = pversion
 
 repositories {
     mavenCentral()
@@ -40,13 +46,13 @@ tasks {
         mergeServiceFiles()
     }
 
-    val copyToPaperPlugins by creating(Copy::class) {
+    val copyToPaperPlugins by registering(Copy::class) {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
         into("/mnt/FastStorage/Server-TEST/CommandBridge/Bukkit/plugins")
     }
 
-    val copyToVelocityPlugins by creating(Copy::class) {
+    val copyToVelocityPlugins by registering(Copy::class) {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
         into("/mnt/FastStorage/Server-TEST/CommandBridge/Velocity/plugins")
@@ -55,5 +61,15 @@ tasks {
     register("dev") {
         dependsOn(copyToPaperPlugins, copyToVelocityPlugins)
     }
+}
+
+modrinth {
+    token.set(System.getenv("MODRINTH_TOKEN"))
+    projectId.set("wIuI4ru2")
+    versionNumber.set(pversion)
+    versionType.set(versionType)
+    uploadFile.set(tasks.shadowJar)
+    gameVersions.addAll(gameVersions)
+    loaders.add(loadersStr)
 }
 
