@@ -1,8 +1,7 @@
-**[v2.1.1] - 2025-02-05**  
+**[v2.1.2] - 2025-02-09**  
 
 **Changed**  
-- Reformatted `config.yml` for both Velocity and Bukkit, improving readability and structure.  
-- Enhanced script descriptions to provide clearer explanations, similar to the improved `config.yml` formatting.  
+- Updated `api-version` in `plugin.yml` from `1.21` to `1.20` to ensure compatibility with older Paper versions.  
 
 **Fixed**  
-- Patched version display errors to ensure correct versioning information is shown.
+- Resolved startup issues on Paper 1.20 servers caused by unsupported `api-version`.
