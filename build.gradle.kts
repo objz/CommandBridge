@@ -29,6 +29,8 @@ java {
     }
 }
 
+//!TODO:test
+
 tasks {
     // Configure the existing shadowJar task, don't register a new one
     shadowJar {
