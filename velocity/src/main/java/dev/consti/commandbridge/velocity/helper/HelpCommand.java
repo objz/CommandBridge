@@ -16,31 +16,42 @@ public class HelpCommand {
     }
 
     public static int sendHelpMessage(CommandSource source, Logger logger) {
-
         logger.debug("Sending help message to: {}", source);
 
-        source.sendMessage(Component.text("===== CommandBridge HelpCommand =====").color(NamedTextColor.GOLD));
+        source.sendMessage(Component.text("==== CommandBridge Help ====").color(NamedTextColor.GOLD));
         source.sendMessage(Component.text(""));
-        source.sendMessage(Component.text("Commands:").color(NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  - ")
-                .append(Component.text("/commandbridge reload").color(NamedTextColor.GREEN))
-                .append(Component.text(" - Reloads scripts").color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("  - ")
-                .append(Component.text("/commandbridge version").color(NamedTextColor.GREEN))
-                .append(Component.text(" - Displays the plugin version").color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("  - ")
-                .append(Component.text("/commandbridge help").color(NamedTextColor.GREEN))
-                .append(Component.text(" - Displays this help message").color(NamedTextColor.WHITE)));
+
+        source.sendMessage(Component.text("Usage:").color(NamedTextColor.YELLOW));
+        source.sendMessage(Component.text("  /cb <command>").color(NamedTextColor.WHITE));
         source.sendMessage(Component.text(""));
-        source.sendMessage(
-                Component.text("Detailed Documentation: ")
-                        .append(
-                                Component.text("https://72-s.github.io/CommandBridge/")
-                                        .color(NamedTextColor.LIGHT_PURPLE)
-                                        .decorate(TextDecoration.UNDERLINED)
-                                        .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
+
+        source.sendMessage(Component.text("Available Commands:").color(NamedTextColor.YELLOW));
+
+        source.sendMessage(formatCommand("help", "Displays this help message"));
+        source.sendMessage(formatCommand("list", "Lists connected clients"));
+        source.sendMessage(formatCommand("reload", "Reloads all configs and scripts"));
+        source.sendMessage(formatCommand("version", "Displays the current version"));
+        
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("Debug Commands (Debug mode only):").color(NamedTextColor.RED));
+        source.sendMessage(formatCommand("stop", "Stops the cb server (debug mode only)"));
+        source.sendMessage(formatCommand("start", "Starts the cb server (debug mode only)"));
+        
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("Documentation: ")
+                .append(Component.text("https://docs.commandbridge.72s.dev")
+                        .color(NamedTextColor.LIGHT_PURPLE)
+                        .decorate(TextDecoration.UNDERLINED)
+                        .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
+        
         source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
         return 1;
+    }
+
+    private static Component formatCommand(String command, String description) {
+        return Component.text("  - ")
+                .append(Component.text("/cb " + command).color(NamedTextColor.GREEN))
+                .append(Component.text(" - " + description).color(NamedTextColor.WHITE));
     }
 }
 

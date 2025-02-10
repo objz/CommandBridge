@@ -24,7 +24,7 @@ public class ListCommand {
                                 Component.text("No clients are currently connected").color(NamedTextColor.RED));
                     } else {
                         String clientsString = String.join(", ", connectedClients);
-                        source.sendMessage(Component.text("===== Connected Clients =====").color(NamedTextColor.GOLD));
+                        source.sendMessage(Component.text("===== Connected Clients =======").color(NamedTextColor.GOLD));
                         source.sendMessage(Component.text(clientsString).color(NamedTextColor.GREEN));
                         source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
                     }
