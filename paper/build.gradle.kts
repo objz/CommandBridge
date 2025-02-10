@@ -25,7 +25,14 @@ repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.codemc.org/repository/maven-public/") }
-    maven { url = uri("https://jitpack.io") }
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        credentials {
+            username = "72-S"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 java {
@@ -35,9 +42,9 @@ java {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.7")
-    implementation("com.github.72-S:FoundationLib:-SNAPSHOT")
+    implementation("dev.consti:foundationlib:2.0.0")
     implementation("dev.jorel:commandapi-bukkit-shade-mojang-mapped:9.7.0")
     compileOnly("dev.jorel:commandapi-annotations:9.7.0")
     annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")

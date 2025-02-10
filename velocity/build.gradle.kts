@@ -14,7 +14,14 @@ version = pversion
 repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
-    maven { url = uri("https://jitpack.io") }
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        credentials {
+            username = "72-S"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 java {
@@ -26,8 +33,9 @@ java {
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    implementation("com.github.72-S:FoundationLib:-SNAPSHOT")
+    implementation("dev.consti:foundationlib:2.0.0")
 }
+
 
 tasks.register("modifyVelocityPluginJson") {
     doLast {

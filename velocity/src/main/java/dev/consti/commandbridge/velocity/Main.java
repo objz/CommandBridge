@@ -63,14 +63,12 @@ public class Main {
         Runtime.getInstance().getStartup().start();
         int pluginId = 22008;
         metricsFactory.make(this, pluginId);
-        logger.info("CommandBridge initialized successfully");
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         logger.info("Stopping CommandBridge...");
         Runtime.getInstance().getStartup().stop();
-        logger.info("CommandBridge stopped successfully");
     }
 
     @Subscribe

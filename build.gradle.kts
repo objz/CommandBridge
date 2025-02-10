@@ -15,7 +15,15 @@ version = pversion
 
 repositories {
     mavenCentral()
-    maven { url = uri("https://jitpack.io") }
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        credentials {
+            username = "72-S"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
+
 }
 
 dependencies {
