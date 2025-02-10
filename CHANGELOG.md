@@ -1,7 +1,8 @@
-**[v2.1.2] - 2025-02-09**  
+**[v2.1.3] - 2025-02-10**  
 
 **Changed**  
-- Updated `api-version` in `plugin.yml` from `1.21` to `1.20` to ensure compatibility with older Paper versions.  
+- Improved the structure and readability of the `HelpCommand` output.
+- Grouped commands into general and debug-only sections for better clarity.
 
 **Fixed**  
-- Resolved startup issues on Paper 1.20 servers caused by unsupported `api-version`.
+- Fixed a bug where CommandBridge starts successfully even if there are errors in the init state
