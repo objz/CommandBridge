@@ -8,7 +8,6 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
-
 public class HelpCommand {
     public static LiteralArgumentBuilder<CommandSource> build(Logger logger) {
         return LiteralArgumentBuilder.<CommandSource>literal("help")
@@ -21,37 +20,38 @@ public class HelpCommand {
         source.sendMessage(Component.text("==== CommandBridge Help ====").color(NamedTextColor.GOLD));
         source.sendMessage(Component.text(""));
 
-        source.sendMessage(Component.text("Usage:").color(NamedTextColor.YELLOW));
-        source.sendMessage(Component.text("  /cb <command>").color(NamedTextColor.WHITE));
-        source.sendMessage(Component.text(""));
-
         source.sendMessage(Component.text("Available Commands:").color(NamedTextColor.YELLOW));
 
-        source.sendMessage(formatCommand("help", "Displays this help message"));
-        source.sendMessage(formatCommand("list", "Lists connected clients"));
-        source.sendMessage(formatCommand("reload", "Reloads all configs and scripts"));
-        source.sendMessage(formatCommand("version", "Displays the current version"));
-        
+        source.sendMessage(formatCommand("help", "Displays this help message", false));
+        source.sendMessage(formatCommand("list", "Lists connected clients", false));
+        source.sendMessage(formatCommand("reload", "Reloads all configs and scripts", false));
+        source.sendMessage(formatCommand("version", "Displays the current version", false));
+
         source.sendMessage(Component.text(""));
         source.sendMessage(Component.text("Debug Commands (Debug mode only):").color(NamedTextColor.RED));
-        source.sendMessage(formatCommand("stop", "Stops the cb server (debug mode only)"));
-        source.sendMessage(formatCommand("start", "Starts the cb server (debug mode only)"));
-        
+        source.sendMessage(formatCommand("stop", "Stops the cb server", false));
+        source.sendMessage(formatCommand("start", "Starts the cb server", false));
+
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("Client Commands (/cbc):").color(NamedTextColor.AQUA));
+        source.sendMessage(formatCommand("reconnect", "Reconnects the current client", true));
+
         source.sendMessage(Component.text(""));
         source.sendMessage(Component.text("Documentation: ")
                 .append(Component.text("https://docs.commandbridge.72s.dev")
                         .color(NamedTextColor.LIGHT_PURPLE)
                         .decorate(TextDecoration.UNDERLINED)
                         .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
-        
+
+        source.sendMessage(Component.text(""));
         source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
         return 1;
     }
 
-    private static Component formatCommand(String command, String description) {
+    private static Component formatCommand(String command, String description, boolean client) {
+        String alias = client ? "/cbc " : "/cb ";
         return Component.text("  - ")
-                .append(Component.text("/cb " + command).color(NamedTextColor.GREEN))
+                .append(Component.text(alias + command).color(NamedTextColor.GREEN))
                 .append(Component.text(" - " + description).color(NamedTextColor.WHITE));
     }
 }
-

@@ -1,9 +1,18 @@
 package dev.consti.commandbridge.paper.utils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.bukkit.Bukkit;
 
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.foundationlib.logging.Logger;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.Argument;
+import dev.jorel.commandapi.arguments.ArgumentSuggestions;
+import dev.jorel.commandapi.arguments.StringArgument;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import dev.consti.commandbridge.paper.core.Runtime;
 
 public class GeneralUtils {
@@ -36,6 +45,31 @@ public class GeneralUtils {
                                 Runtime.getInstance().getClient().sendTask("reload", "failure");
                             }
                         });
+    }
+
+    public void registerCommands() {
+        List<Argument<?>> arguments = new ArrayList<>();
+        arguments.add(new StringArgument("arguments").replaceSuggestions(ArgumentSuggestions.strings("reconnect")));
+        new CommandAPICommand("commandbridgeclient")
+                .withArguments(arguments)
+                .withAliases("cbc")
+                .withPermission("commandbridge.admin")
+                .executes((sender, args) -> {
+                    String opt = (String) args.get("arguments");
+                    if (opt.matches("reconnect")) {
+                        Runtime.getInstance().getClient().disconnect();
+                        try {
+                            Runtime.getInstance().getClient().connect(
+                                    Runtime.getInstance().getConfig().getKey("config.yml", "remote"),
+                                    Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "port")));
+                            sender.sendMessage(Component.text("Client reconnected successfully", NamedTextColor.GREEN));
+                        } catch (Exception e) {
+                            logger.error("Client reconnection failed: ", e);
+                            sender.sendMessage(Component.text("Failed to reconnect", NamedTextColor.RED));
+                        }
+                    }
+                })
+                .register();
     }
 
 }

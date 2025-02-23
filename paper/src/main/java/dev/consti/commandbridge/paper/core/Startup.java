@@ -37,6 +37,9 @@ public class Startup {
 
             logger.debug("Checking for updates...");
             checkForUpdates();
+
+            logger.debug("Registering internal commands...");
+            runtime.getGeneralUtils().registerCommands();
         } catch (Exception e) {
             logger.error("Failed to initialize CommandBridge: {}",
                     logger.getDebug() ? e : e.getMessage()
