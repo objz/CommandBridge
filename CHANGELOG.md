@@ -1,8 +1,9 @@
-**[v2.1.3] - 2025-02-10**  
+**[v2.1.4] - 2025-02-23**  
+
+**Added**  
+- Added the `/cbc reconnect` command to allow clients to reconnect to the server.  
+  Requires the `commandbridge.admin` permission on Paper servers.  
 
 **Changed**  
-- Improved the structure and readability of the `HelpCommand` output.
-- Grouped commands into general and debug-only sections for better clarity.
+- Updated the `/cbc help` command description for improved clarity.  
 
-**Fixed**  
-- Fixed a bug where CommandBridge starts successfully even if there are errors in the init state
