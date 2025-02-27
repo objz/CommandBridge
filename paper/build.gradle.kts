@@ -45,16 +45,11 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.7")
     implementation("dev.consti:foundationlib:2.1.1")
-    implementation("dev.jorel:commandapi-bukkit-shade-mojang-mapped:9.7.0")
+    implementation("dev.jorel:commandapi-bukkit-shade:9.7.0")
     compileOnly("dev.jorel:commandapi-annotations:9.7.0")
     annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")
 }
 
-tasks {
-    build {
-        dependsOn(shadowJar)
-    }
-}
 
 tasks.register("modifyPaperPluginYaml") {
     doLast {

@@ -1,9 +1,5 @@
-**[v2.1.4] - 2025-02-23**  
-
-**Added**  
-- Added the `/cbc reconnect` command to allow clients to reconnect to the server.  
-  Requires the `commandbridge.admin` permission on Paper servers.  
+**[v2.1.5] - 2025-02-27**  
 
 **Changed**  
-- Updated the `/cbc help` command description for improved clarity.  
+- The plugin is now Spigot-mapped and will be remapped by Paper to support older versions starting from 1.20.
 

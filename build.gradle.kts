@@ -43,6 +43,9 @@ tasks {
     // Configure the existing shadowJar task, don't register a new one
     shadowJar {
         dependsOn(":paper:shadowJar")
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "spigot"
+        }
 
         relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
 
