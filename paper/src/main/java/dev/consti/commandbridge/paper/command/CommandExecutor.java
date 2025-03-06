@@ -5,11 +5,11 @@ import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.commandbridge.paper.utils.CommandUtils;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;
 
@@ -43,7 +43,7 @@ public class CommandExecutor {
     private void executeConsoleCommand(String command) {
         logger.debug("Executing command '{}' as console", command);
 
-        if (isCommandValid(command)) {
+        if (CommandUtils.isCommandValid(command)) {
             logger.warn("Invalid command: {}", command);
             Runtime.getInstance().getClient().sendError("Invalid command: " + command);
             return;
@@ -76,7 +76,7 @@ public class CommandExecutor {
    }
 
 private void handlePlayerCommand(Player player, String command) {
-    if (isCommandValid(command)) {
+    if (CommandUtils.isCommandValid(command)) {
         logger.warn("Invalid command: {}", command);
         Runtime.getInstance().getClient().sendError("Invalid command: " + command);
         player.sendMessage("§cThe command '" + command + "' is invalid");
@@ -90,15 +90,15 @@ private void handlePlayerCommand(Player player, String command) {
 }
 
 
-private boolean isCommandValid(String command) {
-    String baseCommand = command.split(" ")[0];
-    PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
-    if (pluginCommand != null) {
-        return false;
-    }
-    return Bukkit.getServer().getCommandMap().getCommand(baseCommand) == null;
-}
-
+// private boolean isCommandValid(String command) {
+//     String baseCommand = command.split(" ")[0];
+//     PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
+//     if (pluginCommand != null) {
+//         return false;
+//     }
+//     return Bukkit.getServer().getCommandMap().getCommand(baseCommand) == null;
+// }
+//
 private void logResult(String target, String command, boolean status) {
     if (status) {
         logger.info("Successfully executed command '{}' as {}", command, target);

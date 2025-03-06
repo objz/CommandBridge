@@ -25,6 +25,7 @@ repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.codemc.org/repository/maven-public/") }
+    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")}
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
@@ -42,7 +43,8 @@ java {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
+    // compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.7")
     implementation("dev.consti:foundationlib:2.1.1")
     implementation("dev.jorel:commandapi-bukkit-shade:9.7.0")
@@ -79,7 +81,36 @@ tasks.register("modifyPaperPluginYaml") {
     }
 }
 
+tasks.register("modifyLegacyPluginYaml") {
+    doLast {
+        
+        val yamlFile = file("src/main/resources/plugin.yml") 
+
+        if (yamlFile.exists()) {
+            println("Found legacy plugin.yml")
+
+            val options = DumperOptions().apply {
+                defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+            }
+            val yaml = Yaml(options)
+
+            val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
+
+            yamlContent["version"] = pversion
+
+            yamlFile.writer().use { writer ->
+                yaml.dump(yamlContent, writer)
+            }
+
+            println("legacy plugin.yml updated successfully with version ${pversion}")
+        } else {
+            println("legacy plugin.yml not found!")
+        }
+    }
+}
+
 tasks.named("processResources") {
     dependsOn("modifyPaperPluginYaml")
+    dependsOn("modifyLegacyPluginYaml")
 }
 

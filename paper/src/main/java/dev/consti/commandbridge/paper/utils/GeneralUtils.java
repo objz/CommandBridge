@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.foundationlib.logging.Logger;
@@ -11,8 +12,6 @@ import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.StringArgument;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import dev.consti.commandbridge.paper.core.Runtime;
 
 public class GeneralUtils {
@@ -62,10 +61,10 @@ public class GeneralUtils {
                             Runtime.getInstance().getClient().connect(
                                     Runtime.getInstance().getConfig().getKey("config.yml", "remote"),
                                     Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "port")));
-                            sender.sendMessage(Component.text("Client reconnected successfully", NamedTextColor.GREEN));
+                            sender.sendMessage(ChatColor.GREEN + "Client reconnected successfully");
                         } catch (Exception e) {
                             logger.error("Client reconnection failed: ", e);
-                            sender.sendMessage(Component.text("Failed to reconnect", NamedTextColor.RED));
+                            sender.sendMessage(ChatColor.RED + "Failed to reconnect");
                         }
                     }
                 })

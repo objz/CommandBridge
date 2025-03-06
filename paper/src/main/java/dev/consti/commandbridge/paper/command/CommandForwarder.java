@@ -1,6 +1,7 @@
 package dev.consti.commandbridge.paper.command;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -9,8 +10,6 @@ import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 
 public class CommandForwarder {
@@ -45,7 +44,7 @@ public class CommandForwarder {
                 && !sender.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for sender: {}", sender.getName());
             if (!script.shouldHidePermissionWarning()) {
-                sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+                sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
             }
             return true;
         }
@@ -55,7 +54,7 @@ public class CommandForwarder {
     private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
             logger.warn("This command requires a player as executor, but sender is not a player.");
-            sender.sendMessage(Component.text("This command requires a player as executor, but source is not a player object", NamedTextColor.RED));
+            sender.sendMessage(ChatColor.RED + "This command requires a player as executor, but source is not a player object");
             return;
         }
 
@@ -98,7 +97,7 @@ public class CommandForwarder {
         } catch (Exception e) {
             logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
             if (player != null) {
-                player.sendMessage(Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
+                player.sendMessage(ChatColor.RED + "Error occurred while parsing command");
             }
             Runtime.getInstance().getClient().sendError("Error occurred while parsing commands");
         }
@@ -116,7 +115,7 @@ public class CommandForwarder {
     private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
         logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
         if (player != null) {
-            player.sendMessage(Component.text("Scheduling command with '" + cmd.getDelay() + "' seconds"));
+            player.sendMessage("Scheduling command with '" + cmd.getDelay() + "' seconds");
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
     }

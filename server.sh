@@ -2,11 +2,11 @@
 
 # Server paths
 SERVER1_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Velocity/"
-SERVER2_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Bukkit/"
+SERVER2_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Paper/"
 
 # Server JAR files
 SERVER1_JAR="velocity-3.3.0-SNAPSHOT-436.jar"
-SERVER2_JAR="paper-1.21.1-99.jar"
+SERVER2_JAR="paper-1.20-17.jar"
 
 # Function to run a server
 run_server() {
