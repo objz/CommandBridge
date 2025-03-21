@@ -23,7 +23,8 @@ repositories {
             password = System.getenv("GITHUB_TOKEN")
         }
     }
-
+    maven { url = uri("https://repo.william278.net/releases/") }
+    maven { url = uri("https://repo.extendedclip.com/releases/")}
 }
 
 dependencies {

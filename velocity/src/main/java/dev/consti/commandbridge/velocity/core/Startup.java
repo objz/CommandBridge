@@ -42,6 +42,12 @@ public class Startup {
 
             logger.debug("Registering internal commands...");
             runtime.getGeneralUtils().registerCommands();
+
+            if (Main.getInstance().proxy.getPluginManager().getPlugin("placeholderapi").isPresent()) {
+                // logger.info("Hooked into PapiProxyBridge — PlaceholderAPI placeholders enabled");
+            } else {
+                // logger.warn("PapiProxyBridge not found — using internal placeholder system only");
+            }
         } catch (Exception e) {
             logger.error("Failed to initialize CommandBridge: {}",
                     logger.getDebug() ? e : e.getMessage()

@@ -1,5 +1,8 @@
-**[v2.1.6] - 2025-03-06**  
+**[v2.1.7] - 2025-03-21**  
+
+**Added**  
+- Optional support for PlaceholderAPI on both Bukkit and Velocity platforms. If the PlaceholderAPI plugin is present, external placeholders will be parsed alongside internal ones.  
+- Improved internal placeholder handling to avoid conflicts with PlaceholderAPI syntax, ensuring consistent behavior whether or not PlaceholderAPI is installed.  
 
 **Changed**  
-- Removed dependencies on the Paper API, making the plugin fully compatible with the Bukkit API. This allows support for a wider range of server software, including third-party platforms like Arclight that do not implement the Paper API.  
-- Added a `legacy-plugin.yml` to ensure compatibility with non-Paper servers while still keeping a `paper-plugin.yml` to maintain Paper-specific features.
+- Updated logging messages to clearly indicate whether PlaceholderAPI was detected and whether internal or external placeholder systems are being used.

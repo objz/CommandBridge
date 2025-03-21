@@ -26,6 +26,7 @@ repositories {
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.codemc.org/repository/maven-public/") }
     maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")}
+    maven { url = uri("https://repo.extendedclip.com/releases/")}
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
@@ -49,6 +50,7 @@ dependencies {
     implementation("dev.consti:foundationlib:2.1.1")
     implementation("dev.jorel:commandapi-bukkit-shade:9.7.0")
     compileOnly("dev.jorel:commandapi-annotations:9.7.0")
+    compileOnly("me.clip:placeholderapi:2.11.6")
     annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")
 }
 

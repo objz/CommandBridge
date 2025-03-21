@@ -1,5 +1,10 @@
 name: CommandBridge
-version: 2.1.6
+version: 2.1.7
 main: dev.consti.commandbridge.paper.Main
 author: 72-S
 api-version: '1.20'
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false

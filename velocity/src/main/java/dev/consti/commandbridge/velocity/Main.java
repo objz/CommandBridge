@@ -25,7 +25,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "Unknown", authors = "72-S")
 public class Main {
     private static Main instance;
-    private final ProxyServer proxy;
+    public final ProxyServer proxy;
     private final Logger logger;
     private final Metrics.Factory metricsFactory;
 

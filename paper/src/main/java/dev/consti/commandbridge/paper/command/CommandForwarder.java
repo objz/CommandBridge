@@ -10,7 +10,7 @@ import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
-
+import me.clip.placeholderapi.PlaceholderAPI;
 
 public class CommandForwarder {
     private final Logger logger;
@@ -54,7 +54,8 @@ public class CommandForwarder {
     private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
             logger.warn("This command requires a player as executor, but sender is not a player.");
-            sender.sendMessage(ChatColor.RED + "This command requires a player as executor, but source is not a player object");
+            sender.sendMessage(
+                    ChatColor.RED + "This command requires a player as executor, but source is not a player object");
             return;
         }
 
@@ -92,6 +93,9 @@ public class CommandForwarder {
         }
         try {
             String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
+            if (Runtime.getInstance().getStartup().isPlaceholderAPI()) {
+                parsedCommand = PlaceholderAPI.setPlaceholders(player, parsedCommand);
+            }
             return parsedCommand;
 
         } catch (Exception e) {
@@ -107,9 +111,9 @@ public class CommandForwarder {
 
     private void addPlayerPlaceholders(StringParser parser, Player player) {
         logger.debug("Adding placeholders for player: {}", player.getName());
-        parser.addPlaceholder("%player%", player.getName());
-        parser.addPlaceholder("%uuid%", player.getUniqueId().toString());
-        parser.addPlaceholder("%world%", player.getWorld().getName());
+        parser.addPlaceholder("%cb_player%", player.getName());
+        parser.addPlaceholder("%cb_uuid%", player.getUniqueId().toString());
+        parser.addPlaceholder("%cb_world%", player.getWorld().getName());
     }
 
     private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {

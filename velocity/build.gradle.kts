@@ -14,6 +14,7 @@ version = pversion
 repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { url = uri("https://repo.william278.net/releases/") }
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
@@ -34,6 +35,7 @@ dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     implementation("dev.consti:foundationlib:2.1.1")
+    implementation("net.william278:papiproxybridge:1.7.2")
 }
 
 
