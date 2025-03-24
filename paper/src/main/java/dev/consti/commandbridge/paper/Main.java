@@ -40,7 +40,7 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).usePluginNamespace().silentLogs(true));
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).usePluginNamespace().silentLogs(true).skipReloadDatapacks(true).shouldHookPaperReload(false));
     }
     @Override
     public void onEnable() {

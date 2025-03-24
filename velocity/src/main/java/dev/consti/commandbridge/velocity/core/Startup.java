@@ -7,6 +7,7 @@ import dev.consti.foundationlib.utils.VersionChecker;
 public class Startup {
     private final Logger logger;
     private final Runtime runtime;
+    private boolean placeholderAPI = false;
 
     public Startup(Logger logger) {
         this.logger = logger;
@@ -43,16 +44,22 @@ public class Startup {
             logger.debug("Registering internal commands...");
             runtime.getGeneralUtils().registerCommands();
 
-            if (Main.getInstance().proxy.getPluginManager().getPlugin("placeholderapi").isPresent()) {
-                // logger.info("Hooked into PapiProxyBridge — PlaceholderAPI placeholders enabled");
+            if (Main.getInstance().proxy.getPluginManager().getPlugin("papiproxybridge").isPresent()) {
+                logger.info("Hooked into PapiProxyBridge — PlaceholderAPI placeholders enabled");
+                placeholderAPI = true;
             } else {
-                // logger.warn("PapiProxyBridge not found — using internal placeholder system only");
+                logger.warn("PapiProxyBridge not found — using internal placeholder system only");
+                placeholderAPI = false;
             }
         } catch (Exception e) {
             logger.error("Failed to initialize CommandBridge: {}",
                     logger.getDebug() ? e : e.getMessage()
             );
         }
+    }
+
+    public boolean isPlaceholderAPI() {
+        return placeholderAPI;
     }
 
     public void stop() {

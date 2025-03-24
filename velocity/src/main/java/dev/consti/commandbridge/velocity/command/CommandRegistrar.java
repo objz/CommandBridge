@@ -6,7 +6,6 @@ import java.util.Map;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
@@ -56,18 +55,18 @@ public class CommandRegistrar {
                         logger.debug("Executing base command: {}", commandName);
                         return helper.executeScriptCommands(context.getSource(), script, new String[0]);
                     });
-            commandBuilder.then(
+            RequiredArgumentBuilder<CommandSource, String> argsArgument =
                     RequiredArgumentBuilder.<CommandSource, String>argument("args", StringArgumentType.greedyString())
                             .executes(context -> {
                                 String argsString = context.getArgument("args", String.class);
                                 logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
                                 String[] args = argsString.split(" ");
                                 return helper.executeScriptCommands(context.getSource(), script, args);
-                            })
-            );
+                            });
+            commandBuilder.then(argsArgument);
 
-            LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
-            BrigadierCommand brigadierCommand = new BrigadierCommand(rootNode);
+            // LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
+            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBuilder.build());
             CommandMeta commandMeta = proxy.getCommandManager().metaBuilder(commandName).build();
 
             proxy.getCommandManager().register(commandMeta, brigadierCommand);

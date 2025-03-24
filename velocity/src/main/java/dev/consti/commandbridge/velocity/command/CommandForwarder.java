@@ -1,6 +1,7 @@
 package dev.consti.commandbridge.velocity.command;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.velocitypowered.api.command.CommandSource;
@@ -15,6 +16,7 @@ import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.william278.papiproxybridge.api.PlaceholderAPI;
 
 public class CommandForwarder {
     private final Logger logger;
@@ -52,7 +54,8 @@ public class CommandForwarder {
         if (!script.shouldIgnorePermissionCheck()
                 && !source.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for source: {}", source);
-            source.sendMessage(Component.text("An internal error occurred, see console for more details", NamedTextColor.RED));
+            source.sendMessage(
+                    Component.text("An internal error occurred, see console for more details", NamedTextColor.RED));
             if (!script.shouldHidePermissionWarning()) {
                 source.sendMessage(
                         Component.text("You do not have permission to use this command", NamedTextColor.RED));
@@ -65,7 +68,9 @@ public class CommandForwarder {
     private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
             logger.warn("This command requires a player as executor, but source is not a player");
-            source.sendMessage(Component.text("This command requires a player as executor, but source is not a player object", NamedTextColor.RED));
+            source.sendMessage(
+                    Component.text("This command requires a player as executor, but source is not a player object",
+                            NamedTextColor.RED));
             return;
         }
 
@@ -74,32 +79,37 @@ public class CommandForwarder {
         // Check if the player is on the required server if needed
         if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(player, cmd)) {
             logger.warn("Player '{}' is not on the required server for this command.", player.getUsername());
-            source.sendMessage(Component.text("Player " + player.getUsername() + " is not on the required server", NamedTextColor.YELLOW));
+            source.sendMessage(Component.text("Player " + player.getUsername() + " is not on the required server",
+                    NamedTextColor.YELLOW));
             return;
         }
 
-        String parsedCommand = parseCommand(cmd, args, player);
-        if (parsedCommand == null)
-            return;
+        parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
+            if (parsedCommand == null)
+                return;
 
-        if (cmd.getDelay() > 0) {
-            scheduleCommand(cmd, parsedCommand, args, player, 0);
-        } else {
-            sendCommand(cmd, parsedCommand, args, player, 0);
-        }
+            if (cmd.getDelay() > 0) {
+                scheduleCommand(cmd, parsedCommand, args, player, 0);
+            } else {
+                sendCommand(cmd, parsedCommand, args, player, 0);
+            }
+        });
+
     }
 
     private void handleConsoleExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
-        // No player placeholders needed
-        String parsedCommand = parseCommand(cmd, args, null);
-        if (parsedCommand == null)
-            return;
 
-        if (cmd.getDelay() > 0) {
-            scheduleCommand(cmd, parsedCommand, args, null, 0);
-        } else {
-            sendCommand(cmd, parsedCommand, args, null, 0);
-        }
+        parseCommand(cmd, args, null).thenAccept(parsedCommand -> {
+            if (parsedCommand == null)
+                return;
+
+            if (cmd.getDelay() > 0) {
+                scheduleCommand(cmd, parsedCommand, args, null, 0);
+            } else {
+                sendCommand(cmd, parsedCommand, args, null, 0);
+            }
+        });
+
     }
 
     private boolean isPlayerOnTargetServer(Player player, ScriptManager.Command cmd) {
@@ -108,28 +118,39 @@ public class CommandForwarder {
                 .orElse(false);
     }
 
-    private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
+    private CompletableFuture<String> parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
         StringParser parser = StringParser.create();
 
         if (player != null && cmd.getTargetExecutor().equals("player")) {
             addPlayerPlaceholders(parser, player);
         }
+
         try {
             String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
-            return parsedCommand;
 
+            if (Runtime.getInstance().getStartup().isPlaceholderAPI()) {
+                return PlaceholderAPI.createInstance()
+                        .formatPlaceholders(parsedCommand, player.getUniqueId())
+                        .exceptionally(e -> {
+                            logger.error("PlaceholderAPI error: {}", logger.getDebug() ? e : e.getMessage());
+                            return parsedCommand; // Fallback
+                        });
+            }
+
+            return CompletableFuture.completedFuture(parsedCommand);
         } catch (Exception e) {
             logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
             if (player != null) {
                 player.sendMessage(Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
             }
             for (String conn : cmd.getTargetClientIds()) {
-                Runtime.getInstance().getServer().sendError(Runtime.getInstance().getServer().getWebSocket(conn),
+                Runtime.getInstance().getServer().sendError(
+                        Runtime.getInstance().getServer().getWebSocket(conn),
                         "Error occurred while parsing commands");
             }
-        }
 
-        return null;
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     private void addPlayerPlaceholders(StringParser parser, Player player) {
@@ -177,7 +198,8 @@ public class CommandForwarder {
         if (targetClients.isEmpty()) {
             logger.warn("No target clients defined for command: {}", cmd.getCommand());
             if (player != null) {
-                player.sendMessage(Component.text("No target clients are defined for this command", NamedTextColor.RED));
+                player.sendMessage(
+                        Component.text("No target clients are defined for this command", NamedTextColor.RED));
             }
             return;
         }
