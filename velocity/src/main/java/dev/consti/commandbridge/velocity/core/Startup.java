@@ -1,6 +1,9 @@
 package dev.consti.commandbridge.velocity.core;
 
+import java.util.Set;
+
 import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.websocket.Server;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.VersionChecker;
 
@@ -64,7 +67,11 @@ public class Startup {
 
     public void stop() {
         try {
+            Server server = runtime.getServer();
             logger.debug("Stopping WebSocket server...");
+            for (String conn : server.getConnectedClients()) {
+                runtime.getServer().sendTask(server.getWebSocket(conn), "reconnect", "closed");
+            }
             runtime.getServer().stopServer(0);
         } catch (Exception e) {
             logger.error("Failed to stop CommandBridge: {}", logger.getDebug() ? e : e.getMessage());

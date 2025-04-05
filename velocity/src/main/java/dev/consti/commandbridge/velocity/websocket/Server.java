@@ -85,12 +85,12 @@ public class Server extends SimpleWebSocketServer {
             }
             case "error" -> logger.warn("Error Message from client '{}' : {}", client, status);
             case "info" -> logger.info("Info from client '{}' : {}", client, status);
-            case "task" -> systemTask(parser, client);
+            case "task" -> systemTask(parser,status, client);
             default -> logger.warn("Invalid channel: {}", channel);
         }
     }
 
-    private void systemTask(MessageParser parser, String client) {
+    private void systemTask(MessageParser parser,String status, String client) {
         String task = parser.getBodyValueAsString("task");
         switch (task) {
             case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());

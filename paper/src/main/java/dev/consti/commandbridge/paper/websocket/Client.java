@@ -62,16 +62,17 @@ public class Client extends SimpleWebSocketClient {
       switch (channel) {
           case "error" -> logger.warn("Error from server '{}' : {}",parser.getBodyValueAsString("server"), status);
           case "info" -> logger.info("Info from server '{}' : {}",parser.getBodyValueAsString("server"), status);
-          case "task" -> systemTask(parser);
+          case "task" -> systemTask(parser, status);
           default -> logger.warn("Invalid channel: {}", channel);
       }
   }
 
-  private void systemTask(MessageParser parser) {
+  private void systemTask(MessageParser parser, String status) {
       String task = parser.getBodyValueAsString("task");
       switch (task) {
           case "reload" -> Runtime.getInstance().getScriptUtils().unloadCommands(() -> Bukkit.getScheduler()
                   .runTaskLater(Main.getInstance(), Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
+          case "reconnect" -> logger.warn("Reconnect called with status: {}", status);
           default -> logger.warn("Invalid task: {}", task);
       }
   }
