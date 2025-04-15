@@ -2,8 +2,6 @@ package dev.consti.commandbridge.velocity.websocket;
 
 import java.util.*;
 
-import org.java_websocket.WebSocket;
-
 import com.velocitypowered.api.proxy.Player;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
@@ -11,10 +9,11 @@ import dev.consti.foundationlib.json.MessageBuilder;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.websocket.SimpleWebSocketServer;
+import io.netty.channel.Channel;
 
 public class Server extends SimpleWebSocketServer {
     private final Logger logger;
-    private final Map<String, WebSocket> clientConnections = new HashMap<>();
+    private final Map<String, Channel> clientConnections = new HashMap<>();
 
     public Server(Logger logger, String secret) {
         super(logger, secret);
@@ -22,7 +21,7 @@ public class Server extends SimpleWebSocketServer {
     }
 
     @Override
-    protected void onMessage(WebSocket webSocket, String message) {
+    protected void onMessage(Channel webSocket, String message) {
         MessageParser parser = new MessageParser(message);
         logger.debug("Received message: {}", message);
         try {
@@ -43,8 +42,8 @@ public class Server extends SimpleWebSocketServer {
     }
 
     @Override
-    protected void onConnectionClose(WebSocket conn, int code, String reason) {
-        String clientAddress = conn.getRemoteSocketAddress().toString();
+    protected void onConnectionClose(Channel conn, int code, String reason) {
+        String clientAddress = conn.remoteAddress().toString();
         logger.info("Client '{}' disconnected", clientAddress);
 
         String disconnectedClientName = clientConnections.entrySet().stream()
@@ -61,12 +60,12 @@ public class Server extends SimpleWebSocketServer {
         }
     }
 
-    private void handleCommandRequest(WebSocket webSocket, String message) {
+    private void handleCommandRequest(Channel webSocket, String message) {
         logger.debug("Handling command request");
         Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
     }
 
-    private void handleSystemRequest(WebSocket webSocket, String message) {
+    private void handleSystemRequest(Channel webSocket, String message) {
         logger.debug("Handling system request");
         MessageParser parser = new MessageParser(message);
         String channel = parser.getBodyValueAsString("channel");
@@ -98,7 +97,7 @@ public class Server extends SimpleWebSocketServer {
         }
     }
 
-    public void sendError(WebSocket webSocket, String errorMessage) {
+    public void sendError(Channel webSocket, String errorMessage) {
         MessageBuilder builder = new MessageBuilder("system");
         builder.addToBody("channel", "error")
                 .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
@@ -106,7 +105,7 @@ public class Server extends SimpleWebSocketServer {
         sendMessage(builder.build(), webSocket);
     }
 
-    public void sendInfo(WebSocket webSocket, String infoMessage) {
+    public void sendInfo(Channel webSocket, String infoMessage) {
         MessageBuilder builder = new MessageBuilder("system");
         builder.addToBody("channel", "info")
                 .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
@@ -114,7 +113,7 @@ public class Server extends SimpleWebSocketServer {
         sendMessage(builder.build(), webSocket);
     }
 
-    public void sendTask(WebSocket webSocket, String task, String status) {
+    public void sendTask(Channel webSocket, String task, String status) {
         MessageBuilder builder = new MessageBuilder("system");
         builder.addToBody("channel", "task").addToBody("task", task)
                 .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
@@ -123,7 +122,7 @@ public class Server extends SimpleWebSocketServer {
     }
 
     public void sendCommand(String command, String client, String target, Player executor) {
-        WebSocket conn = clientConnections.get(client);
+        Channel conn = clientConnections.get(client);
         if (conn == null) {
             logger.warn("Client '{}' is not connected, cannot send message.", client);
             return;
@@ -150,7 +149,7 @@ public class Server extends SimpleWebSocketServer {
         return clientConnections.keySet();
     }
 
-    public WebSocket getWebSocket(String client) {
+    public Channel getWebSocket(String client) {
         return clientConnections.get(client);
     }
 

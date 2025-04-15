@@ -84,6 +84,7 @@ public class CommandForwarder {
             return;
         }
 
+
         parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
             if (parsedCommand == null)
                 return;
@@ -123,6 +124,8 @@ public class CommandForwarder {
 
         if (player != null && cmd.getTargetExecutor().equals("player")) {
             addPlayerPlaceholders(parser, player);
+        } else {
+            return CompletableFuture.completedFuture(parser.parsePlaceholders(cmd.getCommand(), args));
         }
 
         try {

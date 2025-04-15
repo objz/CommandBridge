@@ -90,7 +90,10 @@ public class CommandForwarder {
 
         if (player != null && cmd.getTargetExecutor().equals("player")) {
             addPlayerPlaceholders(parser, player);
+        } else {
+            return parser.parsePlaceholders(cmd.getCommand(), args);
         }
+
         try {
             String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
             if (Runtime.getInstance().getStartup().isPlaceholderAPI()) {

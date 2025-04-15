@@ -1,6 +1,5 @@
 package dev.consti.commandbridge.velocity.core;
 
-import java.util.Set;
 
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.websocket.Server;

@@ -359,7 +359,8 @@ public class Metrics {
         infoLogger.accept("Sent bStats metrics data: " + data.toString());
       }
       String url = String.format(REPORT_URL, platform);
-      HttpsURLConnection connection = (HttpsURLConnection) new URL(url).openConnection();
+      @SuppressWarnings("deprecation")
+    HttpsURLConnection connection = (HttpsURLConnection) new URL(url).openConnection();
       // Compress the data to save bandwidth
       byte[] compressedData = compress(data.toString());
       connection.setRequestMethod("POST");
