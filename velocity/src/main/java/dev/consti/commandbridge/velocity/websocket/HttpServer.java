@@ -26,7 +26,7 @@ public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest>{
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) {
         String uri = msg.uri();
-        logger.debug("Incomming HTTP request to: {}", uri);
+        logger.debug("Incoming HTTP request to: {}", uri);
 
         if ("/ping".equalsIgnoreCase(uri)) {
             sendTextResponse(ctx, OK, "pong");
