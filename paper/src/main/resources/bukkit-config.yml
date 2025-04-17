@@ -19,6 +19,10 @@ remote: "127.0.0.1"
 # Ensure this matches the port configured on the server side.
 port: 8080
 
+# Time in seconds to keep trying to reconnect after server shutdown.
+# After this, use /cbc reconnect to retry manually.
+timeout: 120
+
 # A shared secret key used for authentication between the client and the server.
 # This ensures secure communication.
 # The key is stored securely in the secret.key file located in the server's plugin folder.

@@ -1,11 +1,13 @@
 package dev.consti.commandbridge.velocity.core;
 
+
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.command.CommandDispatcher;
 import dev.consti.commandbridge.velocity.command.CommandForwarder;
 import dev.consti.commandbridge.velocity.command.CommandRegistrar;
 import dev.consti.commandbridge.velocity.util.GeneralUtils;
 import dev.consti.commandbridge.velocity.util.ScriptUtils;
+import dev.consti.commandbridge.velocity.websocket.HttpServer;
 import dev.consti.commandbridge.velocity.websocket.Server;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ConfigManager;
@@ -21,6 +23,7 @@ public class Runtime {
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
     private CommandDispatcher commandDispatcher;
+    private HttpServer httpServer;
 
     private Runtime() {}
 
@@ -102,5 +105,13 @@ public class Runtime {
             getLogger().debug("CommandDispatcher initialized.");
         }
         return commandDispatcher;
+    }
+
+    public synchronized HttpServer getHttpServer() {
+        if (httpServer == null) {
+            httpServer = new HttpServer(logger);
+            getLogger().debug("HttpServer initialized.");
+        }
+        return httpServer;
     }
 }

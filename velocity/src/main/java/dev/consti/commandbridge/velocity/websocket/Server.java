@@ -17,6 +17,7 @@ public class Server extends SimpleWebSocketServer {
 
     public Server(Logger logger, String secret) {
         super(logger, secret);
+        super.addHttpHandler(Runtime.getInstance().getHttpServer());
         this.logger = logger;
     }
 
@@ -44,20 +45,22 @@ public class Server extends SimpleWebSocketServer {
     @Override
     protected void onConnectionClose(Channel conn, int code, String reason) {
         String clientAddress = conn.remoteAddress().toString();
-        logger.info("Client '{}' disconnected", clientAddress);
 
-        String disconnectedClientName = clientConnections.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(conn))
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(null);
+        if (getConnections().contains(conn)) {
+            String disconnectedClientName = clientConnections.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(conn))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
 
-        if (disconnectedClientName != null) {
-            clientConnections.remove(disconnectedClientName);
-            logger.debug("Removed disconnected client: {}", disconnectedClientName);
-        } else {
-            logger.warn("Disconnected client '{}' not found in client connections map.", clientAddress);
-        }
+            logger.info("Client '{}' disconnected", clientAddress);
+            if (disconnectedClientName != null) {
+                clientConnections.remove(disconnectedClientName);
+                logger.debug("Removed disconnected client: {}", disconnectedClientName);
+            } else {
+                logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
+            }
+        } 
     }
 
     private void handleCommandRequest(Channel webSocket, String message) {
@@ -84,12 +87,12 @@ public class Server extends SimpleWebSocketServer {
             }
             case "error" -> logger.warn("Error Message from client '{}' : {}", client, status);
             case "info" -> logger.info("Info from client '{}' : {}", client, status);
-            case "task" -> systemTask(parser,status, client);
+            case "task" -> systemTask(parser, status, client);
             default -> logger.warn("Invalid channel: {}", channel);
         }
     }
 
-    private void systemTask(MessageParser parser,String status, String client) {
+    private void systemTask(MessageParser parser, String status, String client) {
         String task = parser.getBodyValueAsString("task");
         switch (task) {
             case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
