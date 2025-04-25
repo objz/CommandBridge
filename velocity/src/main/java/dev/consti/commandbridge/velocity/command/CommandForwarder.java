@@ -54,8 +54,6 @@ public class CommandForwarder {
         if (!script.shouldIgnorePermissionCheck()
                 && !source.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Permission check failed for source: {}", source);
-            source.sendMessage(
-                    Component.text("An internal error occurred, see console for more details", NamedTextColor.RED));
             if (!script.shouldHidePermissionWarning()) {
                 source.sendMessage(
                         Component.text("You do not have permission to use this command", NamedTextColor.RED));
@@ -83,7 +81,6 @@ public class CommandForwarder {
                     NamedTextColor.YELLOW));
             return;
         }
-
 
         parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
             if (parsedCommand == null)

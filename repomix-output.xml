@@ -1,0 +1,4873 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+gradle/
+  wrapper/
+    gradle-wrapper.properties
+paper/
+  src/
+    main/
+      java/
+        dev/
+          consti/
+            commandbridge/
+              paper/
+                command/
+                  CommandExecutor.java
+                  CommandForwarder.java
+                  CommandRegistrar.java
+                core/
+                  Runtime.java
+                  Startup.java
+                utils/
+                  CommandUtils.java
+                  GeneralUtils.java
+                  ScriptUtils.java
+                websocket/
+                  Client.java
+                  Ping.java
+                Main.java
+      resources/
+        bukkit-config.yml
+        bukkit-example.yml
+        paper-plugin.yml
+        plugin.yml
+  build.gradle.kts
+velocity/
+  src/
+    main/
+      java/
+        dev/
+          consti/
+            commandbridge/
+              velocity/
+                command/
+                  CommandDispatcher.java
+                  CommandForwarder.java
+                  CommandRegistrar.java
+                core/
+                  Runtime.java
+                  Startup.java
+                helper/
+                  command/
+                    ListCommand.java
+                    ReloadCommand.java
+                    StartCommand.java
+                    StopCommand.java
+                    VersionCommand.java
+                  FailureChecker.java
+                  HelpCommand.java
+                  InternalRegistrar.java
+                  StatusManager.java
+                util/
+                  GeneralUtils.java
+                  Metrics.java
+                  ProxyUtils.java
+                  ScriptUtils.java
+                websocket/
+                  HttpServer.java
+                  Server.java
+                Main.java
+      resources/
+        velocity-config.yml
+        velocity-example.yml
+  build.gradle.kts
+.gitignore
+build.gradle.kts
+CHANGELOG.md
+gradlew
+gradlew.bat
+README.md
+server.sh
+settings.gradle.kts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="gradle/wrapper/gradle-wrapper.properties">
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.10-bin.zip
+networkTimeout=10000
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/command/CommandExecutor.java">
+package dev.consti.commandbridge.paper.command;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.commandbridge.paper.utils.CommandUtils;
+import dev.consti.foundationlib.json.MessageParser;
+import dev.consti.foundationlib.logging.Logger;
+
+public class CommandExecutor {
+    private final Main plugin;
+    private final Logger logger;
+
+    public CommandExecutor() {
+        this.plugin = Main.getInstance();
+        this.logger = Runtime.getInstance().getLogger();
+    }
+
+    public void dispatchCommand(String message) {
+        MessageParser parser = new MessageParser(message);
+        String serverId = Runtime.getInstance().getConfig().getKey("config.yml", "client-id");
+        if (!parser.getBodyValueAsString("client").equals(serverId)) {
+            logger.debug("Message not intended for this client: {}", serverId);
+            return;
+        }
+        String command = parser.getBodyValueAsString("command");
+        String target = parser.getBodyValueAsString("target");
+        logger.info("Dispatching command '{}' for executor: {}", command, target);
+
+        switch (target) {
+            case "console" -> executeConsoleCommand(command);
+            case "player" -> executePlayerCommand(parser, command);
+            default -> logger.warn("Invalid target: {}", target);
+        }
+    }
+
+    private void executeConsoleCommand(String command) {
+        logger.debug("Executing command '{}' as console", command);
+
+        if (CommandUtils.isCommandValid(command)) {
+            logger.warn("Invalid command: {}", command);
+            Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+            return;
+        }
+
+        CommandSender console = Bukkit.getConsoleSender();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            boolean status = Bukkit.dispatchCommand(console, command);
+            logResult("console", command, status);
+        });
+   }
+
+    private void executePlayerCommand(MessageParser parser, String command) {
+        logger.debug("Executing command '{}' as player", command);
+        String uuidStr = parser.getBodyValueAsString("uuid");
+        String name = parser.getBodyValueAsString("name");
+
+        try {
+            UUID uuid = UUID.fromString(uuidStr);
+            Optional<Player> playerOptional = Optional.ofNullable(Bukkit.getPlayer(uuid));
+
+            playerOptional.ifPresentOrElse(player -> handlePlayerCommand(player, command),
+                    () -> logger.warn("Player '{}' not found or offline", name));
+        } catch (Exception e) {
+            logger.error("Error while processing player: {}",
+                    logger.getDebug() ? e : e.getMessage()
+                    );
+            Runtime.getInstance().getClient().sendError("Error while processing player: " + e.getMessage());
+        }
+   }
+
+private void handlePlayerCommand(Player player, String command) {
+    if (CommandUtils.isCommandValid(command)) {
+        logger.warn("Invalid command: {}", command);
+        Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+        player.sendMessage("§cThe command '" + command + "' is invalid");
+        return;
+    }
+
+    Bukkit.getScheduler().runTask(plugin, () -> {
+      boolean status = Bukkit.dispatchCommand(player, command);
+      logResult("player", command, status);
+    });
+}
+
+
+// private boolean isCommandValid(String command) {
+//     String baseCommand = command.split(" ")[0];
+//     PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
+//     if (pluginCommand != null) {
+//         return false;
+//     }
+//     return Bukkit.getServer().getCommandMap().getCommand(baseCommand) == null;
+// }
+//
+private void logResult(String target, String command, boolean status) {
+    if (status) {
+        logger.info("Successfully executed command '{}' as {}", command, target);
+    } else {
+        logger.warn("Failed to execute command '{}' as {}", command, target);
+        Runtime.getInstance().getClient().sendError("Failed to execute command '" + command + "' as " + target);
+    }
+}
+
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/command/CommandForwarder.java">
+package dev.consti.commandbridge.paper.command;
+
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.foundationlib.utils.StringParser;
+import me.clip.placeholderapi.PlaceholderAPI;
+
+public class CommandForwarder {
+    private final Logger logger;
+    private final Main plugin;
+
+    public CommandForwarder(Logger logger, Main plugin) {
+        this.logger = logger;
+        this.plugin = plugin;
+    }
+
+    public int executeScriptCommands(CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
+        if (isPermissionDenied(sender, script)) {
+            return 0;
+        }
+
+        for (ScriptManager.Command cmd : script.getCommands()) {
+            logger.debug("Processing command: {}", cmd.getCommand());
+
+            switch (cmd.getTargetExecutor().toLowerCase()) {
+                case "player" -> handlePlayerExecutor(cmd, sender, args);
+                case "console" -> handleConsoleExecutor(cmd, args);
+                default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
+            }
+        }
+
+        return 1;
+    }
+
+    private boolean isPermissionDenied(CommandSender sender, ScriptManager.ScriptConfig script) {
+        if (!script.shouldIgnorePermissionCheck()
+                && !sender.hasPermission("commandbridge.command." + script.getName())) {
+            logger.warn("Permission check failed for sender: {}", sender.getName());
+            if (!script.shouldHidePermissionWarning()) {
+                sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
+        if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
+            logger.warn("This command requires a player as executor, but sender is not a player.");
+            sender.sendMessage(
+                    ChatColor.RED + "This command requires a player as executor, but source is not a player object");
+            return;
+        }
+
+        Player player = (Player) sender;
+        String parsedCommand = parseCommand(cmd, args, player);
+
+        if (parsedCommand == null)
+            return;
+
+        if (cmd.getDelay() > 0) {
+            scheduleCommand(cmd, parsedCommand, player);
+        } else {
+            sendCommand(cmd, parsedCommand, player);
+        }
+    }
+
+    private void handleConsoleExecutor(ScriptManager.Command cmd, String[] args) {
+        String parsedCommand = parseCommand(cmd, args, null);
+
+        if (parsedCommand == null)
+            return;
+
+        if (cmd.getDelay() > 0) {
+            scheduleCommand(cmd, parsedCommand, null);
+        } else {
+            sendCommand(cmd, parsedCommand, null);
+        }
+    }
+
+    private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
+        StringParser parser = StringParser.create();
+
+        if (player != null && cmd.getTargetExecutor().equals("player")) {
+            addPlayerPlaceholders(parser, player);
+        } else {
+            return parser.parsePlaceholders(cmd.getCommand(), args);
+        }
+
+        try {
+            String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
+            if (Runtime.getInstance().getStartup().isPlaceholderAPI()) {
+                parsedCommand = PlaceholderAPI.setPlaceholders(player, parsedCommand);
+            }
+            return parsedCommand;
+
+        } catch (Exception e) {
+            logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
+            if (player != null) {
+                player.sendMessage(ChatColor.RED + "Error occurred while parsing command");
+            }
+            Runtime.getInstance().getClient().sendError("Error occurred while parsing commands");
+        }
+
+        return null;
+    }
+
+    private void addPlayerPlaceholders(StringParser parser, Player player) {
+        logger.debug("Adding placeholders for player: {}", player.getName());
+        parser.addPlaceholder("%cb_player%", player.getName());
+        parser.addPlaceholder("%cb_uuid%", player.getUniqueId().toString());
+        parser.addPlaceholder("%cb_world%", player.getWorld().getName());
+    }
+
+    private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
+        logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
+        if (player != null) {
+            player.sendMessage("Scheduling command with '" + cmd.getDelay() + "' seconds");
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
+    }
+
+    private void sendCommand(ScriptManager.Command cmd, String command, Player player) {
+        // List<String> targetServers = cmd.getTargetServerIds();
+        //
+        // if (targetServers.isEmpty()) {
+        // logger.warn("No target servers defined for command: {}", cmd.getCommand());
+        // return;
+        // }
+        //
+        // for (String serverId : targetServers) {
+        // try {
+        // logger.info("Sending command to server '{}' as {}", serverId, player == null
+        // ? "console" : "player");
+        // Runtime.getInstance().getClient().sendCommand(command, serverId,
+        // cmd.getTargetExecutor(), player);
+        // } catch (Exception e) {
+        // logger.error("Failed to send command to server '{}': {}", serverId,
+        // e.getMessage());
+        // }
+        // }
+
+        logger.info("Sending command to server as {}", player == null ? "console" : "player");
+        Runtime.getInstance().getClient().sendCommand(command, "", cmd.getTargetExecutor(), player);
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/command/CommandRegistrar.java">
+package dev.consti.commandbridge.paper.command;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
+
+public class CommandRegistrar {
+    private final Logger logger;
+    private final CommandForwarder forwarder;
+    private final List<String> registeredCommands = new ArrayList<>();
+
+    public CommandRegistrar(Logger logger) {
+        this.logger = logger;
+        this.forwarder = Runtime.getInstance().getForwarder();
+    }
+
+    
+
+public void unregisterAllCommands() {
+        for (String command : registeredCommands) {
+            try {
+                CommandAPI.unregister(command);
+                logger.debug("Unregistered command: {}", command);
+            } catch (Exception e) {
+                logger.error("Failed to unregister command '{}' : {}",
+                        command,
+                        logger.getDebug() ? e : e.getMessage()
+                );
+            }
+        }
+        registeredCommands.clear();
+        logger.info("All registered commands have been unregistered.");
+    
+}
+
+public void registerCommand(ScriptManager.ScriptConfig script) {
+        String commandName = script.getName();
+        try {
+            CommandAPICommand command = new CommandAPICommand(commandName)
+                    .withOptionalArguments(new GreedyStringArgument("args"))
+                            .executes((sender, args) -> {
+                                String argsString = (String) args.get("args");
+                                logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
+                                String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
+                                return forwarder.executeScriptCommands(sender, script, splitArgs);
+                            });
+            command.register();
+            registeredCommands.add(commandName);
+        } catch (Exception e) {
+            logger.error(
+                    "Failed to register command '{}' : {}",
+                    commandName,
+                    logger.getDebug() ? e : e.getMessage()
+            );
+        }
+}
+
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/core/Runtime.java">
+package dev.consti.commandbridge.paper.core;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.command.CommandRegistrar;
+import dev.consti.commandbridge.paper.utils.GeneralUtils;
+import dev.consti.commandbridge.paper.utils.ScriptUtils;
+import dev.consti.commandbridge.paper.websocket.Client;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ConfigManager;
+import dev.consti.commandbridge.paper.command.CommandExecutor;
+import dev.consti.commandbridge.paper.command.CommandForwarder;
+
+public class Runtime {
+    private static Runtime instance;
+    private Logger logger;
+    private ConfigManager config;
+    private ScriptUtils scriptUtils;
+    private Client client;
+    private Startup startup;
+    private CommandForwarder forwarder;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
+    private CommandExecutor commandExecutor;
+
+    private Runtime() {}
+
+    public static synchronized Runtime getInstance() {
+        if (instance == null) {
+            instance = new Runtime();
+            instance.getLogger().debug("Runtime singleton instance initialized.");
+        }
+        return instance;
+    }
+
+    public synchronized Logger getLogger() {
+        if (logger == null) {
+            logger = new Logger("CommandBridge");
+            logger.debug("Logger initialized.");
+        }
+        return logger;
+    }
+
+    public synchronized ConfigManager getConfig() {
+        if (config == null) {
+            config = new ConfigManager(getLogger(), "CommandBridge");
+            getLogger().debug("ConfigManager initialized.");
+        }
+        return config;
+    }
+
+    public synchronized ScriptUtils getScriptUtils() {
+        if (scriptUtils == null) {
+            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
+            getLogger().debug("ScriptUtils initialized.");
+        }
+        return scriptUtils;
+    }
+
+    public synchronized Client getClient() {
+        if (client == null) {
+            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
+            getLogger().debug("Server initialized.");
+        }
+        return client;
+    }
+
+    public synchronized Startup getStartup() {
+        if (startup == null) {
+            startup = new Startup(getLogger());
+            getLogger().debug("Startup initialized.");
+        }
+        return startup;
+    }
+
+    public synchronized CommandForwarder getForwarder() {
+        if (forwarder == null) {
+            forwarder = new CommandForwarder(getLogger(), Main.getInstance());
+            getLogger().debug("CommandHelper initialized.");
+        }
+        return forwarder;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("CommandRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
+
+    public synchronized CommandExecutor getCommandExecutor() {
+        if (commandExecutor == null) {
+            commandExecutor = new CommandExecutor();
+            getLogger().debug("CommandExecutor initialized.");
+        }
+        return commandExecutor;
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/core/Startup.java">
+package dev.consti.commandbridge.paper.core;
+
+import org.bukkit.Bukkit;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
+
+public class Startup {
+    private final Logger logger;
+    private final Runtime runtime;
+    private boolean placeholderAPI = false;
+
+    public Startup(Logger logger) {
+        this.logger = logger;
+        this.runtime = Runtime.getInstance();
+    }
+
+    public void start() {
+        try {
+            runtime.getConfig().copyConfig("bukkit-config.yml", "config.yml");
+            runtime.getConfig().loadAllConfigs();
+
+            boolean debugMode = Boolean.parseBoolean(runtime.getConfig().getKey("config.yml", "debug"));
+            logger.setDebug(debugMode);
+            logger.info("Debug mode set to: {}", debugMode);
+
+            logger.debug("Copying default scripts...");
+            runtime.getScriptUtils().copyDefaultScript("bukkit-example.yml", "example.yml");
+            runtime.getScriptUtils().loadAllScripts();
+
+            logger.debug("Connecting to WebSocket server...");
+            runtime.getClient().connect(
+                    runtime.getConfig().getKey("config.yml", "remote"),
+                    Integer.parseInt(runtime.getConfig().getKey("config.yml", "port")));
+
+            logger.debug("Setting up version checker...");
+            VersionChecker.setProjectId("wIuI4ru2");
+
+            logger.debug("Checking for updates...");
+            checkForUpdates();
+
+            logger.debug("Registering internal commands...");
+            runtime.getGeneralUtils().registerCommands();
+
+            if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+                logger.info("Hooked into PlaceholderAPI — external placeholders enabled");
+                placeholderAPI = true;
+            } else {
+                logger.warn("PlaceholderAPI not found — using internal placeholder system only");
+                placeholderAPI = false;
+            }
+        } catch (Exception e) {
+            logger.error("Failed to initialize CommandBridge: {}",
+                    logger.getDebug() ? e : e.getMessage());
+        }
+    }
+
+    public boolean isPlaceholderAPI() {
+        return placeholderAPI;
+    }
+
+    public void stop() {
+        try {
+            logger.debug("Disconnecting from WebSocket server...");
+            runtime.getClient().disconnect();
+        } catch (Exception e) {
+            logger.error("Failed to stop CommandBridge: {}",
+                    logger.getDebug() ? e : e.getMessage());
+        }
+    }
+
+    private void checkForUpdates() {
+        String currentVersion = Main.getVersion();
+        logger.debug("Current version: {}", currentVersion);
+        new Thread(() -> {
+            try {
+                String latestVersion = VersionChecker.getLatestVersion();
+                if (latestVersion == null) {
+                    logger.warn("Unable to check for updates");
+                    return;
+                }
+                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                    logger.warn("A new version is available: {}", latestVersion);
+                    logger.warn("Please download the latest release: {}", VersionChecker.getDownloadUrl());
+                    runtime.getClient().sendError("Please update CommandBridge");
+                } else {
+                    logger.info("You are running the latest version: {}", currentVersion);
+                }
+            } catch (Exception e) {
+                logger.error("Error while checking for updates: {}",
+                        logger.getDebug() ? e : e.getMessage());
+            }
+        }).start();
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/utils/CommandUtils.java">
+package dev.consti.commandbridge.paper.utils;
+
+import java.lang.reflect.Field;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
+import org.bukkit.command.PluginCommand;
+
+import dev.consti.commandbridge.paper.core.Runtime;
+
+public class CommandUtils {
+    private static CommandMap getCommandMap() {
+        try {
+            Field commandMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
+            commandMapField.setAccessible(true);
+            return (CommandMap) commandMapField.get(Bukkit.getServer());
+        } catch (Exception e) {
+            Runtime.getInstance().getLogger().error("Error while accessing commandMap: {}", e);
+            return null;
+        }
+    }
+
+    public static boolean isCommandValid(String command) {
+        String baseCommand = command.split(" ")[0];
+        PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
+        if (pluginCommand != null) {
+            return false;
+        }
+
+        CommandMap commandMap = getCommandMap();
+        if (commandMap == null) {
+            return false;
+        }
+
+        Command cmd = commandMap.getCommand(baseCommand);
+        return cmd == null;
+    }
+
+
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/utils/GeneralUtils.java">
+package dev.consti.commandbridge.paper.utils;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.foundationlib.logging.Logger;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.Argument;
+import dev.jorel.commandapi.arguments.ArgumentSuggestions;
+import dev.jorel.commandapi.arguments.StringArgument;
+import dev.consti.commandbridge.paper.core.Runtime;
+
+public class GeneralUtils {
+    private final Logger logger;
+
+    public GeneralUtils(Logger logger) {
+        this.logger = logger;
+    }
+
+    public void reloadAll() {
+        Bukkit.getScheduler()
+                .runTask(
+                        Main.getInstance(),
+                        () -> {
+                            logger.debug("Running on thread (reload): {}", Thread.currentThread().getName());
+                            try {
+                                Runtime.getInstance().getConfig().reload();
+                                logger.debug("All configs have been reloaded");
+                                logger.setDebug(Boolean
+                                        .parseBoolean(Runtime.getInstance().getConfig().getKey("config.yml", "debug")));
+                                logger.info("Debug mode set to: {}",
+                                        Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
+                                Runtime.getInstance().getScriptUtils().reload();
+                                logger.debug("All scripts have been reloaded");
+                                logger.info("Everything Reloaded!");
+                                Runtime.getInstance().getClient().sendTask("reload", "success");
+                            } catch (Exception e) {
+                                logger.error("Error occurred while reloading: {}",
+                                        logger.getDebug() ? e : e.getMessage());
+                                Runtime.getInstance().getClient().sendTask("reload", "failure");
+                            }
+                        });
+    }
+
+    public void registerCommands() {
+        List<Argument<?>> arguments = new ArrayList<>();
+        arguments.add(new StringArgument("arguments").replaceSuggestions(ArgumentSuggestions.strings("reconnect")));
+        new CommandAPICommand("commandbridgeclient")
+                .withArguments(arguments)
+                .withAliases("cbc")
+                .withPermission("commandbridge.admin")
+                .executes((sender, args) -> {
+                    String opt = (String) args.get("arguments");
+                    if (opt.matches("reconnect")) {
+                        Runtime.getInstance().getClient().disconnect();
+                        try {
+                            Runtime.getInstance().getClient().connect(
+                                    Runtime.getInstance().getConfig().getKey("config.yml", "remote"),
+                                    Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "port")));
+                            sender.sendMessage(ChatColor.GREEN + "Client reconnected successfully");
+                        } catch (Exception e) {
+                            logger.error("Client reconnection failed: ", e);
+                            sender.sendMessage(ChatColor.RED + "Failed to reconnect");
+                        }
+                    }
+                })
+                .register();
+    }
+
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/utils/ScriptUtils.java">
+package dev.consti.commandbridge.paper.utils;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.command.CommandRegistrar;
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+import org.bukkit.Bukkit;
+
+public class ScriptUtils extends ScriptManager {
+    private final Logger logger;
+    private final CommandRegistrar registrar;
+
+    public ScriptUtils(Logger logger, String pluginName) {
+        super(logger, pluginName);
+        this.logger = logger;
+        this.registrar = Runtime.getInstance().getRegistrar();
+    }
+
+    @Override
+    public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
+        if (scriptConfig.isEnabled()) {
+            logger.info("Loaded script: {}", fileName);
+            try {
+                registrar.registerCommand(getScriptConfig(fileName));
+                logger.debug("Registered command: {}", scriptConfig.getName());
+            } catch (Exception e) {
+                logger.error("Failed to register script '{}' : {}",
+                        scriptConfig.getName(),
+                        logger.getDebug() ? e : e.getMessage()
+                );
+            }
+        } else {
+            logger.info("Skipped disabled script: {}", scriptConfig.getName());
+        }
+    }
+
+    public void unloadCommands(Runnable callback) {
+        Bukkit.getScheduler()
+                .runTask(
+                        Main.getInstance(),
+                        () -> {
+                            logger.debug("Running on thread (unload): {}", Thread.currentThread().getName());
+                            Runtime.getInstance().getRegistrar().unregisterAllCommands();
+                            logger.debug("All commands have been unloaded");
+                            callback.run();
+                });
+    }
+
+
+
+
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/websocket/Client.java">
+package dev.consti.commandbridge.paper.websocket;
+
+import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.foundationlib.json.MessageBuilder;
+import dev.consti.foundationlib.json.MessageParser;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.websocket.SimpleWebSocketClient;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
+public class Client extends SimpleWebSocketClient {
+    private final Logger logger;
+
+    public Client(Logger logger, String secret) {
+        super(logger, secret);
+        this.logger = logger;
+    }
+
+    @Override
+    protected void onMessage(String message) {
+        MessageParser parser = new MessageParser(message);
+        logger.debug("Received payload: {}", message);
+        try {
+            String type = parser.getType();
+            switch (type) {
+                case "command" -> handleCommandRequest(message);
+                case "system" -> handleSystemRequest(message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError("Invalid type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage());
+            sendError("Internal client error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void afterAuth() {
+        logger.debug("Sending server information's...");
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "name");
+        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build());
+    }
+
+    private void handleCommandRequest(String message) {
+        logger.debug("Handling command response");
+        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
+    }
+
+    private void handleSystemRequest(String message) {
+        logger.debug("Handling system request");
+        MessageParser parser = new MessageParser(message);
+        String channel = parser.getBodyValueAsString("channel");
+        String status = parser.getStatus();
+
+        switch (channel) {
+            case "error" -> logger.warn("Error from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "info" -> logger.info("Info from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "task" -> systemTask(parser, status);
+            default -> logger.warn("Invalid channel: {}", channel);
+        }
+    }
+
+    private void systemTask(MessageParser parser, String status) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" -> Runtime.getInstance().getScriptUtils().unloadCommands(() -> Bukkit.getScheduler()
+                    .runTaskLater(Main.getInstance(), Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
+            case "reconnect" -> Ping.reconnect(logger);
+            default -> logger.warn("Invalid task: {}", task);
+        }
+    }
+
+    public void sendError(String errorMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "error").withStatus(errorMessage).addToBody("client",
+                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        sendMessage(builder.build());
+    }
+
+    public void sendInfo(String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info").withStatus(infoMessage).addToBody("client",
+                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        sendMessage(builder.build());
+    }
+
+    public void sendTask(String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
+                .withStatus(status);
+        sendMessage(builder.build());
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
+        MessageBuilder builder = new MessageBuilder("command");
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+
+        if (target.equals("player")) {
+            builder.addToBody("name", executor.getName()).addToBody("uuid", executor.getUniqueId());
+        }
+        logger.info("Sending command '{}' to server", command);
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build());
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/websocket/Ping.java">
+package dev.consti.commandbridge.paper.websocket;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ConfigManager;
+
+public class Ping {
+    private static void startPing(Logger logger, Runnable onPong, String url, int port, int maxAttempts) {
+        final int millis = 4000;
+
+        Timer timer = new Timer();
+
+        disableCertificateValidation();
+
+        timer.scheduleAtFixedRate(new TimerTask() {
+            int attempts = 0;
+
+            @Override
+            public void run() {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    logger.warn("Max reconnect attempts reached. Reconnect manual by running '/cbc reconnect'");
+                    timer.cancel();
+                    return;
+                }
+
+                try {
+                    URL targetUrl = new URL("https://" + url + ":" + port + "/ping");
+                    HttpsURLConnection conn = (HttpsURLConnection) targetUrl.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(1500);
+                    conn.setReadTimeout(1500);
+
+                    logger.debug("Pinging WebsocketServer");
+
+                    int responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        String response = in.readLine();
+                        in.close();
+
+                        if ("pong".equalsIgnoreCase(response)) {
+                            logger.info("Attempting to reconnect to the server!");
+                            onPong.run();
+                            timer.cancel();
+                        }
+                    }
+                } catch (Exception e) {
+                    // logger.error("Ping error: {}", e);
+                }
+            }
+        }, 0, millis);
+    }
+
+    public static void reconnect(Logger logger) {
+        ConfigManager config = Runtime.getInstance().getConfig();
+        int attempts;
+        try {
+            attempts = Integer.parseInt(config.getKey("config.yml", "timeout")) / 4;
+        } catch (RuntimeException e) {
+            attempts = 120 / 4;
+        }
+
+        startPing(logger, () -> {
+            Runtime.getInstance().getClient().disconnect();
+
+            String host = config.getKey("config.yml", "remote");
+            int port = Integer.parseInt(config.getKey("config.yml", "port"));
+
+            try {
+                Runtime.getInstance().getClient().connect(host, port);
+                logger.info("Client reconnected successfully to {}:{}", host, port);
+            } catch (Exception e) {
+                logger.error("Client reconnection failed (but ping succeeded):", e);
+            }
+
+        }, config.getKey("config.yml", "remote"),
+                Integer.parseInt(config.getKey("config.yml", "port")),
+                attempts);
+    }
+
+    private static void disableCertificateValidation() {
+        try {
+            TrustManager[] trustAllCerts = new TrustManager[] {
+                    new X509TrustManager() {
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return new java.security.cert.X509Certificate[0];
+                        }
+
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+                        }
+
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+                        }
+                    }
+            };
+
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to disable certificate validation", e);
+        }
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/consti/commandbridge/paper/Main.java">
+package dev.consti.commandbridge.paper;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import org.bukkit.plugin.java.JavaPlugin;
+
+import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIBukkitConfig;
+
+public class Main extends JavaPlugin {
+    private static Main instance;
+    private final Logger logger;
+
+    public Main() {
+        instance = this;
+        logger = Runtime.getInstance().getLogger();
+    }
+    
+    public static String getVersion() {
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
+    }
+
+    public static Main getInstance() {
+        return instance;
+    }
+
+
+    @Override
+    public void onLoad() {
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).usePluginNamespace().silentLogs(true).skipReloadDatapacks(true).shouldHookPaperReload(false));
+    }
+    @Override
+    public void onEnable() {
+        CommandAPI.onEnable();
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+    }
+
+    @Override
+    public void onDisable() {
+        CommandAPI.onDisable();
+        logger.info("Stopping CommandBridge...");
+        Runtime.getInstance().getStartup().stop();
+    }
+
+}
+</file>
+
+<file path="paper/src/main/resources/bukkit-config.yml">
+# Client Configuration File
+
+# General debug mode.
+# Set to true to enable detailed logs and diagnostics for troubleshooting,
+# or false for standard logging.
+debug: false
+
+# Unique identifier for the client.
+# This is used to distinguish this client from others in the network.
+# Example: client-id: "lobby" for a lobby client.
+client-id: "lobby"
+
+# The address of the remote server this client will connect to.
+# Use "127.0.0.1" for local connections or the server's IP for remote access.
+# Example: remote: "192.168.1.100" for a server on the local network.
+remote: "127.0.0.1"
+
+# The port number the client will use to connect to the remote server.
+# Ensure this matches the port configured on the server side.
+port: 8080
+
+# Time in seconds to keep trying to reconnect after server shutdown.
+# After this, use /cbc reconnect to retry manually.
+timeout: 120
+
+# A shared secret key used for authentication between the client and the server.
+# This ensures secure communication.
+# The key is stored securely in the secret.key file located in the server's plugin folder.
+secret: "CHANGE_ME"
+</file>
+
+<file path="paper/src/main/resources/bukkit-example.yml">
+##########################################################################
+# EXAMPLE CONFIGURATION
+# This file demonstrates how to dispatch a command to the Bukkit server
+# or servers, where the command gets executed on the Velocity server.
+##########################################################################
+
+# The name of the command to be dispatched.
+# This is the identifier for the command configuration.
+name: examplebukkit
+
+# Enable or disable this command.
+# Set to true to allow the command to be executed, or false to disable it.
+enabled: true
+
+# Ignore permission checks for this command.
+# Set to true to bypass permission validation, or false to enforce it.
+ignore-permission-check: false
+
+# Hide permission warnings when the executor does not have the required permissions.
+# Set to true to suppress warnings, or false to show them.
+hide-permission-warning: false
+
+# A list of commands to execute on the server.
+commands:
+  # Command 1
+  - command: 'velocity info' # The command string to be executed.
+    delay: 0                     # Delay (in seconds) before executing the command.
+    target-executor: 'player'    # Who executes the command: 'player' or 'console'.
+    check-if-executor-is-player: true  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: true # If true, ensures the executor is online.
+
+  # Command 2
+  - command: 'velocity plugins' # The command string to be executed.
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-executor: 'console'    # Who executes the command: 'player' or 'console'.
+    check-if-executor-is-player: false  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: false # If true, ensures the executor is online.
+</file>
+
+<file path="paper/src/main/resources/paper-plugin.yml">
+name: CommandBridge
+version: 2.2.0
+main: dev.consti.commandbridge.paper.Main
+author: 72-S
+api-version: '1.20'
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+</file>
+
+<file path="paper/src/main/resources/plugin.yml">
+name: CommandBridge
+version: 2.2.0
+main: dev.consti.commandbridge.paper.Main
+author: 72-S
+api-version: '1.20'
+softdepend:
+- PlaceholderAPI
+</file>
+
+<file path="paper/build.gradle.kts">
+buildscript {
+    repositories {
+      mavenCentral()
+    }
+    dependencies {
+        classpath("org.yaml:snakeyaml:2.3")
+
+    }
+}
+
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+
+plugins {
+    id("java")
+    id("com.gradleup.shadow") version "8.3.3"
+}
+
+val pversion: String by gradle.extra
+
+group = "dev.consti"
+version = pversion
+
+repositories {
+    mavenCentral()
+    maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { url = uri("https://repo.codemc.org/repository/maven-public/") }
+    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")}
+    maven { url = uri("https://repo.extendedclip.com/releases/")}
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        credentials {
+            username = "72-S"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+dependencies {
+    // compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT")
+    implementation("org.ow2.asm:asm:9.7")
+    implementation("dev.consti:foundationlib:2.2.3")
+    implementation("dev.jorel:commandapi-bukkit-shade:9.7.0")
+    compileOnly("dev.jorel:commandapi-annotations:9.7.0")
+    compileOnly("me.clip:placeholderapi:2.11.6")
+    annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")
+}
+
+
+tasks.register("modifyPaperPluginYaml") {
+    doLast {
+        
+        val yamlFile = file("src/main/resources/paper-plugin.yml") 
+
+        if (yamlFile.exists()) {
+            println("Found paper-plugin.yml")
+
+            val options = DumperOptions().apply {
+                defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+            }
+            val yaml = Yaml(options)
+
+            val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
+
+            yamlContent["version"] = pversion
+
+            yamlFile.writer().use { writer ->
+                yaml.dump(yamlContent, writer)
+            }
+
+            println("paper-plugin.yml updated successfully with version ${pversion}")
+        } else {
+            println("paper-plugin.yml not found!")
+        }
+    }
+}
+
+tasks.register("modifyLegacyPluginYaml") {
+    doLast {
+        
+        val yamlFile = file("src/main/resources/plugin.yml") 
+
+        if (yamlFile.exists()) {
+            println("Found legacy plugin.yml")
+
+            val options = DumperOptions().apply {
+                defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+            }
+            val yaml = Yaml(options)
+
+            val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
+
+            yamlContent["version"] = pversion
+
+            yamlFile.writer().use { writer ->
+                yaml.dump(yamlContent, writer)
+            }
+
+            println("legacy plugin.yml updated successfully with version ${pversion}")
+        } else {
+            println("legacy plugin.yml not found!")
+        }
+    }
+}
+
+tasks.named("processResources") {
+    dependsOn("modifyPaperPluginYaml")
+    dependsOn("modifyLegacyPluginYaml")
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/command/CommandDispatcher.java">
+package dev.consti.commandbridge.velocity.command;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
+import dev.consti.foundationlib.json.MessageParser;
+import dev.consti.foundationlib.logging.Logger;
+
+public class CommandDispatcher {
+    private final ProxyServer proxy;
+    private final Logger logger;
+
+    public CommandDispatcher() {
+        this.proxy = ProxyUtils.getProxyServer();
+        this.logger = Runtime.getInstance().getLogger();
+    }
+
+    public void dispatchCommand(String message) {
+        MessageParser parser = new MessageParser(message);
+        String command = parser.getBodyValueAsString("command");
+        String target = parser.getBodyValueAsString("target");
+        logger.info("Dispatching command: '{}' for target: {}", command, target);
+
+        switch (target.toLowerCase()) {
+            case "console" -> executeConsoleCommand(command);
+            case "player" -> executePlayerCommand(parser, command);
+            default -> logger.warn("Invalid target: {}", target);
+        }
+    }
+
+    private void executeConsoleCommand(String command) {
+        logger.debug("Executing command '{}' as console", command);
+        proxy.getCommandManager()
+                .executeAsync(proxy.getConsoleCommandSource(), command)
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        logger.error("Error executing console command: {}", throwable);
+                    }
+                });
+    }
+
+    private void executePlayerCommand(MessageParser parser, String command) {
+        logger.debug("Executing command '{}' as player", command);
+        String uuidStr = parser.getBodyValueAsString("uuid");
+        String name = parser.getBodyValueAsString("name");
+
+        try {
+            UUID playerUuid = UUID.fromString(uuidStr);
+            Optional<Player> playerOptional = proxy.getPlayer(playerUuid);
+
+            if (playerOptional.isPresent()) {
+                Player player = playerOptional.get();
+                proxy.getCommandManager()
+                        .executeAsync(player, command)
+                        .whenComplete((result, throwable) -> {
+                            if (throwable != null) {
+                                logger.error("Error executing console command: {}", throwable);
+                            }
+                        });
+            } else {
+                logger.warn("Player '{}' not found or offline", name);
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing player: {}",
+                    logger.getDebug() ? e : e.getMessage()
+            );
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/command/CommandForwarder.java">
+package dev.consti.commandbridge.velocity.command;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.foundationlib.utils.StringParser;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.william278.papiproxybridge.api.PlaceholderAPI;
+
+public class CommandForwarder {
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final Main plugin;
+
+    public CommandForwarder(Logger logger, Main plugin) {
+        this.logger = logger;
+        this.proxy = ProxyUtils.getProxyServer();
+        this.plugin = plugin;
+    }
+
+    public int executeScriptCommands(CommandSource source, ScriptManager.ScriptConfig script, String[] args) {
+        logger.debug("Executing script commands for script: {}", script.getName());
+
+        if (isPermissionDenied(source, script)) {
+            return 0;
+        }
+
+        for (ScriptManager.Command cmd : script.getCommands()) {
+            logger.debug("Processing command: {}", cmd.getCommand());
+
+            switch (cmd.getTargetExecutor().toLowerCase()) {
+                case "player" -> handlePlayerExecutor(cmd, source, args);
+                case "console" -> handleConsoleExecutor(cmd, source, args);
+                default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
+            }
+        }
+
+        logger.info("Script commands executed successfully for command: {}", script.getName());
+        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+    }
+
+    private boolean isPermissionDenied(CommandSource source, ScriptManager.ScriptConfig script) {
+        if (!script.shouldIgnorePermissionCheck()
+                && !source.hasPermission("commandbridge.command." + script.getName())) {
+            logger.warn("Permission check failed for source: {}", source);
+            source.sendMessage(
+                    Component.text("An internal error occurred, see console for more details", NamedTextColor.RED));
+            if (!script.shouldHidePermissionWarning()) {
+                source.sendMessage(
+                        Component.text("You do not have permission to use this command", NamedTextColor.RED));
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
+        if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
+            logger.warn("This command requires a player as executor, but source is not a player");
+            source.sendMessage(
+                    Component.text("This command requires a player as executor, but source is not a player object",
+                            NamedTextColor.RED));
+            return;
+        }
+
+        Player player = (Player) source;
+
+        // Check if the player is on the required server if needed
+        if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(player, cmd)) {
+            logger.warn("Player '{}' is not on the required server for this command.", player.getUsername());
+            source.sendMessage(Component.text("Player " + player.getUsername() + " is not on the required server",
+                    NamedTextColor.YELLOW));
+            return;
+        }
+
+
+        parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
+            if (parsedCommand == null)
+                return;
+
+            if (cmd.getDelay() > 0) {
+                scheduleCommand(cmd, parsedCommand, args, player, 0);
+            } else {
+                sendCommand(cmd, parsedCommand, args, player, 0);
+            }
+        });
+
+    }
+
+    private void handleConsoleExecutor(ScriptManager.Command cmd, CommandSource source, String[] args) {
+
+        parseCommand(cmd, args, null).thenAccept(parsedCommand -> {
+            if (parsedCommand == null)
+                return;
+
+            if (cmd.getDelay() > 0) {
+                scheduleCommand(cmd, parsedCommand, args, null, 0);
+            } else {
+                sendCommand(cmd, parsedCommand, args, null, 0);
+            }
+        });
+
+    }
+
+    private boolean isPlayerOnTargetServer(Player player, ScriptManager.Command cmd) {
+        return player.getCurrentServer()
+                .map(serverConn -> cmd.getTargetClientIds().contains(serverConn.getServerInfo().getName()))
+                .orElse(false);
+    }
+
+    private CompletableFuture<String> parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
+        StringParser parser = StringParser.create();
+
+        if (player != null && cmd.getTargetExecutor().equals("player")) {
+            addPlayerPlaceholders(parser, player);
+        } else {
+            return CompletableFuture.completedFuture(parser.parsePlaceholders(cmd.getCommand(), args));
+        }
+
+        try {
+            String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
+
+            if (Runtime.getInstance().getStartup().isPlaceholderAPI()) {
+                return PlaceholderAPI.createInstance()
+                        .formatPlaceholders(parsedCommand, player.getUniqueId())
+                        .exceptionally(e -> {
+                            logger.error("PlaceholderAPI error: {}", logger.getDebug() ? e : e.getMessage());
+                            return parsedCommand; // Fallback
+                        });
+            }
+
+            return CompletableFuture.completedFuture(parsedCommand);
+        } catch (Exception e) {
+            logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
+            if (player != null) {
+                player.sendMessage(Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
+            }
+            for (String conn : cmd.getTargetClientIds()) {
+                Runtime.getInstance().getServer().sendError(
+                        Runtime.getInstance().getServer().getWebSocket(conn),
+                        "Error occurred while parsing commands");
+            }
+
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    private void addPlayerPlaceholders(StringParser parser, Player player) {
+        logger.debug("Adding placeholders for player: {}", player.getUsername());
+        parser.addPlaceholder("%player%", player.getUsername());
+        parser.addPlaceholder("%uuid%", player.getUniqueId().toString());
+        parser.addPlaceholder("%server%", player.getCurrentServer()
+                .map(srv -> srv.getServerInfo().getName())
+                .orElse("defaultServerName"));
+    }
+
+    private void scheduleCommand(ScriptManager.Command cmd, String command, String[] args, Player player,
+            int retryCount) {
+        logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
+        proxy.getScheduler().buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount))
+                .delay(cmd.getDelay(), TimeUnit.SECONDS)
+                .schedule();
+    }
+
+    private void sendCommand(ScriptManager.Command cmd, String command, String[] args, Player player, int retryCount) {
+        logger.debug("Executing command: {} with retryCount: {}", cmd.getCommand(), retryCount);
+
+        // Prevent infinite loops
+        if (retryCount >= 30) {
+            logger.warn("Max retries reached for command: {}", cmd.getCommand());
+            if (player != null) {
+                player.sendMessage(Component.text("Max retries reached", NamedTextColor.YELLOW));
+            }
+            return;
+        }
+
+        // If we need the player to be online, check it here
+        if (cmd.shouldWaitUntilPlayerIsOnline() && "player".equalsIgnoreCase(cmd.getTargetExecutor())) {
+            if (player == null || !player.isActive()) {
+                logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
+                player.sendMessage(Component.text("Player is not online. Retrying command", NamedTextColor.YELLOW));
+                proxy.getScheduler().buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount + 1))
+                        .delay(1, TimeUnit.SECONDS)
+                        .schedule();
+                return;
+            }
+        }
+
+        List<String> targetClients = cmd.getTargetClientIds();
+        if (targetClients.isEmpty()) {
+            logger.warn("No target clients defined for command: {}", cmd.getCommand());
+            if (player != null) {
+                player.sendMessage(
+                        Component.text("No target clients are defined for this command", NamedTextColor.RED));
+            }
+            return;
+        }
+
+        for (String clientId : targetClients) {
+            if (Runtime.getInstance().getServer().isServerConnected(clientId)) {
+                logger.info("Sending command to client '{}' as {}", clientId, player == null ? "console" : "player");
+                Runtime.getInstance().getServer().sendCommand(command, clientId, cmd.getTargetExecutor(), player);
+            } else {
+                logger.warn("Client '{}' not found", clientId);
+                if (player != null) {
+                    player.sendMessage(Component.text("Client '" + clientId + "' not found", NamedTextColor.RED));
+                }
+            }
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/command/CommandRegistrar.java">
+package dev.consti.commandbridge.velocity.command;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandMeta;
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+
+public class CommandRegistrar {
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final CommandForwarder helper;
+    private final Map<String, CommandMeta> registeredCommands = new HashMap<>();
+
+    public CommandRegistrar(Logger logger) {
+        this.logger = logger;
+        this.proxy = ProxyUtils.getProxyServer();
+        this.helper = Runtime.getInstance().getHelper();
+    }
+
+
+    public void unregisterAllCommands() {
+        for (String command : registeredCommands.keySet()) {
+            try {
+                CommandMeta commandMeta = registeredCommands.get(command);
+                proxy.getCommandManager().unregister(commandMeta);
+                logger.debug("Unregistered command: {}", command);
+            } catch (Exception e) {
+                logger.error("Failed to unregister command '{}' : {}",
+                        command,
+                        logger.getDebug() ? e : e.getMessage()
+                );
+            }
+        }
+        registeredCommands.clear();
+        logger.info("All registered commands have been unregistered.");
+    }
+
+
+    public void registerCommand(ScriptManager.ScriptConfig script) {
+        String commandName = script.getName();
+        try {
+            LiteralArgumentBuilder<CommandSource> commandBuilder = LiteralArgumentBuilder.<CommandSource>literal(commandName)
+                    .executes(context -> {
+                        logger.debug("Executing base command: {}", commandName);
+                        return helper.executeScriptCommands(context.getSource(), script, new String[0]);
+                    });
+            RequiredArgumentBuilder<CommandSource, String> argsArgument =
+                    RequiredArgumentBuilder.<CommandSource, String>argument("args", StringArgumentType.greedyString())
+                            .executes(context -> {
+                                String argsString = context.getArgument("args", String.class);
+                                logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
+                                String[] args = argsString.split(" ");
+                                return helper.executeScriptCommands(context.getSource(), script, args);
+                            });
+            commandBuilder.then(argsArgument);
+
+            // LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
+            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBuilder.build());
+            CommandMeta commandMeta = proxy.getCommandManager().metaBuilder(commandName).build();
+
+            proxy.getCommandManager().register(commandMeta, brigadierCommand);
+            registeredCommands.put(commandName, commandMeta);
+        } catch (Exception e) {
+            logger.error(
+                    "Failed to register command '{}' : {}",
+                    commandName,
+                    logger.getDebug() ? e : e.getMessage()
+            );
+        }
+    }
+
+
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/core/Runtime.java">
+package dev.consti.commandbridge.velocity.core;
+
+
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.command.CommandDispatcher;
+import dev.consti.commandbridge.velocity.command.CommandForwarder;
+import dev.consti.commandbridge.velocity.command.CommandRegistrar;
+import dev.consti.commandbridge.velocity.util.GeneralUtils;
+import dev.consti.commandbridge.velocity.util.ScriptUtils;
+import dev.consti.commandbridge.velocity.websocket.HttpServer;
+import dev.consti.commandbridge.velocity.websocket.Server;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ConfigManager;
+
+public class Runtime {
+    private static Runtime instance;
+    private Logger logger;
+    private ConfigManager config;
+    private ScriptUtils scriptUtils;
+    private Server server;
+    private Startup startup;
+    private CommandForwarder helper;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
+    private CommandDispatcher commandDispatcher;
+    private HttpServer httpServer;
+
+    private Runtime() {}
+
+    public static synchronized Runtime getInstance() {
+        if (instance == null) {
+            instance = new Runtime();
+            instance.getLogger().debug("Runtime singleton instance initialized.");
+        }
+        return instance;
+    }
+
+    public synchronized Logger getLogger() {
+        if (logger == null) {
+            logger = new Logger("CommandBridge");
+            logger.debug("Logger initialized.");
+        }
+        return logger;
+    }
+
+    public synchronized ConfigManager getConfig() {
+        if (config == null) {
+            config = new ConfigManager(getLogger(), "CommandBridge");
+            getLogger().debug("ConfigManager initialized.");
+        }
+        return config;
+    }
+
+    public synchronized ScriptUtils getScriptUtils() {
+        if (scriptUtils == null) {
+            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
+            getLogger().debug("ScriptUtils initialized.");
+        }
+        return scriptUtils;
+    }
+
+    public synchronized Server getServer() {
+        if (server == null) {
+            server = new Server(getLogger(), getConfig().getSecret());
+            getLogger().debug("Server initialized.");
+        }
+        return server;
+    }
+
+    public synchronized Startup getStartup() {
+        if (startup == null) {
+            startup = new Startup(getLogger());
+            getLogger().debug("Startup initialized.");
+        }
+        return startup;
+    }
+
+    public synchronized CommandForwarder getHelper() {
+        if (helper == null) {
+            helper = new CommandForwarder(getLogger(), Main.getInstance());
+            getLogger().debug("CommandForwarder initialized.");
+        }
+        return helper;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("InternalRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
+
+    public synchronized CommandDispatcher getCommandExecutor() {
+        if (commandDispatcher == null) {
+            commandDispatcher = new CommandDispatcher();
+            getLogger().debug("CommandDispatcher initialized.");
+        }
+        return commandDispatcher;
+    }
+
+    public synchronized HttpServer getHttpServer() {
+        if (httpServer == null) {
+            httpServer = new HttpServer(logger);
+            getLogger().debug("HttpServer initialized.");
+        }
+        return httpServer;
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/core/Startup.java">
+package dev.consti.commandbridge.velocity.core;
+
+
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.websocket.Server;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
+
+public class Startup {
+    private final Logger logger;
+    private final Runtime runtime;
+    private boolean placeholderAPI = false;
+
+    public Startup(Logger logger) {
+        this.logger = logger;
+        this.runtime = Runtime.getInstance();
+    }
+
+    public void start() {
+        try {
+            runtime.getConfig().copyConfig("velocity-config.yml", "config.yml");
+            runtime.getConfig().loadAllConfigs();
+            runtime.getConfig().loadSecret();
+
+            boolean debugMode = Boolean.parseBoolean(runtime.getConfig().getKey("config.yml", "debug"));
+            logger.setDebug(debugMode);
+            logger.debug("Debug mode set to: {}", debugMode);
+
+            logger.debug("Copying default scripts...");
+            runtime.getScriptUtils().copyDefaultScript("velocity-example.yml", "example.yml");
+            runtime.getScriptUtils().loadAllScripts();
+
+            logger.debug("Starting WebSocket server...");
+            runtime.getServer().startServer(
+                    Integer.parseInt(runtime.getConfig().getKey("config.yml", "port")),
+                    runtime.getConfig().getKey("config.yml", "host"),
+                    runtime.getConfig().getKey("config.yml", "san")
+            );
+
+            logger.debug("Setting up version checker...");
+            VersionChecker.setProjectId("wIuI4ru2");
+
+            logger.debug("Checking for updates...");
+            checkForUpdates();
+
+            logger.debug("Registering internal commands...");
+            runtime.getGeneralUtils().registerCommands();
+
+            if (Main.getInstance().proxy.getPluginManager().getPlugin("papiproxybridge").isPresent()) {
+                logger.info("Hooked into PapiProxyBridge — PlaceholderAPI placeholders enabled");
+                placeholderAPI = true;
+            } else {
+                logger.warn("PapiProxyBridge not found — using internal placeholder system only");
+                placeholderAPI = false;
+            }
+        } catch (Exception e) {
+            logger.error("Failed to initialize CommandBridge: {}",
+                    logger.getDebug() ? e : e.getMessage()
+            );
+        }
+    }
+
+    public boolean isPlaceholderAPI() {
+        return placeholderAPI;
+    }
+
+    public void stop() {
+        try {
+            Server server = runtime.getServer();
+            logger.debug("Stopping WebSocket server...");
+            for (String conn : server.getConnectedClients()) {
+                runtime.getServer().sendTask(server.getWebSocket(conn), "reconnect", "closed");
+            }
+            runtime.getServer().stopServer(0);
+        } catch (Exception e) {
+            logger.error("Failed to stop CommandBridge: {}", logger.getDebug() ? e : e.getMessage());
+        }
+    }
+
+    private void checkForUpdates() {
+        String currentVersion = Main.getVersion();
+        logger.debug("Current version: {}", currentVersion);
+        new Thread(() -> {
+            try {
+                String latestVersion = VersionChecker.getLatestVersion();
+                if (latestVersion == null) {
+                    logger.warn("Unable to check for updates");
+                    return;
+                }
+                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                    logger.warn("A new version is available: {}", latestVersion);
+                    logger.warn("Please download the latest release: {}", VersionChecker.getDownloadUrl());
+                } else {
+                    logger.info("You are running the latest version: {}", currentVersion);
+                }
+            } catch (Exception e) {
+                logger.error("Error while checking for updates: {}", logger.getDebug() ? e : e.getMessage());
+            }
+        }).start();
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/command/ListCommand.java">
+package dev.consti.commandbridge.velocity.helper.command;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.Set;
+
+public class ListCommand {
+    public static LiteralArgumentBuilder<CommandSource> build(Set<String> connectedClients, Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("list")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to list connected clients", NamedTextColor.RED));
+                        return 0;
+                    }
+
+                    if (connectedClients.isEmpty()) {
+                        source.sendMessage(
+                                Component.text("No clients are currently connected").color(NamedTextColor.RED));
+                    } else {
+                        String clientsString = String.join(", ", connectedClients);
+                        source.sendMessage(Component.text("===== Connected Clients =======").color(NamedTextColor.GOLD));
+                        source.sendMessage(Component.text(clientsString).color(NamedTextColor.GREEN));
+                        source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
+                    }
+                    return 1;
+                });
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/command/ReloadCommand.java">
+package dev.consti.commandbridge.velocity.helper.command;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.util.GeneralUtils;
+import dev.consti.foundationlib.json.MessageBuilder;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+public class ReloadCommand {
+
+    public static LiteralArgumentBuilder<CommandSource> build(GeneralUtils utils, Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("reload")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(
+                                Component.text("You do not have permission to reload the plugin", NamedTextColor.RED));
+                        return 0;
+                    }
+
+                    try {
+                        // Logic from original reload command
+                        Runtime.getInstance().getRegistrar().unregisterAllCommands();
+                        logger.debug("All commands have been unregistered");
+
+                        Runtime.getInstance().getConfig().reload();
+                        logger.debug("Configuration files have been reloaded");
+
+                        logger.setDebug(
+                                Boolean.parseBoolean(Runtime.getInstance().getConfig().getKey("config.yml", "debug")));
+                        logger.info("Debug mode set to: {}", Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
+
+                        Runtime.getInstance().getScriptUtils().reload();
+                        logger.debug("Scripts have been reloaded");
+
+                        Runtime.getInstance().getGeneralUtils().unregisterCommands();
+                        logger.debug("Internal commands have been unregistered");
+
+                        Runtime.getInstance().getGeneralUtils().registerCommands();
+                        logger.debug("Internal commands have been registered");
+
+                        MessageBuilder builder = new MessageBuilder("system");
+                        builder.addToBody("channel", "task").addToBody("task", "reload").addToBody("server",
+                                Runtime.getInstance().getConfig().getKey("config.yml", "server-id"));
+
+                        Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
+                        logger.debug("Sending payload: {}", builder.build());
+                        source.sendMessage(
+                                Component.text("Waiting for clients to respond...")
+                                        .color(NamedTextColor.YELLOW));
+                        logger.debug("Waiting for clients to respond...");
+                        utils.startFailureCheck(source);
+                        return 1;
+                    } catch (Exception e) {
+                        logger.error("An error occurred during the reload process: {}", e.getMessage(), e);
+                        source.sendMessage(
+                                Component.text("ReloadCommand failed due to an internal error. Check logs for details")
+                                        .color(NamedTextColor.RED));
+                    }
+                    return 1;
+
+                });
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/command/StartCommand.java">
+package dev.consti.commandbridge.velocity.helper.command;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+
+public class StartCommand {
+    public static LiteralArgumentBuilder<CommandSource> build(Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("start")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to start the WebSocket server", NamedTextColor.RED));
+                        return 0;
+                    }
+                    Runtime.getInstance().getServer().startServer(
+                    Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "port")),
+                    Runtime.getInstance().getConfig().getKey("config.yml", "host"),
+                    Runtime.getInstance().getConfig().getKey("config.yml", "san")
+            );
+
+                    source.sendMessage(Component.text("WebSocket Server started").color(NamedTextColor.GREEN));
+                    return 1;
+                });
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/command/StopCommand.java">
+package dev.consti.commandbridge.velocity.helper.command;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+
+public class StopCommand {
+    public static LiteralArgumentBuilder<CommandSource> build(Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("stop")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to stop the WebSocket server", NamedTextColor.RED));
+                        return 0;
+                    }
+
+                    Runtime.getInstance().getStartup().stop();
+                    source.sendMessage(Component.text("WebSocket Server stopped").color(NamedTextColor.YELLOW));
+                    return 1;
+                });
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/command/VersionCommand.java">
+package dev.consti.commandbridge.velocity.helper.command;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+
+public class VersionCommand {
+    public static LiteralArgumentBuilder<CommandSource> build(Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("version")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to check the version", NamedTextColor.RED));
+                        return 0;
+                    }
+
+                    String currentVersion = Main.getVersion();
+                    source.sendMessage(Component.text("Checking for updates...").color(NamedTextColor.YELLOW));
+                    logger.debug("VersionCommand executed by: {}", source);
+
+                    new Thread(() -> {
+                        String latestVersion = VersionChecker.getLatestVersion();
+
+                        if (latestVersion == null) {
+                            source.sendMessage(
+                                    Component.text("Unable to check for updates").color(NamedTextColor.RED));
+                            logger.warn("Failed to retrieve latest version for update check");
+                            return;
+                        }
+
+                        logger.debug("Current version: {}, Latest version: {}", currentVersion, latestVersion);
+
+                        if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                            source.sendMessage(
+                                    Component.text("A new version is available: " + latestVersion)
+                                            .color(NamedTextColor.RED));
+                            source.sendMessage(
+                                    Component.text("Please download the latest release: ")
+                                            .append(
+                                                    Component.text("here")
+                                                            .color(NamedTextColor.BLUE)
+                                                            .decorate(TextDecoration.UNDERLINED)
+                                                            .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                            logger.warn("A newer version is available: {}", latestVersion);
+                        } else {
+                            source.sendMessage(
+                                    Component.text("You are running the latest version: " + currentVersion)
+                                            .color(NamedTextColor.GREEN));
+                        }
+                    }).start();
+
+                    return 1;
+                });
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/FailureChecker.java">
+package dev.consti.commandbridge.velocity.helper;
+
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.concurrent.TimeUnit;
+
+public class FailureChecker implements Runnable {
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final Main plugin;
+    private final StatusManager statusManager;
+    private final CommandSource source;
+    private final int maxRetries;
+    private final int[] retries;
+
+    public FailureChecker(Logger logger, ProxyServer proxy, Main plugin, StatusManager statusManager, CommandSource source) {
+        this.logger = logger;
+        this.proxy = proxy;
+        this.plugin = plugin;
+        this.statusManager = statusManager;
+        this.source = source;
+        this.maxRetries = Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "timeout"));
+        this.retries = new int[]{0};
+    }
+
+    @Override
+    public void run() {
+        retries[0]++;
+        logger.debug("Failure check attempt {}/{}", retries[0], maxRetries);
+
+        try {
+            String failedClients = statusManager.checkForFailures();
+
+            if (failedClients == null) {
+                source.sendMessage(
+                        Component.text("Everything has reloaded successfully!")
+                                .color(NamedTextColor.GREEN)
+                );
+                logger.info("Scripts reloaded successfully");
+                statusManager.clearStatusMap();
+            } else if (retries[0] >= maxRetries) {
+                // Timeout after 8 seconds
+                source.sendMessage(
+                        Component.text("ReloadCommand failed: " + failedClients)
+                                .color(NamedTextColor.RED)
+                );
+                logger.error("Reload command failed '{}'", failedClients);
+                statusManager.clearStatusMap();
+            } else {
+                proxy.getScheduler().buildTask(plugin, this).delay(1, TimeUnit.SECONDS).schedule();
+            }
+        } catch (Exception e) {
+            logger.error("An error occurred during the reload process: {}", logger.getDebug() ? e : e.getMessage());
+            source.sendMessage(
+                    Component.text("Reload command failed due to an internal error. Check logs for details")
+                            .color(NamedTextColor.RED)
+            );
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/HelpCommand.java">
+package dev.consti.commandbridge.velocity.helper;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+public class HelpCommand {
+    public static LiteralArgumentBuilder<CommandSource> build(Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("help")
+                .executes(context -> sendHelpMessage(context.getSource(), logger));
+    }
+
+    public static int sendHelpMessage(CommandSource source, Logger logger) {
+        logger.debug("Sending help message to: {}", source);
+
+        source.sendMessage(Component.text("==== CommandBridge Help ====").color(NamedTextColor.GOLD));
+        source.sendMessage(Component.text(""));
+
+        source.sendMessage(Component.text("Available Commands:").color(NamedTextColor.YELLOW));
+
+        source.sendMessage(formatCommand("help", "Displays this help message", false));
+        source.sendMessage(formatCommand("list", "Lists connected clients", false));
+        source.sendMessage(formatCommand("reload", "Reloads all configs and scripts", false));
+        source.sendMessage(formatCommand("version", "Displays the current version", false));
+
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("Debug Commands (Debug mode only):").color(NamedTextColor.RED));
+        source.sendMessage(formatCommand("stop", "Stops the cb server", false));
+        source.sendMessage(formatCommand("start", "Starts the cb server", false));
+
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("Client Commands (/cbc):").color(NamedTextColor.AQUA));
+        source.sendMessage(formatCommand("reconnect", "Reconnects the current client", true));
+
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("Documentation: ")
+                .append(Component.text("https://docs.commandbridge.72s.dev")
+                        .color(NamedTextColor.LIGHT_PURPLE)
+                        .decorate(TextDecoration.UNDERLINED)
+                        .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
+
+        source.sendMessage(Component.text(""));
+        source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
+        return 1;
+    }
+
+    private static Component formatCommand(String command, String description, boolean client) {
+        String alias = client ? "/cbc " : "/cb ";
+        return Component.text("  - ")
+                .append(Component.text(alias + command).color(NamedTextColor.GREEN))
+                .append(Component.text(" - " + description).color(NamedTextColor.WHITE));
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/InternalRegistrar.java">
+package dev.consti.commandbridge.velocity.helper;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.helper.command.ListCommand;
+import dev.consti.commandbridge.velocity.helper.command.ReloadCommand;
+import dev.consti.commandbridge.velocity.helper.command.StartCommand;
+import dev.consti.commandbridge.velocity.helper.command.StopCommand;
+import dev.consti.commandbridge.velocity.helper.command.VersionCommand;
+import dev.consti.foundationlib.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.Set;
+
+public class InternalRegistrar {
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final Main plugin;
+    private final Set<String> connectedClients;
+
+    public InternalRegistrar(Logger logger, ProxyServer proxy, Main plugin, Set<String> connectedClients) {
+        this.logger = logger;
+        this.proxy = proxy;
+        this.plugin = plugin;
+        this.connectedClients = connectedClients;
+    }
+
+    public void registerCommands() {
+        logger.info("Registering commands for CommandBridge...");
+        try {
+            // Build the main command
+            LiteralArgumentBuilder<CommandSource> commandBridgeBuilder = LiteralArgumentBuilder
+                    .<CommandSource>literal("commandbridge")
+                    .executes(context -> {
+                        // Default action, for example show help
+                        if (context.getSource().hasPermission("commandbridge.admin")) {
+                            return HelpCommand.sendHelpMessage(context.getSource(), logger);
+                        }
+                        context.getSource().sendMessage(
+                                Component.text("You do not have permission to use this command", NamedTextColor.RED));
+                        return 0;
+                    });
+
+            // Append subcommands
+            commandBridgeBuilder.then(ReloadCommand.build(Runtime.getInstance().getGeneralUtils(), logger));
+            commandBridgeBuilder.then(VersionCommand.build(logger));
+            commandBridgeBuilder.then(HelpCommand.build(logger));
+            commandBridgeBuilder.then(ListCommand.build(connectedClients, logger));
+            if (logger.getDebug()) {
+                commandBridgeBuilder.then(StopCommand.build(logger));
+                commandBridgeBuilder.then(StartCommand.build(logger));
+            }
+
+            LiteralCommandNode<CommandSource> commandBridgeNode = commandBridgeBuilder.build();
+
+             Runtime.getInstance().getGeneralUtils().setMeta(proxy.getCommandManager()
+                    .metaBuilder("commandbridge")
+                    .aliases("cb")
+                    .plugin(plugin)
+                    .build());
+
+            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
+            proxy.getCommandManager().register(Runtime.getInstance().getGeneralUtils().getMeta(), brigadierCommand);
+            logger.info("CommandBridge commands registered successfully");
+        } catch (Exception e) {
+            logger.error("Failed to register CommandBridge commands: {}", logger.getDebug() ? e : e.getMessage());
+        }
+    }
+
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/helper/StatusManager.java">
+package dev.consti.commandbridge.velocity.helper;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class StatusManager {
+    private final Logger logger;
+    private final Map<String, String> statusMap = new HashMap<>();
+    private final Set<String> connectedClients = Runtime.getInstance().getServer().getConnectedClients();
+
+    public StatusManager(Logger logger) {
+        this.logger = logger;
+    }
+
+    public void addClientToStatus(String clientId, String status) {
+        statusMap.put(clientId, status);
+        logger.debug("Updated statusMap: {}", statusMap);
+    }
+
+    public void clearStatusMap() {
+        statusMap.clear();
+    }
+
+    public String checkForFailures() {
+        logger.debug("Checking for failures...");
+
+        List<String> missingClients = connectedClients.stream()
+                .filter(client -> !statusMap.containsKey(client))
+                .toList();
+
+        if (!missingClients.isEmpty()) {
+            String missingClientString = String.join(", ", missingClients);
+            logger.warn("Waiting for responses from clients: {}", missingClientString);
+            return "Missing responses from: " + missingClientString;
+        }
+
+        String failedClients = statusMap.entrySet().stream()
+                .filter(entry -> !"success".equals(entry.getValue()))
+                .map(Map.Entry::getKey)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse(null);
+
+        if (failedClients != null) {
+            logger.error("Failure detected on clients: {}", failedClients);
+            return "Failure detected on: " + failedClients;
+        }
+
+        logger.debug("No failures detected. All clients are operational");
+        return null;
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/util/GeneralUtils.java">
+package dev.consti.commandbridge.velocity.util;
+
+import com.velocitypowered.api.command.CommandMeta;
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.consti.commandbridge.velocity.Main;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.helper.InternalRegistrar;
+import dev.consti.commandbridge.velocity.helper.FailureChecker;
+import dev.consti.commandbridge.velocity.helper.StatusManager;
+import dev.consti.foundationlib.logging.Logger;
+
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+public class GeneralUtils {
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final Main plugin;
+    private final StatusManager statusManager;
+    private final Set<String> connectedClients;
+    private CommandMeta meta;
+
+    public GeneralUtils(Logger logger) {
+        this.logger = logger;
+        this.proxy = ProxyUtils.getProxyServer();
+        this.plugin = Main.getInstance();
+        this.connectedClients = Runtime.getInstance().getServer().getConnectedClients();
+        this.statusManager = new StatusManager(logger);
+    }
+
+    public void addClientToStatus(String clientId, String status) {
+        statusManager.addClientToStatus(clientId, status);
+    }
+
+    public void startFailureCheck(CommandSource source) {
+        statusManager.clearStatusMap();
+        FailureChecker checkTask = new FailureChecker(logger, proxy, plugin, statusManager, source);
+        try {
+            proxy.getScheduler().buildTask(plugin, checkTask).delay(1, TimeUnit.SECONDS).schedule();
+        } catch (Exception e) {
+            logger.error("Failed to schedule the reload check task: {}", logger.getDebug() ? e : e.getMessage());
+            source.sendMessage(
+                    net.kyori.adventure.text.Component.text("Reload command failed: Unable to start the failure check")
+                            .color(net.kyori.adventure.text.format.NamedTextColor.RED));
+        }
+    }
+
+    public void registerCommands() {
+        InternalRegistrar registrar = new InternalRegistrar(logger, proxy, plugin, connectedClients);
+        registrar.registerCommands();
+    }
+
+    public CommandMeta getMeta() {
+        return meta;
+    }
+
+    public void setMeta(CommandMeta commandMeta) {
+        meta = commandMeta;
+    }
+
+    public void unregisterCommands() {
+        proxy.getCommandManager().unregister(meta);
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/util/Metrics.java">
+/*
+ * This Metrics class was auto-generated and can be copied into your project if you are
+ * not using a build tool like Gradle or Maven for dependency management.
+ *
+ * IMPORTANT: You are not allowed to modify this class, except changing the package.
+ *
+ * Disallowed modifications include but are not limited to:
+ *  - Remove the option for users to opt-out
+ *  - Change the frequency for data submission
+ *  - Obfuscate the code (every obfuscator should allow you to make an exception for specific files)
+ *  - Reformat the code (if you use a linter, add an exception)
+ *
+ * Violations will result in a ban of your plugin and account from bStats.
+ */
+package dev.consti.commandbridge.velocity.util;
+
+import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.PluginContainer;
+import com.velocitypowered.api.plugin.PluginDescription;
+import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.ProxyServer;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
+import javax.net.ssl.HttpsURLConnection;
+import org.slf4j.Logger;
+
+public class Metrics {
+
+  /** A factory to create new Metrics classes. */
+  public static class Factory {
+
+    private final ProxyServer server;
+
+    private final Logger logger;
+
+    private final Path dataDirectory;
+
+    // The constructor is not meant to be called by the user.
+    // The instance is created using Dependency Injection
+    @Inject
+    private Factory(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
+      this.server = server;
+      this.logger = logger;
+      this.dataDirectory = dataDirectory;
+    }
+
+    /**
+     * Creates a new Metrics class.
+     *
+     * @param plugin The plugin instance.
+     * @param serviceId The id of the service. It can be found at <a
+     *     href="https://bstats.org/what-is-my-plugin-id">What is my plugin id?</a>
+     *     <p>Not to be confused with Velocity's {@link PluginDescription#getId()} method!
+     * @return A Metrics instance that can be used to register custom charts.
+     *     <p>The return value can be ignored, when you do not want to register custom charts.
+     */
+    public Metrics make(Object plugin, int serviceId) {
+      return new Metrics(plugin, server, logger, dataDirectory, serviceId);
+    }
+  }
+
+  private final PluginContainer pluginContainer;
+
+  private final ProxyServer server;
+
+  private MetricsBase metricsBase;
+
+  private Metrics(
+      Object plugin, ProxyServer server, Logger logger, Path dataDirectory, int serviceId) {
+    pluginContainer =
+        server
+            .getPluginManager()
+            .fromInstance(plugin)
+            .orElseThrow(
+                () -> new IllegalArgumentException("The provided instance is not a plugin"));
+    this.server = server;
+    File configFile = dataDirectory.getParent().resolve("bStats").resolve("config.txt").toFile();
+    MetricsConfig config;
+    try {
+      config = new MetricsConfig(configFile, true);
+    } catch (IOException e) {
+      logger.error("Failed to create bStats config", e);
+      return;
+    }
+    metricsBase =
+        new MetricsBase(
+            "velocity",
+            config.getServerUUID(),
+            serviceId,
+            config.isEnabled(),
+            this::appendPlatformData,
+            this::appendServiceData,
+            task -> server.getScheduler().buildTask(plugin, task).schedule(),
+            () -> true,
+            logger::warn,
+            logger::info,
+            config.isLogErrorsEnabled(),
+            config.isLogSentDataEnabled(),
+            config.isLogResponseStatusTextEnabled(),
+            false);
+    if (!config.didExistBefore()) {
+      // Send an info message when the bStats config file gets created for the first time
+      logger.info(
+          "Velocity and some of its plugins collect metrics and send them to bStats (https://bStats.org).");
+      logger.info(
+          "bStats collects some basic information for plugin authors, like how many people use");
+      logger.info(
+          "their plugin and their total player count. It's recommend to keep bStats enabled, but");
+      logger.info(
+          "if you're not comfortable with this, you can opt-out by editing the config.txt file in");
+      logger.info("the '/plugins/bStats/' folder and setting enabled to false.");
+    }
+  }
+
+  /** Shuts down the underlying scheduler service. */
+  public void shutdown() {
+    metricsBase.shutdown();
+  }
+
+  /**
+   * Adds a custom chart.
+   *
+   * @param chart The chart to add.
+   */
+  public void addCustomChart(CustomChart chart) {
+    if (metricsBase != null) {
+      metricsBase.addCustomChart(chart);
+    }
+  }
+
+  private void appendPlatformData(JsonObjectBuilder builder) {
+    builder.appendField("playerAmount", server.getPlayerCount());
+    builder.appendField("managedServers", server.getAllServers().size());
+    builder.appendField("onlineMode", server.getConfiguration().isOnlineMode() ? 1 : 0);
+    builder.appendField("velocityVersionVersion", server.getVersion().getVersion());
+    builder.appendField("velocityVersionName", server.getVersion().getName());
+    builder.appendField("velocityVersionVendor", server.getVersion().getVendor());
+    builder.appendField("javaVersion", System.getProperty("java.version"));
+    builder.appendField("osName", System.getProperty("os.name"));
+    builder.appendField("osArch", System.getProperty("os.arch"));
+    builder.appendField("osVersion", System.getProperty("os.version"));
+    builder.appendField("coreCount", Runtime.getRuntime().availableProcessors());
+  }
+
+  private void appendServiceData(JsonObjectBuilder builder) {
+    builder.appendField(
+        "pluginVersion", pluginContainer.getDescription().getVersion().orElse("unknown"));
+  }
+
+  public static class MetricsBase {
+
+    /** The version of the Metrics class. */
+    public static final String METRICS_VERSION = "3.1.0";
+
+    private static final String REPORT_URL = "https://bStats.org/api/v2/data/%s";
+
+    private final ScheduledExecutorService scheduler;
+
+    private final String platform;
+
+    private final String serverUuid;
+
+    private final int serviceId;
+
+    private final Consumer<JsonObjectBuilder> appendPlatformDataConsumer;
+
+    private final Consumer<JsonObjectBuilder> appendServiceDataConsumer;
+
+    private final Consumer<Runnable> submitTaskConsumer;
+
+    private final Supplier<Boolean> checkServiceEnabledSupplier;
+
+    private final BiConsumer<String, Throwable> errorLogger;
+
+    private final Consumer<String> infoLogger;
+
+    private final boolean logErrors;
+
+    private final boolean logSentData;
+
+    private final boolean logResponseStatusText;
+
+    private final Set<CustomChart> customCharts = new HashSet<>();
+
+    private final boolean enabled;
+
+    /**
+     * Creates a new MetricsBase class instance.
+     *
+     * @param platform The platform of the service.
+     * @param serviceId The id of the service.
+     * @param serverUuid The server uuid.
+     * @param enabled Whether or not data sending is enabled.
+     * @param appendPlatformDataConsumer A consumer that receives a {@code JsonObjectBuilder} and
+     *     appends all platform-specific data.
+     * @param appendServiceDataConsumer A consumer that receives a {@code JsonObjectBuilder} and
+     *     appends all service-specific data.
+     * @param submitTaskConsumer A consumer that takes a runnable with the submit task. This can be
+     *     used to delegate the data collection to a another thread to prevent errors caused by
+     *     concurrency. Can be {@code null}.
+     * @param checkServiceEnabledSupplier A supplier to check if the service is still enabled.
+     * @param errorLogger A consumer that accepts log message and an error.
+     * @param infoLogger A consumer that accepts info log messages.
+     * @param logErrors Whether or not errors should be logged.
+     * @param logSentData Whether or not the sent data should be logged.
+     * @param logResponseStatusText Whether or not the response status text should be logged.
+     * @param skipRelocateCheck Whether or not the relocate check should be skipped.
+     */
+    public MetricsBase(
+        String platform,
+        String serverUuid,
+        int serviceId,
+        boolean enabled,
+        Consumer<JsonObjectBuilder> appendPlatformDataConsumer,
+        Consumer<JsonObjectBuilder> appendServiceDataConsumer,
+        Consumer<Runnable> submitTaskConsumer,
+        Supplier<Boolean> checkServiceEnabledSupplier,
+        BiConsumer<String, Throwable> errorLogger,
+        Consumer<String> infoLogger,
+        boolean logErrors,
+        boolean logSentData,
+        boolean logResponseStatusText,
+        boolean skipRelocateCheck) {
+      ScheduledThreadPoolExecutor scheduler =
+          new ScheduledThreadPoolExecutor(
+              1,
+              task -> {
+                Thread thread = new Thread(task, "bStats-Metrics");
+                thread.setDaemon(true);
+                return thread;
+              });
+      // We want delayed tasks (non-periodic) that will execute in the future to be
+      // cancelled when the scheduler is shutdown.
+      // Otherwise, we risk preventing the server from shutting down even when
+      // MetricsBase#shutdown() is called
+      scheduler.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+      this.scheduler = scheduler;
+      this.platform = platform;
+      this.serverUuid = serverUuid;
+      this.serviceId = serviceId;
+      this.enabled = enabled;
+      this.appendPlatformDataConsumer = appendPlatformDataConsumer;
+      this.appendServiceDataConsumer = appendServiceDataConsumer;
+      this.submitTaskConsumer = submitTaskConsumer;
+      this.checkServiceEnabledSupplier = checkServiceEnabledSupplier;
+      this.errorLogger = errorLogger;
+      this.infoLogger = infoLogger;
+      this.logErrors = logErrors;
+      this.logSentData = logSentData;
+      this.logResponseStatusText = logResponseStatusText;
+      if (!skipRelocateCheck) {
+        checkRelocation();
+      }
+      if (enabled) {
+        // WARNING: Removing the option to opt-out will get your plugin banned from
+        // bStats
+        startSubmitting();
+      }
+    }
+
+    public void addCustomChart(CustomChart chart) {
+      this.customCharts.add(chart);
+    }
+
+    public void shutdown() {
+      scheduler.shutdown();
+    }
+
+    private void startSubmitting() {
+      final Runnable submitTask =
+          () -> {
+            if (!enabled || !checkServiceEnabledSupplier.get()) {
+              // Submitting data or service is disabled
+              scheduler.shutdown();
+              return;
+            }
+            if (submitTaskConsumer != null) {
+              submitTaskConsumer.accept(this::submitData);
+            } else {
+              this.submitData();
+            }
+          };
+      // Many servers tend to restart at a fixed time at xx:00 which causes an uneven
+      // distribution of requests on the
+      // bStats backend. To circumvent this problem, we introduce some randomness into
+      // the initial and second delay.
+      // WARNING: You must not modify and part of this Metrics class, including the
+      // submit delay or frequency!
+      // WARNING: Modifying this code will get your plugin banned on bStats. Just
+      // don't do it!
+      long initialDelay = (long) (1000 * 60 * (3 + Math.random() * 3));
+      long secondDelay = (long) (1000 * 60 * (Math.random() * 30));
+      scheduler.schedule(submitTask, initialDelay, TimeUnit.MILLISECONDS);
+      scheduler.scheduleAtFixedRate(
+          submitTask, initialDelay + secondDelay, 1000 * 60 * 30, TimeUnit.MILLISECONDS);
+    }
+
+    private void submitData() {
+      final JsonObjectBuilder baseJsonBuilder = new JsonObjectBuilder();
+      appendPlatformDataConsumer.accept(baseJsonBuilder);
+      final JsonObjectBuilder serviceJsonBuilder = new JsonObjectBuilder();
+      appendServiceDataConsumer.accept(serviceJsonBuilder);
+      JsonObjectBuilder.JsonObject[] chartData =
+          customCharts.stream()
+              .map(customChart -> customChart.getRequestJsonObject(errorLogger, logErrors))
+              .filter(Objects::nonNull)
+              .toArray(JsonObjectBuilder.JsonObject[]::new);
+      serviceJsonBuilder.appendField("id", serviceId);
+      serviceJsonBuilder.appendField("customCharts", chartData);
+      baseJsonBuilder.appendField("service", serviceJsonBuilder.build());
+      baseJsonBuilder.appendField("serverUUID", serverUuid);
+      baseJsonBuilder.appendField("metricsVersion", METRICS_VERSION);
+      JsonObjectBuilder.JsonObject data = baseJsonBuilder.build();
+      scheduler.execute(
+          () -> {
+            try {
+              // Send the data
+              sendData(data);
+            } catch (Exception e) {
+              // Something went wrong! :(
+              if (logErrors) {
+                errorLogger.accept("Could not submit bStats metrics data", e);
+              }
+            }
+          });
+    }
+
+    private void sendData(JsonObjectBuilder.JsonObject data) throws Exception {
+      if (logSentData) {
+        infoLogger.accept("Sent bStats metrics data: " + data.toString());
+      }
+      String url = String.format(REPORT_URL, platform);
+    HttpsURLConnection connection = (HttpsURLConnection) new URL(url).openConnection();
+      // Compress the data to save bandwidth
+      byte[] compressedData = compress(data.toString());
+      connection.setRequestMethod("POST");
+      connection.addRequestProperty("Accept", "application/json");
+      connection.addRequestProperty("Connection", "close");
+      connection.addRequestProperty("Content-Encoding", "gzip");
+      connection.addRequestProperty("Content-Length", String.valueOf(compressedData.length));
+      connection.setRequestProperty("Content-Type", "application/json");
+      connection.setRequestProperty("User-Agent", "Metrics-Service/1");
+      connection.setDoOutput(true);
+      try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
+        outputStream.write(compressedData);
+      }
+      StringBuilder builder = new StringBuilder();
+      try (BufferedReader bufferedReader =
+          new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+        String line;
+        while ((line = bufferedReader.readLine()) != null) {
+          builder.append(line);
+        }
+      }
+      if (logResponseStatusText) {
+        infoLogger.accept("Sent data to bStats and received response: " + builder);
+      }
+    }
+
+    /** Checks that the class was properly relocated. */
+    private void checkRelocation() {
+      // You can use the property to disable the check in your test environment
+      if (System.getProperty("bstats.relocatecheck") == null
+          || !System.getProperty("bstats.relocatecheck").equals("false")) {
+        // Maven's Relocate is clever and changes strings, too. So we have to use this
+        // little "trick" ... :D
+        final String defaultPackage =
+            new String(new byte[] {'o', 'r', 'g', '.', 'b', 's', 't', 'a', 't', 's'});
+        final String examplePackage =
+            new String(new byte[] {'y', 'o', 'u', 'r', '.', 'p', 'a', 'c', 'k', 'a', 'g', 'e'});
+        // We want to make sure no one just copy & pastes the example and uses the wrong
+        // package names
+        if (MetricsBase.class.getPackage().getName().startsWith(defaultPackage)
+            || MetricsBase.class.getPackage().getName().startsWith(examplePackage)) {
+          throw new IllegalStateException("bStats Metrics class has not been relocated correctly!");
+        }
+      }
+    }
+
+    /**
+     * Gzips the given string.
+     *
+     * @param str The string to gzip.
+     * @return The gzipped string.
+     */
+    private static byte[] compress(final String str) throws IOException {
+      if (str == null) {
+        return null;
+      }
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      try (GZIPOutputStream gzip = new GZIPOutputStream(outputStream)) {
+        gzip.write(str.getBytes(StandardCharsets.UTF_8));
+      }
+      return outputStream.toByteArray();
+    }
+  }
+
+  public static class AdvancedBarChart extends CustomChart {
+
+    private final Callable<Map<String, int[]>> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public AdvancedBarChart(String chartId, Callable<Map<String, int[]>> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    protected JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      JsonObjectBuilder valuesBuilder = new JsonObjectBuilder();
+      Map<String, int[]> map = callable.call();
+      if (map == null || map.isEmpty()) {
+        // Null = skip the chart
+        return null;
+      }
+      boolean allSkipped = true;
+      for (Map.Entry<String, int[]> entry : map.entrySet()) {
+        if (entry.getValue().length == 0) {
+          // Skip this invalid
+          continue;
+        }
+        allSkipped = false;
+        valuesBuilder.appendField(entry.getKey(), entry.getValue());
+      }
+      if (allSkipped) {
+        // Null = skip the chart
+        return null;
+      }
+      return new JsonObjectBuilder().appendField("values", valuesBuilder.build()).build();
+    }
+  }
+
+  public static class SimplePie extends CustomChart {
+
+    private final Callable<String> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public SimplePie(String chartId, Callable<String> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    protected JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      String value = callable.call();
+      if (value == null || value.isEmpty()) {
+        // Null = skip the chart
+        return null;
+      }
+      return new JsonObjectBuilder().appendField("value", value).build();
+    }
+  }
+
+  public static class DrilldownPie extends CustomChart {
+
+    private final Callable<Map<String, Map<String, Integer>>> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public DrilldownPie(String chartId, Callable<Map<String, Map<String, Integer>>> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    public JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      JsonObjectBuilder valuesBuilder = new JsonObjectBuilder();
+      Map<String, Map<String, Integer>> map = callable.call();
+      if (map == null || map.isEmpty()) {
+        // Null = skip the chart
+        return null;
+      }
+      boolean reallyAllSkipped = true;
+      for (Map.Entry<String, Map<String, Integer>> entryValues : map.entrySet()) {
+        JsonObjectBuilder valueBuilder = new JsonObjectBuilder();
+        boolean allSkipped = true;
+        for (Map.Entry<String, Integer> valueEntry : map.get(entryValues.getKey()).entrySet()) {
+          valueBuilder.appendField(valueEntry.getKey(), valueEntry.getValue());
+          allSkipped = false;
+        }
+        if (!allSkipped) {
+          reallyAllSkipped = false;
+          valuesBuilder.appendField(entryValues.getKey(), valueBuilder.build());
+        }
+      }
+      if (reallyAllSkipped) {
+        // Null = skip the chart
+        return null;
+      }
+      return new JsonObjectBuilder().appendField("values", valuesBuilder.build()).build();
+    }
+  }
+
+  public static class SingleLineChart extends CustomChart {
+
+    private final Callable<Integer> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public SingleLineChart(String chartId, Callable<Integer> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    protected JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      int value = callable.call();
+      if (value == 0) {
+        // Null = skip the chart
+        return null;
+      }
+      return new JsonObjectBuilder().appendField("value", value).build();
+    }
+  }
+
+  public static class MultiLineChart extends CustomChart {
+
+    private final Callable<Map<String, Integer>> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public MultiLineChart(String chartId, Callable<Map<String, Integer>> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    protected JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      JsonObjectBuilder valuesBuilder = new JsonObjectBuilder();
+      Map<String, Integer> map = callable.call();
+      if (map == null || map.isEmpty()) {
+        // Null = skip the chart
+        return null;
+      }
+      boolean allSkipped = true;
+      for (Map.Entry<String, Integer> entry : map.entrySet()) {
+        if (entry.getValue() == 0) {
+          // Skip this invalid
+          continue;
+        }
+        allSkipped = false;
+        valuesBuilder.appendField(entry.getKey(), entry.getValue());
+      }
+      if (allSkipped) {
+        // Null = skip the chart
+        return null;
+      }
+      return new JsonObjectBuilder().appendField("values", valuesBuilder.build()).build();
+    }
+  }
+
+  public static class AdvancedPie extends CustomChart {
+
+    private final Callable<Map<String, Integer>> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public AdvancedPie(String chartId, Callable<Map<String, Integer>> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    protected JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      JsonObjectBuilder valuesBuilder = new JsonObjectBuilder();
+      Map<String, Integer> map = callable.call();
+      if (map == null || map.isEmpty()) {
+        // Null = skip the chart
+        return null;
+      }
+      boolean allSkipped = true;
+      for (Map.Entry<String, Integer> entry : map.entrySet()) {
+        if (entry.getValue() == 0) {
+          // Skip this invalid
+          continue;
+        }
+        allSkipped = false;
+        valuesBuilder.appendField(entry.getKey(), entry.getValue());
+      }
+      if (allSkipped) {
+        // Null = skip the chart
+        return null;
+      }
+      return new JsonObjectBuilder().appendField("values", valuesBuilder.build()).build();
+    }
+  }
+
+  public abstract static class CustomChart {
+
+    private final String chartId;
+
+    protected CustomChart(String chartId) {
+      if (chartId == null) {
+        throw new IllegalArgumentException("chartId must not be null");
+      }
+      this.chartId = chartId;
+    }
+
+    public JsonObjectBuilder.JsonObject getRequestJsonObject(
+        BiConsumer<String, Throwable> errorLogger, boolean logErrors) {
+      JsonObjectBuilder builder = new JsonObjectBuilder();
+      builder.appendField("chartId", chartId);
+      try {
+        JsonObjectBuilder.JsonObject data = getChartData();
+        if (data == null) {
+          // If the data is null we don't send the chart.
+          return null;
+        }
+        builder.appendField("data", data);
+      } catch (Throwable t) {
+        if (logErrors) {
+          errorLogger.accept("Failed to get data for custom chart with id " + chartId, t);
+        }
+        return null;
+      }
+      return builder.build();
+    }
+
+    protected abstract JsonObjectBuilder.JsonObject getChartData() throws Exception;
+  }
+
+  public static class SimpleBarChart extends CustomChart {
+
+    private final Callable<Map<String, Integer>> callable;
+
+    /**
+     * Class constructor.
+     *
+     * @param chartId The id of the chart.
+     * @param callable The callable which is used to request the chart data.
+     */
+    public SimpleBarChart(String chartId, Callable<Map<String, Integer>> callable) {
+      super(chartId);
+      this.callable = callable;
+    }
+
+    @Override
+    protected JsonObjectBuilder.JsonObject getChartData() throws Exception {
+      JsonObjectBuilder valuesBuilder = new JsonObjectBuilder();
+      Map<String, Integer> map = callable.call();
+      if (map == null || map.isEmpty()) {
+        // Null = skip the chart
+        return null;
+      }
+      for (Map.Entry<String, Integer> entry : map.entrySet()) {
+        valuesBuilder.appendField(entry.getKey(), new int[] {entry.getValue()});
+      }
+      return new JsonObjectBuilder().appendField("values", valuesBuilder.build()).build();
+    }
+  }
+
+  /**
+   * An extremely simple JSON builder.
+   *
+   * <p>While this class is neither feature-rich nor the most performant one, it's sufficient enough
+   * for its use-case.
+   */
+  public static class JsonObjectBuilder {
+
+    private StringBuilder builder = new StringBuilder();
+
+    private boolean hasAtLeastOneField = false;
+
+    public JsonObjectBuilder() {
+      builder.append("{");
+    }
+
+    /**
+     * Appends a null field to the JSON.
+     *
+     * @param key The key of the field.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendNull(String key) {
+      appendFieldUnescaped(key, "null");
+      return this;
+    }
+
+    /**
+     * Appends a string field to the JSON.
+     *
+     * @param key The key of the field.
+     * @param value The value of the field.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendField(String key, String value) {
+      if (value == null) {
+        throw new IllegalArgumentException("JSON value must not be null");
+      }
+      appendFieldUnescaped(key, "\"" + escape(value) + "\"");
+      return this;
+    }
+
+    /**
+     * Appends an integer field to the JSON.
+     *
+     * @param key The key of the field.
+     * @param value The value of the field.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendField(String key, int value) {
+      appendFieldUnescaped(key, String.valueOf(value));
+      return this;
+    }
+
+    /**
+     * Appends an object to the JSON.
+     *
+     * @param key The key of the field.
+     * @param object The object.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendField(String key, JsonObject object) {
+      if (object == null) {
+        throw new IllegalArgumentException("JSON object must not be null");
+      }
+      appendFieldUnescaped(key, object.toString());
+      return this;
+    }
+
+    /**
+     * Appends a string array to the JSON.
+     *
+     * @param key The key of the field.
+     * @param values The string array.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendField(String key, String[] values) {
+      if (values == null) {
+        throw new IllegalArgumentException("JSON values must not be null");
+      }
+      String escapedValues =
+          Arrays.stream(values)
+              .map(value -> "\"" + escape(value) + "\"")
+              .collect(Collectors.joining(","));
+      appendFieldUnescaped(key, "[" + escapedValues + "]");
+      return this;
+    }
+
+    /**
+     * Appends an integer array to the JSON.
+     *
+     * @param key The key of the field.
+     * @param values The integer array.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendField(String key, int[] values) {
+      if (values == null) {
+        throw new IllegalArgumentException("JSON values must not be null");
+      }
+      String escapedValues =
+          Arrays.stream(values).mapToObj(String::valueOf).collect(Collectors.joining(","));
+      appendFieldUnescaped(key, "[" + escapedValues + "]");
+      return this;
+    }
+
+    /**
+     * Appends an object array to the JSON.
+     *
+     * @param key The key of the field.
+     * @param values The integer array.
+     * @return A reference to this object.
+     */
+    public JsonObjectBuilder appendField(String key, JsonObject[] values) {
+      if (values == null) {
+        throw new IllegalArgumentException("JSON values must not be null");
+      }
+      String escapedValues =
+          Arrays.stream(values).map(JsonObject::toString).collect(Collectors.joining(","));
+      appendFieldUnescaped(key, "[" + escapedValues + "]");
+      return this;
+    }
+
+    /**
+     * Appends a field to the object.
+     *
+     * @param key The key of the field.
+     * @param escapedValue The escaped value of the field.
+     */
+    private void appendFieldUnescaped(String key, String escapedValue) {
+      if (builder == null) {
+        throw new IllegalStateException("JSON has already been built");
+      }
+      if (key == null) {
+        throw new IllegalArgumentException("JSON key must not be null");
+      }
+      if (hasAtLeastOneField) {
+        builder.append(",");
+      }
+      builder.append("\"").append(escape(key)).append("\":").append(escapedValue);
+      hasAtLeastOneField = true;
+    }
+
+    /**
+     * Builds the JSON string and invalidates this builder.
+     *
+     * @return The built JSON string.
+     */
+    public JsonObject build() {
+      if (builder == null) {
+        throw new IllegalStateException("JSON has already been built");
+      }
+      JsonObject object = new JsonObject(builder.append("}").toString());
+      builder = null;
+      return object;
+    }
+
+    /**
+     * Escapes the given string like stated in https://www.ietf.org/rfc/rfc4627.txt.
+     *
+     * <p>This method escapes only the necessary characters '"', '\'. and '\u0000' - '\u001F'.
+     * Compact escapes are not used (e.g., '\n' is escaped as "\u000a" and not as "\n").
+     *
+     * @param value The value to escape.
+     * @return The escaped value.
+     */
+    private static String escape(String value) {
+      final StringBuilder builder = new StringBuilder();
+      for (int i = 0; i < value.length(); i++) {
+        char c = value.charAt(i);
+        if (c == '"') {
+          builder.append("\\\"");
+        } else if (c == '\\') {
+          builder.append("\\\\");
+        } else if (c <= '\u000F') {
+          builder.append("\\u000").append(Integer.toHexString(c));
+        } else if (c <= '\u001F') {
+          builder.append("\\u00").append(Integer.toHexString(c));
+        } else {
+          builder.append(c);
+        }
+      }
+      return builder.toString();
+    }
+
+    /**
+     * A super simple representation of a JSON object.
+     *
+     * <p>This class only exists to make methods of the {@link JsonObjectBuilder} type-safe and not
+     * allow a raw string inputs for methods like {@link JsonObjectBuilder#appendField(String,
+     * JsonObject)}.
+     */
+    public static class JsonObject {
+
+      private final String value;
+
+      private JsonObject(String value) {
+        this.value = value;
+      }
+
+      @Override
+      public String toString() {
+        return value;
+      }
+    }
+  }
+
+  /**
+   * A simple config for bStats.
+   *
+   * <p>This class is not used by every platform.
+   */
+  public static class MetricsConfig {
+
+    private final File file;
+
+    private final boolean defaultEnabled;
+
+    private String serverUUID;
+
+    private boolean enabled;
+
+    private boolean logErrors;
+
+    private boolean logSentData;
+
+    private boolean logResponseStatusText;
+
+    private boolean didExistBefore = true;
+
+    public MetricsConfig(File file, boolean defaultEnabled) throws IOException {
+      this.file = file;
+      this.defaultEnabled = defaultEnabled;
+      setupConfig();
+    }
+
+    public String getServerUUID() {
+      return serverUUID;
+    }
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public boolean isLogErrorsEnabled() {
+      return logErrors;
+    }
+
+    public boolean isLogSentDataEnabled() {
+      return logSentData;
+    }
+
+    public boolean isLogResponseStatusTextEnabled() {
+      return logResponseStatusText;
+    }
+
+    /**
+     * Checks whether the config file did exist before or not.
+     *
+     * @return If the config did exist before.
+     */
+    public boolean didExistBefore() {
+      return didExistBefore;
+    }
+
+    /** Creates the config file if it does not exist and read its content. */
+    private void setupConfig() throws IOException {
+      if (!file.exists()) {
+        // Looks like it's the first time we create it (or someone deleted it).
+        didExistBefore = false;
+        writeConfig();
+      }
+      readConfig();
+      if (serverUUID == null) {
+        // Found a malformed config file with no UUID. Let's recreate it.
+        writeConfig();
+        readConfig();
+      }
+    }
+
+    /** Creates a config file with teh default content. */
+    private void writeConfig() throws IOException {
+      List<String> configContent = new ArrayList<>();
+      configContent.add(
+          "# bStats (https://bStats.org) collects some basic information for plugin authors, like");
+      configContent.add(
+          "# how many people use their plugin and their total player count. It's recommended to keep");
+      configContent.add(
+          "# bStats enabled, but if you're not comfortable with this, you can turn this setting off.");
+      configContent.add(
+          "# There is no performance penalty associated with having metrics enabled, and data sent to");
+      configContent.add("# bStats is fully anonymous.");
+      configContent.add("enabled=" + defaultEnabled);
+      configContent.add("server-uuid=" + UUID.randomUUID().toString());
+      configContent.add("log-errors=false");
+      configContent.add("log-sent-data=false");
+      configContent.add("log-response-status-text=false");
+      writeFile(file, configContent);
+    }
+
+    /** Reads the content of the config file. */
+    private void readConfig() throws IOException {
+      List<String> lines = readFile(file);
+      if (lines == null) {
+        throw new AssertionError("Content of newly created file is null");
+      }
+      enabled = getConfigValue("enabled", lines).map("true"::equals).orElse(true);
+      serverUUID = getConfigValue("server-uuid", lines).orElse(null);
+      logErrors = getConfigValue("log-errors", lines).map("true"::equals).orElse(false);
+      logSentData = getConfigValue("log-sent-data", lines).map("true"::equals).orElse(false);
+      logResponseStatusText =
+          getConfigValue("log-response-status-text", lines).map("true"::equals).orElse(false);
+    }
+
+    /**
+     * Gets a config setting from the given list of lines of the file.
+     *
+     * @param key The key for the setting.
+     * @param lines The lines of the file.
+     * @return The value of the setting.
+     */
+    private Optional<String> getConfigValue(String key, List<String> lines) {
+      return lines.stream()
+          .filter(line -> line.startsWith(key + "="))
+          .map(line -> line.replaceFirst(Pattern.quote(key + "="), ""))
+          .findFirst();
+    }
+
+    /**
+     * Reads the text content of the given file.
+     *
+     * @param file The file to read.
+     * @return The lines of the given file.
+     */
+    private List<String> readFile(File file) throws IOException {
+      if (!file.exists()) {
+        return null;
+      }
+      try (FileReader fileReader = new FileReader(file);
+          BufferedReader bufferedReader = new BufferedReader(fileReader)) {
+        return bufferedReader.lines().collect(Collectors.toList());
+      }
+    }
+
+    /**
+     * Writes the given lines to the given file.
+     *
+     * @param file The file to write to.
+     * @param lines The lines to write.
+     */
+    private void writeFile(File file, List<String> lines) throws IOException {
+      if (!file.exists()) {
+        file.getParentFile().mkdirs();
+        file.createNewFile();
+      }
+      try (FileWriter fileWriter = new FileWriter(file);
+          BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
+        for (String line : lines) {
+          bufferedWriter.write(line);
+          bufferedWriter.newLine();
+        }
+      }
+    }
+  }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/util/ProxyUtils.java">
+package dev.consti.commandbridge.velocity.util;
+
+import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+
+public class ProxyUtils {
+    private static ProxyServer proxyServer;
+    private static final Logger logger = Runtime.getInstance().getLogger();
+
+    private ProxyUtils() {
+    }
+
+    public static synchronized void setProxyServer(ProxyServer server) {
+        if (proxyServer == null) {
+            proxyServer = server;
+        } else {
+            logger.error("Attempted to set ProxyServer instance more than once!");
+            throw new IllegalStateException("Proxy instance is already set!");
+        }
+    }
+
+    public static synchronized ProxyServer getProxyServer() {
+        if (proxyServer == null) {
+            logger.error("Attempted to retrieve ProxyServer instance before initialization!");
+            throw new IllegalStateException("Proxy instance is not initialized!");
+        }
+        return proxyServer;
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/util/ScriptUtils.java">
+package dev.consti.commandbridge.velocity.util;
+
+import dev.consti.commandbridge.velocity.command.CommandRegistrar;
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.ScriptManager;
+
+public class ScriptUtils extends ScriptManager {
+    private final Logger logger;
+    private final CommandRegistrar registrar;
+
+    public ScriptUtils(Logger logger, String pluginName) {
+        super(logger, pluginName);
+        this.logger = logger;
+        this.registrar = Runtime.getInstance().getRegistrar();
+    }
+
+    @Override
+    public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
+        if (scriptConfig.isEnabled()) {
+            logger.info("Loaded script: {}", fileName);
+            try {
+                registrar.registerCommand(getScriptConfig(fileName));
+                logger.debug("Registered command: {}", scriptConfig.getName());
+            } catch (Exception e) {
+                logger.error("Failed to register script '{}' : {}",
+                        scriptConfig.getName(),
+                        logger.getDebug() ? e : e.getMessage()
+                );
+            }
+        } else {
+            logger.info("Skipped disabled script: {}", scriptConfig.getName());
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/websocket/HttpServer.java">
+package dev.consti.commandbridge.velocity.websocket;
+
+import dev.consti.foundationlib.logging.Logger;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+
+
+@Sharable
+public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest>{
+    private Logger logger;
+
+    
+    public HttpServer(Logger logger) {
+        this.logger = logger;
+    }
+
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) {
+        String uri = msg.uri();
+        logger.debug("Incoming HTTP request to: {}", uri);
+
+        if ("/ping".equalsIgnoreCase(uri)) {
+            sendTextResponse(ctx, OK, "pong");
+        } else if ("websocket".equalsIgnoreCase(msg.headers().get(HttpHeaderNames.UPGRADE))) {
+            ctx.fireChannelRead(msg.retain());
+        } else {
+            sendTextResponse(ctx, NOT_FOUND, "Not Found");
+        }
+    }
+
+    private void sendTextResponse(ChannelHandlerContext ctx, HttpResponseStatus status, String content) {
+        FullHttpResponse response = new DefaultFullHttpResponse(
+            HTTP_1_1,
+            status,
+            ctx.alloc().buffer().writeBytes(content.getBytes())
+        );
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain");
+        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+        ctx.writeAndFlush(response);
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        logger.error("Error in HttpServer handler: {}", logger.getDebug() ? cause : cause.getMessage());
+        ctx.close();
+    }
+
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/websocket/Server.java">
+package dev.consti.commandbridge.velocity.websocket;
+
+import java.util.*;
+
+import com.velocitypowered.api.proxy.Player;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.foundationlib.json.MessageBuilder;
+import dev.consti.foundationlib.json.MessageParser;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.websocket.SimpleWebSocketServer;
+import io.netty.channel.Channel;
+
+public class Server extends SimpleWebSocketServer {
+    private final Logger logger;
+    private final Map<String, Channel> clientConnections = new HashMap<>();
+
+    public Server(Logger logger, String secret) {
+        super(logger, secret);
+        super.addHttpHandler(Runtime.getInstance().getHttpServer());
+        this.logger = logger;
+    }
+
+    @Override
+    protected void onMessage(Channel webSocket, String message) {
+        MessageParser parser = new MessageParser(message);
+        logger.debug("Received message: {}", message);
+        try {
+            String type = parser.getType();
+            switch (type) {
+                case "command" -> handleCommandRequest(webSocket, message);
+                case "system" -> handleSystemRequest(webSocket, message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError(webSocket, "Invalid type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage());
+            sendError(webSocket, "Internal server error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onConnectionClose(Channel conn, int code, String reason) {
+        String clientAddress = conn.remoteAddress().toString();
+
+        if (getConnections().contains(conn)) {
+            String disconnectedClientName = clientConnections.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(conn))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+
+            logger.info("Client '{}' disconnected", clientAddress);
+            if (disconnectedClientName != null) {
+                clientConnections.remove(disconnectedClientName);
+                logger.debug("Removed disconnected client: {}", disconnectedClientName);
+            } else {
+                logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
+            }
+        } 
+    }
+
+    private void handleCommandRequest(Channel webSocket, String message) {
+        logger.debug("Handling command request");
+        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
+    }
+
+    private void handleSystemRequest(Channel webSocket, String message) {
+        logger.debug("Handling system request");
+        MessageParser parser = new MessageParser(message);
+        String channel = parser.getBodyValueAsString("channel");
+        String name = parser.getBodyValueAsString("name");
+        String client = parser.getBodyValueAsString("client");
+        String status = parser.getStatus();
+
+        switch (channel) {
+            case "name" -> {
+                if (name != null) {
+                    clientConnections.put(name, webSocket);
+                    logger.info("Added connected client: {}", name);
+                } else {
+                    logger.warn("Client did not provide 'name' in system request");
+                }
+            }
+            case "error" -> logger.warn("Error Message from client '{}' : {}", client, status);
+            case "info" -> logger.info("Info from client '{}' : {}", client, status);
+            case "task" -> systemTask(parser, status, client);
+            default -> logger.warn("Invalid channel: {}", channel);
+        }
+    }
+
+    private void systemTask(MessageParser parser, String status, String client) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
+            default -> logger.warn("Invalid task: {}", task);
+        }
+    }
+
+    public void sendError(Channel webSocket, String errorMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "error")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(errorMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendInfo(Channel webSocket, String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(infoMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendTask(Channel webSocket, String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(status);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
+        Channel conn = clientConnections.get(client);
+        if (conn == null) {
+            logger.warn("Client '{}' is not connected, cannot send message.", client);
+            return;
+        }
+
+        MessageBuilder builder = new MessageBuilder("command");
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+
+        if (target.equals("player")) {
+            builder.addToBody("name", executor.getUsername()).addToBody("uuid", executor.getUniqueId());
+        }
+        logger.info("Sending command '{}' to client: {}", command, client);
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build(), conn);
+    }
+
+    public boolean isServerConnected(String clientName) {
+        boolean exists = clientConnections.containsKey(clientName);
+        logger.debug("Checking if client '{}' is connected: {}", clientName, exists);
+        return exists;
+    }
+
+    public Set<String> getConnectedClients() {
+        return clientConnections.keySet();
+    }
+
+    public Channel getWebSocket(String client) {
+        return clientConnections.get(client);
+    }
+
+}
+</file>
+
+<file path="velocity/src/main/java/dev/consti/commandbridge/velocity/Main.java">
+package dev.consti.commandbridge.velocity;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import com.google.inject.Inject;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.consti.commandbridge.velocity.core.Runtime;
+import dev.consti.commandbridge.velocity.util.Metrics;
+import dev.consti.commandbridge.velocity.util.ProxyUtils;
+import dev.consti.foundationlib.logging.Logger;
+import dev.consti.foundationlib.utils.VersionChecker;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+@Plugin(id = "commandbridge", name = "CommandBridge", version = "Unknown", authors = "72-S")
+public class Main {
+    private static Main instance;
+    public final ProxyServer proxy;
+    private final Logger logger;
+    private final Metrics.Factory metricsFactory;
+
+
+    @Inject
+    public Main(ProxyServer proxy, Metrics.Factory metricsFactory) {
+        this.proxy = proxy;
+        this.logger = Runtime.getInstance().getLogger();
+        this.metricsFactory = metricsFactory;
+        instance = this;
+        ProxyUtils.setProxyServer(proxy);
+    }
+
+    public static Main getInstance() {
+        return instance;
+    }
+
+    public static String getVersion() {
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+        int pluginId = 22008;
+        metricsFactory.make(this, pluginId);
+    }
+
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent event) {
+        logger.info("Stopping CommandBridge...");
+        Runtime.getInstance().getStartup().stop();
+    }
+
+    @Subscribe
+    public void onPlayerJoin(PostLoginEvent event) {
+        Player player = event.getPlayer();
+        if (player == null) {
+            logger.warn("PostLoginEvent triggered with a null player object.");
+            return;
+        }
+
+        if (player.hasPermission("commandbridge.admin")) {
+            logger.debug("Player '{}' has admin permissions. Checking for updates...", player.getUsername());
+
+            proxy.getScheduler().buildTask(this, () -> {
+                String currentVersion = Main.getVersion();
+                String latestVersion = VersionChecker.getLatestVersion();
+
+                if (latestVersion == null) {
+                    player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
+                    logger.warn("Update check failed: Unable to retrieve the latest version.");
+                    return;
+                }
+
+                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion).color(NamedTextColor.RED));
+                    player.sendMessage(Component.text("Please download the latest release: ")
+                            .append(Component.text("here")
+                                    .color(NamedTextColor.BLUE)
+                                    .decorate(TextDecoration.UNDERLINED)
+                                    .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                    logger.debug("Notified player '{}' about the new version: {}", player.getUsername(), latestVersion);
+                } else {
+                    logger.debug("Player '{}' is running the latest version: {}", player.getUsername(), currentVersion);
+                }
+            }).schedule();
+        } else {
+            logger.debug("Player {} does not have admin permissions. No update check performed.", player.getUsername());
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/resources/velocity-config.yml">
+# Server Configuration File
+
+# General debug mode.
+# Set to true for detailed logs and diagnostics, or false for standard logging.
+debug: false
+
+# Unique identifier for the server.
+# This helps distinguish between multiple servers in a network setup.
+server-id: "main"
+
+# The host address the server will bind to.
+# You can use "127.0.0.1" to bind to the localhost interface (local connections only),
+# or "0.0.0.0" to bind to all available network interfaces (accepts connections from all IPs).
+# Change only if you know what you're doing.
+host: "0.0.0.0"
+
+# Server Address Name (SAN).
+# Specify your server's public IP or domain name here if accessible from external networks.
+# Example: san: "152.248.198.124"
+san: ""
+
+# The port number the server will listen on.
+# Ensure this port is open and not used by another service.
+port: 8080
+
+# Timeout for the reload command.
+# Specifies the time (in seconds) for clients to respond during a reload operation.
+# Each second represents one retry for the client to send a successful request.
+# If the client does not respond successfully within the timeout duration, the operation will fail.
+# Example: timeout: 8 means clients have up to 8 seconds (or 8 tries) to respond.
+timeout: 8
+</file>
+
+<file path="velocity/src/main/resources/velocity-example.yml">
+##########################################################################
+# EXAMPLE CONFIGURATION
+# This file demonstrates how to dispatch a command to the Velocity server,
+# where the commands are executed on the Bukkit servers.
+##########################################################################
+
+# The name of the command to be dispatched.
+# This is the identifier for the command configuration.
+name: examplecommand
+
+# Enable or disable this command.
+# Set to true to allow the command to be executed, or false to disable it.
+enabled: true
+
+# Ignore permission checks for this command.
+# Set to true to bypass permission validation, or false to enforce it.
+ignore-permission-check: false
+
+# Hide permission warnings when the executor does not have the required permissions.
+# Set to true to suppress warnings, or false to show them.
+hide-permission-warning: false
+
+# A list of commands to execute on the target servers.
+commands:
+  # Command 1
+  - command: 'say Hello, world!'  # The command string to be executed (use single quotes).
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-client-ids:            # List of target server IDs where the command will be executed.
+      - 'lobby'
+      - 'survival'
+    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
+    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
+    check-if-executor-is-player: true  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: true # If true, ensures the executor is online on the server.
+
+  # Command 2
+  - command: 'say I love Coding!' # The command string to be executed (use single quotes).
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-client-ids:            # List of target server IDs where the command will be executed.
+      - 'lobby'
+    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
+    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
+    check-if-executor-is-player: false # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: false # If true, ensures the executor is online on the server.
+</file>
+
+<file path="velocity/build.gradle.kts">
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import java.nio.file.Files
+
+plugins {
+    id("java")
+}
+
+val pversion: String by gradle.extra
+
+group = "dev.consti"
+version = pversion
+
+repositories {
+    mavenCentral()
+    maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { url = uri("https://repo.william278.net/releases/") }
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        credentials {
+            username = "72-S"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+dependencies {
+    compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    implementation("dev.consti:foundationlib:2.2.3")
+    compileOnly("net.william278:papiproxybridge:1.7.2")
+}
+
+
+tasks.register("modifyVelocityPluginJson") {
+    doLast {
+        val jsonFile = layout.buildDirectory.file("classes/java/main/velocity-plugin.json").get().asFile
+        if (jsonFile.exists()) {
+            println("Found velocity-plugin.json")
+
+            val jsonContent = Files.readString(jsonFile.toPath())
+            val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
+
+            jsonObject.addProperty("version", pversion)
+
+            Files.writeString(jsonFile.toPath(), jsonObject.toString())
+            println("velocity-plugin.json updated successfully with version ${pversion}")
+        } else {
+            println("velocity-plugin.json not found")
+        }
+    }
+}
+
+tasks.register("generatePluginProperties") {
+    doLast {
+        println("Generating plugin.properties file")
+
+        val propertiesFile = layout.buildDirectory.file("resources/main/plugin.properties").get().asFile
+        propertiesFile.parentFile.mkdirs()
+        propertiesFile.writeText("""
+            plugin.version=${pversion}
+        """.trimIndent())
+
+        println("Successfully generated plugin.properties file")
+    }
+}
+
+
+tasks.named("processResources") {
+    dependsOn("generatePluginProperties")
+    finalizedBy("modifyVelocityPluginJson")
+}
+</file>
+
+<file path=".gitignore">
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+.idea/workspace.xml
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+
+kls_database.db
+</file>
+
+<file path="build.gradle.kts">
+plugins {
+    id("java")
+    id("com.gradleup.shadow") version "8.3.3"
+    id("maven-publish")
+    id("com.modrinth.minotaur") version "2.+"
+}
+
+val pversion: String by gradle.extra
+val pluginType: String by gradle.extra
+val pluginVersions: List<String> by gradle.extra
+val pluginLoaders: List<String> by gradle.extra
+
+group = "dev.consti"
+
+version = pversion
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        credentials {
+            username = "72-S"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
+    maven { url = uri("https://repo.william278.net/releases/") }
+    maven { url = uri("https://repo.extendedclip.com/releases/") }
+}
+
+dependencies {
+    implementation(project(":paper"))
+    implementation(project(":velocity"))
+}
+
+java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
+
+tasks {
+    // Configure the existing shadowJar task, don't register a new one
+    shadowJar {
+        dependsOn(":paper:shadowJar")
+        manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
+
+        relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
+
+        // Include the compiled outputs of core, paper, and velocity
+        from(
+                project(":paper")
+                        .takeIf { it.plugins.hasPlugin("java") }
+                        ?.sourceSets
+                        ?.main
+                        ?.get()
+                        ?.output
+                        ?: files()
+        )
+        from(
+                project(":velocity")
+                        .takeIf { it.plugins.hasPlugin("java") }
+                        ?.sourceSets
+                        ?.main
+                        ?.get()
+                        ?.output
+                        ?: files()
+        )
+
+        configurations = listOf(project.configurations.runtimeClasspath.get())
+        mergeServiceFiles()
+    }
+
+    val copyToPaperPlugins by
+            registering(Copy::class) {
+                dependsOn(shadowJar)
+                from(shadowJar.get().outputs.files)
+                into("/mnt/FastStorage/Server-TEST/CommandBridge/Paper/plugins")
+            }
+
+    val copyToVelocityPlugins by
+            registering(Copy::class) {
+                dependsOn(shadowJar)
+                from(shadowJar.get().outputs.files)
+                into("/mnt/FastStorage/Server-TEST/CommandBridge/Velocity/plugins")
+            }
+
+    register("dev") { dependsOn(copyToPaperPlugins, copyToVelocityPlugins) }
+}
+
+afterEvaluate {
+    modrinth {
+        token.set(System.getenv("MODRINTH_TOKEN"))
+        projectId.set("wIuI4ru2")
+        versionName.set("CommandBridge $pversion")
+        changelog.set(rootProject.file("CHANGELOG.md").readText())
+        versionNumber.set(pversion)
+        versionType.set(pluginType)
+        uploadFile.set(tasks.shadowJar)
+        gameVersions.set(pluginVersions)
+        loaders.set(pluginLoaders)
+        debugMode.set(false)
+    }
+}
+</file>
+
+<file path="CHANGELOG.md">
+**[v2.2.0] - 2025-04-17**
+
+- Replaced entire backend with Netty, providing improved performance and enhanced security.
+- Clients now automatically attempt to reconnect to the server after shutdown, with a configurable timeout. Manual reconnection is possible afterward.
+- Fixed a bug where the WebSocket server would not shut down properly.  
+  This resolves [#11](https://github.com/72-S/CommandBridge/issues/11).
+
+> Major version bump due to complete backend reimplementation.  
+> In the next release, a WebUI for managing commands and a `/dump` command will be introduced.
+</file>
+
+<file path="gradlew">
+#!/bin/sh
+
+#
+# Copyright © 2015-2021 the original authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+##############################################################################
+#
+#   Gradle start up script for POSIX generated by Gradle.
+#
+#   Important for running:
+#
+#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
+#       noncompliant, but you have some other compliant shell such as ksh or
+#       bash, then to run this script, type that shell name before the whole
+#       command line, like:
+#
+#           ksh Gradle
+#
+#       Busybox and similar reduced shells will NOT work, because this script
+#       requires all of these POSIX shell features:
+#         * functions;
+#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
+#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
+#         * compound commands having a testable exit status, especially «case»;
+#         * various built-in commands including «command», «set», and «ulimit».
+#
+#   Important for patching:
+#
+#   (2) This script targets any POSIX shell, so it avoids extensions provided
+#       by Bash, Ksh, etc; in particular arrays are avoided.
+#
+#       The "traditional" practice of packing multiple parameters into a
+#       space-separated string is a well documented source of bugs and security
+#       problems, so this is (mostly) avoided, by progressively accumulating
+#       options in "$@", and eventually passing that to Java.
+#
+#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
+#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
+#       see the in-line comments for details.
+#
+#       There are tweaks for specific operating systems such as AIX, CygWin,
+#       Darwin, MinGW, and NonStop.
+#
+#   (3) This script is generated from the Groovy template
+#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
+#       within the Gradle project.
+#
+#       You can find Gradle at https://github.com/gradle/gradle/.
+#
+##############################################################################
+
+# Attempt to set APP_HOME
+
+# Resolve links: $0 may be a link
+app_path=$0
+
+# Need this for daisy-chained symlinks.
+while
+    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
+    [ -h "$app_path" ]
+do
+    ls=$( ls -ld "$app_path" )
+    link=${ls#*' -> '}
+    case $link in             #(
+      /*)   app_path=$link ;; #(
+      *)    app_path=$APP_HOME$link ;;
+    esac
+done
+
+# This is normally unused
+# shellcheck disable=SC2034
+APP_BASE_NAME=${0##*/}
+# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
+APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
+' "$PWD" ) || exit
+
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD=maximum
+
+warn () {
+    echo "$*"
+} >&2
+
+die () {
+    echo
+    echo "$*"
+    echo
+    exit 1
+} >&2
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "$( uname )" in                #(
+  CYGWIN* )         cygwin=true  ;; #(
+  Darwin* )         darwin=true  ;; #(
+  MSYS* | MINGW* )  msys=true    ;; #(
+  NONSTOP* )        nonstop=true ;;
+esac
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD=$JAVA_HOME/jre/sh/java
+    else
+        JAVACMD=$JAVA_HOME/bin/java
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD=java
+    if ! command -v java >/dev/null 2>&1
+    then
+        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+fi
+
+# Increase the maximum file descriptors if we can.
+if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
+    case $MAX_FD in #(
+      max*)
+        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        MAX_FD=$( ulimit -H -n ) ||
+            warn "Could not query maximum file descriptor limit"
+    esac
+    case $MAX_FD in  #(
+      '' | soft) :;; #(
+      *)
+        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        ulimit -n "$MAX_FD" ||
+            warn "Could not set maximum file descriptor limit to $MAX_FD"
+    esac
+fi
+
+# Collect all arguments for the java command, stacking in reverse order:
+#   * args from the command line
+#   * the main class name
+#   * -classpath
+#   * -D...appname settings
+#   * --module-path (only if needed)
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
+
+# For Cygwin or MSYS, switch paths to Windows format before running java
+if "$cygwin" || "$msys" ; then
+    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
+    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
+
+    JAVACMD=$( cygpath --unix "$JAVACMD" )
+
+    # Now convert the arguments - kludge to limit ourselves to /bin/sh
+    for arg do
+        if
+            case $arg in                                #(
+              -*)   false ;;                            # don't mess with options #(
+              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
+                    [ -e "$t" ] ;;                      #(
+              *)    false ;;
+            esac
+        then
+            arg=$( cygpath --path --ignore --mixed "$arg" )
+        fi
+        # Roll the args list around exactly as many times as the number of
+        # args, so each arg winds up back in the position where it started, but
+        # possibly modified.
+        #
+        # NB: a `for` loop captures its iteration list before it begins, so
+        # changing the positional parameters here affects neither the number of
+        # iterations, nor the values presented in `arg`.
+        shift                   # remove old arg
+        set -- "$@" "$arg"      # push replacement arg
+    done
+fi
+
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+# Collect all arguments for the java command:
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
+#     and any embedded shellness will be escaped.
+#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
+#     treated as '${Hostname}' itself on the command line.
+
+set -- \
+        "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -classpath "$CLASSPATH" \
+        org.gradle.wrapper.GradleWrapperMain \
+        "$@"
+
+# Stop when "xargs" is not available.
+if ! command -v xargs >/dev/null 2>&1
+then
+    die "xargs is not available"
+fi
+
+# Use "xargs" to parse quoted args.
+#
+# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
+#
+# In Bash we could simply go:
+#
+#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
+#   set -- "${ARGS[@]}" "$@"
+#
+# but POSIX shell has neither arrays nor command substitution, so instead we
+# post-process each arg (as a line of input to sed) to backslash-escape any
+# character that might be a shell metacharacter, then use eval to reverse
+# that process (while maintaining the separation between arguments), and wrap
+# the whole thing up as a single "set" statement.
+#
+# This will of course break if any of these variables contains a newline or
+# an unmatched quote.
+#
+
+eval "set -- $(
+        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
+        xargs -n1 |
+        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
+        tr '\n' ' '
+    )" '"$@"'
+
+exec "$JAVACMD" "$@"
+</file>
+
+<file path="gradlew.bat">
+@rem
+@rem Copyright 2015 the original author or authors.
+@rem
+@rem Licensed under the Apache License, Version 2.0 (the "License");
+@rem you may not use this file except in compliance with the License.
+@rem You may obtain a copy of the License at
+@rem
+@rem      https://www.apache.org/licenses/LICENSE-2.0
+@rem
+@rem Unless required by applicable law or agreed to in writing, software
+@rem distributed under the License is distributed on an "AS IS" BASIS,
+@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@rem See the License for the specific language governing permissions and
+@rem limitations under the License.
+@rem
+@rem SPDX-License-Identifier: Apache-2.0
+@rem
+
+@if "%DEBUG%"=="" @echo off
+@rem ##########################################################################
+@rem
+@rem  Gradle startup script for Windows
+@rem
+@rem ##########################################################################
+
+@rem Set local scope for the variables with windows NT shell
+if "%OS%"=="Windows_NT" setlocal
+
+set DIRNAME=%~dp0
+if "%DIRNAME%"=="" set DIRNAME=.
+@rem This is normally unused
+set APP_BASE_NAME=%~n0
+set APP_HOME=%DIRNAME%
+
+@rem Resolve any "." and ".." in APP_HOME to make it shorter.
+for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
+
+@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+
+@rem Find java.exe
+if defined JAVA_HOME goto findJavaFromJavaHome
+
+set JAVA_EXE=java.exe
+%JAVA_EXE% -version >NUL 2>&1
+if %ERRORLEVEL% equ 0 goto execute
+
+echo. 1>&2
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
+
+goto fail
+
+:findJavaFromJavaHome
+set JAVA_HOME=%JAVA_HOME:"=%
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+if exist "%JAVA_EXE%" goto execute
+
+echo. 1>&2
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
+
+goto fail
+
+:execute
+@rem Setup the command line
+
+set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+
+
+@rem Execute Gradle
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+
+:end
+@rem End local scope for the variables with windows NT shell
+if %ERRORLEVEL% equ 0 goto mainEnd
+
+:fail
+rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
+rem the _cmd.exe /c_ return code!
+set EXIT_CODE=%ERRORLEVEL%
+if %EXIT_CODE% equ 0 set EXIT_CODE=1
+if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
+exit /b %EXIT_CODE%
+
+:mainEnd
+if "%OS%"=="Windows_NT" endlocal
+
+:omega
+</file>
+
+<file path="README.md">
+### **CommandBridge**
+
+This plugin connects **Velocity** and **Paper** servers seamlessly, enabling **cross-server command execution**. Here's what it does exactly:
+
+- **Custom Scripts**: Define commands in scripts for both server types.  
+- **Two-Way Communication**:  
+   - Run a command on Velocity → Matching commands execute on Paper.  
+   - Run a command on Paper → Matching commands execute on Velocity.  
+- **WebSocket-Powered**: Ensures fast, reliable and **realtime** communication between servers.  
+- **Placeholders Supported**: Use placeholders for dynamic command execution.  
+
+With this plugin, you can create **global gameplay experiences** that feel smooth and connected!
+
+---
+
+### Requirements
+
+**CommandBridge** v2.0.0 introduces new requirements and updates:  
+
+- **Java 21 Required**: The server must run on Java 21.  
+- **Minecraft Compatibility**: Fully compatible with Minecraft 1.21.x.  
+- **Single JAR File**: Only download `CommandBridge-XXX-all.jar`.  
+- **Dual Placement**: The JAR must be placed in both the target Paper server and the Velocity server to function.  
+- **Plugin Compatibility**: Built for Paper servers, though it may work on other software (not tested).  
+
+> **Important**: These requirements apply only to versions **2.0.0** and above.
+
+---
+
+### News
+
+The **2.0.0 release** brings major updates and improvements:  
+
+- **Rewritten Code**: Cleaner, faster, and more reliable.  
+- **WebSocket Technology**: Replaces plugin messaging to fix issues where messages could not be sent if no players were online.  
+- **Alpha Release**: Still in early stages, so expect some rough edges.  
+
+---
+
+### Installation (Short Version)
+
+For detailed instructions, visit the [wiki](https://docs.old.huraxdax.club/) (currently outdated but new one is in progress, but the configuration is mostly the same). New one is in progess, you can read it [tho](https://docs.huraxdax.club).
+
+1. **Add the JAR**: Place the plugin JAR in the `plugins` folder of both the Paper and Velocity servers.  
+2. **Restart Servers**: Restart both servers. After the restart, a `secret.key` file will be generated in the Velocity server's `plugins/CommandBridge` folder.  
+3. **Secure the Key**:  
+   - Open `secret.key` on the Velocity server.  
+   - Copy the key and paste it into the `secret` field in the `config.yml` of all Paper servers.  
+   - **Do not share this key.**  
+4. **Open a Port**:  
+   - Choose an unused port for the Velocity server.  
+   - Configure this port in the `config.yml` of both Velocity and Paper servers.  
+5. **Set Server IP**:  
+   - Find your Velocity server's IP address (plain IP, no domain).  
+   - Update the `host` field in Velocity's `config.yml` and the `remote` field in all Paper servers with this IP.  
+6. **Set Identifiers**:  
+   - In Velocity: Set a `server-id` (any name you prefer).  
+   - In Paper: Set a matching `client-id`.  
+7. **Restart Order**: Restart the Velocity server **before** the Paper servers.  
+
+After setup, you should see logs like this in the Velocity console:  
+```plaintext
+[21:10:10 INFO] [CommandBridge]: New connection attempt from /127.0.0.1:42918
+[21:10:10 INFO] [CommandBridge]: Client authenticated successfully: /127.0.0.1:42918
+[21:10:10 INFO] [CommandBridge]: Added connected client: lobby
+```
+
+Now you're ready to create scripts!  
+
+---
+
+### What Comes in the Future
+
+Exciting features and improvements are planned for **CommandBridge**:
+
+- **Multiple Velocity Server Support**: Connect additional Velocity servers to act as clients.  
+- **PlaceholderAPI (PAPI) Support**: Unlock even more placeholders for greater flexibility.  
+- **GUI Menu for Scripts**: Create and manage scripts with an easy-to-use graphical interface.  
+- **Bug Fixes**: Continuous improvements to ensure stability and performance.  
+- **Better Documentation**: Expanded guides and tutorials for easier setup and usage.  
+- **Dump Command & Tools**: Integration with a website and Discord bot for troubleshooting and support.  
+- **And More!**  
+
+Stay tuned for updates and new features! 🎉  
+
+---
+
+### Help or Issues
+
+- Report issues on [GitHub](https://github.com/72-S/CommandBridge/issues).  
+- Join the [Discord server](https://discord.gg/QPqBYb44ce) for support.  
+
+---
+
+### Metrics Collection
+
+This plugin collects anonymous server statistics via [bStats](https://bstats.org/), an open-source statistics service for Minecraft plugins. You can disable this in `plugins/bStats/config.yml`.  
+
+![bStats](https://bstats.org/signatures/velocity/CommandBridge.svg)
+
+---
+
+### Contributing
+
+Join the [Discord server](https://discord.gg/QPqBYb44ce) or visit the [GitHub](https://github.com/72-S/CommandBridge) for more information on contributing to the project.
+</file>
+
+<file path="server.sh">
+#!/bin/bash
+
+# Server paths
+SERVER1_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Velocity/"
+SERVER2_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Paper/"
+
+# Server JAR files
+SERVER1_JAR="velocity-3.3.0-SNAPSHOT-436.jar"
+SERVER2_JAR="paper-1.20-17.jar"
+
+# Function to run a server
+run_server() {
+  local server_dir=$1
+  local server_jar=$2
+  local extra_args=$3
+  cd "$server_dir" || exit
+  java -Xmx1024M -Xms1024M -jar "$server_jar" $extra_args
+}
+
+# Start the first server in the current terminal
+echo "Starting Velocity server in the current terminal..."
+run_server "$SERVER1_DIR" "$SERVER1_JAR" &
+
+# Start the second server in a new Kitty terminal with nogui flag
+echo "Starting Bukkit server in a new Kitty terminal..."
+kitty bash -c "cd '$SERVER2_DIR' && java -Xmx1024M -Xms1024M -jar '$SERVER2_JAR' nogui; exec bash"
+
+# Wait for the first server to complete
+wait
+</file>
+
+<file path="settings.gradle.kts">
+rootProject.name = "CommandBridge"
+include("paper", "velocity")
+
+
+gradle.extra["pversion"] = "2.2.0"
+
+
+gradle.extra["pluginType"] = "release"
+
+gradle.extra["pluginVersions"] = listOf("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5")
+
+gradle.extra["pluginLoaders"] = listOf("folia", "paper", "purpur", "velocity", "bukkit", "spigot", "waterfall")
+</file>
+
+</files>

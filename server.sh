@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Server paths
-SERVER1_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Velocity/"
-SERVER2_DIR="/mnt/FastStorage/Server-TEST/CommandBridge/Paper/"
+SERVER1_DIR="/mnt/Storage/Server-TEST/CommandBridge/Velocity/"
+SERVER2_DIR="/mnt/Storage/Server-TEST/CommandBridge/Paper/"
 
 # Server JAR files
 SERVER1_JAR="velocity-3.3.0-SNAPSHOT-436.jar"
