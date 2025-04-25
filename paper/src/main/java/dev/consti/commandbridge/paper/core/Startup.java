@@ -3,6 +3,7 @@ package dev.consti.commandbridge.paper.core;
 import org.bukkit.Bukkit;
 
 import dev.consti.commandbridge.paper.Main;
+import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.VersionChecker;
 
@@ -23,6 +24,11 @@ public class Startup {
 
             boolean debugMode = Boolean.parseBoolean(runtime.getConfig().getKey("config.yml", "debug"));
             logger.setDebug(debugMode);
+            if (SchedulerAdapter.isFolia()) {
+                logger.info("Running on Folia!");
+            } else {
+                logger.info("Running on Paper!");
+            }
             logger.info("Debug mode set to: {}", debugMode);
 
             logger.debug("Copying default scripts...");

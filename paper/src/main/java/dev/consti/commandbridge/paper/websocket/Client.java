@@ -2,11 +2,11 @@ package dev.consti.commandbridge.paper.websocket;
 
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
 import dev.consti.foundationlib.json.MessageBuilder;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.websocket.SimpleWebSocketClient;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public class Client extends SimpleWebSocketClient {
@@ -70,8 +70,9 @@ public class Client extends SimpleWebSocketClient {
     private void systemTask(MessageParser parser, String status) {
         String task = parser.getBodyValueAsString("task");
         switch (task) {
-            case "reload" -> Runtime.getInstance().getScriptUtils().unloadCommands(() -> Bukkit.getScheduler()
-                    .runTaskLater(Main.getInstance(), Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
+            case "reload" ->
+                Runtime.getInstance().getScriptUtils().unloadCommands(() -> new SchedulerAdapter(Main.getInstance())
+                        .runLater(Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
             case "reconnect" -> Ping.reconnect(logger);
             default -> logger.warn("Invalid task: {}", task);
         }

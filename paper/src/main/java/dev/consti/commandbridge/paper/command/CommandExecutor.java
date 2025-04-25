@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.commandbridge.paper.utils.CommandUtils;
+import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
 import dev.consti.foundationlib.json.MessageParser;
 import dev.consti.foundationlib.logging.Logger;
 
@@ -50,7 +51,7 @@ public class CommandExecutor {
         }
 
         CommandSender console = Bukkit.getConsoleSender();
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        new SchedulerAdapter(plugin).run(() -> {
             boolean status = Bukkit.dispatchCommand(console, command);
             logResult("console", command, status);
         });
@@ -83,7 +84,7 @@ private void handlePlayerCommand(Player player, String command) {
         return;
     }
 
-    Bukkit.getScheduler().runTask(plugin, () -> {
+    new SchedulerAdapter(plugin).run(() -> {
       boolean status = Bukkit.dispatchCommand(player, command);
       logResult("player", command, status);
     });

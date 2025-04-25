@@ -5,7 +5,6 @@ import dev.consti.commandbridge.paper.command.CommandRegistrar;
 import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
-import org.bukkit.Bukkit;
 
 public class ScriptUtils extends ScriptManager {
     private final Logger logger;
@@ -36,9 +35,8 @@ public class ScriptUtils extends ScriptManager {
     }
 
     public void unloadCommands(Runnable callback) {
-        Bukkit.getScheduler()
-                .runTask(
-                        Main.getInstance(),
+        new SchedulerAdapter(Main.getInstance())
+                .run(
                         () -> {
                             logger.debug("Running on thread (unload): {}", Thread.currentThread().getName());
                             Runtime.getInstance().getRegistrar().unregisterAllCommands();

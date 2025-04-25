@@ -53,7 +53,7 @@ public class CommandForwarder {
     private boolean isPermissionDenied(CommandSource source, ScriptManager.ScriptConfig script) {
         if (!script.shouldIgnorePermissionCheck()
                 && !source.hasPermission("commandbridge.command." + script.getName())) {
-            logger.warn("Permission check failed for source: {}", source);
+            logger.warn("Sender '{}' has no permission to use this command", source);
             if (!script.shouldHidePermissionWarning()) {
                 source.sendMessage(
                         Component.text("You do not have permission to use this command", NamedTextColor.RED));

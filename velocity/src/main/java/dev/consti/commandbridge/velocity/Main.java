@@ -3,6 +3,8 @@ package dev.consti.commandbridge.velocity;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.bstats.velocity.Metrics;
+
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
@@ -13,7 +15,6 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.commandbridge.velocity.util.Metrics;
 import dev.consti.commandbridge.velocity.util.ProxyUtils;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.VersionChecker;
@@ -29,13 +30,12 @@ public class Main {
     private final Logger logger;
     private final Metrics.Factory metricsFactory;
 
-
     @Inject
-    public Main(ProxyServer proxy, Metrics.Factory metricsFactory) {
+    public Main(ProxyServer proxy, Logger bLogger, Metrics.Factory metricsFactory) {
         this.proxy = proxy;
         this.logger = Runtime.getInstance().getLogger();
-        this.metricsFactory = metricsFactory;
         instance = this;
+        this.metricsFactory = metricsFactory;
         ProxyUtils.setProxyServer(proxy);
     }
 
@@ -63,6 +63,7 @@ public class Main {
         Runtime.getInstance().getStartup().start();
         int pluginId = 22008;
         metricsFactory.make(this, pluginId);
+
     }
 
     @Subscribe
@@ -93,7 +94,8 @@ public class Main {
                 }
 
                 if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
-                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion).color(NamedTextColor.RED));
+                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion)
+                            .color(NamedTextColor.RED));
                     player.sendMessage(Component.text("Please download the latest release: ")
                             .append(Component.text("here")
                                     .color(NamedTextColor.BLUE)

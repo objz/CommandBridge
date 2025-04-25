@@ -1,12 +1,12 @@
 package dev.consti.commandbridge.paper.command;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.core.Runtime;
+import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
 import dev.consti.foundationlib.logging.Logger;
 import dev.consti.foundationlib.utils.ScriptManager;
 import dev.consti.foundationlib.utils.StringParser;
@@ -42,7 +42,7 @@ public class CommandForwarder {
     private boolean isPermissionDenied(CommandSender sender, ScriptManager.ScriptConfig script) {
         if (!script.shouldIgnorePermissionCheck()
                 && !sender.hasPermission("commandbridge.command." + script.getName())) {
-            logger.warn("Permission check failed for sender: {}", sender.getName());
+            logger.warn("Sender '{}' has no permission to use this command", sender);
             if (!script.shouldHidePermissionWarning()) {
                 sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
             }
@@ -124,7 +124,7 @@ public class CommandForwarder {
         if (player != null) {
             player.sendMessage("Scheduling command with '" + cmd.getDelay() + "' seconds");
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
+        new SchedulerAdapter(plugin).runLater(() -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
     }
 
     private void sendCommand(ScriptManager.Command cmd, String command, Player player) {

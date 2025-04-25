@@ -3,7 +3,6 @@ package dev.consti.commandbridge.paper.utils;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 
 import dev.consti.commandbridge.paper.Main;
@@ -22,9 +21,8 @@ public class GeneralUtils {
     }
 
     public void reloadAll() {
-        Bukkit.getScheduler()
-                .runTask(
-                        Main.getInstance(),
+        new SchedulerAdapter(Main.getInstance())
+                .run(
                         () -> {
                             logger.debug("Running on thread (reload): {}", Thread.currentThread().getName());
                             try {

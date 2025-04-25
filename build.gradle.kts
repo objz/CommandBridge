@@ -42,6 +42,7 @@ tasks {
         manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
 
         relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
+        relocate("org.bstats", "dev.consti.commandbridge.bstats")
 
         // Include the compiled outputs of core, paper, and velocity
         from(
