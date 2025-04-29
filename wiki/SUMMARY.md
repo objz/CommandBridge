@@ -1,4 +1,3 @@
-
 # Table of contents
 
 * [👋 Welcome](README.md)
@@ -21,5 +20,5 @@
 
 ## Other
 
-* [👨‍💻 Contribution Guidelines](other/contribution-guidelines.md)
+* [💻 Contribution Guidelines](other/contribution-guidelines.md)
 * [🔢 Data collection](other/data-collection.md)
