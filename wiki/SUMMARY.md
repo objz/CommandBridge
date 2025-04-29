@@ -15,7 +15,7 @@
 * [📜 Script Structure](scripts/structure.md)
 * [📃 Placeholders](scripts/placeholders.md)
 * [💡 Example: /alert](scripts/velocity-example.md)
-* [💡 Example: /sendLobby](scripts/paper-example.md)
+* [💡 Example: /lobby](scripts/paper-example.md)
 
 ## Troubleshooting
 

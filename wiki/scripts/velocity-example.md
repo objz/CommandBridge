@@ -1,6 +1,8 @@
-# 💡 Example: /alert
+---
+description: Let's create a simple network-wide alert.
+---
 
-Let's create a simple network-wide alert.
+# 💡 Example: /alert
 
 **Goal:** Broadcast a message on multiple servers with `/alert`.
 
@@ -28,10 +30,10 @@ commands:
 * Runs `broadcast` on 3 Paper servers.
 * Executed immediately by each server console.
 
-{% hint style="info" %}
+{% hint style="success" %}
 This command is triggered from the **Velocity proxy** and forwarded to the **Paper servers**.
 {% endhint %}
 
 {% hint style="warning" %}
-The permission `commandbridge.command.alert` **must be set on the Velocity proxy**, not on the Paper servers!
+The permission `commandbridge.command.alert` **must be set on the Velocity proxy**, not on Paper!
 {% endhint %}

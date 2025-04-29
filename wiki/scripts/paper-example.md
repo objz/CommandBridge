@@ -1,11 +1,13 @@
-# 💡 Example: /sendlobby
+---
+description: Let's allow plugins to send players to the lobby server.
+---
 
-Let's allow plugins to send players to the lobby server.
+# 💡 Example: /lobby
 
 **Goal:** Forward a proxy `/server lobby` command from a Paper server.
 
 ```yaml
-name: sendlobby
+name: lobby
 enabled: true
 ignore-permission-check: false
 hide-permission-warning: false
@@ -19,14 +21,14 @@ commands:
 
 #### What happens?
 
-* Registers `/sendlobby` command.
+* Registers `/lobby` command.
 * Runs `server lobby` on the player.
 * Player is moved to the `lobby` server via proxy.
 
-{% hint style="info" %}
+{% hint style="success" %}
 This command is triggered from the **Paper server** and automatically forwarded to **Velocity**.
 {% endhint %}
 
 {% hint style="warning" %}
-The permission `commandbridge.command.sendlobby` **must be set on the Paper server**, not on Velocity!
+The permission `commandbridge.command.lobby` **must be set on the Paper server**, not on Velocity!
 {% endhint %}
