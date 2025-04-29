@@ -155,9 +155,9 @@ public class CommandForwarder {
 
     private void addPlayerPlaceholders(StringParser parser, Player player) {
         logger.debug("Adding placeholders for player: {}", player.getUsername());
-        parser.addPlaceholder("%player%", player.getUsername());
-        parser.addPlaceholder("%uuid%", player.getUniqueId().toString());
-        parser.addPlaceholder("%server%", player.getCurrentServer()
+        parser.addPlaceholder("%cb_player%", player.getUsername());
+        parser.addPlaceholder("%cb_uuid%", player.getUniqueId().toString());
+        parser.addPlaceholder("%cb_server%", player.getCurrentServer()
                 .map(srv -> srv.getServerInfo().getName())
                 .orElse("defaultServerName"));
     }
