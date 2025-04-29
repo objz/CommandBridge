@@ -9,9 +9,19 @@
 * [📩 Installation](getting-started/installation.md)
 * [⚙️ Plugin setup](getting-started/plugin-setup.md)
 
-## SCRIPTS
+## Scripts
 
-* [Page 1](scripts/page-1.md)
+* [📄 Overview](scripts/overview.md)
+* [⚙️ Configuration](scripts/configuration.md)
+* [🔤 Placeholders](scripts/placeholders.md)
+
+### 📦 Examples
+
+* [🔊 Global Alert](scripts/examples/alert.md)
+* [❌ Global Kick](scripts/examples/kick.md)
+* [🏠 /hub with Actions](scripts/examples/hub.md)
+
+* [🧰 Troubleshooting](scripts/troubleshooting.md)
 
 ## Troubleshooting
 
