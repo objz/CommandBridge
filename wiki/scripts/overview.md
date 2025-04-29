@@ -6,6 +6,8 @@ description: >-
 
 # 📎 Overview
 
+<figure><img src="../.gitbook/assets/overview.png" alt=""><figcaption></figcaption></figure>
+
 | Context              | Purpose                                             |
 | -------------------- | --------------------------------------------------- |
 | **Velocity scripts** | Run commands from the proxy onto Paper servers.     |
