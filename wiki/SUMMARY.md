@@ -1,3 +1,4 @@
+
 # Table of contents
 
 * [👋 Welcome](README.md)
@@ -9,9 +10,9 @@
 * [📩 Installation](getting-started/installation.md)
 * [⚙️ Plugin setup](getting-started/plugin-setup.md)
 
-## SCRIPTS
+## Scripts
 
-* [Page 1](scripts/page-1.md)
+* [📜 Scripts Guide](scripts/guide.md)
 
 ## Troubleshooting
 
