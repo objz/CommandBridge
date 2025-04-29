@@ -1,3 +1,5 @@
+# 💡 Example: /alert
+
 Let's create a simple network-wide alert.
 
 **Goal:** Broadcast a message on multiple servers with `/alert`.
@@ -20,10 +22,11 @@ commands:
     check-if-executor-is-on-server: false
 ```
 
-### What happens?
-- Registers `/alert` command.
-- Runs `broadcast` on 3 Paper servers.
-- Executed immediately by each server console.
+#### What happens?
+
+* Registers `/alert` command.
+* Runs `broadcast` on 3 Paper servers.
+* Executed immediately by each server console.
 
 {% hint style="info" %}
 Anyone with `commandbridge.command.alert` permission can trigger it.

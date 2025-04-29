@@ -1,3 +1,5 @@
+# 💡 Example: /hub
+
 **Goal:** Teleport the player to hub server and play music there.
 
 ```yaml
@@ -13,7 +15,7 @@ commands:
     check-if-executor-is-on-server: true
 
   - command: "music"
-    delay: 0
+    delay: 2
     target-client-ids:
       - "hub"
     target-executor: "player"
@@ -22,10 +24,11 @@ commands:
     check-if-executor-is-on-server: true
 ```
 
-### Step-by-step:
+#### Step-by-step:
+
 1. Player runs `/hub` on any server.
 2. First action teleports them to hub.
-3. Second action waits until player is on hub server, then plays music.
+3. Second action waits until player is on hub server, then after two seconds plays music.
 
 {% hint style="info" %}
 No need to define `/hub` on Paper servers separately if using Velocity.
