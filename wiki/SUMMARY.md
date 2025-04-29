@@ -14,8 +14,8 @@
 * [📎 Overview](scripts/overview.md)
 * [📜 Script Structure](scripts/structure.md)
 * [📃 Placeholders](scripts/placeholders.md)
-* [💡 Example: /alert](scripts/simple-example.md)
-* [💡 Example: /hub](scripts/advanced-example.md)
+* [💡 Example: /alert](scripts/velocity-example.md)
+* [💡 Example: /sendLobby](scripts/paper-example.md)
 
 ## Troubleshooting
 

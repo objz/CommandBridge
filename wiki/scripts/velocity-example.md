@@ -29,5 +29,9 @@ commands:
 * Executed immediately by each server console.
 
 {% hint style="info" %}
-Anyone with `commandbridge.command.alert` permission can trigger it.
+This command is triggered from the **Velocity proxy** and forwarded to the **Paper servers**.
+{% endhint %}
+
+{% hint style="warning" %}
+The permission `commandbridge.command.alert` **must be set on the Velocity proxy**, not on the Paper servers!
 {% endhint %}
