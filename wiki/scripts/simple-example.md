@@ -1,6 +1,3 @@
----
-# 💡 Simple Example: /alert
-
 Let's create a simple network-wide alert.
 
 **Goal:** Broadcast a message on multiple servers with `/alert`.

@@ -1,6 +1,3 @@
----
-# 💡 Advanced Example: /hub
-
 **Goal:** Teleport the player to hub server and play music there.
 
 ```yaml

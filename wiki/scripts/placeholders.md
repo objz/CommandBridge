@@ -1,6 +1,3 @@
----
-# 📃 Using Placeholders
-
 CommandBridge supports dynamic **placeholders** inside your command strings!
 
 ### Built-in placeholders

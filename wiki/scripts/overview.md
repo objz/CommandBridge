@@ -1,5 +1,3 @@
----
-# 📜 Script System Overview
 
 CommandBridge offers a powerful **script system** that bridges commands across your network.
 
