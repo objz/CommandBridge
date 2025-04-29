@@ -123,6 +123,8 @@ wiki/
   other/
     contribution-guidelines.md
     data-collection.md
+  scripts/
+    guide.md
   troubleshooting/
     common-issues.md
     support-resources.md
@@ -642,438 +644,160 @@ public class ScriptUtils extends ScriptManager {
 }
 </file>
 
-<file path="wiki/getting-started/installation.md">
+<file path="wiki/scripts/guide.md">
 ---
 description: >-
-  Installing CommandBridge is quick and simple. Follow these steps to get
-  started
+  Comprehensive guide to CommandBridge's script system, including configuration format, options, and examples.
 ---
 
-# 📩 Installation
+# 📜 Scripts Guide
 
-### Setup **the Plugin**
+After installation and setup, you are ready to create scripts! CommandBridge’s **script system** allows you to define custom commands that bridge your Velocity proxy and Paper servers.
 
-1. Download the latest `CommandBridge-xxx-all.jar` from the [releases page](https://modrinth.com/plugin/commandbridge/versions).
-2. Place the JAR file into the `plugins` folder on **both your Velocity and Paper servers**.
-3. Restart **both** the **Velocity and Paper** server and let the plugin generate its configs.&#x20;
+Each script is defined in a YAML file located in the `CommandBridge/scripts/` folder of your server. Velocity and Paper each maintain their own set of script files:
+- **Velocity scripts** (in the Velocity plugin folder) handle commands executed on the proxy that affect one or more Paper servers.
+- **Paper scripts** (in each Paper server’s plugin folder) handle commands executed on that Paper server that may trigger actions on the Velocity proxy (or possibly other servers via the proxy).
 
-{% hint style="success" %}
-No need for separate JARs - CommandBridge will automatically detect whether it’s running on Velocity or Paper.
-{% endhint %}
+## Script File Structure
 
-***
+A script configuration file consists of a top-level structure with these main keys:
 
-### **Upgrading to Version 2.0.0**
-
-If you’re upgrading from an older version of CommandBridge to version **2.0.0 or above**, follow these additional steps:
-
-1. **Convert Scripts Manually**:
-   * The script format has changed. You’ll need to manually convert your old scripts to the new format. You can see how to write the scripts [here](broken-reference).
-2. **Regenerate `config.yml`**:
-   * Delete your old `config.yml`.
-   * Start the server to let the plugin generate a new configuration file.
-   * Follow the [guide](broken-reference) on how to configure the plugin.
-
-{% hint style="info" %}
-Future updates will include an automatic script converter for easier upgrades.
-{% endhint %}
-</file>
-
-<file path="wiki/getting-started/plugin-setup.md">
----
-description: >-
-  After installing the CommandBridge plugin and restarting your servers, follow
-  this guide to configure it properly. This guide assumes you have restarted all
-  servers with the plugin installed.
----
-
-# ⚙️ Plugin setup
-
-### **Important Information**
-
-<table><thead><tr><th width="165">Clients</th><th width="161">Server</th></tr></thead><tbody><tr><td>Paper Servers</td><td>Velocity Server</td></tr></tbody></table>
-
-In this guide, when referring to "clients," it means all the Paper servers connected to your Velocity server.
-
-***
-
-### **Verify File Generation**
-
-After restarting your servers, the following files and folders should be generated:
-
-**Paper Servers**
-
-```markdown
-paper/
-└── plugins/
-    └── CommandBridge/
-        ├── config.yml             # Main configuration file for the Paper server
-        └── scripts/               # Folder for script configurations
-            └── example.yml        # Example script configuration
+```yaml
+name: "<command_name>"
+enabled: <true|false>
+ignore-permission-check: <true|false>
+hide-permission-warning: <true|false>
+commands:
+  - command: "<command_to_execute_1>"
+    delay: <seconds>
+    target-executor: "<player|console>"
+    [target-client-ids: 
+      - "<server_id1>"
+      - "<server_id2>"]
+    [wait-until-player-is-online: <true|false>]
+    check-if-executor-is-player: <true|false>
+    check-if-executor-is-on-server: <true|false>
+  - command: "<command_to_execute_2>"
+    ... (same structure as above)
 ```
 
-**Velocity Server**
+**Field explanations:**
 
-<pre class="language-markdown"><code class="lang-markdown"><strong>velocity/
-</strong>└── plugins/
-    └── CommandBridge/
-        ├── config.yml             # Main configuration file for the Velocity server
-        ├── secret.key             # Secret key for authentication (only on Velocity)
-        └── scripts/               # Folder for script configurations
-            └── example.yml        # Example script configuration
-</code></pre>
+- **`name`**: The name of the command players will use (without the slash). This will register as `/name`. For example, `name: hub` defines a `/hub` command.  
+- **`enabled`**: Whether this script is active. If `false`, the command will not be registered or usable.  
+- **`ignore-permission-check`**: If `false`, CommandBridge will require the executor to have permission `commandbridge.command.<name>` to use this command. If `true`, anyone can use the command regardless of permissions. *(Even if ignored here, you can still use a permissions plugin to restrict the actual in-game command as needed.)*  
+- **`hide-permission-warning`**: If `false`, a player without permission will receive a "no permission" message when trying the command. If `true`, no warning is shown (the command will appear non-functional if they lack permission). Typically used in combination with `ignore-permission-check`.  
+- **`commands`**: A list of one or more actions to execute when the custom command is run. Each action has several sub-fields:
+  - **`command`**: The exact command string to run (do **not** include the leading `/`). For example, `say Hello` or `server hub`. You can include placeholders here (see **Placeholders** below).  
+  - **`delay`**: Delay in seconds before executing this command after the previous action. Use `0` for no delay (all commands run in immediate succession). This can be used to space out sequential actions.  
+  - **`target-executor`**: Who will execute the command on the target side. Options are:
+    - `"player"`: execute as the player who triggered the script.  
+    - `"console"`: execute as the server console.
+  - **`target-client-ids`** (**Velocity scripts only**): A list of target Paper server IDs on which to execute this command. This field **only applies in Velocity’s script files**, since Velocity can dispatch commands to any connected Paper servers. For example, specifying two IDs will run the command on both servers. If this field is present, the command will be sent to those remote servers. If this field is omitted (or in a Paper script), the command will be executed on the same platform where it’s triggered.
+  - **`wait-until-player-is-online`** (**Velocity scripts only**): If `true`, for each target server listed, the plugin will wait until the player is actually online on that target server before executing the command there. This is useful if the previous action moves the player to another server (e.g., using a Velocity `/server` command to teleport). Setting this ensures the next command (perhaps on the destination server) runs only after the player arrives.  
+  - **`check-if-executor-is-player`**: If `true`, the script will only run if the command executor is a player (not console). If `false`, it doesn’t check – meaning console or command blocks could trigger it.  
+  - **`check-if-executor-is-on-server`**: If `true`, ensures that the command executor is currently online (connected) when triggering the script. Usually this should be `true` for player-triggered commands to avoid issues if a player disconnects. Set `false` if you want the command to run even if the triggering entity is not a player or not online.
 
-#### Key Notes:
+**Note:** *Velocity vs Paper scripts:* The YAML structure is the same on both, but **Velocity-specific fields** (`target-client-ids` and `wait-until-player-is-online`) are only used in Velocity’s context. Paper scripts do not need those because a Paper server only forwards commands to the Velocity proxy (single target). In a Paper script, any command listed will be executed on the Velocity side by default (since Velocity is the only connection target). Conversely, in a Velocity script, commands can be executed on one or many connected Paper servers via `target-client-ids`. 
 
-* The `secret.key` file is **only generated on the Velocity server**
-* Both Velocity and Paper servers have:
-  * `config.yml`: Configuration file specific to each server
-  * `scripts/`: A folder containing the `example.yml` script template
+## Creating a Simple Script (Basic Example)
 
-If these files and folders match your setup, proceed to the next steps. Otherwise, ensure the plugin is installed correctly.
+Let's create a simple script on the Velocity side that broadcasts a message to all servers. Suppose we want a command `/alert` that makes all servers announce a warning.
 
-***
+**On Velocity (proxy):** Create a file `plugins/CommandBridge/scripts/alert.yml` with the following content:
 
-### **Step 1: Setup the Secret Key**
-
-1. **Open the `secret.key` file** in the Velocity `plugins/CommandBridge` folder.
-2.  Copy the key and paste it into the `secret` field in the `config.yml` file of **all Paper** servers:
-
-    ```yaml
-    secret: "CHANGE_ME"
-    ```
-
-    Replace `"CHANGE_ME"` with the value from `secret.key`.
-
-{% hint style="danger" %}
-Do not share this key. Anyone with access to the key can connect to your CommandBridge server and execute commands.
-{% endhint %}
-
-***
-
-### **Step 2: Set Up Client and Server IDs**
-
-Each Paper server is a client and needs a unique identifier.
-
-**On Paper**
-
-*   In `config.yml`, set the `client-id` for each Paper server.\
-    Ensure each client has a unique identifier. For example, if the server is called "lobby," set the `client-id` to `lobby`:
-
-    ```yaml
-    client-id: "lobby"
-    ```
-
-**On Velocity**
-
-* In `config.yml`, set the `server-id`.\
-  By default, this is set to `main`. You can leave this as is unless you’re connecting additional servers.
-
-***
-
-### **Step 3: Configure Velocity**
-
-1. **Set the Host**
-   * Open on Velocity `config.yml`.
-   * Locate the `host` field. By default, this is set to `0.0.0.0`.
-   * If you’re using a hosting provider, leave it as is.
-   * If self-hosting, you can set it to `127.0.0.1` (localhost) if the server and clients run on the same machine.
-2. **Open a Port**
-   * Choose an unused **TCP port** for CommandBridge.
-   *   Update the `port` field in `config.yml` with the open port.\
-       Example:
-
-       ```yaml
-       port: 3000
-       ```
-   * **Self-Hosting:** Open the port on your machine. This depends on your OS and network configuration.
-   * **Hosting Providers:** Use their control panel to open an additional port.
-3. **Set the SAN (Subject Alternative Name)**
-   * Locate the `san` field in `config.yml`.
-   *   Add the **IP address** of your Velocity server or the domain name (without the port).\
-       Example:
-
-       ```yaml
-       san: "152.248.198.124"
-       ```
-
-{% hint style="warning" %}
-Do not include the **port** in the SAN value. For example, `152.248.198.124:3000` is incorrect.
-{% endhint %}
-
-***
-
-### **Step 4: Configure Paper Clients**
-
-1. **Set the Remote and Port**
-   *   Set the `remote` field to the **IP address of the Velocity server** (without the port).\
-       Example:
-
-       ```yaml
-       remote: "152.248.198.124"
-       ```
-   * Set the `port` field to match the port configured in the Velocity `config.yml`.
-
-***
-
-### **Step 5: Restart Servers**
-
-Restart your servers in the following order:
-
-1. **Restart Velocity first**.
-2. Then, restart all connected Paper servers.
-
-***
-
-### **Validation**
-
-While the servers are starting, check the Velocity console for logs like these:
-
-```
-[21:10:10 INFO] [CommandBridge]: New connection attempt from /127.0.0.1:42918
-[21:10:10 INFO] [CommandBridge]: Client authenticated successfully: /127.0.0.1:42918
-[21:10:10 INFO] [CommandBridge]: Added connected client: lobby
+```yaml
+name: alert
+enabled: true
+ignore-permission-check: false
+hide-permission-warning: false
+commands:
+  - command: 'broadcast Attention: Maintenance in 5 minutes!'
+    delay: 0
+    target-client-ids:
+      - 'lobby'
+      - 'survival'
+      - 'minigame'
+    target-executor: 'console'
+    wait-until-player-is-online: false
+    check-if-executor-is-player: false
+    check-if-executor-is-on-server: false
 ```
 
-If these logs appear, your configuration is successful. If not, review the configuration files for errors.
-</file>
+In this example:
+- We define a new command `/alert` (since `name: alert`).  
+- It's enabled and will require the executor to have permission `commandbridge.command.alert` (because we left `ignore-permission-check: false`).  
+- When someone with permission runs `/alert` on Velocity, the plugin will execute one action: run the `broadcast ...` command on the console of three target servers (`lobby`, `survival`, `minigame`). Each of those Paper servers will broadcast the maintenance message to their players.  
+- We didn’t need any delay or waiting, since it’s a direct broadcast. We also allowed console execution (so even the Velocity console could run `/alert`).
 
-<file path="wiki/getting-started/requirements.md">
----
-description: >-
-  Before installing CommandBridge, ensure that your server setup meets the
-  following requirements. The plugin has specific dependencies and version
-  requirements to function correctly.
----
+Because this script is on Velocity, players on Paper servers **cannot** directly use `/alert` unless you also create a corresponding script on each Paper server (or you run it from the Velocity console or as an admin on Velocity). For a command that should be usable from anywhere, see the next example.
 
-# 📘 Requirements
+## Advanced Script Example
 
-[#summary-for-lazy-people](requirements.md#summary-for-lazy-people "mention")
+For a more complex scenario, let’s implement the **global** `/hub` command described in the use-cases (Example 1), which involves multiple sequential actions across servers:
 
-{% hint style="warning" %}
-For older plugin versions, please refer to the [legacy wiki](https://docs.old.huraxdax.club).
+**Goal:** `/hub` will teleport the player to the hub server (via Velocity) and then play music on that hub server (via a Paper plugin command).
+
+We will create a **Velocity script** for `/hub` because Velocity can coordinate both the teleport and issuing the next command on the hub server:
+
+```yaml
+name: hub
+enabled: true
+ignore-permission-check: false
+hide-permission-warning: false
+commands:
+  - command: 'server hub'
+    delay: 0
+    target-executor: 'player'
+    # (No target-client-ids here, because 'server hub' is a Velocity command executed by the player on Velocity)
+    check-if-executor-is-player: true
+    check-if-executor-is-on-server: true
+
+  - command: 'music'
+    delay: 0
+    target-client-ids:
+      - 'hub'
+    target-executor: 'player'
+    wait-until-player-is-online: true
+    check-if-executor-is-player: true
+    check-if-executor-is-on-server: true
+```
+
+Breaking down what happens when a player uses `/hub` on **any server**:
+1. If run on a Paper server, the Paper plugin will forward the request to Velocity (because `/hub` is not a known Paper command but is known to the proxy). If run on Velocity directly, it just triggers there. Either way, Velocity receives the command trigger from the player.  
+2. **First action:** Velocity runs its built-in `/server hub` command **as the player**, teleporting that player to the `hub` server. The plugin immediately moves to the next action.  
+3. **Second action:** The plugin sends the `music` command to the `hub` server’s CommandBridge client. Because `wait-until-player-is-online: true`, CommandBridge will **wait** until the player is actually connected to the `hub` server before executing `music` as that player on the hub server. This ensures the `/music` command runs at the right time (after teleport).  
+4. The player hears the music on the hub server. The sequence is complete.
+
+With this one script on Velocity, players can use `/hub` from any server. The Paper servers don’t even need their own `/hub` script file in this case—any unknown command on Paper is passed to Velocity, and if Velocity recognizes it (which it will, since we made a script for it), it handles the rest. However, if you prefer, you could also create a matching script on each Paper server for `/hub` that simply forwards to Velocity (e.g., using a `velocity ...` command), but it's not necessary due to how Velocity proxies player commands.
+
+{% hint style="info" %}  
+**Tip:** To make a command truly global (usable on both Velocity and Paper), define it on Velocity as shown. Velocity will catch the command from players on any connected server. Ensure that the players have the necessary permission if required (e.g., `commandbridge.command.hub` in our example) on whichever platform they might execute it.  
 {% endhint %}
 
-### **Java Requirements**
+## Placeholders in Scripts
 
-| Plugin version      | Java version |
-| ------------------- | ------------ |
-| 2.0.0 and above     | 21           |
-| below 2.0.0 (1.8.4) | 17           |
+CommandBridge supports placeholders to make your scripts dynamic. By default, the plugin provides a few **built-in placeholders** that you can use in your command strings:
 
-### Minecraft Compatibility
+- **%cb_player%** – The name of the player who triggered the script.  
+- **%cb_uuid%** – That player’s UUID.  
+- **%cb_world%** – (*Paper only*) The name of the world the player is currently in (if applicable).
 
-| Plugin version      | Minecraft version |
-| ------------------- | ----------------- |
-| 2.0.0 and above     | 1.20.x - 1.21.x   |
-| below 2.0.0 (1.8.4) | 1.20.x - 1.21.1   |
+These placeholders will be replaced with the actual values at runtime. For example, a command entry:
+```yaml
+- command: "say %cb_player% has initiated the event!"
+  target-executor: "console"
+  ...
+``` 
+would broadcast “<playername> has initiated the event!” on the target server.
 
-***
+If you have **PlaceholderAPI** installed on your Paper servers, CommandBridge will automatically hook into it on the Paper side. This means you can use any PAPI placeholders in your script commands that are executed on Paper servers. Similarly, if you have **PapiProxyBridge** on Velocity, PlaceholderAPI placeholders can work in commands executed on Velocity or passed through Velocity.
 
-### **Permission Management**
-
-CommandBridge requires a **permission plugin** to manage command execution effectively.
-
-* **Recommended**: [LuckPerms](https://luckperms.net/) (highly compatible and actively maintained).
-* **Required Setup**:
-  * Install a permission plugin **on both the Velocity and Paper servers**.
-  * Any permission plugin will work, but ensure it’s installed on both platforms.
-
-***
-
-### **Plugin Compatibility**
-
-CommandBridge is a **cross-compatible plugin** designed to run on both **Velocity** and **Paper** servers using the same JAR file. Below are the specific compatibility details:
-
-| Server Type                            | Compatibility       | Notes                                                                  |
-| -------------------------------------- | ------------------- | ---------------------------------------------------------------------- |
-| Velocity                               | ✅ Supported         | Fully supported. Designed for Velocity plugin loader.                  |
-| Paper                                  | ✅ Supported         | Fully supported. Built on the Paper API.                               |
-| Spigot                                 | ✅ Supported         | Supported via Paper compatibility.                                     |
-| Bukkit                                 | ✅ Supported         | Supported via Paper compatibility.                                     |
-| Folia (Paper Fork)                     | ✅ Supported         | Folia adds regionized multithreading. Supported, but may contain bugs. |
-| Purpur (Paper Fork)                    | ⚠️ Not Fully Tested | Should work based on Paper, but not officially tested.                 |
-| Tuinity (Paper Fork)                   | ⚠️ Not Fully Tested | May work, but not officially tested or guaranteed.                     |
-| Cross-loaders (e.g., Velocity + Paper) | ⚠️ Not Tested       | May work, but cross-loader support is not officially tested.           |
-| Modloaders (Forge/Fabric etc.)         | ❌ Not Supported     | Only plugin loaders are supported. No modloader compatibility.         |
-
-### **Summary (for lazy people)**
-
-| Requirement                 | Details                                                                                        |
-| --------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Java Version**            | Java 21 (for 2.0.0+). For older plugin versions, use Java 17.                                  |
-| **Minecraft Version**       | Supports Minecraft 1.20.x - 1.21.x. Older versions require the legacy plugin (latest: 1.8.4).  |
-| **Permission Plugin**       | Required on both Velocity and Paper servers. Recommended: [LuckPerms](https://luckperms.net/). |
-| **Server Type**             | Paper and Velocity servers are fully supported. Bukkit and Spigot are **not supported**.       |
-| **Paper API Compatibility** | Ensure the server runs a compatible API version (1.21.x for 2.0.0+).                           |
-| **Velocity and Forks**      | Fully supported without requiring a separate JAR file.                                         |
-</file>
-
-<file path="wiki/other/contribution-guidelines.md">
-# 👨‍💻 Contribution Guidelines
-</file>
-
-<file path="wiki/other/data-collection.md">
-# 🔢 Data collection
-</file>
-
-<file path="wiki/troubleshooting/common-issues.md">
-# ❌ Common issues
-</file>
-
-<file path="wiki/troubleshooting/support-resources.md">
-# 📭 Support resources
-</file>
-
-<file path="wiki/README.md">
----
-description: >-
-  Welcome to my documentation! This guide will help you install and configure
-  the CommandBridge plugin.
----
-
-# 👋 Welcome
-
-{% hint style="warning" %}
-This documentation applies **only to CommandBridge plugin versions 2.0.0 and above**.
-
-If you are using an earlier version, please refer to the [legacy documentation](https://docs.old.huraxdax.club/).
+{% hint style="info" %}  
+**Note on PlaceholderAPI:** When PlaceholderAPI is present, CommandBridge will detect it and log “Hooked into PlaceholderAPI” (or PapiProxyBridge on Velocity) on startup. You can then include placeholders like `%server_time%` or any custom placeholders from your plugins in the `command` strings, and they will be parsed. If PAPI is not installed, only the built-in `%cb_...%` placeholders will work.  
 {% endhint %}
 
-### What This Documentation Covers
-
-* [x] Quick Installation
-* [x] Configuration Guide
-* [x] Troubleshooting
-* [ ] How to escape vim
-
-
-
-### Why use CommandBridge?
-
-CommandBridge is the easiest way to enable **real-time, cross-server communication** between Velocity and Paper servers.\
-Seamlessly manage commands, automate tasks, and create a unified server experience.
-</file>
-
-<file path="wiki/use-cases.md">
----
-description: >-
-  CommandBridge shines in scenarios where you need cross-server communication to
-  execute commands seamlessly. Below are practical scenarios where CommandBridge
-  can be a game-changer.
----
-
-# 🤖 Use cases
-
-### <mark style="color:orange;">Example 1:</mark> Global `/hub` Command with Additional Actions
-
-**Scenario**:\
-You want to implement a global `/hub` command that works on **any server in your network**. When a player types `/hub`, they are:
-
-1. **Teleported to the hub server** (handled by Velocity).
-2. Once in the hub, a **Paper plugin plays background music** using the `/music` command.
-
-**Problem**:
-
-* The `/hub` command isn’t natively available on Paper servers.
-* The `/music` command can only be executed on the hub server.
-
-**Solution with CommandBridge**:\
-CommandBridge lets you define the `/hub` command as follows:
-
-1. The **player types `/hub`** on any server (Paper or Velocity).
-2. **CommandBridge triggers the teleport** to the hub server using Velocity’s `/server hub` command.
-3. Once the player is on the hub server, **CommandBridge automatically executes `/music`** as the player.
-
-| Step                   | Action                                                 | Executed On        |
-| ---------------------- | ------------------------------------------------------ | ------------------ |
-| **Player runs `/hub`** | CommandBridge receives and processes the command.      | Velocity           |
-| **Teleport to hub**    | Executes Velocity's `/server hub` command to teleport. | Velocity           |
-| **Play music**         | Executes `/music` for the player after teleporting.    | Hub (Paper plugin) |
-
-**Why Use CommandBridge?**
-
-* **Global availability**: `/hub` works from any server in your network.
-* **Multi-step execution**: Executes commands in sequence, even across servers.
-* **Automation**: Automatically triggers the `/music` command without user intervention.
-
-***
-
-### <mark style="color:orange;">**Example 2:**</mark>**&#x20;Timed Gameplay with Return to Lobby**
-
-**Scenario**:\
-You have a **minigame server** where players have **15 minutes** to play. After their time is up, they must:
-
-1. **Teleport back to the main lobby** (handled by Velocity).
-2. A message should appear announcing their return, triggered on the minigame server.
-
-**Problem**:
-
-* Paper doesn’t support Velocity’s `/server` commands natively.
-* The minigame server needs to trigger global actions without direct access to Velocity commands.
-
-**Solution with CommandBridge**:
-
-1. A **Paper plugin** on the minigame server triggers a CommandBridge-defined command, e.g., `/end-session`.
-2. CommandBridge teleports the player to the lobby using Velocity’s `/server lobby`.
-3. CommandBridge executes a follow-up `/broadcast` command on the minigame server, announcing their departure.
-
-| Step                       | Action                                              | Executed On      |
-| -------------------------- | --------------------------------------------------- | ---------------- |
-| **Trigger `/end-session`** | Minigame plugin triggers the CommandBridge command. | Minigame (Paper) |
-| **Teleport to lobby**      | Executes Velocity’s `/server lobby` command.        | Velocity         |
-| **Announce return**        | Broadcasts a farewell message to players.           | Minigame (Paper) |
-
-**Why Use CommandBridge?**
-
-* **Seamless teleportation**: Coordinates actions across Velocity and Paper.
-* **Custom workflows**: Chains actions like teleporting and messaging.
-
-***
-
-### <mark style="color:orange;">**Example 3:**</mark>**&#x20;Centralized Rewards with Conditional Actions**
-
-**Scenario**:\
-You’re running a **network-wide event** where players can earn rewards. After claiming their reward:
-
-1. They are **teleported to a “rewards room” server**.
-2. The server **gives them a diamond** automatically.
-3. An announcement is broadcast **only on the rewards server**.
-
-**Problem**:
-
-* Bukkit plugins can’t trigger Velocity’s `/server` commands directly.
-* Rewards actions need to be automated and localized.
-
-**Solution with CommandBridge**:
-
-1. Define a CommandBridge command, e.g., `/claim-reward`.
-2. The command:
-   * Teleports the player to the “rewards room” using Velocity’s `/server rewards`.
-   * Executes `/give {player} diamond` on the rewards server (Paper).
-   * Sends a local announcement using `/say {player} claimed their reward!`.
-
-| Step                            | Action                                       | Executed On     |
-| ------------------------------- | -------------------------------------------- | --------------- |
-| **Player runs `/claim-reward`** | CommandBridge triggers the sequence.         | Any server      |
-| **Teleport to rewards server**  | Executes `/server rewards`.                  | Velocity        |
-| **Give diamond**                | Runs `/give {player} diamond`.               | Rewards (Paper) |
-| **Local announcement**          | Sends `/say {player} claimed their reward!`. | Rewards (Paper) |
-
-**Why Use CommandBridge?**
-
-* **Cross-server coordination**: Automates actions across multiple servers.
-* **Localized commands**: Keeps announcements server-specific while managing rewards globally.
-
-***
-
-### **When Should You Use CommandBridge?**&#x20;
-
-CommandBridge is ideal if you:
-
-* **Need global commands** that work on every server in your network.
-* **Automate multi-step workflows**, such as teleportation and follow-up actions.
-* **Coordinate cross-server actions** seamlessly between Velocity and Paper.
+With the script system configured, you can design a wide variety of cross-server commands to suit your network’s needs – from simple one-step forwards to complex multi-step orchestrations. Be sure to test each script thoroughly and use the `debug` mode in configs (set `debug: true`) if you need detailed logs for troubleshooting script behavior.
 </file>
 
 <file path=".gitignore">
@@ -1606,6 +1330,30 @@ public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest>{
 }
 </file>
 
+<file path="wiki/troubleshooting/support-resources.md">
+---
+description: >-
+  Where to find help and support for CommandBridge.
+---
+
+# 📭 Support resources
+
+Need help with CommandBridge? Here are some resources to get support and stay informed:
+
+- **GitHub Issues** – If you encounter a bug or have a feature request, please report it on the [GitHub issue tracker](https://github.com/72-S/CommandBridge/issues). Make sure to include details like plugin version, logs, and how to reproduce the issue.
+
+- **Discord Community** – Join the official [CommandBridge Discord server](https://discord.gg/QPqBYb44ce) for community support. You can ask questions, get help from other server owners and the developer, and see announcements. There’s a good chance someone has encountered your issue before and can assist.
+
+- **Documentation** – Re-check this documentation (you’re already here!). The **Troubleshooting** section covers common issues. The latest updates and usage examples are covered in the relevant sections of the wiki.
+
+When seeking support, it helps to have:
+  - **Plugin version** and **Minecraft/Velocity/Paper versions** you are using.
+  - Relevant log excerpts or error messages (use a paste service for longer logs).
+  - A description of what you’ve tried so far to resolve the issue.
+
+The CommandBridge community is friendly and ready to help. Don’t hesitate to reach out if you’re stuck!
+</file>
+
 <file path="gradlew.bat">
 @rem
 @rem Copyright 2015 the original author or authors.
@@ -2109,31 +1857,520 @@ public class HelpCommand {
 }
 </file>
 
-<file path="wiki/SUMMARY.md">
-# Table of contents
+<file path="wiki/getting-started/installation.md">
+---
+description: >-
+  Installing CommandBridge is quick and simple. Follow these steps to get started.
+---
 
-* [👋 Welcome](README.md)
-* [🤖 Use cases](use-cases.md)
+# 📩 Installation
 
-## Getting Started
+### Setup **the Plugin**
 
-* [📘 Requirements](getting-started/requirements.md)
-* [📩 Installation](getting-started/installation.md)
-* [⚙️ Plugin setup](getting-started/plugin-setup.md)
+1. Download the latest **`CommandBridge-xxx-all.jar`** from the [releases page](https://modrinth.com/plugin/commandbridge/versions).  
+2. Place the JAR file into the `plugins` folder on **both your Velocity and Paper servers**.  
+3. Restart **both** the **Velocity and Paper** server and let the plugin generate its configs. 
 
-## SCRIPTS
+{% hint style="success" %}  
+No need for separate JARs – CommandBridge will automatically detect whether it’s running on Velocity or Paper.  
+{% endhint %}
 
-* [Page 1](scripts/page-1.md)
+***
 
-## Troubleshooting
+### **Upgrading to Version 2.0.0**
 
-* [❌ Common issues](troubleshooting/common-issues.md)
-* [📭 Support resources](troubleshooting/support-resources.md)
+If you’re upgrading from an older version of CommandBridge to version **2.0.0 or above**, follow these additional steps:
 
-## Other
+1. **Convert Scripts Manually**:  
+   * The script format has changed. You’ll need to manually convert your old scripts to the new format. You can see how to write the scripts [here](../scripts/guide.md).  
+2. **Regenerate `config.yml`**:  
+   * Delete your old `config.yml`.  
+   * Start the server to let the plugin generate a new configuration file.  
+   * Follow the [plugin setup guide](plugin-setup.md) on how to configure the plugin.
 
-* [👨‍💻 Contribution Guidelines](other/contribution-guidelines.md)
-* [🔢 Data collection](other/data-collection.md)
+{% hint style="info" %}  
+Future updates will include an automatic script converter for easier upgrades.  
+{% endhint %}
+</file>
+
+<file path="wiki/getting-started/plugin-setup.md">
+---
+description: >-
+  After installing the CommandBridge plugin and restarting your servers, follow this guide to configure it properly. This guide assumes you have restarted all servers with the plugin installed.
+---
+
+# ⚙️ Plugin setup
+
+### **Important Terminology**
+
+<table>
+  <thead>
+    <tr><th width="200">Clients</th><th>Server</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>All Paper servers</td><td>The Velocity proxy</td></tr>
+  </tbody>
+</table>
+
+In this guide, when referring to "clients," it means all the Paper servers connected to your Velocity server (the "server").
+
+***
+
+### **Verify File Generation**
+
+After restarting your servers, the following files and folders should be generated:
+
+**On Each Paper Server:**
+
+```markdown
+paper/
+└── plugins/
+    └── CommandBridge/
+        ├── config.yml             # Main configuration file for the Paper server
+        └── scripts/               # Folder for script configurations
+            └── example.yml        # Example script configuration
+``` 
+
+**On the Velocity Server:**
+
+```markdown
+velocity/
+└── plugins/
+    └── CommandBridge/
+        ├── config.yml             # Main configuration file for the Velocity proxy
+        ├── secret.key             # Secret key for authentication (only on Velocity)
+        └── scripts/               # Folder for script configurations
+            └── example.yml        # Example script configuration
+``` 
+
+#### Key Notes:
+
+* The **`secret.key`** file is **only generated on the Velocity server**.  
+* Both Velocity and Paper servers have:  
+  * **`config.yml`** – Configuration file specific to each platform (proxy or server).  
+  * **`scripts/`** – A folder containing script configuration files (with a default `example.yml` provided).
+
+If these files and folders match your setup, proceed to the next steps. Otherwise, ensure the plugin is installed correctly on all servers.
+
+***
+
+### **Step 1: Set the Secret Key**
+
+1. **Open the `secret.key` file** in the Velocity `plugins/CommandBridge/` folder.  
+2. Copy the key (a long string) and paste it into the `secret` field in the `config.yml` file of **each Paper server**:  
+
+   ```yaml
+   secret: "CHANGE_ME"
+   ```  
+
+   Replace `"CHANGE_ME"` with the value from the Velocity `secret.key` file.
+
+{% hint style="danger" %}  
+Do not share this key. **Anyone with this key can connect to your CommandBridge and execute commands on your network.**  
+{% endhint %}
+
+***
+
+### **Step 2: Set Unique IDs**
+
+Each Paper server is a client and needs a unique identifier:
+
+- **On Paper (Client)**: In each Paper server’s `config.yml`, set the **`client-id`** to a unique name for that server. For example, if the server is called "lobby", use:  
+
+  ```yaml
+  client-id: "lobby"
+  ```  
+
+  Ensure no two Paper servers share the same `client-id`.
+
+- **On Velocity (Server)**: In the Velocity `config.yml`, set the **`server-id`**. By default, this is `"main"`. You can typically leave this as is (only change if you intend to have multiple CommandBridge servers).
+
+***
+
+### **Step 3: Configure Velocity Network Settings**
+
+1. **Host** (`host` in Velocity `config.yml`): By default this is `0.0.0.0` (all network interfaces).  
+   - If your Velocity proxy and Paper servers run on the **same machine** (self-hosted setup), you can set this to `127.0.0.1` to bind locally.  
+   - If you are using an external hosting provider or different machines, leave it as `0.0.0.0` so it listens on all interfaces.
+
+2. **Port** (`port` in Velocity `config.yml`): Choose an unused TCP port for CommandBridge to communicate.  
+   - Update the `port` field with that number. For example:  
+
+     ```yaml
+     port: 3000
+     ```  
+
+   - If self-hosting, ensure this port is open on your machine’s firewall.  
+   - If using a hosting provider, use their panel/tools to open this port for your Velocity proxy.
+
+3. **SAN (Subject Alternative Name)** (`san` in Velocity `config.yml`):  
+   - Set this to the **IP address or domain name of your Velocity server** (**do not include the port**). For example:  
+
+     ```yaml
+     san: "152.248.198.124"
+     ```  
+
+   - This is used for SSL certificate generation. It must match the address that clients (Paper servers) use to connect.
+
+{% hint style="warning" %}  
+Do not include the port in the SAN value. For example, use `"152.248.198.124"`, **not** `"152.248.198.124:3000"`.  
+{% endhint %}
+
+***
+
+### **Step 4: Configure Paper Clients**
+
+For each Paper server (client):
+
+1. **Remote Host** (`remote` in Paper `config.yml`): Set this to the IP address or domain of the Velocity server (the same value you used for Velocity’s SAN, without port). For example:  
+
+   ```yaml
+   remote: "152.248.198.124"
+   ```  
+
+2. **Port** (`port` in Paper `config.yml`): Set this to the same port number you configured in the Velocity config (e.g., `3000` in our example).
+
+These settings tell each Paper server how to reach the Velocity server’s CommandBridge socket.
+
+***
+
+### **Step 5: Restart Servers**
+
+Now restart your servers in the following order:
+
+1. **Restart Velocity first** (the proxy server).  
+2. Once Velocity is up, restart all the connected Paper servers.
+
+Starting Velocity first ensures it’s ready to accept connections from the Paper clients.
+
+***
+
+### **Validation**
+
+While the servers are starting up, check the **Velocity console** for log messages like these:
+
+```
+[21:10:10 INFO] [CommandBridge]: New connection attempt from /127.0.0.1:42918  
+[21:10:10 INFO] [CommandBridge]: Client authenticated successfully: /127.0.0.1:42918  
+[21:10:10 INFO] [CommandBridge]: Added connected client: lobby
+```
+
+These logs indicate a Paper client (`lobby` in this case) connected and authenticated. If you see messages like that for each Paper server, your configuration is successful!
+
+If these logs do **not** appear (or you see errors), double-check the configuration files for typos or mismatched values and ensure any required ports are open.
+</file>
+
+<file path="wiki/getting-started/requirements.md">
+---
+description: >-
+  Before installing CommandBridge, ensure that your server setup meets the following requirements. The plugin has specific dependencies and version requirements to function correctly.
+---
+
+# 📘 Requirements
+
+[#summary-for-lazy-people](requirements.md#summary-for-lazy-people "mention")
+
+{% hint style="warning" %}  
+For older plugin versions, please refer to the [legacy wiki](https://docs.old.huraxdax.club).  
+{% endhint %}
+
+### **Java Requirements**
+
+| Plugin version      | Java version |
+| ------------------- | ------------ |
+| 2.0.0 and above     | 21           |
+| below 2.0.0 (1.8.4) | 17           |
+
+### **Minecraft Compatibility**
+
+| Plugin version      | Minecraft version |
+| ------------------- | ----------------- |
+| 2.0.0 and above     | 1.20.x – 1.21.x   |
+| below 2.0.0 (1.8.4) | 1.20.x – 1.21.1   |
+
+***
+
+### **Permission Management**
+
+CommandBridge requires a **permission plugin** to manage command execution effectively.
+
+* **Recommended**: [LuckPerms](https://luckperms.net/) (highly compatible and actively maintained).  
+* **Required Setup**:  
+  * Install a permission plugin **on both the Velocity and Paper servers**.  
+  * Any permission plugin will work, but ensure it’s installed on both platforms.
+
+***
+
+### **Plugin Compatibility**
+
+CommandBridge is a **cross-compatible plugin** designed to run on both **Velocity** and **Paper** servers using the same JAR file. Below are the specific compatibility details:
+
+| Server Type                            | Compatibility       | Notes                                                         |
+| -------------------------------------- | ------------------- | ------------------------------------------------------------- |
+| Velocity                               | ✅ Supported         | Fully supported. Designed for the Velocity proxy.             |
+| Paper                                  | ✅ Supported         | Fully supported. Built on the Paper API.                      |
+| Spigot                                 | ✅ Supported         | Supported via Paper compatibility layer.                      |
+| Bukkit                                 | ✅ Supported         | Supported via Paper compatibility layer.                      |
+| Folia (Paper fork)                     | ✅ Supported         | Uses regionized multithreading. Should work but may contain bugs. |
+| Purpur (Paper fork)                    | ⚠️ Not Fully Tested | Should work (based on Paper), but not officially tested.      |
+| Tuinity (Paper fork)                   | ⚠️ Not Fully Tested | May work, but not officially tested or guaranteed.            |
+| Cross-platform proxies (e.g., Waterfall) | ⚠️ Not Tested       | Should work with Velocity on backend, but not explicitly tested. |
+| Modloaders (Forge/Fabric etc.)         | ❌ Not Supported     | Only plugin platforms are supported (no modloader compatibility). |
+
+### **Summary (for lazy people)**
+
+| Requirement           | Details                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| **Java Version**      | Java 21 (for v2.0.0+). For older plugin versions (v1.8.4 and below), use Java 17. |
+| **Minecraft Version** | Supports Minecraft 1.20.x – 1.21.x for v2.0.0+. Older Minecraft versions require using the legacy plugin (latest legacy version: 1.8.4). |
+| **Permission Plugin** | Required on both Velocity and Paper servers. Recommended: [LuckPerms](https://luckperms.net/). |
+| **Server Software**   | Use Velocity (proxy) and Paper (server). Bukkit/Spigot work via Paper compatibility but are not separately tested. Modloaders are **not** supported. |
+</file>
+
+<file path="wiki/other/data-collection.md">
+---
+description: >-
+  Information on what data CommandBridge collects and how to opt out.
+---
+
+# 🔢 Data collection
+
+CommandBridge uses an open-source metrics service called [bStats](https://bstats.org/) to collect **anonymous statistics** about plugin usage. This helps the developer understand how the plugin is used (like how many servers use it, what Minecraft version, etc.) and improve it over time.
+
+**What is collected**: Basic server info such as plugin version, Minecraft version, player count, and other non-personal statistics. **No personal or sensitive data** (like IPs or chat) is collected.
+
+**How to opt out**: You can disable metrics collection by editing the `plugins/bStats/config.yml` file on each server and setting `enabled: false`. After that, no data will be sent to bStats from that server.
+
+![bStats](https://bstats.org/signatures/velocity/CommandBridge.svg)
+
+*The chart above is an example of a bStats graph for CommandBridge (showing the number of servers using the plugin over time).*
+
+This data collection follows the standard practice for many Minecraft plugins and is completely anonymous. It can be useful for the developer and does not impact performance. However, the choice is yours – you can easily opt out as described.
+
+_For more details on bStats, you can visit their site [here](https://bstats.org/)._
+</file>
+
+<file path="wiki/troubleshooting/common-issues.md">
+---
+description: >-
+  Solutions to common problems when setting up or using CommandBridge.
+---
+
+# ❌ Common issues
+
+Setting up a proxy and multiple servers can be tricky. Here are some common issues you might encounter with CommandBridge and how to resolve them.
+
+### 1. Paper server cannot connect to Velocity (No connection / authentication fails)
+
+**Symptoms:** In Velocity’s console, you **do not** see the “Client authenticated successfully” message for one or more Paper servers when they start. Paper server logs might show errors or timeout trying to connect.
+
+**Possible Causes & Solutions:**
+
+- **Secret key mismatch:** Ensure you correctly copied the secret key from Velocity’s `secret.key` into each Paper server’s `config.yml` (`secret` field). A wrong or missing key will prevent the Paper client from authenticating. *(If you regenerate the Velocity secret.key, you must update all clients again.)*
+
+- **Host/Remote configuration:** Double-check the `host` in Velocity’s config and the `remote` in Paper’s config. For example, if Velocity’s host is set to `127.0.0.1` (localhost), then Paper’s `remote` must also point to `127.0.0.1` – and they *must be running on the same machine*. If your Paper server is on a different machine or container, Velocity’s `host` should be `0.0.0.0` (and Paper’s `remote` should use Velocity’s external IP or domain).
+
+- **Port not open or mismatched:** Verify that the `port` number is the same in Velocity and all Paper configs. Also ensure that port is not blocked by a firewall:
+  - If self-hosting, check your OS firewall or router port forwarding for the specified port.  
+  - If using a server host, use their panel to open the port for the Velocity proxy.  
+  - If the port is in use by another service, choose a different port in the configs and restart.
+
+- **SAN not configured or wrong:** The **SAN (Subject Alternative Name)** in Velocity’s config must include the IP or domain that Paper clients use to connect. If this is incorrect, the SSL certificate will not match and the connection will fail. For example, if Paper’s `remote` is set to `"example.com"`, then Velocity’s `san` should be `"example.com"` as well. Do not include ports in the SAN or remote fields.
+
+After checking these settings, restart Velocity first, then Paper servers. Watch the Velocity console for connection messages. If it still fails, turn on **debug mode** (set `debug: true` in Velocity’s `config.yml` and restart) to get detailed logs, and look for any specific error messages.
+
+### 2. “Address already in use” error on Velocity startup
+
+**Symptom:** Velocity’s console shows an error indicating it couldn’t bind to the port (e.g., `java.net.BindException: Address already in use`).
+
+**Cause:** The port configured for CommandBridge is already being used by another service (or another instance of Velocity).
+
+**Solution:** Choose a different unused port in Velocity’s `config.yml` for CommandBridge and update all Paper servers’ `config.yml` to match the new port. Then restart Velocity (and Paper servers). Ensure no other application is using that port. Commonly, ports 3000–4000 are free, but it depends on your environment.
+
+### 3. “Client authenticated successfully” appears, but commands aren’t executing
+
+**Symptom:** Velocity’s log shows that clients connected, but when you run a CommandBridge command, nothing happens on the other side.
+
+**Possible Causes & Solutions:**
+
+- **Scripts not defined on that side:** Make sure you created the script configuration on the correct side. For example, if a player runs a command on a Paper server, that command needs to be defined either on the Paper side (to forward to Velocity) or on Velocity (to accept forwarded commands). If only defined on Velocity, ensure the command name is not being blocked on Paper. If in doubt, define the script on both sides or use a Velocity-side script as shown in the **Scripts Guide** for global commands.
+
+- **Permission issues:** By default, CommandBridge requires players to have permission to use custom commands. If `ignore-permission-check` is `false` in your script config, you need to grant the appropriate permission node via your permissions plugin:
+  - The permission node is `commandbridge.command.<name>` (where `<name>` is the script name). For example, for a script named “hub”, give players `commandbridge.command.hub`.  
+  - Alternatively, you can set `ignore-permission-check: true` in the script config to temporarily bypass permission checks (not recommended for public commands).  
+  - Ensure this is done on both Velocity and Paper (since a player might trigger the command on either platform).
+
+- **Missing dependency:** Ensure you have a permission plugin installed on both Velocity and Paper. Without one, permission checks might automatically fail. (LuckPerms on both is recommended.)
+
+- **Target server issues:** If a script is supposed to run a command on a target Paper server and nothing happens, check that the target server’s `client-id` exactly matches what the script’s `target-client-ids` list uses (case-sensitive). If the names don’t match, Velocity will send the command to a non-existent target.
+
+- **Plugin not loaded or script disabled:** Confirm that the CommandBridge plugin is actually enabled on all servers (`/plugins` on Paper, or `/bridge version` on Velocity’s console). If the plugin failed to load on a server (check console for errors on startup), fix that first. Also verify the script file has `enabled: true`.
+
+### 4. “You do not have permission to use this command” message when using a script command
+
+**Cause:** This indicates the player (or console) triggering the CommandBridge command doesn’t have permission, and the script has not ignored permission checks.
+
+**Solution:** As mentioned above, grant the appropriate permission via your permissions plugin, or set the script’s `ignore-permission-check: true` if you want to bypass. If you prefer to hide this message without giving permission, you can set `hide-permission-warning: true` (though the command still won’t run). Generally, for player-facing commands, it’s best to give them permission in a controlled way.
+
+### 5. Commands run, but placeholders aren’t working
+
+**Symptom:** You used placeholders (like `%cb_player%` or a PlaceholderAPI code) in your script, but in the executed command it shows the literal placeholder text or nothing happens.
+
+**Solution:** 
+- Make sure you have PlaceholderAPI installed on Paper if you are using placeholders other than the built-in `%cb_...%` ones. Without PAPI, only the built-in placeholders will be replaced.  
+- If using placeholders on Velocity side, consider installing PapiProxyBridge on Velocity so that PAPI placeholders can be recognized on the proxy.  
+- Check logs in debug mode – CommandBridge will log whether it hooked into PlaceholderAPI. If it says PAPI not found, you know why placeholders weren’t parsed.  
+- Also ensure your placeholder syntax is correct and supported. For example, built-in placeholders use `%cb_player%` exactly (all lowercase).
+
+### 6. Still having issues?
+
+If you’ve checked the above and are still experiencing problems, see the **Support resources** page for where to get additional help (Discord or GitHub). Enabling `debug: true` in the config and then replicating the issue can provide more detailed logs to share when asking for support.
+</file>
+
+<file path="wiki/README.md">
+---
+description: >-
+  Welcome to my documentation! This guide will help you install and configure the CommandBridge plugin.
+---
+
+# 👋 Welcome
+
+{% hint style="warning" %}  
+This documentation applies **only to CommandBridge plugin versions 2.0.0 and above**.
+
+If you are using an earlier version, please refer to the [legacy documentation](https://docs.old.huraxdax.club/).  
+{% endhint %}
+
+### What This Documentation Covers
+
+* [x] Quick Installation  
+* [x] Configuration Guide  
+* [x] Troubleshooting  
+* [ ] How to escape vim
+
+### Why use CommandBridge?
+
+CommandBridge is the easiest way to enable **real-time, cross-server communication** between Velocity and Paper servers.  
+Seamlessly manage commands, automate tasks, and create a unified server experience.
+</file>
+
+<file path="wiki/use-cases.md">
+---
+description: >-
+  CommandBridge shines in scenarios where you need cross-server communication to execute commands seamlessly. Below are practical scenarios where CommandBridge can be a game-changer.
+---
+
+# 🤖 Use cases
+
+### <mark style="color:orange;">Example 1:</mark> Global `/hub` Command with Additional Actions
+
+**Scenario**:  
+You want to implement a global `/hub` command that works on **any server in your network**. When a player types `/hub`, they are:
+
+1. **Teleported to the hub server** (handled by Velocity).  
+2. Once in the hub, a **Paper plugin plays background music** using the `/music` command.
+
+**Problem**:
+
+* The `/hub` command isn’t natively available on Paper servers.  
+* The `/music` command can only be executed on the hub server.
+
+**Solution with CommandBridge**:  
+CommandBridge lets you define the `/hub` command as follows:
+
+1. The **player types `/hub`** on any server (Paper or Velocity).  
+2. **CommandBridge triggers the teleport** to the hub server using Velocity’s `/server hub` command.  
+3. Once the player is on the hub server, **CommandBridge automatically executes `/music`** as the player.
+
+| Step                   | Action                                        | Executed On        |
+| ---------------------- | --------------------------------------------- | ------------------ |
+| **Player runs `/hub`** | CommandBridge receives and processes the command. | Velocity           |
+| **Teleport to hub**    | Executes Velocity's `/server hub` command to teleport. | Velocity           |
+| **Play music**         | Executes `/music` for the player after teleporting. | Hub (Paper plugin) |
+
+**Why Use CommandBridge?**
+
+* **Global availability**: `/hub` works from any server in your network.  
+* **Multi-step execution**: Executes commands in sequence, even across servers.  
+* **Automation**: Automatically triggers the `/music` command without user intervention.
+
+***
+
+### <mark style="color:orange;">**Example 2:**</mark> Timed Gameplay with Return to Lobby
+
+**Scenario**:  
+You have a **minigame server** where players have **15 minutes** to play. After their time is up, they must:
+
+1. **Teleport back to the main lobby** (handled by Velocity).  
+2. A message should appear announcing their return, triggered on the minigame server.
+
+**Problem**:
+
+* Paper doesn’t support Velocity’s `/server` commands natively.  
+* The minigame server needs to trigger global actions without direct access to Velocity commands.
+
+**Solution with CommandBridge**:
+
+1. A **Paper plugin** on the minigame server triggers a CommandBridge-defined command, e.g., `/end-session`.  
+2. CommandBridge teleports the player to the lobby using Velocity’s `/server lobby`.  
+3. CommandBridge executes a follow-up `/broadcast` command on the minigame server, announcing their departure.
+
+| Step                       | Action                                              | Executed On      |
+| -------------------------- | --------------------------------------------------- | ---------------- |
+| **Trigger `/end-session`** | Minigame plugin triggers the CommandBridge command.  | Minigame (Paper) |
+| **Teleport to lobby**      | Executes Velocity’s `/server lobby` command.         | Velocity         |
+| **Announce return**        | Broadcasts a farewell message to players.           | Minigame (Paper) |
+
+**Why Use CommandBridge?**
+
+* **Seamless teleportation**: Coordinates actions across Velocity and Paper.  
+* **Custom workflows**: Chains actions like teleporting and messaging.
+
+***
+
+### <mark style="color:orange;">**Example 3:**</mark> Centralized Rewards with Conditional Actions
+
+**Scenario**:  
+You’re running a **network-wide event** where players can earn rewards. After claiming their reward:
+
+1. They are **teleported to a “rewards room” server**.  
+2. The server **gives them a diamond** automatically.  
+3. An announcement is broadcast **only on the rewards server**.
+
+**Problem**:
+
+* Bukkit/Paper plugins can’t trigger Velocity’s `/server` commands directly.  
+* Reward actions need to be automated and localized per server.
+
+**Solution with CommandBridge**:
+
+1. Define a CommandBridge command, e.g., `/claim-reward`.  
+2. The command:  
+   * Teleports the player to the “rewards room” using Velocity’s `/server rewards`.  
+   * Executes `/give %cb_player% diamond` on the rewards server (Paper) to give a diamond to the player.  
+   * Sends a local announcement using `/say %cb_player% claimed their reward!` on the rewards server.
+
+| Step                            | Action                                       | Executed On     |
+| ------------------------------- | -------------------------------------------- | --------------- |
+| **Player runs `/claim-reward`** | CommandBridge triggers the sequence.         | Any server      |
+| **Teleport to rewards server**  | Executes `/server rewards`.                  | Velocity        |
+| **Give diamond**                | Runs `/give {player} diamond`.               | Rewards (Paper) |
+| **Local announcement**          | Sends `/say {player} claimed their reward!`. | Rewards (Paper) |
+
+**Why Use CommandBridge?**
+
+* **Cross-server coordination**: Automates actions across multiple servers.  
+* **Localized commands**: Keeps announcements server-specific while managing rewards globally.
+
+***
+
+### **When Should You Use CommandBridge?** 
+
+CommandBridge is ideal if you:
+
+* **Need global commands** that work on every server in your network.  
+* **Automate multi-step workflows**, such as teleportation and follow-up actions.  
+* **Coordinate cross-server actions** seamlessly between Velocity and Paper.
 </file>
 
 <file path="gradlew">
@@ -2768,6 +3005,29 @@ public class InternalRegistrar {
 }
 </file>
 
+<file path="wiki/other/contribution-guidelines.md">
+---
+description: Guidelines and information on contributing to the CommandBridge project.
+---
+
+# 💻 Contribution Guidelines
+
+Contributions to CommandBridge are welcome! Here’s how you can help:
+
+* **Reporting Issues or Suggestions**: Use the [GitHub issues page](https://github.com/72-S/CommandBridge/issues) to report bugs, propose new features, or enhance documentation. Clear, detailed reports make it easier to address problems.
+* **Submitting Code**: If you are a developer and want to contribute code:
+  1. Fork the repository on GitHub and create a new branch for your changes.
+  2. Make sure your changes follow the style of the project.
+  3. Test your changes in a Velocity+Paper setup if possible.
+  4. Submit a Pull Request with a clear description of your changes.
+* **Improving Documentation**: If you find something in this documentation that can be improved, feel free to edit the Markdown files and open a pull request, or suggest changes via Discord/issue tracker.
+* **Joining the Discussion**: For general ideas or to see planned features, join the [Discord server](https://discord.gg/QPqBYb44ce). There may be existing discussions you can contribute to, or you can start a new one in the appropriate channel.
+
+By contributing, you agree that your contributions will be licensed under the same Apache 2.0 License as the project. The team will review contributions and merge them if they fit well with the project’s goals.
+
+Thank you for helping make CommandBridge better!
+</file>
+
 <file path="paper/src/main/java/dev/consti/commandbridge/paper/command/CommandForwarder.java">
 package dev.consti.commandbridge.paper.command;
 
@@ -3147,6 +3407,33 @@ commands:
     wait-until-player-is-online: true  # If true, waits until the player is online to execute.
     check-if-executor-is-player: false # If true, ensures the executor is a player.
     check-if-executor-is-on-server: false # If true, ensures the executor is online on the server.
+</file>
+
+<file path="wiki/SUMMARY.md">
+# Table of contents
+
+* [👋 Welcome](README.md)
+* [🤖 Use cases](use-cases.md)
+
+## Getting Started
+
+* [📘 Requirements](getting-started/requirements.md)
+* [📩 Installation](getting-started/installation.md)
+* [⚙️ Plugin setup](getting-started/plugin-setup.md)
+
+## Scripts
+
+* [📜 Scripts Guide](scripts/guide.md)
+
+## Troubleshooting
+
+* [❌ Common issues](troubleshooting/common-issues.md)
+* [📭 Support resources](troubleshooting/support-resources.md)
+
+## Other
+
+* [💻 Contribution Guidelines](other/contribution-guidelines.md)
+* [🔢 Data collection](other/data-collection.md)
 </file>
 
 <file path="server.sh">

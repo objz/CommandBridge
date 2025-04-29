@@ -11,7 +11,11 @@
 
 ## Scripts
 
-* [📜 Scripts Guide](scripts/guide.md)
+* [📜 Script System Overview](scripts/overview.md)
+* [🧲 Script File Structure](scripts/file-structure.md)
+* [💡 Simple Example: /alert](scripts/simple-example.md)
+* [💡 Advanced Example: /hub](scripts/advanced-example.md)
+* [📃 Using Placeholders](scripts/placeholders.md)
 
 ## Troubleshooting
 
