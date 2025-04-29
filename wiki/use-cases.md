@@ -3,6 +3,7 @@ description: >-
   CommandBridge shines in scenarios where you need cross-server communication to
   execute commands seamlessly. Below are practical scenarios where CommandBridge
   can be a game-changer.
+hidden: true
 ---
 
 # 🤖 Use cases
