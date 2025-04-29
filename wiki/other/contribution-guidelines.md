@@ -15,6 +15,4 @@ Contributions to CommandBridge are welcome! Here’s how you can help:
 * **Improving Documentation**: If you find something in this documentation that can be improved, feel free to edit the Markdown files and open a pull request, or suggest changes via Discord/issue tracker.
 * **Joining the Discussion**: For general ideas or to see planned features, join the [Discord server](https://discord.gg/QPqBYb44ce). There may be existing discussions you can contribute to, or you can start a new one in the appropriate channel.
 
-By contributing, you agree that your contributions will be licensed under the same Apache 2.0 License as the project. The team will review contributions and merge them if they fit well with the project’s goals.
-
 Thank you for helping make CommandBridge better!

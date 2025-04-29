@@ -23,7 +23,7 @@ No need for separate JARs – CommandBridge will automatically detect whether it
 If you’re upgrading from an older version of CommandBridge to version **2.0.0 or above**, follow these additional steps:
 
 1. **Convert Scripts Manually**:
-   * The script format has changed. You’ll need to manually convert your old scripts to the new format. You can see how to write the scripts [here](broken-reference).
+   * The script format has changed. You’ll need to manually convert your old scripts to the new format. You can see how to write the scripts [here](../scripts/overview.md).
 2. **Regenerate `config.yml`**:
    * Delete your old `config.yml`.
    * Start the server to let the plugin generate a new configuration file.
