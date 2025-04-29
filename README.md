@@ -18,7 +18,7 @@ With this plugin, you can create **global gameplay experiences** that feel smoot
 **CommandBridge** v2.0.0 introduces new requirements and updates:  
 
 - **Java 21 Required**: The server must run on Java 21.  
-- **Minecraft Compatibility**: Fully compatible with Minecraft 1.21.x.  
+- **Minecraft Compatibility**: Fully compatible with Minecraft 1.21.x and 1.20.x.
 - **Single JAR File**: Only download `CommandBridge-XXX-all.jar`.  
 - **Dual Placement**: The JAR must be placed in both the target Paper server and the Velocity server to function.  
 - **Plugin Compatibility**: Built for Paper servers, though it may work on other software (not tested).  
@@ -39,7 +39,7 @@ The **2.0.0 release** brings major updates and improvements:
 
 ### Installation (Short Version)
 
-For detailed instructions, visit the [wiki](https://docs.old.huraxdax.club/) (currently outdated but new one is in progress, but the configuration is mostly the same). New one is in progess, you can read it [tho](https://docs.huraxdax.club).
+For detailed instructions, visit the [wiki](https://docs.huraxdax.club/).
 
 1. **Add the JAR**: Place the plugin JAR in the `plugins` folder of both the Paper and Velocity servers.  
 2. **Restart Servers**: Restart both servers. After the restart, a `secret.key` file will be generated in the Velocity server's `plugins/CommandBridge` folder.  
