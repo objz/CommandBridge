@@ -1,4 +1,3 @@
-
 ---
 description: >-
   After installing the CommandBridge plugin and restarting your servers, follow this guide to configure it properly. This guide assumes you have restarted all servers with the plugin installed.

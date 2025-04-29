@@ -1,4 +1,3 @@
-
 ---
 description: >-
   Welcome to my documentation! This guide will help you install and configure the CommandBridge plugin.

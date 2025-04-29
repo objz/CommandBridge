@@ -1,4 +1,3 @@
-
 ---
 description: >-
   Solutions to common problems when setting up or using CommandBridge.

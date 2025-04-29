@@ -1,4 +1,3 @@
-
 ---
 description: >-
   Guidelines and information on contributing to the CommandBridge project.

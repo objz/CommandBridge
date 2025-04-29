@@ -1,4 +1,3 @@
-
 ---
 description: >-
   Information on what data CommandBridge collects and how to opt out.

@@ -1,4 +1,3 @@
-
 ---
 description: >-
   Before installing CommandBridge, ensure that your server setup meets the following requirements. The plugin has specific dependencies and version requirements to function correctly.

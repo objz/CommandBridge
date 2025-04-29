@@ -1,4 +1,3 @@
-
 ---
 description: >-
   Installing CommandBridge is quick and simple. Follow these steps to get started.
