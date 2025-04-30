@@ -1,6 +1,8 @@
-# 📃 Placeholders
+---
+description: CommandBridge supports dynamic placeholders in your command strings.
+---
 
-CommandBridge supports dynamic **placeholders** in your command strings.
+# 📃 Placeholders
 
 They allow you to inject player-specific data like name, UUID, server, or even command arguments into scripted commands.
 

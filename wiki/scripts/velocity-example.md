@@ -12,7 +12,7 @@ enabled: true
 ignore-permission-check: false
 hide-permission-warning: false
 commands:
-  - command: "broadcast Attention: Maintenance in 5 minutes!"
+  - command: "say Attention: Maintenance in 5 minutes!"
     delay: 0
     target-client-ids:
       - "lobby"
@@ -27,7 +27,7 @@ commands:
 #### What happens?
 
 * Registers `/alert` command.
-* Runs `broadcast` on 3 Paper servers.
+* Runs `say ...` on 3 Paper servers.
 * Executed immediately by each server console.
 
 {% hint style="success" %}

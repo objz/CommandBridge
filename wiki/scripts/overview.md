@@ -19,4 +19,4 @@ Scripts are simple YAML files stored under the `CommandBridge/scripts/` folder i
 Scripts define **custom commands** that your players or console can use!
 {% endhint %}
 
-Each script file can register a command like `/hub` or `/alert` with specific actions attached.
+Each script file can register a command like `/alert` or `/lobby` with specific actions attached.
