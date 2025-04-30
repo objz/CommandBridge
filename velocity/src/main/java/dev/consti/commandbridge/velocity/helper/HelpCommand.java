@@ -38,10 +38,10 @@ public class HelpCommand {
 
         source.sendMessage(Component.text(""));
         source.sendMessage(Component.text("Documentation: ")
-                .append(Component.text("https://docs.commandbridge.72s.dev")
+                .append(Component.text("https://docs.huraxdax.club")
                         .color(NamedTextColor.LIGHT_PURPLE)
                         .decorate(TextDecoration.UNDERLINED)
-                        .clickEvent(ClickEvent.openUrl("https://72-s.github.io/CommandBridge/"))));
+                        .clickEvent(ClickEvent.openUrl("https://docs.huraxdax.club"))));
 
         source.sendMessage(Component.text(""));
         source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
