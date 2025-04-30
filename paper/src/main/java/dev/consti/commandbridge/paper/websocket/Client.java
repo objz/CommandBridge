@@ -60,8 +60,8 @@ public class Client extends SimpleWebSocketClient {
         String status = parser.getStatus();
 
         switch (channel) {
-            case "error" -> logger.warn("Error from server '{}' : {}", parser.getBodyValueAsString("server"), status);
-            case "info" -> logger.info("Info from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "error" -> logger.warn("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "info" -> logger.info("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
             case "task" -> systemTask(parser, status);
             default -> logger.warn("Invalid channel: {}", channel);
         }

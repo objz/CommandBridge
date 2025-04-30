@@ -85,8 +85,8 @@ public class Server extends SimpleWebSocketServer {
                     logger.warn("Client did not provide 'name' in system request");
                 }
             }
-            case "error" -> logger.warn("Error Message from client '{}' : {}", client, status);
-            case "info" -> logger.info("Info from client '{}' : {}", client, status);
+            case "error" -> logger.warn("Message from client '{}' : {}", client, status);
+            case "info" -> logger.info("Message from client '{}' : {}", client, status);
             case "task" -> systemTask(parser, status, client);
             default -> logger.warn("Invalid channel: {}", channel);
         }
