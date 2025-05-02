@@ -9,8 +9,12 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.ssl.NotSslRecordException;
+
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+
+import javax.net.ssl.SSLHandshakeException;
 
 
 @Sharable
@@ -50,7 +54,19 @@ public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest>{
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        logger.error("Error in HttpServer handler: {}", logger.getDebug() ? cause : cause.getMessage());
+        if (cause instanceof NotSslRecordException || cause instanceof SSLHandshakeException) {
+            if (logger.getDebug()) {
+                logger.debug("SSL handshake or protocol error", cause);
+            } else {
+                logger.warn("Received invalid or unsupported SSL/TLS connection (enable debug for full trace)");
+            }
+        } else {
+            if (logger.getDebug()) {
+                logger.error("Unexpected error in HttpServer handler", cause);
+            } else {
+                logger.error("Unexpected error in HttpServer handler: {}", cause.getMessage());
+            }
+        }
         ctx.close();
     }
 
