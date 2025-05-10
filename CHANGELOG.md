@@ -1,6 +1,6 @@
-**[v2.2.3] - 2025-04-29**
+**[v2.2.4] - 2025-05-10**
 
-- Adds support for minecraft version 1.20.5
-- fixed #14
+- changed broken links for the new website
+- internal renamings
 
 

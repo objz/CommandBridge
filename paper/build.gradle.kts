@@ -29,9 +29,9 @@ repositories {
     maven { url = uri("https://repo.extendedclip.com/releases/")}
     maven {
         name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/72-S/FoundationLib")
+        url = uri("https://maven.pkg.github.com/objz/FoundationLib")
         credentials {
-            username = "72-S"
+            username = "objz"
             password = System.getenv("GITHUB_TOKEN")
         }
     }

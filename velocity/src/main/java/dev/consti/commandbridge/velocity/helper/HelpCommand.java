@@ -37,11 +37,11 @@ public class HelpCommand {
         source.sendMessage(formatCommand("reconnect", "Reconnects the current client", true));
 
         source.sendMessage(Component.text(""));
-        source.sendMessage(Component.text("Documentation: ")
-                .append(Component.text("https://docs.huraxdax.club")
+        source.sendMessage(Component.text("Website: ")
+                .append(Component.text("https://cb.objz.dev")
                         .color(NamedTextColor.LIGHT_PURPLE)
                         .decorate(TextDecoration.UNDERLINED)
-                        .clickEvent(ClickEvent.openUrl("https://docs.huraxdax.club"))));
+                        .clickEvent(ClickEvent.openUrl("https://cb.objz.dev"))));
 
         source.sendMessage(Component.text(""));
         source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
