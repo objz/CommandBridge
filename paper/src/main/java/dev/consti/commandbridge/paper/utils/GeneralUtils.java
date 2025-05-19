@@ -59,11 +59,11 @@ public class GeneralUtils {
                             Runtime.getInstance().getClient().connect(
                                     Runtime.getInstance().getConfig().getKey("config.yml", "remote"),
                                     Integer.parseInt(Runtime.getInstance().getConfig().getKey("config.yml", "port")));
-                            sender.sendMessage(ChatColor.GREEN + "Client reconnected successfully");
                         } catch (Exception e) {
                             logger.error("Client reconnection failed: ", e);
                             sender.sendMessage(ChatColor.RED + "Failed to reconnect");
                         }
+                        sender.sendMessage(ChatColor.GREEN + "Client reconnected successfully");
                     }
                 })
                 .register();

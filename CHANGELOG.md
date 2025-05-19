@@ -1,6 +1,6 @@
-**[v2.2.4] - 2025-05-10**
+**[v2.2.5] - 2025-05-19**
 
-- changed broken links for the new website
-- internal renamings
+- fixed issue [#16](https://github.com/objz/CommandBridge/issues/16)
+- no longer responds with 'reconnect successfull' when reconnect failed
 
 

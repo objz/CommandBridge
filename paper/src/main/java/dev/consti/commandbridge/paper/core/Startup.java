@@ -26,9 +26,7 @@ public class Startup {
             logger.setDebug(debugMode);
             if (SchedulerAdapter.isFolia()) {
                 logger.info("Running on Folia!");
-            } else {
-                logger.info("Running on Paper!");
-            }
+            } 
             logger.info("Debug mode set to: {}", debugMode);
 
             logger.debug("Copying default scripts...");
