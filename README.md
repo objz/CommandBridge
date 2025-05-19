@@ -1,5 +1,7 @@
 ### **CommandBridge**
 
+![overview](https://cdn.modrinth.com/data/cached_images/ddfd1c06df1ab99ee271859ee78e5e4d6d34ac49_0.webp)
+
 This plugin connects **Velocity** and **Paper** servers seamlessly, enabling **cross-server command execution**. Here's what it does exactly:
 
 - **Custom Scripts**: Define commands in scripts for both server types.  
@@ -39,7 +41,7 @@ The **2.0.0 release** brings major updates and improvements:
 
 ### Installation (Short Version)
 
-For detailed instructions, visit the [wiki](https://docs.huraxdax.club/).
+For detailed instructions, visit the [website](https://cb.objz.dev).
 
 1. **Add the JAR**: Place the plugin JAR in the `plugins` folder of both the Paper and Velocity servers.  
 2. **Restart Servers**: Restart both servers. After the restart, a `secret.key` file will be generated in the Velocity server's `plugins/CommandBridge` folder.  
@@ -74,10 +76,8 @@ Now you're ready to create scripts!
 Exciting features and improvements are planned for **CommandBridge**:
 
 - **Multiple Velocity Server Support**: Connect additional Velocity servers to act as clients.  
-- **PlaceholderAPI (PAPI) Support**: Unlock even more placeholders for greater flexibility.  
 - **GUI Menu for Scripts**: Create and manage scripts with an easy-to-use graphical interface.  
-- **Bug Fixes**: Continuous improvements to ensure stability and performance.  
-- **Better Documentation**: Expanded guides and tutorials for easier setup and usage.  
+- **Bug Fixes**: Continuous improvements to ensure stability and performance.   
 - **Dump Command & Tools**: Integration with a website and Discord bot for troubleshooting and support.  
 - **And More!**  
 
@@ -87,7 +87,7 @@ Stay tuned for updates and new features! 🎉
 
 ### Help or Issues
 
-- Report issues on [GitHub](https://github.com/72-S/CommandBridge/issues).  
+- Report issues on [GitHub](https://github.com/objz/CommandBridge/issues).  
 - Join the [Discord server](https://discord.gg/QPqBYb44ce) for support.  
 
 ---
@@ -102,4 +102,4 @@ This plugin collects anonymous server statistics via [bStats](https://bstats.org
 
 ### Contributing
 
-Join the [Discord server](https://discord.gg/QPqBYb44ce) or visit the [GitHub](https://github.com/72-S/CommandBridge) for more information on contributing to the project.
+Join the [Discord server](https://discord.gg/QPqBYb44ce) or visit the [GitHub](https://github.com/objz/CommandBridge) for more information on contributing to the project.
