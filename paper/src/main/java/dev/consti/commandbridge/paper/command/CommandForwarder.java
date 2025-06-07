@@ -1,5 +1,8 @@
 package dev.consti.commandbridge.paper.command;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -90,15 +93,43 @@ public class CommandForwarder {
 
         if (player != null && cmd.getTargetExecutor().equals("player")) {
             addPlayerPlaceholders(parser, player);
-        } else {
-            return parser.parsePlaceholders(cmd.getCommand(), args);
         }
 
         try {
-            String parsedCommand = parser.parsePlaceholders(cmd.getCommand(), args);
-            if (Runtime.getInstance().getStartup().isPlaceholderAPI()) {
+            StringParser.Result result = parser.validate(cmd.getCommand(), args);
+
+            if (!result.isValid()) {
+                Set<String> unresolved = result.getUnresolved();
+
+                if (player == null && cmd.getTargetExecutor().equals("console")) {
+                    Set<String> playerPlaceholders = new HashSet<>();
+                    for (String placeholder : unresolved) {
+                        if (isPlayerPlaceholder(placeholder)) {
+                            playerPlaceholders.add(placeholder);
+                        }
+                    }
+
+                    if (!playerPlaceholders.isEmpty()) {
+                        logger.error("Console command '{}' contains player placeholders: {}",
+                                cmd.getCommand(), playerPlaceholders);
+
+                        Runtime.getInstance().getClient().sendError(
+                                "Console command contains unresolvable player placeholders: " + playerPlaceholders);
+                        return null;
+                    }
+                }
+
+                if (!unresolved.isEmpty()) {
+                    logger.warn("Command '{}' contains unresolved placeholders: {}", cmd.getCommand(), unresolved);
+                }
+            }
+
+            String parsedCommand = result.getParsed();
+
+            if (Runtime.getInstance().getStartup().isPlaceholderAPI() && player != null) {
                 parsedCommand = PlaceholderAPI.setPlaceholders(player, parsedCommand);
             }
+
             return parsedCommand;
 
         } catch (Exception e) {
@@ -107,16 +138,21 @@ public class CommandForwarder {
                 player.sendMessage(ChatColor.RED + "Error occurred while parsing command");
             }
             Runtime.getInstance().getClient().sendError("Error occurred while parsing commands");
+            return null;
         }
+    }
 
-        return null;
+    private boolean isPlayerPlaceholder(String placeholder) {
+        return placeholder.equals("%cb_player%") ||
+                placeholder.equals("%cb_uuid%") ||
+                placeholder.equals("%cb_world%");
     }
 
     private void addPlayerPlaceholders(StringParser parser, Player player) {
         logger.debug("Adding placeholders for player: {}", player.getName());
-        parser.addPlaceholder("%cb_player%", player.getName());
-        parser.addPlaceholder("%cb_uuid%", player.getUniqueId().toString());
-        parser.addPlaceholder("%cb_world%", player.getWorld().getName());
+        parser.add("%cb_player%", player.getName());
+        parser.add("%cb_uuid%", player.getUniqueId().toString());
+        parser.add("%cb_world%", player.getWorld().getName());
     }
 
     private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
@@ -128,25 +164,6 @@ public class CommandForwarder {
     }
 
     private void sendCommand(ScriptManager.Command cmd, String command, Player player) {
-        // List<String> targetServers = cmd.getTargetServerIds();
-        //
-        // if (targetServers.isEmpty()) {
-        // logger.warn("No target servers defined for command: {}", cmd.getCommand());
-        // return;
-        // }
-        //
-        // for (String serverId : targetServers) {
-        // try {
-        // logger.info("Sending command to server '{}' as {}", serverId, player == null
-        // ? "console" : "player");
-        // Runtime.getInstance().getClient().sendCommand(command, serverId,
-        // cmd.getTargetExecutor(), player);
-        // } catch (Exception e) {
-        // logger.error("Failed to send command to server '{}': {}", serverId,
-        // e.getMessage());
-        // }
-        // }
-
         logger.info("Sending command to server as {}", player == null ? "console" : "player");
         Runtime.getInstance().getClient().sendCommand(command, "", cmd.getTargetExecutor(), player);
     }

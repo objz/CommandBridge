@@ -2,7 +2,7 @@ rootProject.name = "CommandBridge"
 include("paper", "velocity")
 
 
-gradle.extra["pversion"] = "2.2.5"
+gradle.extra["pversion"] = "2.2.6"
 
 
 gradle.extra["pluginType"] = "release"

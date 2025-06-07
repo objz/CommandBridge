@@ -34,7 +34,7 @@ java {
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    implementation("dev.consti:foundationlib:2.2.3")
+    implementation("dev.consti:foundationlib:2.2.4")
     compileOnly("net.william278:papiproxybridge:1.7.2")
     implementation("org.bstats:bstats-velocity:3.1.0")
 }

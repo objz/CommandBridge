@@ -18,7 +18,7 @@ public class Main extends JavaPlugin {
         instance = this;
         logger = Runtime.getInstance().getLogger();
     }
-    
+
     public static String getVersion() {
         try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
             if (input == null) {
@@ -37,11 +37,12 @@ public class Main extends JavaPlugin {
         return instance;
     }
 
-
     @Override
     public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).silentLogs(true).skipReloadDatapacks(true).shouldHookPaperReload(false));
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).silentLogs(true)
+                .skipReloadDatapacks(true).shouldHookPaperReload(false));
     }
+
     @Override
     public void onEnable() {
         CommandAPI.onEnable();
