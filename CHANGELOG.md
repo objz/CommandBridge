@@ -1,6 +1,4 @@
-**[v2.2.5] - 2025-05-19**
+**[v2.2.6] - 2025-06-07**
 
-- fixed issue [#16](https://github.com/objz/CommandBridge/issues/16)
-- no longer responds with 'reconnect successfull' when reconnect failed
-
+- Improved feedback when processing player commands sent from the console
 
