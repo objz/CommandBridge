@@ -1,4 +1,3 @@
-import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.nio.file.Files
 
@@ -6,21 +5,9 @@ plugins {
     id("java")
 }
 
-val pversion: String by gradle.extra
-
-group = "dev.consti"
-version = pversion
-
 repositories {
-    mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.william278.net/releases/") }
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
 }
 
 dependencies {
@@ -28,13 +15,11 @@ dependencies {
     implementation("org.json:json:20240303")
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    // implementation("dev.consti:foundationlib:2.2.4")
     compileOnly("net.william278:papiproxybridge:1.7.2")
     implementation("org.bstats:bstats-velocity:3.1.0")
 
     implementation(project(":core"))
 }
-
 
 tasks.register("modifyVelocityPluginJson") {
     doLast {
@@ -45,10 +30,10 @@ tasks.register("modifyVelocityPluginJson") {
             val jsonContent = Files.readString(jsonFile.toPath())
             val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
 
-            jsonObject.addProperty("version", pversion)
+            jsonObject.addProperty("version", version.toString())
 
             Files.writeString(jsonFile.toPath(), jsonObject.toString())
-            println("velocity-plugin.json updated successfully with version ${pversion}")
+            println("velocity-plugin.json updated successfully with version $version")
         } else {
             println("velocity-plugin.json not found")
         }
@@ -61,14 +46,11 @@ tasks.register("generatePluginProperties") {
 
         val propertiesFile = layout.buildDirectory.file("resources/main/plugin.properties").get().asFile
         propertiesFile.parentFile.mkdirs()
-        propertiesFile.writeText("""
-            plugin.version=${pversion}
-        """.trimIndent())
+        propertiesFile.writeText("plugin.version=$version")
 
         println("Successfully generated plugin.properties file")
     }
 }
-
 
 tasks.named("processResources") {
     dependsOn("generatePluginProperties")

@@ -10,12 +10,21 @@ val pluginType: String by gradle.extra
 val pluginVersions: List<String> by gradle.extra
 val pluginLoaders: List<String> by gradle.extra
 
-group = "dev.consti"
+allprojects {
+    group = "dev.consti"
+    version = pversion
 
-version = pversion
+    repositories {
+        mavenCentral()
+    }
 
-repositories {
-    mavenCentral()
+    if (plugins.hasPlugin("java")) {
+        java {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(21))
+            }
+        }
+    }
 }
 
 dependencies {
@@ -23,8 +32,6 @@ dependencies {
     implementation(project(":velocity"))
     implementation(project(":core"))
 }
-
-java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
 
 tasks {
     shadowJar {
@@ -34,51 +41,30 @@ tasks {
         relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
         relocate("org.bstats", "dev.consti.commandbridge.bstats")
 
-        from(
-                project(":paper")
-                        .takeIf { it.plugins.hasPlugin("java") }
-                        ?.sourceSets
-                        ?.main
-                        ?.get()
-                        ?.output
-                        ?: files()
-        )
-        from(
-                project(":velocity")
-                        .takeIf { it.plugins.hasPlugin("java") }
-                        ?.sourceSets
-                        ?.main
-                        ?.get()
-                        ?.output
-                        ?: files()
-        )
-        from(
-                project(":core")
-                        .takeIf { it.plugins.hasPlugin("java") }
-                        ?.sourceSets
-                        ?.main
-                        ?.get()
-                        ?.output
-                        ?: files()
-        )
+        listOf(":paper", ":velocity", ":core").forEach { projectPath ->
+            from(
+                project(projectPath)
+                    .takeIf { it.plugins.hasPlugin("java") }
+                    ?.sourceSets?.main?.get()?.output
+                    ?: files()
+            )
+        }
 
         configurations = listOf(project.configurations.runtimeClasspath.get())
         mergeServiceFiles()
     }
 
-    val copyToPaperPlugins by
-            registering(Copy::class) {
-                dependsOn(shadowJar)
-                from(shadowJar.get().outputs.files)
-                into("/mnt/Storage/Server-TEST/CommandBridge/Paper/plugins")
-            }
+    val copyToPaperPlugins by registering(Copy::class) {
+        dependsOn(shadowJar)
+        from(shadowJar.get().outputs.files)
+        into("/mnt/Storage/Server-TEST/CommandBridge/Paper/plugins")
+    }
 
-    val copyToVelocityPlugins by
-            registering(Copy::class) {
-                dependsOn(shadowJar)
-                from(shadowJar.get().outputs.files)
-                into("/mnt/Storage/Server-TEST/CommandBridge/Velocity/plugins")
-            }
+    val copyToVelocityPlugins by registering(Copy::class) {
+        dependsOn(shadowJar)
+        from(shadowJar.get().outputs.files)
+        into("/mnt/Storage/Server-TEST/CommandBridge/Velocity/plugins")
+    }
 
     register("dev") { dependsOn(copyToPaperPlugins, copyToVelocityPlugins) }
 }

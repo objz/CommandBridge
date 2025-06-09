@@ -1,10 +1,9 @@
 buildscript {
     repositories {
-      mavenCentral()
+        mavenCentral()
     }
     dependencies {
         classpath("org.yaml:snakeyaml:2.3")
-
     }
 }
 
@@ -16,28 +15,14 @@ plugins {
     id("com.gradleup.shadow") version "8.3.3"
 }
 
-val pversion: String by gradle.extra
-
-group = "dev.consti"
-version = pversion
-
 repositories {
-    mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.codemc.org/repository/maven-public/") }
-    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")}
-    maven { url = uri("https://repo.extendedclip.com/releases/")}
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
+    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
+    maven { url = uri("https://repo.extendedclip.com/releases/") }
 }
 
 dependencies {
-    // compileOnly("io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT")
-    // compileOnly("org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT")
     implementation("org.json:json:20240303")
     compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.7")
@@ -46,69 +31,39 @@ dependencies {
     compileOnly("me.clip:placeholderapi:2.11.6")
     annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")
 
-
     implementation(project(":core"))
 }
 
+fun createYamlModificationTask(taskName: String, fileName: String, displayName: String) = 
+    tasks.register(taskName) {
+        doLast {
+            val yamlFile = file("src/main/resources/$fileName")
 
-tasks.register("modifyPaperPluginYaml") {
-    doLast {
-        
-        val yamlFile = file("src/main/resources/paper-plugin.yml") 
+            if (yamlFile.exists()) {
+                println("Found $displayName")
 
-        if (yamlFile.exists()) {
-            println("Found paper-plugin.yml")
+                val options = DumperOptions().apply {
+                    defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+                }
+                val yaml = Yaml(options)
 
-            val options = DumperOptions().apply {
-                defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+                val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
+                yamlContent["version"] = version
+
+                yamlFile.writer().use { writer ->
+                    yaml.dump(yamlContent, writer)
+                }
+
+                println("$displayName updated successfully with version $version")
+            } else {
+                println("$displayName not found!")
             }
-            val yaml = Yaml(options)
-
-            val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
-
-            yamlContent["version"] = pversion
-
-            yamlFile.writer().use { writer ->
-                yaml.dump(yamlContent, writer)
-            }
-
-            println("paper-plugin.yml updated successfully with version ${pversion}")
-        } else {
-            println("paper-plugin.yml not found!")
         }
     }
-}
 
-tasks.register("modifyLegacyPluginYaml") {
-    doLast {
-        
-        val yamlFile = file("src/main/resources/plugin.yml") 
-
-        if (yamlFile.exists()) {
-            println("Found legacy plugin.yml")
-
-            val options = DumperOptions().apply {
-                defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
-            }
-            val yaml = Yaml(options)
-
-            val yamlContent = yaml.load<Map<String, Any>>(yamlFile.reader()).toMutableMap()
-
-            yamlContent["version"] = pversion
-
-            yamlFile.writer().use { writer ->
-                yaml.dump(yamlContent, writer)
-            }
-
-            println("legacy plugin.yml updated successfully with version ${pversion}")
-        } else {
-            println("legacy plugin.yml not found!")
-        }
-    }
-}
+val modifyPaperPluginYaml = createYamlModificationTask("modifyPaperPluginYaml", "paper-plugin.yml", "paper-plugin.yml")
+val modifyLegacyPluginYaml = createYamlModificationTask("modifyLegacyPluginYaml", "plugin.yml", "legacy plugin.yml")
 
 tasks.named("processResources") {
-    dependsOn("modifyPaperPluginYaml")
-    dependsOn("modifyLegacyPluginYaml")
+    dependsOn(modifyPaperPluginYaml, modifyLegacyPluginYaml)
 }
-
