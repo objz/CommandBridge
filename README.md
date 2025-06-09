@@ -1,105 +1,68 @@
-### **CommandBridge**
+![CommandBridge](https://cdn.modrinth.com/data/cached_images/ddfd1c06df1ab99ee271859ee78e5e4d6d34ac49_0.webp)
 
-![overview](https://cdn.modrinth.com/data/cached_images/ddfd1c06df1ab99ee271859ee78e5e4d6d34ac49_0.webp)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Release](https://img.shields.io/github/v/release/objz/CommandBridge)](https://github.com/objz/CommandBridge/releases)
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/commandbridge?logo=modrinth\&label=downloads)](https://modrinth.com/plugin/commandbridge)
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.java.net/projects/jdk/21/)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.20.x--1.21.x-green.svg)](https://minecraft.net)
+[![Paper](https://img.shields.io/badge/Server-Paper-blue.svg)](https://papermc.io/)
+[![Velocity](https://img.shields.io/badge/Proxy-Velocity-purple.svg)](https://velocitypowered.com/)
 
-This plugin connects **Velocity** and **Paper** servers seamlessly, enabling **cross-server command execution**. Here's what it does exactly:
+[Website](https://cb.objz.dev) / [Discord](https://discord.gg/QPqBYb44ce) / [Modrinth](https://modrinth.com/plugin/commandbridge) / [Issues](https://github.com/objz/CommandBridge/issues)
 
-- **Custom Scripts**: Define commands in scripts for both server types.  
-- **Two-Way Communication**:  
-   - Run a command on Velocity → Matching commands execute on Paper.  
-   - Run a command on Paper → Matching commands execute on Velocity.  
-- **WebSocket-Powered**: Ensures fast, reliable and **realtime** communication between servers.  
-- **Placeholders Supported**: Use placeholders for dynamic command execution.  
+CommandBridge seamlessly connects **Velocity** and **Paper** servers using WebSockets, enabling cross-server commands.
 
-With this plugin, you can create **global gameplay experiences** that feel smooth and connected!
+## Features
 
----
+* Real-time WebSocket communication
+* Bidirectional command execution
+* Flexible scripting with placeholder support
+* Secure, zero-player dependency
+* High-performance, minimal latency
 
-### Requirements
+## Supported Platforms
 
-**CommandBridge** v2.0.0 introduces new requirements and updates:  
+* **Paper**: 1.20.x - 1.21.x (Primary)
+* **Velocity**: Latest recommended
+* **Java**: Version 21 (required)
 
-- **Java 21 Required**: The server must run on Java 21.  
-- **Minecraft Compatibility**: Fully compatible with Minecraft 1.21.x and 1.20.x.
-- **Single JAR File**: Only download `CommandBridge-XXX-all.jar`.  
-- **Dual Placement**: The JAR must be placed in both the target Paper server and the Velocity server to function.  
-- **Plugin Compatibility**: Built for Paper servers, though it may work on other software (not tested).  
-
-> **Important**: These requirements apply only to versions **2.0.0** and above.
-
----
-
-### News
-
-The **2.0.0 release** brings major updates and improvements:  
-
-- **Rewritten Code**: Cleaner, faster, and more reliable.  
-- **WebSocket Technology**: Replaces plugin messaging to fix issues where messages could not be sent if no players were online.  
-- **Alpha Release**: Still in early stages, so expect some rough edges.  
-
----
-
-### Installation (Short Version)
+## Installation
 
 For detailed instructions, visit the [website](https://cb.objz.dev).
 
-1. **Add the JAR**: Place the plugin JAR in the `plugins` folder of both the Paper and Velocity servers.  
-2. **Restart Servers**: Restart both servers. After the restart, a `secret.key` file will be generated in the Velocity server's `plugins/CommandBridge` folder.  
-3. **Secure the Key**:  
-   - Open `secret.key` on the Velocity server.  
-   - Copy the key and paste it into the `secret` field in the `config.yml` of all Paper servers.  
-   - **Do not share this key.**  
-4. **Open a Port**:  
-   - Choose an unused port for the Velocity server.  
-   - Configure this port in the `config.yml` of both Velocity and Paper servers.  
-5. **Set Server IP**:  
-   - Find your Velocity server's IP address (plain IP, no domain).  
-   - Update the `host` field in Velocity's `config.yml` and the `remote` field in all Paper servers with this IP.  
-6. **Set Identifiers**:  
-   - In Velocity: Set a `server-id` (any name you prefer).  
-   - In Paper: Set a matching `client-id`.  
-7. **Restart Order**: Restart the Velocity server **before** the Paper servers.  
+1. Place the JAR in the `plugins` folder of both Paper and Velocity.
+2. Restart servers to generate configs.
+3. Copy `secret.key` from Velocity to Paper's `config.yml`.
+4. Choose and set an unused port in configs.
+5. Set Velocity's IP in Paper's `remote` and Velocity's `host` fields.
+6. Set matching `server-id` (Velocity) and `client-id` (Paper).
+7. Restart Velocity, then Paper servers.
 
-After setup, you should see logs like this in the Velocity console:  
+Check Velocity logs for successful connection:
+
 ```plaintext
-[21:10:10 INFO] [CommandBridge]: New connection attempt from /127.0.0.1:42918
-[21:10:10 INFO] [CommandBridge]: Client authenticated successfully: /127.0.0.1:42918
-[21:10:10 INFO] [CommandBridge]: Added connected client: lobby
+[INFO] [CommandBridge]: Client authenticated successfully
+[INFO] [CommandBridge]: Added connected client: lobby
 ```
 
-Now you're ready to create scripts!  
+## Building
 
----
+* Requires **Java 21**, **Git**
 
-### What Comes in the Future
+```bash
+git clone https://github.com/objz/CommandBridge.git
+cd CommandBridge
+./gradlew shadowJar
+```
 
-Exciting features and improvements are planned for **CommandBridge**:
+## Roadmap
 
-- **Multiple Velocity Server Support**: Connect additional Velocity servers to act as clients.  
-- **GUI Menu for Scripts**: Create and manage scripts with an easy-to-use graphical interface.  
-- **Bug Fixes**: Continuous improvements to ensure stability and performance.   
-- **Dump Command & Tools**: Integration with a website and Discord bot for troubleshooting and support.  
-- **And More!**  
+* GUI Script Manager
+* Multi-Velocity support
+* Plugin API
 
-Stay tuned for updates and new features! 🎉  
+## Help & Documentation
 
----
-
-### Help or Issues
-
-- Report issues on [GitHub](https://github.com/objz/CommandBridge/issues).  
-- Join the [Discord server](https://discord.gg/QPqBYb44ce) for support.  
-
----
-
-### Metrics Collection
-
-This plugin collects anonymous server statistics via [bStats](https://bstats.org/), an open-source statistics service for Minecraft plugins. You can disable this in `plugins/bStats/config.yml`.  
-
-![bStats](https://bstats.org/signatures/velocity/CommandBridge.svg)
-
----
-
-### Contributing
-
-Join the [Discord server](https://discord.gg/QPqBYb44ce) or visit the [GitHub](https://github.com/objz/CommandBridge) for more information on contributing to the project.
+* [Issues](https://github.com/objz/CommandBridge/issues)
+* [Discord](https://discord.gg/QPqBYb44ce)
+* [Docs](https://cb.objz.dev)
