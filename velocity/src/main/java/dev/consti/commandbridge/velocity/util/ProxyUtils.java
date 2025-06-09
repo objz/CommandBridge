@@ -3,7 +3,7 @@ package dev.consti.commandbridge.velocity.util;
 import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 
 public class ProxyUtils {
     private static ProxyServer proxyServer;

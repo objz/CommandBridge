@@ -2,7 +2,7 @@ package dev.consti.commandbridge.velocity.helper.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -15,7 +15,8 @@ public class ListCommand {
                     CommandSource source = context.getSource();
 
                     if (!source.hasPermission("commandbridge.admin")) {
-                        source.sendMessage(Component.text("You do not have permission to list connected clients", NamedTextColor.RED));
+                        source.sendMessage(Component.text("You do not have permission to list connected clients",
+                                NamedTextColor.RED));
                         return 0;
                     }
 
@@ -24,7 +25,8 @@ public class ListCommand {
                                 Component.text("No clients are currently connected").color(NamedTextColor.RED));
                     } else {
                         String clientsString = String.join(", ", connectedClients);
-                        source.sendMessage(Component.text("===== Connected Clients =======").color(NamedTextColor.GOLD));
+                        source.sendMessage(
+                                Component.text("===== Connected Clients =======").color(NamedTextColor.GOLD));
                         source.sendMessage(Component.text(clientsString).color(NamedTextColor.GREEN));
                         source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
                     }
@@ -32,5 +34,3 @@ public class ListCommand {
                 });
     }
 }
-
-

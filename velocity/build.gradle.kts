@@ -15,14 +15,6 @@ repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
     maven { url = uri("https://repo.william278.net/releases/") }
-    maven {
-        name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/objz/FoundationLib")
-        credentials {
-            username = "objz"
-            password = System.getenv("GITHUB_TOKEN")
-        }
-    }
 }
 
 java {
@@ -32,11 +24,15 @@ java {
 }
 
 dependencies {
+    implementation("io.netty:netty-all:4.2.0.Final")
+    implementation("org.json:json:20240303")
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    implementation("dev.consti:foundationlib:2.2.4")
+    // implementation("dev.consti:foundationlib:2.2.4")
     compileOnly("net.william278:papiproxybridge:1.7.2")
     implementation("org.bstats:bstats-velocity:3.1.0")
+
+    implementation(project(":core"))
 }
 
 

@@ -1,7 +1,7 @@
 package dev.consti.commandbridge.velocity.helper;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 
 import java.util.HashMap;
 import java.util.List;

@@ -12,8 +12,8 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import dev.consti.commandbridge.paper.core.Runtime;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ConfigManager;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ConfigManager;
 
 public class Ping {
     private static void startPing(Logger logger, Runnable onPong, String url, int port, int maxAttempts) {

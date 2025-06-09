@@ -4,8 +4,8 @@ import org.bukkit.Bukkit;
 
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.VersionChecker;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.VersionChecker;
 
 public class Startup {
     private final Logger logger;
@@ -26,7 +26,7 @@ public class Startup {
             logger.setDebug(debugMode);
             if (SchedulerAdapter.isFolia()) {
                 logger.info("Running on Folia!");
-            } 
+            }
             logger.info("Debug mode set to: {}", debugMode);
 
             logger.debug("Copying default scripts...");

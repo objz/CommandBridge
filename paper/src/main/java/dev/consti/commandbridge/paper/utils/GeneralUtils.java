@@ -6,7 +6,7 @@ import java.util.List;
 import org.bukkit.ChatColor;
 
 import dev.consti.commandbridge.paper.Main;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;

@@ -2,7 +2,7 @@ package dev.consti.commandbridge.velocity.helper;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;

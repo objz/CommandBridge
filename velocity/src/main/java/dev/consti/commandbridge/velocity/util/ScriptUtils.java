@@ -2,8 +2,8 @@ package dev.consti.commandbridge.velocity.util;
 
 import dev.consti.commandbridge.velocity.command.CommandRegistrar;
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ScriptManager;
 
 public class ScriptUtils extends ScriptManager {
     private final Logger logger;
@@ -25,8 +25,7 @@ public class ScriptUtils extends ScriptManager {
             } catch (Exception e) {
                 logger.error("Failed to register script '{}' : {}",
                         scriptConfig.getName(),
-                        logger.getDebug() ? e : e.getMessage()
-                );
+                        logger.getDebug() ? e : e.getMessage());
             }
         } else {
             logger.info("Skipped disabled script: {}", scriptConfig.getName());

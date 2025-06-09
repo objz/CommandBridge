@@ -16,27 +16,17 @@ version = pversion
 
 repositories {
     mavenCentral()
-    maven {
-        name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/objz/FoundationLib")
-        credentials {
-            username = "objz"
-            password = System.getenv("GITHUB_TOKEN")
-        }
-    }
-    maven { url = uri("https://repo.william278.net/releases/") }
-    maven { url = uri("https://repo.extendedclip.com/releases/") }
 }
 
 dependencies {
     implementation(project(":paper"))
     implementation(project(":velocity"))
+    implementation(project(":core"))
 }
 
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
 
 tasks {
-    // Configure the existing shadowJar task, don't register a new one
     shadowJar {
         dependsOn(":paper:shadowJar")
         manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
@@ -44,7 +34,6 @@ tasks {
         relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
         relocate("org.bstats", "dev.consti.commandbridge.bstats")
 
-        // Include the compiled outputs of core, paper, and velocity
         from(
                 project(":paper")
                         .takeIf { it.plugins.hasPlugin("java") }
@@ -56,6 +45,15 @@ tasks {
         )
         from(
                 project(":velocity")
+                        .takeIf { it.plugins.hasPlugin("java") }
+                        ?.sourceSets
+                        ?.main
+                        ?.get()
+                        ?.output
+                        ?: files()
+        )
+        from(
+                project(":core")
                         .takeIf { it.plugins.hasPlugin("java") }
                         ?.sourceSets
                         ?.main

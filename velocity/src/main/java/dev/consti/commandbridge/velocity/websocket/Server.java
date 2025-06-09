@@ -5,13 +5,13 @@ import java.util.*;
 import com.velocitypowered.api.proxy.Player;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
-import dev.consti.foundationlib.json.MessageBuilder;
-import dev.consti.foundationlib.json.MessageParser;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.websocket.SimpleWebSocketServer;
+import dev.consti.commandbridge.core.json.MessageBuilder;
+import dev.consti.commandbridge.core.json.MessageParser;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.websocket.WebSocketServer;
 import io.netty.channel.Channel;
 
-public class Server extends SimpleWebSocketServer {
+public class Server extends WebSocketServer {
     private final Logger logger;
     private final Map<String, Channel> clientConnections = new HashMap<>();
 
@@ -60,7 +60,7 @@ public class Server extends SimpleWebSocketServer {
             } else {
                 logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
             }
-        } 
+        }
     }
 
     private void handleCommandRequest(Channel webSocket, String message) {

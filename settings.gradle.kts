@@ -1,5 +1,5 @@
 rootProject.name = "CommandBridge"
-include("paper", "velocity")
+include("paper", "velocity", "core")
 
 
 gradle.extra["pversion"] = "2.2.6"

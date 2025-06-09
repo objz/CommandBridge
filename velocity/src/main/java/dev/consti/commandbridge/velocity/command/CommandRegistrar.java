@@ -13,8 +13,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.commandbridge.velocity.util.ProxyUtils;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ScriptManager;
 
 public class CommandRegistrar {
     private final Logger logger;
@@ -28,7 +28,6 @@ public class CommandRegistrar {
         this.helper = Runtime.getInstance().getHelper();
     }
 
-
     public void unregisterAllCommands() {
         for (String command : registeredCommands.keySet()) {
             try {
@@ -38,31 +37,30 @@ public class CommandRegistrar {
             } catch (Exception e) {
                 logger.error("Failed to unregister command '{}' : {}",
                         command,
-                        logger.getDebug() ? e : e.getMessage()
-                );
+                        logger.getDebug() ? e : e.getMessage());
             }
         }
         registeredCommands.clear();
         logger.info("All registered commands have been unregistered.");
     }
 
-
     public void registerCommand(ScriptManager.ScriptConfig script) {
         String commandName = script.getName();
         try {
-            LiteralArgumentBuilder<CommandSource> commandBuilder = LiteralArgumentBuilder.<CommandSource>literal(commandName)
+            LiteralArgumentBuilder<CommandSource> commandBuilder = LiteralArgumentBuilder
+                    .<CommandSource>literal(commandName)
                     .executes(context -> {
                         logger.debug("Executing base command: {}", commandName);
                         return helper.executeScriptCommands(context.getSource(), script, new String[0]);
                     });
-            RequiredArgumentBuilder<CommandSource, String> argsArgument =
-                    RequiredArgumentBuilder.<CommandSource, String>argument("args", StringArgumentType.greedyString())
-                            .executes(context -> {
-                                String argsString = context.getArgument("args", String.class);
-                                logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
-                                String[] args = argsString.split(" ");
-                                return helper.executeScriptCommands(context.getSource(), script, args);
-                            });
+            RequiredArgumentBuilder<CommandSource, String> argsArgument = RequiredArgumentBuilder
+                    .<CommandSource, String>argument("args", StringArgumentType.greedyString())
+                    .executes(context -> {
+                        String argsString = context.getArgument("args", String.class);
+                        logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
+                        String[] args = argsString.split(" ");
+                        return helper.executeScriptCommands(context.getSource(), script, args);
+                    });
             commandBuilder.then(argsArgument);
 
             // LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
@@ -75,10 +73,8 @@ public class CommandRegistrar {
             logger.error(
                     "Failed to register command '{}' : {}",
                     commandName,
-                    logger.getDebug() ? e : e.getMessage()
-            );
+                    logger.getDebug() ? e : e.getMessage());
         }
     }
-
 
 }
