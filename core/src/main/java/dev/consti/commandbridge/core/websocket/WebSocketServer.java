@@ -225,7 +225,7 @@ public abstract class WebSocketServer {
                 sendMessage(message, conn);
             }
         }
-        logger.debug("Broadcast client message");
+        logger.debug("Broadcast server message");
     }
 
     private class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> {
