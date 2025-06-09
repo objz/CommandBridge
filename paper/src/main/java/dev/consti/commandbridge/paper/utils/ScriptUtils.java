@@ -3,8 +3,8 @@ package dev.consti.commandbridge.paper.utils;
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.command.CommandRegistrar;
 import dev.consti.commandbridge.paper.core.Runtime;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ScriptManager;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ScriptManager;
 
 public class ScriptUtils extends ScriptManager {
     private final Logger logger;
@@ -26,8 +26,7 @@ public class ScriptUtils extends ScriptManager {
             } catch (Exception e) {
                 logger.error("Failed to register script '{}' : {}",
                         scriptConfig.getName(),
-                        logger.getDebug() ? e : e.getMessage()
-                );
+                        logger.getDebug() ? e : e.getMessage());
             }
         } else {
             logger.info("Skipped disabled script: {}", scriptConfig.getName());
@@ -42,10 +41,7 @@ public class ScriptUtils extends ScriptManager {
                             Runtime.getInstance().getRegistrar().unregisterAllCommands();
                             logger.debug("All commands have been unloaded");
                             callback.run();
-                });
+                        });
     }
-
-
-
 
 }

@@ -1,6 +1,5 @@
 package dev.consti.commandbridge.velocity.core;
 
-
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.command.CommandDispatcher;
 import dev.consti.commandbridge.velocity.command.CommandForwarder;
@@ -9,8 +8,8 @@ import dev.consti.commandbridge.velocity.util.GeneralUtils;
 import dev.consti.commandbridge.velocity.util.ScriptUtils;
 import dev.consti.commandbridge.velocity.websocket.HttpServer;
 import dev.consti.commandbridge.velocity.websocket.Server;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ConfigManager;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ConfigManager;
 
 public class Runtime {
     private static Runtime instance;
@@ -25,7 +24,8 @@ public class Runtime {
     private CommandDispatcher commandDispatcher;
     private HttpServer httpServer;
 
-    private Runtime() {}
+    private Runtime() {
+    }
 
     public static synchronized Runtime getInstance() {
         if (instance == null) {

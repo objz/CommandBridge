@@ -1,6 +1,6 @@
 package dev.consti.commandbridge.velocity.websocket;
 
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -16,16 +16,13 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import javax.net.ssl.SSLHandshakeException;
 
-
 @Sharable
-public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest>{
+public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest> {
     private Logger logger;
 
-    
     public HttpServer(Logger logger) {
         this.logger = logger;
     }
-
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) {
@@ -43,10 +40,9 @@ public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest>{
 
     private void sendTextResponse(ChannelHandlerContext ctx, HttpResponseStatus status, String content) {
         FullHttpResponse response = new DefaultFullHttpResponse(
-            HTTP_1_1,
-            status,
-            ctx.alloc().buffer().writeBytes(content.getBytes())
-        );
+                HTTP_1_1,
+                status,
+                ctx.alloc().buffer().writeBytes(content.getBytes()));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain");
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
         ctx.writeAndFlush(response);

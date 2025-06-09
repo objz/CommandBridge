@@ -8,8 +8,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.commandbridge.velocity.util.ProxyUtils;
-import dev.consti.foundationlib.json.MessageParser;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.json.MessageParser;
+import dev.consti.commandbridge.core.Logger;
 
 public class CommandDispatcher {
     private final ProxyServer proxy;
@@ -67,8 +67,7 @@ public class CommandDispatcher {
             }
         } catch (Exception e) {
             logger.error("Error while processing player: {}",
-                    logger.getDebug() ? e : e.getMessage()
-            );
+                    logger.getDebug() ? e : e.getMessage());
         }
     }
 }

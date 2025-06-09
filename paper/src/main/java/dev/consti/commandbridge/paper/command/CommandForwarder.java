@@ -10,9 +10,9 @@ import org.bukkit.entity.Player;
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ScriptManager;
-import dev.consti.foundationlib.utils.StringParser;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ScriptManager;
+import dev.consti.commandbridge.core.utils.StringParser;
 import me.clip.placeholderapi.PlaceholderAPI;
 
 public class CommandForwarder {

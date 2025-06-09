@@ -16,8 +16,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.commandbridge.velocity.util.ProxyUtils;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.VersionChecker;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.VersionChecker;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;

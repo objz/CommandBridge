@@ -3,13 +3,12 @@ package dev.consti.commandbridge.velocity.helper.command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import dev.consti.commandbridge.velocity.Main;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.VersionChecker;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.VersionChecker;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-
 
 public class VersionCommand {
     public static LiteralArgumentBuilder<CommandSource> build(Logger logger) {
@@ -17,7 +16,8 @@ public class VersionCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     if (!source.hasPermission("commandbridge.admin")) {
-                        source.sendMessage(Component.text("You do not have permission to check the version", NamedTextColor.RED));
+                        source.sendMessage(
+                                Component.text("You do not have permission to check the version", NamedTextColor.RED));
                         return 0;
                     }
 
@@ -47,7 +47,8 @@ public class VersionCommand {
                                                     Component.text("here")
                                                             .color(NamedTextColor.BLUE)
                                                             .decorate(TextDecoration.UNDERLINED)
-                                                            .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                                                            .clickEvent(ClickEvent
+                                                                    .openUrl(VersionChecker.getDownloadUrl()))));
                             logger.warn("A newer version is available: {}", latestVersion);
                         } else {
                             source.sendMessage(
@@ -60,4 +61,3 @@ public class VersionCommand {
                 });
     }
 }
-

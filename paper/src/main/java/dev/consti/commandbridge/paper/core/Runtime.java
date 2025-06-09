@@ -5,8 +5,8 @@ import dev.consti.commandbridge.paper.command.CommandRegistrar;
 import dev.consti.commandbridge.paper.utils.GeneralUtils;
 import dev.consti.commandbridge.paper.utils.ScriptUtils;
 import dev.consti.commandbridge.paper.websocket.Client;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.ConfigManager;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.ConfigManager;
 import dev.consti.commandbridge.paper.command.CommandExecutor;
 import dev.consti.commandbridge.paper.command.CommandForwarder;
 
@@ -22,7 +22,8 @@ public class Runtime {
     private GeneralUtils generalUtils;
     private CommandExecutor commandExecutor;
 
-    private Runtime() {}
+    private Runtime() {
+    }
 
     public static synchronized Runtime getInstance() {
         if (instance == null) {

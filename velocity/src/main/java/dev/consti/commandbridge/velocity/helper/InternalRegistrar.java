@@ -12,7 +12,7 @@ import dev.consti.commandbridge.velocity.helper.command.ReloadCommand;
 import dev.consti.commandbridge.velocity.helper.command.StartCommand;
 import dev.consti.commandbridge.velocity.helper.command.StopCommand;
 import dev.consti.commandbridge.velocity.helper.command.VersionCommand;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -34,11 +34,9 @@ public class InternalRegistrar {
     public void registerCommands() {
         logger.info("Registering commands for CommandBridge...");
         try {
-            // Build the main command
             LiteralArgumentBuilder<CommandSource> commandBridgeBuilder = LiteralArgumentBuilder
                     .<CommandSource>literal("commandbridge")
                     .executes(context -> {
-                        // Default action, for example show help
                         if (context.getSource().hasPermission("commandbridge.admin")) {
                             return HelpCommand.sendHelpMessage(context.getSource(), logger);
                         }
@@ -47,7 +45,6 @@ public class InternalRegistrar {
                         return 0;
                     });
 
-            // Append subcommands
             commandBridgeBuilder.then(ReloadCommand.build(Runtime.getInstance().getGeneralUtils(), logger));
             commandBridgeBuilder.then(VersionCommand.build(logger));
             commandBridgeBuilder.then(HelpCommand.build(logger));
@@ -59,7 +56,7 @@ public class InternalRegistrar {
 
             LiteralCommandNode<CommandSource> commandBridgeNode = commandBridgeBuilder.build();
 
-             Runtime.getInstance().getGeneralUtils().setMeta(proxy.getCommandManager()
+            Runtime.getInstance().getGeneralUtils().setMeta(proxy.getCommandManager()
                     .metaBuilder("commandbridge")
                     .aliases("cb")
                     .plugin(plugin)

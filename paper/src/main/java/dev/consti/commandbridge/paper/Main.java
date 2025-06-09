@@ -6,7 +6,7 @@ import java.util.Properties;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.consti.commandbridge.paper.core.Runtime;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.Logger;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
 

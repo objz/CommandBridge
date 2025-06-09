@@ -4,8 +4,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import dev.consti.commandbridge.velocity.core.Runtime;
 import dev.consti.commandbridge.velocity.util.GeneralUtils;
-import dev.consti.foundationlib.json.MessageBuilder;
-import dev.consti.foundationlib.logging.Logger;
+import dev.consti.commandbridge.core.json.MessageBuilder;
+import dev.consti.commandbridge.core.Logger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -22,7 +22,6 @@ public class ReloadCommand {
                     }
 
                     try {
-                        // Logic from original reload command
                         Runtime.getInstance().getRegistrar().unregisterAllCommands();
                         logger.debug("All commands have been unregistered");
 
@@ -31,7 +30,8 @@ public class ReloadCommand {
 
                         logger.setDebug(
                                 Boolean.parseBoolean(Runtime.getInstance().getConfig().getKey("config.yml", "debug")));
-                        logger.info("Debug mode set to: {}", Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
+                        logger.info("Debug mode set to: {}",
+                                Runtime.getInstance().getConfig().getKey("config.yml", "debug"));
 
                         Runtime.getInstance().getScriptUtils().reload();
                         logger.debug("Scripts have been reloaded");

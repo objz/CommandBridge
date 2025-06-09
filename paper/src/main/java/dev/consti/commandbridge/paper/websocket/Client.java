@@ -3,13 +3,13 @@ package dev.consti.commandbridge.paper.websocket;
 import dev.consti.commandbridge.paper.Main;
 import dev.consti.commandbridge.paper.core.Runtime;
 import dev.consti.commandbridge.paper.utils.SchedulerAdapter;
-import dev.consti.foundationlib.json.MessageBuilder;
-import dev.consti.foundationlib.json.MessageParser;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.websocket.SimpleWebSocketClient;
+import dev.consti.commandbridge.core.json.MessageBuilder;
+import dev.consti.commandbridge.core.json.MessageParser;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.websocket.WebSocketClient;
 import org.bukkit.entity.Player;
 
-public class Client extends SimpleWebSocketClient {
+public class Client extends WebSocketClient {
     private final Logger logger;
 
     public Client(Logger logger, String secret) {

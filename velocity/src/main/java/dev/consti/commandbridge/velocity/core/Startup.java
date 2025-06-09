@@ -1,10 +1,9 @@
 package dev.consti.commandbridge.velocity.core;
 
-
 import dev.consti.commandbridge.velocity.Main;
 import dev.consti.commandbridge.velocity.websocket.Server;
-import dev.consti.foundationlib.logging.Logger;
-import dev.consti.foundationlib.utils.VersionChecker;
+import dev.consti.commandbridge.core.Logger;
+import dev.consti.commandbridge.core.utils.VersionChecker;
 
 public class Startup {
     private final Logger logger;
@@ -34,8 +33,7 @@ public class Startup {
             runtime.getServer().startServer(
                     Integer.parseInt(runtime.getConfig().getKey("config.yml", "port")),
                     runtime.getConfig().getKey("config.yml", "host"),
-                    runtime.getConfig().getKey("config.yml", "san")
-            );
+                    runtime.getConfig().getKey("config.yml", "san"));
 
             logger.debug("Setting up version checker...");
             VersionChecker.setProjectId("wIuI4ru2");
@@ -55,8 +53,7 @@ public class Startup {
             }
         } catch (Exception e) {
             logger.error("Failed to initialize CommandBridge: {}",
-                    logger.getDebug() ? e : e.getMessage()
-            );
+                    logger.getDebug() ? e : e.getMessage());
         }
     }
 
