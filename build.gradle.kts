@@ -38,8 +38,8 @@ tasks {
         dependsOn(":paper:shadowJar")
         manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
 
-        relocate("dev.jorel.commandapi", "dev.consti.commandbridge.commandapi")
-        relocate("org.bstats", "dev.consti.commandbridge.bstats")
+        relocate("dev.jorel.commandapi", "dev.objz.commandbridge.commandapi")
+        relocate("org.bstats", "dev.objz.commandbridge.bstats")
 
         listOf(":paper", ":velocity", ":core").forEach { projectPath ->
             from(
