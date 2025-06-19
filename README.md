@@ -44,7 +44,6 @@ Architecture is three modules:
 * `velocity` – plugin impl + server
 * `paper` – plugin impl + client
 
----
 
 Still to come:
 
@@ -52,12 +51,8 @@ Still to come:
 * Multi-Velocity support 
 * Public API for extensions, message types, etc
 
----
-
 [Website](https://cb.objz.dev)
 [Discord](https://discord.gg/QPqBYb44ce)
-
----
 
 Licensed under GPLv3. Don’t sell it, don’t strip the license, thanks!
 
