@@ -5,63 +5,59 @@
 [![Paper](https://img.shields.io/badge/Server-Paper-blue.svg)](https://papermc.io/)
 [![Velocity](https://img.shields.io/badge/Proxy-Velocity-purple.svg)](https://velocitypowered.com/)
 
-[Website](https://cb.objz.dev) / [Discord](https://discord.gg/QPqBYb44ce) / [Modrinth](https://modrinth.com/plugin/commandbridge) / [Issues](https://github.com/objz/CommandBridge/issues)
+---
 
-![CommandBridge](https://cdn.modrinth.com/data/cached_images/ddfd1c06df1ab99ee271859ee78e5e4d6d34ac49_0.webp)
+CommandBridge connects Velocity and Paper servers using WebSockets. 
 
-CommandBridge seamlessly connects **Velocity** and **Paper** servers using WebSockets, enabling cross-server commands.
+- Supports Minecraft 1.20.x to 1.21.x (Not for 1.8, not sorry).
 
-## Features
+- Java 21 only.
 
-- Real-time WebSocket communication
-- Bidirectional command execution
-- Flexible scripting with placeholder support
-- Secure, zero-player dependency
-- High-performance, minimal latency
+- Paper, Folia, Purpur, Bukkit, Spigot, Velocity, Waterfall.
 
-## Supported Platforms
-
-- **Paper**: 1.20.x - 1.21.x (Primary)
-- **Velocity**: Latest recommended
-- **Java**: Version 21 (required)
-
-## Installation
-
-For detailed instructions, visit the [website](https://cb.objz.dev).
-
-1. Place the JAR in the `plugins` folder of both Paper and Velocity.
-2. Restart servers to generate configs.
-3. Copy `secret.key` from Velocity to Paper's `config.yml`.
-4. Choose and set an unused port in configs.
-5. Set Velocity's IP in Paper's `remote` and Velocity's `host` fields.
-6. Set matching `server-id` (Velocity) and `client-id` (Paper).
-7. Restart Velocity, then Paper servers.
-
-Check Velocity logs for successful connection:
-
-```plaintext
-[INFO] [CommandBridge]: Client authenticated successfully
-[INFO] [CommandBridge]: Added connected client: lobby
-```
-
-## Building
-
-- Requires **Java 21**, **Git**
+Build with:
 
 ```bash
 git clone https://github.com/objz/CommandBridge.git
 cd CommandBridge
 ./gradlew shadowJar
+````
+
+Installation and configuration guide is [here](https://cb.objz.dev/docs/installation/).
+
+---
+
+Velocity runs the WebSocket server. Paper runs the client. The connection is authenticated using a shared secret (HMAC). Configs are generated on first run. Port and address settings must match. You copy the key manually, yes, on purpose.
+
+Once connected, you’ll see something like:
+
+```
+[INFO] [CommandBridge]: Client authenticated successfully
+[INFO] [CommandBridge]: Added connected client: lobby
 ```
 
-## Roadmap
+---
 
-- GUI Script Manager
-- Multi-Velocity support
-- Plugin API
+Architecture is three modules:
 
-## Help & Documentation
+* `core` – WebSocket implementations, util stuff
+* `velocity` – plugin impl + server
+* `paper` – plugin impl + client
 
-- [Issues](https://github.com/objz/CommandBridge/issues)
-- [Discord](https://discord.gg/QPqBYb44ce)
-- [Docs](https://cb.objz.dev)
+---
+
+Still to come:
+
+* GUI for managing scripts (cause YAML is great, but not that great)
+* Multi-Velocity support 
+* Public API for extensions, message types, etc
+
+---
+
+[Website](https://cb.objz.dev)
+[Discord](https://discord.gg/QPqBYb44ce)
+
+---
+
+Licensed under GPLv3. Don’t sell it, don’t strip the license, thanks!
+
