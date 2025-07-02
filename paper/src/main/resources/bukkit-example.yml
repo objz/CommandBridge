@@ -13,6 +13,7 @@ name: examplebukkit
 enabled: true
 
 # A list of aliases for the command.
+# Remove all or use [] to disable aliases.
 aliases:   
   - examplebukkitcmd
 
