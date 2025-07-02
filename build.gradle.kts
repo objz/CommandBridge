@@ -3,6 +3,7 @@ plugins {
     id("com.gradleup.shadow") version "8.3.3"
     id("maven-publish")
     id("com.modrinth.minotaur") version "2.+"
+    id("com.github.ben-manes.versions") version "0.51.0"
 }
 
 val pversion: String by gradle.extra
