@@ -112,6 +112,7 @@ public abstract class ScriptManager {
 
     public static class ScriptConfig {
         private final String name;
+        private final List<String> aliases = new ArrayList<>();
         private final boolean enabled;
         private final boolean ignorePermissionCheck;
         private final boolean hidePermissionWarning;
@@ -120,6 +121,7 @@ public abstract class ScriptManager {
         @SuppressWarnings("unchecked")
         public ScriptConfig(Map<String, Object> data) {
             this.name = (String) data.getOrDefault("name", "Unnamed Command");
+            this.aliases.addAll((List<String>) data.getOrDefault("aliases", new ArrayList<>()));
             this.enabled = (boolean) data.getOrDefault("enabled", false);
             this.ignorePermissionCheck = (boolean) data.getOrDefault("ignore-permission-check", false);
             this.hidePermissionWarning = (boolean) data.getOrDefault("hide-permission-warning", false);
@@ -137,6 +139,10 @@ public abstract class ScriptManager {
 
         public String getName() {
             return name;
+        }
+
+        public List<String> getAliases() {
+            return aliases;
         }
 
         public boolean isEnabled() {

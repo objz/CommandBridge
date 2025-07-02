@@ -6,11 +6,15 @@
 
 # The name of the command to be dispatched.
 # This is the identifier for the command configuration.
-name: examplecommand
+name: examplevelocity
 
 # Enable or disable this command.
 # Set to true to allow the command to be executed, or false to disable it.
 enabled: true
+
+# A list of aliases for the command.
+aliases:   
+  - examplevelocitycmd
 
 # Ignore permission checks for this command.
 # Set to true to bypass permission validation, or false to enforce it.

@@ -12,6 +12,10 @@ name: examplebukkit
 # Set to true to allow the command to be executed, or false to disable it.
 enabled: true
 
+# A list of aliases for the command.
+aliases:   
+  - examplebukkitcmd
+
 # Ignore permission checks for this command.
 # Set to true to bypass permission validation, or false to enforce it.
 ignore-permission-check: false

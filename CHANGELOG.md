@@ -1,4 +1,7 @@
-**[v2.2.6] - 2025-06-07**
+**[v2.2.7] - 2025-07-02**
 
-- Improved feedback when processing player commands sent from the console
+- updated to minecraft version 1.21.7
+- introduced aliases for scripts.
+
+go outside, great weather!
 
