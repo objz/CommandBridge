@@ -1,6 +1,6 @@
 name: CommandBridge
 version: 2.2.7
-main: dev.consti.commandbridge.paper.Main
+main: dev.objz.commandbridge.paper.Main
 author: objz
 api-version: '1.20'
 folia-supported: true
