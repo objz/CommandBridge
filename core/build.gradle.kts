@@ -11,7 +11,7 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-impl:0.12.6")
     implementation("io.jsonwebtoken:jjwt-jackson:0.12.6")
     implementation("org.yaml:snakeyaml:2.0")
-    implementation("org.slf4j:slf4j-api:2.0.12")
+    implementation("org.slf4j:slf4j-api:2.0.17")
     
-    runtimeOnly("org.slf4j:slf4j-simple:2.0.12")
+    runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
 }
