@@ -38,9 +38,11 @@ public class CommandRegistrar {
 
     public void registerCommand(ScriptManager.ScriptConfig script) {
         String commandName = script.getName();
+
         try {
             CommandAPICommand command = new CommandAPICommand(commandName)
                     .withOptionalArguments(new GreedyStringArgument("args"))
+                    .withAliases(script.getAliases().toArray(new String[0]))
                     .executes((sender, args) -> {
                         String argsString = (String) args.get("args");
                         logger.debug("Command '{}' called with arguments: {}", commandName, argsString);

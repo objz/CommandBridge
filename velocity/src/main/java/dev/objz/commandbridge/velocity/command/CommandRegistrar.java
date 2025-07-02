@@ -65,7 +65,8 @@ public class CommandRegistrar {
 
             // LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
             BrigadierCommand brigadierCommand = new BrigadierCommand(commandBuilder.build());
-            CommandMeta commandMeta = proxy.getCommandManager().metaBuilder(commandName).build();
+            CommandMeta commandMeta = proxy.getCommandManager().metaBuilder(commandName)
+                    .aliases(script.getAliases().toArray(new String[0])).build();
 
             proxy.getCommandManager().register(commandMeta, brigadierCommand);
             registeredCommands.put(commandName, commandMeta);
