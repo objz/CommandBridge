@@ -121,7 +121,16 @@ public abstract class ScriptManager {
         @SuppressWarnings("unchecked")
         public ScriptConfig(Map<String, Object> data) {
             this.name = (String) data.getOrDefault("name", "Unnamed Command");
-            this.aliases.addAll((List<String>) data.getOrDefault("aliases", new ArrayList<>()));
+
+            Object aliasesRaw = data.get("aliases");
+            if (aliasesRaw instanceof List<?> rawList) {
+                for (Object alias : rawList) {
+                    if (alias instanceof String str) {
+                        this.aliases.add(str);
+                    }
+                }
+            }
+
             this.enabled = (boolean) data.getOrDefault("enabled", false);
             this.ignorePermissionCheck = (boolean) data.getOrDefault("ignore-permission-check", false);
             this.hidePermissionWarning = (boolean) data.getOrDefault("hide-permission-warning", false);
