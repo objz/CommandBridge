@@ -27,9 +27,9 @@ dependencies {
     compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.8")
     implementation("dev.jorel:commandapi-bukkit-shade:10.1.1")
-    compileOnly("dev.jorel:commandapi-annotations:9.7.0")
+    compileOnly("dev.jorel:commandapi-annotations:10.1.1")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    annotationProcessor("dev.jorel:commandapi-annotations:9.7.0")
+    annotationProcessor("dev.jorel:commandapi-annotations:10.1.1")
 
     implementation(project(":core"))
 }
