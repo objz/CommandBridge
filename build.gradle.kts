@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("com.gradleup.shadow") version "8.3.3"
+    id("com.gradleup.shadow") version "8.3.8"
     id("maven-publish")
     id("com.modrinth.minotaur") version "2.+"
     id("com.github.ben-manes.versions") version "0.52.0"
