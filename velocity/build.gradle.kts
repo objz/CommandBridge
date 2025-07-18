@@ -11,7 +11,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.netty:netty-all:4.2.0.Final")
+    implementation("io.netty:netty-all:4.2.2.Final")
     implementation("org.json:json:20240303")
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
