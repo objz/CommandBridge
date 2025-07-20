@@ -57,6 +57,10 @@ public class Main {
         }
     }
 
+    public String getVelocityVersion() {
+        return proxy.getVersion().getVersion().toString();
+    }
+
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
         logger.info("Initializing CommandBridge...");

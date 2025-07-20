@@ -3,6 +3,7 @@ package dev.objz.commandbridge.paper;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.objz.commandbridge.paper.core.Runtime;
@@ -55,6 +56,24 @@ public class Main extends JavaPlugin {
         CommandAPI.onDisable();
         logger.info("Stopping CommandBridge...");
         Runtime.getInstance().getStartup().stop();
+    }
+
+    public record ServerInfo(String name, String version) {
+    }
+
+    public static ServerInfo detectServer() {
+        Package pkg = Bukkit.getServer().getClass().getPackage();
+        String title = pkg.getImplementationTitle();
+        String version = pkg.getImplementationVersion();
+
+        if (title != null && !title.isBlank()
+                && version != null && !version.isBlank()) {
+            return new ServerInfo(title, version);
+        }
+
+        String fallbackName = Bukkit.getServer().getName();
+        String fallbackVersion = Bukkit.getServer().getVersion();
+        return new ServerInfo(fallbackName, fallbackVersion);
     }
 
 }
