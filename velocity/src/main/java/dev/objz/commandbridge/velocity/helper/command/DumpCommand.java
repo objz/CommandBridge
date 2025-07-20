@@ -5,6 +5,7 @@ import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.core.Logger;
 import dev.objz.commandbridge.core.json.MessageBuilder;
 import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.helper.DumpFailureChecker;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -28,22 +29,12 @@ public class DumpCommand {
 
                     Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
 
-                    String compact = Runtime.getInstance().getEncoder().encode();
-                    String compressed;
+                    source.sendMessage(
+                            Component.text("Waiting for clients to respond...")
+                                    .color(NamedTextColor.YELLOW));
 
-                    try {
-                        compressed = Runtime.getInstance().getEncoder().compress(compact);
-                    } catch (Exception e) {
-                        logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
-                        source.sendMessage(
-                                Component.text("Error while processing dump data").color(NamedTextColor.RED));
-                        return 0;
-                    }
-
-                    source.sendMessage(Component.text(compact).color(NamedTextColor.LIGHT_PURPLE));
-                    source.sendMessage(Component.text("===== Dumped Data =======").color(NamedTextColor.GOLD));
-                    source.sendMessage(Component.text(compressed).color(NamedTextColor.GREEN));
-                    source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
+                    new DumpFailureChecker(source, logger)
+                            .run(); 
 
                     return 1;
                 });

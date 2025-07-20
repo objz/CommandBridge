@@ -4,7 +4,6 @@ import com.github.luben.zstd.Zstd;
 import dev.objz.commandbridge.core.utils.ScriptManager.Command;
 import dev.objz.commandbridge.core.utils.ScriptManager.ScriptConfig;
 import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.core.Runtime;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -18,6 +17,14 @@ public class Encoder {
     private final Map<String, ScriptConfig> scripts = new LinkedHashMap<>();
 
     private final Map<String, String> clientsScripts = new HashMap<>();
+
+    public Map<String, String> getClientsScripts() {
+        return new LinkedHashMap<>(clientsScripts);
+    }
+
+    public void clearClientsScripts() {
+        clientsScripts.clear();
+    }
 
     public void addScriptConfig(ScriptConfig config) {
         if (config == null || config.getName() == null) {
