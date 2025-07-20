@@ -74,6 +74,23 @@ public class Client extends WebSocketClient {
                 Runtime.getInstance().getScriptUtils().unloadCommands(() -> new SchedulerAdapter(Main.getInstance())
                         .runLater(Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
             case "reconnect" -> Ping.reconnect(logger);
+            case "dump" -> {
+                String encoded = Runtime.getInstance().getEncoder().encode();
+                String compressed;
+                try {
+                    compressed = Runtime.getInstance().getEncoder().compress(encoded);
+                } catch (Exception e) {
+                    logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
+                    sendError("Error while processing dump data: " + e.getMessage());
+                    return;
+                }
+                MessageBuilder builder = new MessageBuilder("system");
+                builder.addToBody("channel", "task").addToBody("task", "dump")
+                        .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
+                        .addToBody("compressed", compressed)
+                        .withStatus("success");
+                sendMessage(builder.build());
+            }
             default -> logger.warn("Invalid task: {}", task);
         }
     }

@@ -32,11 +32,9 @@ commands:
     delay: 0                     # Delay (in seconds) before executing the command.
     target-executor: 'player'    # Who executes the command: 'player' or 'console'.
     check-if-executor-is-player: true  # If true, ensures the executor is a player.
-    check-if-executor-is-on-server: true # If true, ensures the executor is online.
 
   # Command 2
   - command: 'velocity plugins' # The command string to be executed.
     delay: 0                      # Delay (in seconds) before executing the command.
     target-executor: 'console'    # Who executes the command: 'player' or 'console'.
     check-if-executor-is-player: false  # If true, ensures the executor is a player.
-    check-if-executor-is-on-server: false # If true, ensures the executor is online.

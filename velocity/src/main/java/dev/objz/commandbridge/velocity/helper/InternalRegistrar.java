@@ -7,6 +7,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.velocity.Main;
 import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.helper.command.DumpCommand;
 import dev.objz.commandbridge.velocity.helper.command.ListCommand;
 import dev.objz.commandbridge.velocity.helper.command.ReloadCommand;
 import dev.objz.commandbridge.velocity.helper.command.StartCommand;
@@ -49,6 +50,7 @@ public class InternalRegistrar {
             commandBridgeBuilder.then(VersionCommand.build(logger));
             commandBridgeBuilder.then(HelpCommand.build(logger));
             commandBridgeBuilder.then(ListCommand.build(connectedClients, logger));
+            commandBridgeBuilder.then(DumpCommand.build(connectedClients, logger));
             if (logger.getDebug()) {
                 commandBridgeBuilder.then(StopCommand.build(logger));
                 commandBridgeBuilder.then(StartCommand.build(logger));

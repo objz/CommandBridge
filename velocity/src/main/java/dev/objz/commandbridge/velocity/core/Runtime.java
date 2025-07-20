@@ -4,6 +4,7 @@ import dev.objz.commandbridge.velocity.Main;
 import dev.objz.commandbridge.velocity.command.CommandDispatcher;
 import dev.objz.commandbridge.velocity.command.CommandForwarder;
 import dev.objz.commandbridge.velocity.command.CommandRegistrar;
+import dev.objz.commandbridge.velocity.util.Encoder;
 import dev.objz.commandbridge.velocity.util.GeneralUtils;
 import dev.objz.commandbridge.velocity.util.ScriptUtils;
 import dev.objz.commandbridge.velocity.websocket.HttpServer;
@@ -23,6 +24,7 @@ public class Runtime {
     private GeneralUtils generalUtils;
     private CommandDispatcher commandDispatcher;
     private HttpServer httpServer;
+    private Encoder encoder;
 
     private Runtime() {
     }
@@ -113,5 +115,13 @@ public class Runtime {
             getLogger().debug("HttpServer initialized.");
         }
         return httpServer;
+    }
+
+    public synchronized Encoder getEncoder() {
+        if (encoder == null) {
+            encoder = new Encoder();
+            getLogger().debug("Encoder initialized.");
+        }
+        return encoder;
     }
 }

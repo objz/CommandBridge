@@ -21,6 +21,7 @@ public class ScriptUtils extends ScriptManager {
             logger.info("Loaded script: {}", fileName);
             try {
                 registrar.registerCommand(getScriptConfig(fileName));
+                Runtime.getInstance().getEncoder().addScriptConfig(scriptConfig);
                 logger.debug("Registered command: {}", scriptConfig.getName());
             } catch (Exception e) {
                 logger.error("Failed to register script '{}' : {}",

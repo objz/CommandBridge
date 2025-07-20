@@ -2,6 +2,7 @@ package dev.objz.commandbridge.paper.core;
 
 import dev.objz.commandbridge.paper.Main;
 import dev.objz.commandbridge.paper.command.CommandRegistrar;
+import dev.objz.commandbridge.paper.utils.Encoder;
 import dev.objz.commandbridge.paper.utils.GeneralUtils;
 import dev.objz.commandbridge.paper.utils.ScriptUtils;
 import dev.objz.commandbridge.paper.websocket.Client;
@@ -21,6 +22,7 @@ public class Runtime {
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
     private CommandExecutor commandExecutor;
+    private Encoder encoder;
 
     private Runtime() {
     }
@@ -103,5 +105,12 @@ public class Runtime {
             getLogger().debug("CommandExecutor initialized.");
         }
         return commandExecutor;
+    }
+    public synchronized Encoder getEncoder() {
+        if (encoder == null) {
+            encoder = new Encoder();
+            getLogger().debug("Encoder initialized.");
+        }
+        return encoder;
     }
 }

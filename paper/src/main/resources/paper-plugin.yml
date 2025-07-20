@@ -1,5 +1,5 @@
 name: CommandBridge
-version: 2.2.7
+version: 2.2.8
 main: dev.objz.commandbridge.paper.Main
 author: objz
 api-version: '1.20'

@@ -96,6 +96,7 @@ public class Server extends WebSocketServer {
         String task = parser.getBodyValueAsString("task");
         switch (task) {
             case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
+            case "dump" -> Runtime.getInstance().getEncoder().addClient(parser.getBodyValueAsString("client"), parser.getBodyValueAsString("compressed"));
             default -> logger.warn("Invalid task: {}", task);
         }
     }
