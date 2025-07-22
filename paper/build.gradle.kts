@@ -26,11 +26,10 @@ dependencies {
     implementation("org.json:json:20250517")
     compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.8")
-    implementation("dev.jorel:commandapi-bukkit-shade:10.1.1")
-    implementation("com.github.luben:zstd-jni:1.5.7-4")
-    compileOnly("dev.jorel:commandapi-annotations:10.1.1")
+    implementation("dev.jorel:commandapi-bukkit-shade:10.1.2")
+    compileOnly("dev.jorel:commandapi-annotations:10.1.2")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    annotationProcessor("dev.jorel:commandapi-annotations:10.1.1")
+    annotationProcessor("dev.jorel:commandapi-annotations:10.1.2")
 
     implementation(project(":core"))
 }

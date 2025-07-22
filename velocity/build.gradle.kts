@@ -17,7 +17,6 @@ dependencies {
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     compileOnly("net.william278:papiproxybridge:1.7.2")
     implementation("org.bstats:bstats-velocity:3.1.0")
-    implementation("com.github.luben:zstd-jni:1.5.7-4")
 
     implementation(project(":core"))
 }

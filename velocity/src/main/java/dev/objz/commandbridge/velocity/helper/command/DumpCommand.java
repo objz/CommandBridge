@@ -33,8 +33,7 @@ public class DumpCommand {
                             Component.text("Waiting for clients to respond...")
                                     .color(NamedTextColor.YELLOW));
 
-                    new DumpFailureChecker(source, logger)
-                            .run(); 
+                    new DumpFailureChecker(source, logger).run(); 
 
                     return 1;
                 });
