@@ -30,7 +30,7 @@ public class DumpCommand {
                     Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
 
                     source.sendMessage(
-                            Component.text("Waiting for clients to respond...")
+                            Component.text("Generating Dump...")
                                     .color(NamedTextColor.YELLOW));
 
                     new DumpFailureChecker(source, logger).run(); 

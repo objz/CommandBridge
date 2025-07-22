@@ -1,5 +1,7 @@
-**[v2.2.8] - 2025-07-22**
+**[v2.2.9] - 2025-07-22**
 
-- updated to minecraft version 1.21.8
+- Added /cb dump command to dump the current configuration and scripts.
+You can view the results on the website. It will generate a link for you.
+
 
 
