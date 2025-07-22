@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class DumpFailureChecker implements Runnable {
-    private static final String DUMP_API_URL = "http://localhost:8787/api/dump";
+    private static final String DUMP_API_URL = "https://cb.objz.dev/api/dump";
     private final Logger logger;
     private final ProxyServer proxy;
     private final Main plugin;
