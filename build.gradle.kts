@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("eclipse")
     id("com.gradleup.shadow") version "8.3.8"
     id("maven-publish")
     id("com.modrinth.minotaur") version "2.+"
