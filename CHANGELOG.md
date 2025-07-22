@@ -1,7 +1,5 @@
-**[v2.2.7] - 2025-07-02**
+**[v2.2.8] - 2025-07-22**
 
-- updated to minecraft version 1.21.7
-- introduced aliases for scripts.
+- updated to minecraft version 1.21.8
 
-go outside, great weather!
 
