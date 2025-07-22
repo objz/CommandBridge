@@ -50,7 +50,7 @@ public class InternalRegistrar {
             commandBridgeBuilder.then(VersionCommand.build(logger));
             commandBridgeBuilder.then(HelpCommand.build(logger));
             commandBridgeBuilder.then(ListCommand.build(connectedClients, logger));
-            // commandBridgeBuilder.then(DumpCommand.build(connectedClients, logger));
+            commandBridgeBuilder.then(DumpCommand.build(connectedClients, logger));
             if (logger.getDebug()) {
                 commandBridgeBuilder.then(StopCommand.build(logger));
                 commandBridgeBuilder.then(StartCommand.build(logger));

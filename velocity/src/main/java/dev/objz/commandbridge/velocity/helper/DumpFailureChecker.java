@@ -7,7 +7,9 @@ import dev.objz.commandbridge.velocity.core.Runtime;
 import dev.objz.commandbridge.velocity.util.ProxyUtils;
 import dev.objz.commandbridge.core.Logger;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
 import java.io.IOException;
 import java.net.URI;
@@ -20,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class DumpFailureChecker implements Runnable {
-    private static final String DUMP_API_URL = "https://cb.objz.dev/api/dump";
+    private static final String DUMP_API_URL = "http://localhost:8787/api/dump";
     private final Logger logger;
     private final ProxyServer proxy;
     private final Main plugin;
@@ -34,7 +36,7 @@ public class DumpFailureChecker implements Runnable {
         this.proxy = ProxyUtils.getProxyServer();
         this.plugin = Main.getInstance();
         this.maxRetries = Integer.parseInt(
-            Runtime.getInstance().getConfig().getKey("config.yml", "timeout"));
+                Runtime.getInstance().getConfig().getKey("config.yml", "timeout"));
     }
 
     @Override
@@ -43,15 +45,13 @@ public class DumpFailureChecker implements Runnable {
         logger.debug("Dump check attempt {}/{}", attempt, maxRetries);
 
         Set<String> connected = Runtime.getInstance().getServer().getConnectedClients();
-        Map<String, String> scripts =
-            Runtime.getInstance().getEncoder().getClientsScripts();
+        Map<String, String> scripts = Runtime.getInstance().getEncoder().getClientsScripts();
 
         Set<String> missing = connected.stream()
-            .filter(client -> !scripts.containsKey(client))
-            .collect(Collectors.toSet());
+                .filter(client -> !scripts.containsKey(client))
+                .collect(Collectors.toSet());
 
         if (missing.isEmpty()) {
-            // All clients replied—build, compress, and ship off the dump
             String compact = Runtime.getInstance().getEncoder().encode();
             String compressed;
             try {
@@ -59,28 +59,34 @@ public class DumpFailureChecker implements Runnable {
             } catch (Exception e) {
                 logger.error("Failed to compress aggregated dump: {}", logger.getDebug() ? e : e.getMessage());
                 source.sendMessage(Component.text("Error while compressing dump data")
-                    .color(NamedTextColor.RED));
+                        .color(NamedTextColor.RED));
                 return;
             }
 
-            // Send the compressed blob to your API
             try {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(DUMP_API_URL))
-                    .header("Content-Type", "text/plain")
-                    .POST(HttpRequest.BodyPublishers.ofString(compressed))
-                    .build();
+                        .uri(URI.create(DUMP_API_URL))
+                        .header("Content-Type", "text/plain")
+                        .POST(HttpRequest.BodyPublishers.ofString(compressed))
+                        .build();
 
                 HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-                if (resp.statusCode() != 200) {
-                    throw new IOException("HTTP " + resp.statusCode());
+                int status = resp.statusCode();
+                if (status == 429) {
+                    logger.warn("Rate limit exceeded when posting dump");
+                    source.sendMessage(Component.text("Rate limit exceeded, please try again later")
+                            .color(NamedTextColor.RED));
+                    return;
                 }
 
-                // Parse {"id":"xxxxxx"} out of the response body
+                if (status != 200) {
+                    throw new IOException("HTTP " + status);
+                }
+
                 String body = resp.body().trim();
                 int start = body.indexOf("\"id\":\"") + 6;
-                int end   = body.indexOf("\"", start);
+                int end = body.indexOf("\"", start);
                 if (start < 6 || end < start) {
                     throw new IOException("Unexpected API response: " + body);
                 }
@@ -88,13 +94,16 @@ public class DumpFailureChecker implements Runnable {
 
                 String link = "https://cb.objz.dev/dump?id=" + id;
                 source.sendMessage(Component.text("Your dump is here: ")
-                    .append(Component.text(link).color(NamedTextColor.AQUA)));
-                logger.info("Generated dump link: {}", link);
+                        .append(Component.text("https://cb.objz.dev/dump?id=" + id)
+                                .color(NamedTextColor.LIGHT_PURPLE)
+                                .decorate(TextDecoration.UNDERLINED)
+                                .clickEvent(ClickEvent.openUrl("https://cb.objz.dev/dump?id=" + id))));
+                logger.info("dump link: {}", link);
 
             } catch (IOException | InterruptedException e) {
                 logger.error("Failed to POST dump to remote API: {}", e.getMessage());
                 source.sendMessage(Component.text("Failed to upload dump: " + e.getMessage())
-                    .color(NamedTextColor.RED));
+                        .color(NamedTextColor.RED));
             } finally {
                 Runtime.getInstance().getEncoder().clearClientsScripts();
             }
@@ -102,15 +111,15 @@ public class DumpFailureChecker implements Runnable {
         } else if (attempt >= maxRetries) {
             String missingList = String.join(", ", missing);
             source.sendMessage(Component.text("DumpCommand failed: missing responses from " + missingList)
-                .color(NamedTextColor.RED));
+                    .color(NamedTextColor.RED));
             logger.error("Dump command failed: missing responses from {}", missingList);
             Runtime.getInstance().getEncoder().clearClientsScripts();
         } else {
             // retry after 1 second
             proxy.getScheduler()
-                 .buildTask(plugin, this)
-                 .delay(1, TimeUnit.SECONDS)
-                 .schedule();
+                    .buildTask(plugin, this)
+                    .delay(1, TimeUnit.SECONDS)
+                    .schedule();
         }
     }
 }
