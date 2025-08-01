@@ -1,7 +1,6 @@
-**[v2.2.9] - 2025-07-22**
+**[v2.3.0] - 2025-08-01**
 
-- Added /cb dump command to dump the current configuration and scripts.
-You can view the results on the website. It will generate a link for you.
+- Fixed multithreading issues on folia servers.
 
 
 

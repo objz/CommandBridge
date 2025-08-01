@@ -1,46 +1,41 @@
 package dev.objz.commandbridge.paper.utils;
 
-import java.util.function.Consumer;
-
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
 
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import com.cjcrafter.foliascheduler.FoliaCompatibility;
+import com.cjcrafter.foliascheduler.ServerImplementation;
 
 public class SchedulerAdapter {
-    private final JavaPlugin plugin;
+	private final ServerImplementation scheduler;
 
-    public SchedulerAdapter(JavaPlugin plugin) {
-        this.plugin = plugin;
-    }
+	public SchedulerAdapter(JavaPlugin plugin) {
+		this.scheduler = new FoliaCompatibility(plugin).getServerImplementation();
+	}
 
-    public void run(Runnable task) {
-        if (isFolia()) {
-            Bukkit.getGlobalRegionScheduler().execute(plugin, task);
-        } else {
-            Bukkit.getScheduler().runTask(plugin, task);
-        }
-    }
+	public void run(Runnable task) {
+		// if (isFolia()) {
+			// Bukkit.getServer().getScheduler().runTask(plugin, (@NotNull Runnable) task);
+		// } else {
+			// Bukkit.getScheduler().runTask(plugin, task);
+		// }
+		scheduler.global().run(task);
+	}
 
-    public void execute(Runnable task) {
-        Bukkit.getScheduler().runTask(plugin, task);
-    }
+	public void runLater(Runnable task, long delayTicks) {
+		// if (isFolia()) {
+			// Bukkit.getServer().getScheduler().runTaskLater(plugin, (@NotNull Runnable) task, delayTicks);
+		// } else {
+			// Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
+		// }
+		scheduler.global().runDelayed(task, delayTicks);
+	}
 
-    public void runLater(Runnable task, long delayTicks) {
-        if (isFolia()) {
-            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, (@NotNull Consumer<ScheduledTask>) task, delayTicks);
-        } else {
-            Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
-        }
-    }
-
-    public static boolean isFolia() {
-        try {
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
+	public static boolean isFolia() {
+		try {
+			Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+			return true;
+		} catch (ClassNotFoundException e) {
+			return false;
+		}
+	}
 }
