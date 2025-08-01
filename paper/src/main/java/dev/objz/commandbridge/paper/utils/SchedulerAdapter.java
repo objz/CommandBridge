@@ -23,6 +23,10 @@ public class SchedulerAdapter {
         }
     }
 
+    public void execute(Runnable task) {
+        Bukkit.getScheduler().runTask(plugin, task);
+    }
+
     public void runLater(Runnable task, long delayTicks) {
         if (isFolia()) {
             Bukkit.getGlobalRegionScheduler().runDelayed(plugin, (@NotNull Consumer<ScheduledTask>) task, delayTicks);
