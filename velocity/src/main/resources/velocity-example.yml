@@ -32,7 +32,6 @@ commands:
     delay: 0                      # Delay (in seconds) before executing the command.
     target-client-ids:            # List of target server IDs where the command will be executed.
       - 'lobby'
-      - 'survival'
     target-executor: 'player'     # Who executes the command: 'player' or 'console'.
     wait-until-player-is-online: true  # If true, waits until the player is online to execute.
     check-if-executor-is-player: true  # If true, ensures the executor is a player.

@@ -124,6 +124,7 @@ velocity/
                     StartCommand.java
                     StopCommand.java
                     VersionCommand.java
+                  DumpFailureChecker.java
                   FailureChecker.java
                   HelpCommand.java
                   InternalRegistrar.java
@@ -154,283 +155,6 @@ settings.gradle.kts
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="gradle/wrapper/gradle-wrapper.properties">
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.10-bin.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-</file>
-
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/utils/Encoder.java">
-package dev.objz.commandbridge.paper.utils;
-
-import com.github.luben.zstd.Zstd;
-import dev.objz.commandbridge.core.utils.ScriptManager.Command;
-import dev.objz.commandbridge.core.utils.ScriptManager.ScriptConfig;
-import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.Main.ServerInfo;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-public class Encoder {
-    private final Map<String, ScriptConfig> scripts = new LinkedHashMap<>();
-
-    public void addScriptConfig(ScriptConfig config) {
-        if (config == null || config.getName() == null) {
-            throw new IllegalArgumentException("ScriptConfig or name cannot be null");
-        }
-        scripts.put(config.getName(), config);
-    }
-
-    public String encode() {
-        StringBuilder sb = new StringBuilder();
-        ServerInfo serverInfo = Main.detectServer();
-        if (serverInfo == null) {
-            throw new IllegalStateException("Server information could not be detected");
-        }
-
-
-        //header
-        sb.append(serverInfo.name()).append("/").append(System.getProperty("java.version")).append("/").append(serverInfo.version());
-
-        for (ScriptConfig script : scripts.values()) {
-            sb.append("@");
-
-            //name
-            sb.append(encodeField(script.getName())).append(",");
-
-            //aliases
-            sb.append(encodeList(script.getAliases())).append(",");
-
-            //script flags: bit2=enabled, bit1=ignorePerm, bit0=hideWarn
-            int scriptFlags =
-                  (script.isEnabled()                    ? 1 << 2 : 0)
-                | (script.shouldIgnorePermissionCheck()? 1 << 1 : 0)
-                | (script.shouldHidePermissionWarning()? 1 << 0 : 0);
-            sb.append(Integer.toString(scriptFlags, 36));
-
-            //commands
-            for (Command cmd : script.getCommands()) {
-                sb.append(";");
-                //command 
-                sb.append(encodeField(cmd.getCommand())).append(",");
-                //delay
-                sb.append(cmd.getDelay()).append(",");
-                //executor: 'p' or 'c'
-                sb.append(cmd.getTargetExecutor().charAt(0)).append(",");
-                //check-if-executor-is-player flag (bit0)
-                int cFlag = cmd.isCheckIfExecutorIsPlayer() ? 1 : 0;
-                sb.append(Integer.toString(cFlag, 36));
-            }
-        }
-
-        return sb.toString();
-    }
-
-
-    public String compress(String input) {
-        byte[] in = input.getBytes(StandardCharsets.UTF_8);
-        byte[] compressed = Zstd.compress(in, 22);
-        return Base64.getUrlEncoder()
-                     .withoutPadding()
-                     .encodeToString(compressed);
-    }
-
-    //"." for null/empty.
-    private String encodeField(String value) {
-        if (value == null || value.isEmpty()) return ".";
-        return value.replace(",", "\\,").replace(";", "\\;");
-    }
-
-    //* join with '|' or return "." if empty
-    private String encodeList(List<String> list) {
-        if (list == null || list.isEmpty()) return ".";
-        StringBuilder sb = new StringBuilder();
-        Iterator<String> it = list.iterator();
-        while (it.hasNext()) {
-            sb.append(encodeField(it.next()));
-            if (it.hasNext()) sb.append("|");
-        }
-        return sb.toString();
-    }
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/helper/command/DumpCommand.java">
-package dev.objz.commandbridge.velocity.helper.command;
-
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.velocitypowered.api.command.CommandSource;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.json.MessageBuilder;
-import dev.objz.commandbridge.velocity.core.Runtime;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-
-import java.util.Set;
-
-public class DumpCommand {
-    public static LiteralArgumentBuilder<CommandSource> build(Set<String> connectedClients, Logger logger) {
-        return LiteralArgumentBuilder.<CommandSource>literal("dump")
-                .executes(context -> {
-                    CommandSource source = context.getSource();
-
-                    if (!source.hasPermission("commandbridge.admin")) {
-                        source.sendMessage(Component.text("You do not have permission to list connected clients",
-                                NamedTextColor.RED));
-                        return 0;
-                    }
-
-                    MessageBuilder builder = new MessageBuilder("system");
-                    builder.addToBody("channel", "task").addToBody("task", "dump")
-                            .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"));
-
-                    Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
-
-                    String compact = Runtime.getInstance().getEncoder().encode();
-                    String compressed;
-
-                    try {
-                        compressed = Runtime.getInstance().getEncoder().compress(compact);
-                    } catch (Exception e) {
-                        logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
-                        source.sendMessage(
-                                Component.text("Error while processing dump data").color(NamedTextColor.RED));
-                        return 0;
-                    }
-
-                    source.sendMessage(Component.text(compact).color(NamedTextColor.LIGHT_PURPLE));
-                    source.sendMessage(Component.text("===== Dumped Data =======").color(NamedTextColor.GOLD));
-                    source.sendMessage(Component.text(compressed).color(NamedTextColor.GREEN));
-                    source.sendMessage(Component.text("============================").color(NamedTextColor.GOLD));
-
-                    return 1;
-                });
-    }
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/util/Encoder.java">
-package dev.objz.commandbridge.velocity.util;
-
-import com.github.luben.zstd.Zstd;
-import dev.objz.commandbridge.core.utils.ScriptManager.Command;
-import dev.objz.commandbridge.core.utils.ScriptManager.ScriptConfig;
-import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.core.Runtime;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-public class Encoder {
-    private final Map<String, ScriptConfig> scripts = new LinkedHashMap<>();
-
-    private final Map<String, String> clientsScripts = new HashMap<>();
-
-    public void addScriptConfig(ScriptConfig config) {
-        if (config == null || config.getName() == null) {
-            throw new IllegalArgumentException("ScriptConfig or name cannot be null");
-        }
-        scripts.put(config.getName(), config);
-    }
-
-    public String encode() {
-        StringBuilder sb = new StringBuilder();
-
-        //header
-        sb.append("V").append("/").append(System.getProperty("java.version")).append("/").append(Main.getInstance().getVelocityVersion()).append("/").append(Main.getVersion());
-
-        for (ScriptConfig script : scripts.values()) {
-            sb.append("@");
-
-            //name
-            sb.append(encodeField(script.getName())).append(",");
-
-            //aliases
-            sb.append(encodeList(script.getAliases())).append(",");
-
-            //script flags: bit2=enabled, bit1=ignorePerm, bit0=hideWarn
-            int scriptFlags =
-                  (script.isEnabled()                    ? 1 << 2 : 0)
-                | (script.shouldIgnorePermissionCheck()? 1 << 1 : 0)
-                | (script.shouldHidePermissionWarning()? 1 << 0 : 0);
-            sb.append(Integer.toString(scriptFlags, 36));
-
-            //commands
-            for (Command cmd : script.getCommands()) {
-                sb.append(";");
-                sb.append(encodeField(cmd.getCommand())).append(",");                  // command
-                sb.append(cmd.getDelay()).append(",");                                 // delay
-                sb.append(encodeList(cmd.getTargetClientIds())).append(",");           // targets
-                sb.append(cmd.getTargetExecutor().charAt(0)).append(",");              // executor: 'p'/'c'
-
-                //command flags: bit2=waitOnline, bit1=checkPlayer, bit0=checkOnServer
-                int cmdFlags =
-                      (cmd.shouldWaitUntilPlayerIsOnline() ? 1 << 2 : 0)
-                    | (cmd.isCheckIfExecutorIsPlayer()    ? 1 << 1 : 0)
-                    | (cmd.isCheckIfExecutorIsOnServer()  ? 1 << 0 : 0);
-                sb.append(Integer.toString(cmdFlags, 36));
-            }
-        }
-
-        for (Map.Entry<String, String> entry : clientsScripts.entrySet()) {
-            sb.append("#");
-            sb.append(encodeField(entry.getKey())).append(","); // clientId
-            sb.append(encodeField(entry.getValue()));           // encoded string
-        }
-
-        return sb.toString();
-    }
-
-    public void addClient(String clientId, String encodedString) {
-        if (clientId == null || clientId.isEmpty() || encodedString == null || encodedString.isEmpty()) {
-            throw new IllegalArgumentException("Client ID and encoded string cannot be null or empty");
-        }
-        clientsScripts.put(clientId, encodedString);
-    }
-
-    public String compress(String input) {
-        byte[] in = input.getBytes(StandardCharsets.UTF_8);
-        byte[] compressed = Zstd.compress(in, 22);
-        return Base64.getUrlEncoder()
-                     .withoutPadding()
-                     .encodeToString(compressed);
-    }
-
-    //"." for null/empty.
-    private String encodeField(String value) {
-        if (value == null || value.isEmpty()) return ".";
-        return value.replace(",", "\\,").replace(";", "\\;");
-    }
-
-    //* join with '|' or return "." if empty
-    private String encodeList(List<String> list) {
-        if (list == null || list.isEmpty()) return ".";
-        StringBuilder sb = new StringBuilder();
-        Iterator<String> it = list.iterator();
-        while (it.hasNext()) {
-            sb.append(encodeField(it.next()));
-            if (it.hasNext()) sb.append("|");
-        }
-        return sb.toString();
-    }
-}
-</file>
 
 <file path="velocity/src/main/resources/velocity-config.yml">
 # Server Configuration File
@@ -513,358 +237,6 @@ bin/
 
 
 kls_database.db
-</file>
-
-<file path="gradlew">
-#!/bin/sh
-
-#
-# Copyright © 2015-2021 the original authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
-##############################################################################
-#
-#   Gradle start up script for POSIX generated by Gradle.
-#
-#   Important for running:
-#
-#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
-#       noncompliant, but you have some other compliant shell such as ksh or
-#       bash, then to run this script, type that shell name before the whole
-#       command line, like:
-#
-#           ksh Gradle
-#
-#       Busybox and similar reduced shells will NOT work, because this script
-#       requires all of these POSIX shell features:
-#         * functions;
-#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
-#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
-#         * compound commands having a testable exit status, especially «case»;
-#         * various built-in commands including «command», «set», and «ulimit».
-#
-#   Important for patching:
-#
-#   (2) This script targets any POSIX shell, so it avoids extensions provided
-#       by Bash, Ksh, etc; in particular arrays are avoided.
-#
-#       The "traditional" practice of packing multiple parameters into a
-#       space-separated string is a well documented source of bugs and security
-#       problems, so this is (mostly) avoided, by progressively accumulating
-#       options in "$@", and eventually passing that to Java.
-#
-#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
-#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
-#       see the in-line comments for details.
-#
-#       There are tweaks for specific operating systems such as AIX, CygWin,
-#       Darwin, MinGW, and NonStop.
-#
-#   (3) This script is generated from the Groovy template
-#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
-#       within the Gradle project.
-#
-#       You can find Gradle at https://github.com/gradle/gradle/.
-#
-##############################################################################
-
-# Attempt to set APP_HOME
-
-# Resolve links: $0 may be a link
-app_path=$0
-
-# Need this for daisy-chained symlinks.
-while
-    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
-    [ -h "$app_path" ]
-do
-    ls=$( ls -ld "$app_path" )
-    link=${ls#*' -> '}
-    case $link in             #(
-      /*)   app_path=$link ;; #(
-      *)    app_path=$APP_HOME$link ;;
-    esac
-done
-
-# This is normally unused
-# shellcheck disable=SC2034
-APP_BASE_NAME=${0##*/}
-# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
-APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
-' "$PWD" ) || exit
-
-# Use the maximum available, or set MAX_FD != -1 to use that value.
-MAX_FD=maximum
-
-warn () {
-    echo "$*"
-} >&2
-
-die () {
-    echo
-    echo "$*"
-    echo
-    exit 1
-} >&2
-
-# OS specific support (must be 'true' or 'false').
-cygwin=false
-msys=false
-darwin=false
-nonstop=false
-case "$( uname )" in                #(
-  CYGWIN* )         cygwin=true  ;; #(
-  Darwin* )         darwin=true  ;; #(
-  MSYS* | MINGW* )  msys=true    ;; #(
-  NONSTOP* )        nonstop=true ;;
-esac
-
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-
-
-# Determine the Java command to use to start the JVM.
-if [ -n "$JAVA_HOME" ] ; then
-    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
-        # IBM's JDK on AIX uses strange locations for the executables
-        JAVACMD=$JAVA_HOME/jre/sh/java
-    else
-        JAVACMD=$JAVA_HOME/bin/java
-    fi
-    if [ ! -x "$JAVACMD" ] ; then
-        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
-
-Please set the JAVA_HOME variable in your environment to match the
-location of your Java installation."
-    fi
-else
-    JAVACMD=java
-    if ! command -v java >/dev/null 2>&1
-    then
-        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
-
-Please set the JAVA_HOME variable in your environment to match the
-location of your Java installation."
-    fi
-fi
-
-# Increase the maximum file descriptors if we can.
-if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
-    case $MAX_FD in #(
-      max*)
-        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
-        # shellcheck disable=SC2039,SC3045
-        MAX_FD=$( ulimit -H -n ) ||
-            warn "Could not query maximum file descriptor limit"
-    esac
-    case $MAX_FD in  #(
-      '' | soft) :;; #(
-      *)
-        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
-        # shellcheck disable=SC2039,SC3045
-        ulimit -n "$MAX_FD" ||
-            warn "Could not set maximum file descriptor limit to $MAX_FD"
-    esac
-fi
-
-# Collect all arguments for the java command, stacking in reverse order:
-#   * args from the command line
-#   * the main class name
-#   * -classpath
-#   * -D...appname settings
-#   * --module-path (only if needed)
-#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
-
-# For Cygwin or MSYS, switch paths to Windows format before running java
-if "$cygwin" || "$msys" ; then
-    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
-    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
-
-    JAVACMD=$( cygpath --unix "$JAVACMD" )
-
-    # Now convert the arguments - kludge to limit ourselves to /bin/sh
-    for arg do
-        if
-            case $arg in                                #(
-              -*)   false ;;                            # don't mess with options #(
-              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
-                    [ -e "$t" ] ;;                      #(
-              *)    false ;;
-            esac
-        then
-            arg=$( cygpath --path --ignore --mixed "$arg" )
-        fi
-        # Roll the args list around exactly as many times as the number of
-        # args, so each arg winds up back in the position where it started, but
-        # possibly modified.
-        #
-        # NB: a `for` loop captures its iteration list before it begins, so
-        # changing the positional parameters here affects neither the number of
-        # iterations, nor the values presented in `arg`.
-        shift                   # remove old arg
-        set -- "$@" "$arg"      # push replacement arg
-    done
-fi
-
-
-# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-
-# Collect all arguments for the java command:
-#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
-#     and any embedded shellness will be escaped.
-#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
-#     treated as '${Hostname}' itself on the command line.
-
-set -- \
-        "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
-        org.gradle.wrapper.GradleWrapperMain \
-        "$@"
-
-# Stop when "xargs" is not available.
-if ! command -v xargs >/dev/null 2>&1
-then
-    die "xargs is not available"
-fi
-
-# Use "xargs" to parse quoted args.
-#
-# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
-#
-# In Bash we could simply go:
-#
-#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
-#   set -- "${ARGS[@]}" "$@"
-#
-# but POSIX shell has neither arrays nor command substitution, so instead we
-# post-process each arg (as a line of input to sed) to backslash-escape any
-# character that might be a shell metacharacter, then use eval to reverse
-# that process (while maintaining the separation between arguments), and wrap
-# the whole thing up as a single "set" statement.
-#
-# This will of course break if any of these variables contains a newline or
-# an unmatched quote.
-#
-
-eval "set -- $(
-        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
-        xargs -n1 |
-        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
-        tr '\n' ' '
-    )" '"$@"'
-
-exec "$JAVACMD" "$@"
-</file>
-
-<file path="gradlew.bat">
-@rem
-@rem Copyright 2015 the original author or authors.
-@rem
-@rem Licensed under the Apache License, Version 2.0 (the "License");
-@rem you may not use this file except in compliance with the License.
-@rem You may obtain a copy of the License at
-@rem
-@rem      https://www.apache.org/licenses/LICENSE-2.0
-@rem
-@rem Unless required by applicable law or agreed to in writing, software
-@rem distributed under the License is distributed on an "AS IS" BASIS,
-@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-@rem See the License for the specific language governing permissions and
-@rem limitations under the License.
-@rem
-@rem SPDX-License-Identifier: Apache-2.0
-@rem
-
-@if "%DEBUG%"=="" @echo off
-@rem ##########################################################################
-@rem
-@rem  Gradle startup script for Windows
-@rem
-@rem ##########################################################################
-
-@rem Set local scope for the variables with windows NT shell
-if "%OS%"=="Windows_NT" setlocal
-
-set DIRNAME=%~dp0
-if "%DIRNAME%"=="" set DIRNAME=.
-@rem This is normally unused
-set APP_BASE_NAME=%~n0
-set APP_HOME=%DIRNAME%
-
-@rem Resolve any "." and ".." in APP_HOME to make it shorter.
-for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
-
-@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
-
-@rem Find java.exe
-if defined JAVA_HOME goto findJavaFromJavaHome
-
-set JAVA_EXE=java.exe
-%JAVA_EXE% -version >NUL 2>&1
-if %ERRORLEVEL% equ 0 goto execute
-
-echo. 1>&2
-echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
-
-goto fail
-
-:findJavaFromJavaHome
-set JAVA_HOME=%JAVA_HOME:"=%
-set JAVA_EXE=%JAVA_HOME%/bin/java.exe
-
-if exist "%JAVA_EXE%" goto execute
-
-echo. 1>&2
-echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
-
-goto fail
-
-:execute
-@rem Setup the command line
-
-set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-
-
-@rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
-
-:end
-@rem End local scope for the variables with windows NT shell
-if %ERRORLEVEL% equ 0 goto mainEnd
-
-:fail
-rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
-rem the _cmd.exe /c_ return code!
-set EXIT_CODE=%ERRORLEVEL%
-if %EXIT_CODE% equ 0 set EXIT_CODE=1
-if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
-exit /b %EXIT_CODE%
-
-:mainEnd
-if "%OS%"=="Windows_NT" endlocal
-
-:omega
 </file>
 
 <file path=".github/ISSUE_TEMPLATE/bug_report.md">
@@ -2126,6 +1498,16 @@ public class Logger {
 }
 </file>
 
+<file path="gradle/wrapper/gradle-wrapper.properties">
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+networkTimeout=10000
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+</file>
+
 <file path="paper/src/main/java/dev/objz/commandbridge/paper/command/CommandExecutor.java">
 package dev.objz.commandbridge.paper.command;
 
@@ -2412,125 +1794,6 @@ public class CommandForwarder {
 }
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/core/Runtime.java">
-package dev.objz.commandbridge.paper.core;
-
-import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.command.CommandRegistrar;
-import dev.objz.commandbridge.paper.utils.Encoder;
-import dev.objz.commandbridge.paper.utils.GeneralUtils;
-import dev.objz.commandbridge.paper.utils.ScriptUtils;
-import dev.objz.commandbridge.paper.websocket.Client;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ConfigManager;
-import dev.objz.commandbridge.paper.command.CommandExecutor;
-import dev.objz.commandbridge.paper.command.CommandForwarder;
-
-public class Runtime {
-    private static Runtime instance;
-    private Logger logger;
-    private ConfigManager config;
-    private ScriptUtils scriptUtils;
-    private Client client;
-    private Startup startup;
-    private CommandForwarder forwarder;
-    private CommandRegistrar registrar;
-    private GeneralUtils generalUtils;
-    private CommandExecutor commandExecutor;
-    private Encoder encoder;
-
-    private Runtime() {
-    }
-
-    public static synchronized Runtime getInstance() {
-        if (instance == null) {
-            instance = new Runtime();
-            instance.getLogger().debug("Runtime singleton instance initialized.");
-        }
-        return instance;
-    }
-
-    public synchronized Logger getLogger() {
-        if (logger == null) {
-            logger = new Logger("CommandBridge");
-            logger.debug("Logger initialized.");
-        }
-        return logger;
-    }
-
-    public synchronized ConfigManager getConfig() {
-        if (config == null) {
-            config = new ConfigManager(getLogger(), "CommandBridge");
-            getLogger().debug("ConfigManager initialized.");
-        }
-        return config;
-    }
-
-    public synchronized ScriptUtils getScriptUtils() {
-        if (scriptUtils == null) {
-            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
-            getLogger().debug("ScriptUtils initialized.");
-        }
-        return scriptUtils;
-    }
-
-    public synchronized Client getClient() {
-        if (client == null) {
-            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
-            getLogger().debug("Server initialized.");
-        }
-        return client;
-    }
-
-    public synchronized Startup getStartup() {
-        if (startup == null) {
-            startup = new Startup(getLogger());
-            getLogger().debug("Startup initialized.");
-        }
-        return startup;
-    }
-
-    public synchronized CommandForwarder getForwarder() {
-        if (forwarder == null) {
-            forwarder = new CommandForwarder(getLogger(), Main.getInstance());
-            getLogger().debug("CommandHelper initialized.");
-        }
-        return forwarder;
-    }
-
-    public synchronized CommandRegistrar getRegistrar() {
-        if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
-            getLogger().debug("CommandRegistrar initialized.");
-        }
-        return registrar;
-    }
-
-    public synchronized GeneralUtils getGeneralUtils() {
-        if (generalUtils == null) {
-            generalUtils = new GeneralUtils(getLogger());
-            getLogger().debug("GeneralUtils initialized.");
-        }
-        return generalUtils;
-    }
-
-    public synchronized CommandExecutor getCommandExecutor() {
-        if (commandExecutor == null) {
-            commandExecutor = new CommandExecutor();
-            getLogger().debug("CommandExecutor initialized.");
-        }
-        return commandExecutor;
-    }
-    public synchronized Encoder getEncoder() {
-        if (encoder == null) {
-            encoder = new Encoder();
-            getLogger().debug("Encoder initialized.");
-        }
-        return encoder;
-    }
-}
-</file>
-
 <file path="paper/src/main/java/dev/objz/commandbridge/paper/core/Startup.java">
 package dev.objz.commandbridge.paper.core;
 
@@ -2798,191 +2061,6 @@ public class SchedulerAdapter {
 }
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/utils/ScriptUtils.java">
-package dev.objz.commandbridge.paper.utils;
-
-import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.command.CommandRegistrar;
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ScriptManager;
-
-public class ScriptUtils extends ScriptManager {
-    private final Logger logger;
-    private final CommandRegistrar registrar;
-
-    public ScriptUtils(Logger logger, String pluginName) {
-        super(logger, pluginName);
-        this.logger = logger;
-        this.registrar = Runtime.getInstance().getRegistrar();
-    }
-
-    @Override
-    public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
-        if (scriptConfig.isEnabled()) {
-            logger.info("Loaded script: {}", fileName);
-            try {
-                registrar.registerCommand(getScriptConfig(fileName));
-                Runtime.getInstance().getEncoder().addScriptConfig(scriptConfig);
-                logger.debug("Registered command: {}", scriptConfig.getName());
-            } catch (Exception e) {
-                logger.error("Failed to register script '{}' : {}",
-                        scriptConfig.getName(),
-                        logger.getDebug() ? e : e.getMessage());
-            }
-        } else {
-            logger.info("Skipped disabled script: {}", scriptConfig.getName());
-        }
-    }
-
-    public void unloadCommands(Runnable callback) {
-        new SchedulerAdapter(Main.getInstance())
-                .run(
-                        () -> {
-                            logger.debug("Running on thread (unload): {}", Thread.currentThread().getName());
-                            Runtime.getInstance().getRegistrar().unregisterAllCommands();
-                            logger.debug("All commands have been unloaded");
-                            callback.run();
-                        });
-    }
-
-}
-</file>
-
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/websocket/Client.java">
-package dev.objz.commandbridge.paper.websocket;
-
-import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
-import dev.objz.commandbridge.core.json.MessageBuilder;
-import dev.objz.commandbridge.core.json.MessageParser;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.websocket.WebSocketClient;
-import org.bukkit.entity.Player;
-
-public class Client extends WebSocketClient {
-    private final Logger logger;
-
-    public Client(Logger logger, String secret) {
-        super(logger, secret);
-        this.logger = logger;
-    }
-
-    @Override
-    protected void onMessage(String message) {
-        MessageParser parser = new MessageParser(message);
-        logger.debug("Received payload: {}", message);
-        try {
-            String type = parser.getType();
-            switch (type) {
-                case "command" -> handleCommandRequest(message);
-                case "system" -> handleSystemRequest(message);
-                default -> {
-                    logger.warn("Invalid type: {}", type);
-                    sendError("Invalid type: " + type);
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Error while processing message: {}",
-                    logger.getDebug() ? e : e.getMessage());
-            sendError("Internal client error: " + e.getMessage());
-        }
-    }
-
-    @Override
-    protected void afterAuth() {
-        logger.debug("Sending server information's...");
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "name");
-        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-        logger.debug("Sending payload: {}", builder.build().toString());
-        sendMessage(builder.build());
-    }
-
-    private void handleCommandRequest(String message) {
-        logger.debug("Handling command response");
-        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
-    }
-
-    private void handleSystemRequest(String message) {
-        logger.debug("Handling system request");
-        MessageParser parser = new MessageParser(message);
-        String channel = parser.getBodyValueAsString("channel");
-        String status = parser.getStatus();
-
-        switch (channel) {
-            case "error" -> logger.warn("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
-            case "info" -> logger.info("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
-            case "task" -> systemTask(parser, status);
-            default -> logger.warn("Invalid channel: {}", channel);
-        }
-    }
-
-    private void systemTask(MessageParser parser, String status) {
-        String task = parser.getBodyValueAsString("task");
-        switch (task) {
-            case "reload" ->
-                Runtime.getInstance().getScriptUtils().unloadCommands(() -> new SchedulerAdapter(Main.getInstance())
-                        .runLater(Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
-            case "reconnect" -> Ping.reconnect(logger);
-            case "dump" -> {
-                String encoded = Runtime.getInstance().getEncoder().encode();
-                String compressed;
-                try {
-                    compressed = Runtime.getInstance().getEncoder().compress(encoded);
-                } catch (Exception e) {
-                    logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
-                    sendError("Error while processing dump data: " + e.getMessage());
-                    return;
-                }
-                MessageBuilder builder = new MessageBuilder("system");
-                builder.addToBody("channel", "task").addToBody("task", "dump")
-                        .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
-                        .addToBody("compressed", compressed)
-                        .withStatus("success");
-                sendMessage(builder.build());
-            }
-            default -> logger.warn("Invalid task: {}", task);
-        }
-    }
-
-    public void sendError(String errorMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "error").withStatus(errorMessage).addToBody("client",
-                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-        sendMessage(builder.build());
-    }
-
-    public void sendInfo(String infoMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "info").withStatus(infoMessage).addToBody("client",
-                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-        sendMessage(builder.build());
-    }
-
-    public void sendTask(String task, String status) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "task").addToBody("task", task)
-                .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
-                .withStatus(status);
-        sendMessage(builder.build());
-    }
-
-    public void sendCommand(String command, String client, String target, Player executor) {
-        MessageBuilder builder = new MessageBuilder("command");
-        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
-
-        if (target.equals("player")) {
-            builder.addToBody("name", executor.getName()).addToBody("uuid", executor.getUniqueId());
-        }
-        logger.info("Sending command '{}' to server", command);
-        logger.debug("Sending payload: {}", builder.build().toString());
-        sendMessage(builder.build());
-    }
-}
-</file>
-
 <file path="paper/src/main/java/dev/objz/commandbridge/paper/websocket/Ping.java">
 package dev.objz.commandbridge.paper.websocket;
 
@@ -3100,88 +2178,6 @@ public class Ping {
             throw new RuntimeException("Failed to disable certificate validation", e);
         }
     }
-}
-</file>
-
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/Main.java">
-package dev.objz.commandbridge.paper;
-
-import java.io.InputStream;
-import java.util.Properties;
-
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
-
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.core.Logger;
-import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
-
-public class Main extends JavaPlugin {
-    private static Main instance;
-    private final Logger logger;
-
-    public Main() {
-        instance = this;
-        logger = Runtime.getInstance().getLogger();
-    }
-
-    public static String getVersion() {
-        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
-            if (input == null) {
-                return "Unknown";
-            }
-            Properties properties = new Properties();
-            properties.load(input);
-            return properties.getProperty("plugin.version", "Unknown");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Unknown";
-        }
-    }
-
-    public static Main getInstance() {
-        return instance;
-    }
-
-    @Override
-    public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).silentLogs(true)
-                .skipReloadDatapacks(true).shouldHookPaperReload(false));
-    }
-
-    @Override
-    public void onEnable() {
-        CommandAPI.onEnable();
-        logger.info("Initializing CommandBridge...");
-        Runtime.getInstance().getStartup().start();
-    }
-
-    @Override
-    public void onDisable() {
-        CommandAPI.onDisable();
-        logger.info("Stopping CommandBridge...");
-        Runtime.getInstance().getStartup().stop();
-    }
-
-    public record ServerInfo(String name, String version) {
-    }
-
-    public static ServerInfo detectServer() {
-        Package pkg = Bukkit.getServer().getClass().getPackage();
-        String title = pkg.getImplementationTitle();
-        String version = pkg.getImplementationVersion();
-
-        if (title != null && !title.isBlank()
-                && version != null && !version.isBlank()) {
-            return new ServerInfo(title, version);
-        }
-
-        String fallbackName = Bukkit.getServer().getName();
-        String fallbackVersion = Bukkit.getServer().getVersion();
-        return new ServerInfo(fallbackName, fallbackVersion);
-    }
-
 }
 </file>
 
@@ -3585,136 +2581,6 @@ public class CommandForwarder {
                 }
             }
         }
-    }
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/core/Runtime.java">
-package dev.objz.commandbridge.velocity.core;
-
-import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.command.CommandDispatcher;
-import dev.objz.commandbridge.velocity.command.CommandForwarder;
-import dev.objz.commandbridge.velocity.command.CommandRegistrar;
-import dev.objz.commandbridge.velocity.util.Encoder;
-import dev.objz.commandbridge.velocity.util.GeneralUtils;
-import dev.objz.commandbridge.velocity.util.ScriptUtils;
-import dev.objz.commandbridge.velocity.websocket.HttpServer;
-import dev.objz.commandbridge.velocity.websocket.Server;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ConfigManager;
-
-public class Runtime {
-    private static Runtime instance;
-    private Logger logger;
-    private ConfigManager config;
-    private ScriptUtils scriptUtils;
-    private Server server;
-    private Startup startup;
-    private CommandForwarder helper;
-    private CommandRegistrar registrar;
-    private GeneralUtils generalUtils;
-    private CommandDispatcher commandDispatcher;
-    private HttpServer httpServer;
-    private Encoder encoder;
-
-    private Runtime() {
-    }
-
-    public static synchronized Runtime getInstance() {
-        if (instance == null) {
-            instance = new Runtime();
-            instance.getLogger().debug("Runtime singleton instance initialized.");
-        }
-        return instance;
-    }
-
-    public synchronized Logger getLogger() {
-        if (logger == null) {
-            logger = new Logger("CommandBridge");
-            logger.debug("Logger initialized.");
-        }
-        return logger;
-    }
-
-    public synchronized ConfigManager getConfig() {
-        if (config == null) {
-            config = new ConfigManager(getLogger(), "CommandBridge");
-            getLogger().debug("ConfigManager initialized.");
-        }
-        return config;
-    }
-
-    public synchronized ScriptUtils getScriptUtils() {
-        if (scriptUtils == null) {
-            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
-            getLogger().debug("ScriptUtils initialized.");
-        }
-        return scriptUtils;
-    }
-
-    public synchronized Server getServer() {
-        if (server == null) {
-            server = new Server(getLogger(), getConfig().getSecret());
-            getLogger().debug("Server initialized.");
-        }
-        return server;
-    }
-
-    public synchronized Startup getStartup() {
-        if (startup == null) {
-            startup = new Startup(getLogger());
-            getLogger().debug("Startup initialized.");
-        }
-        return startup;
-    }
-
-    public synchronized CommandForwarder getHelper() {
-        if (helper == null) {
-            helper = new CommandForwarder(getLogger(), Main.getInstance());
-            getLogger().debug("CommandForwarder initialized.");
-        }
-        return helper;
-    }
-
-    public synchronized CommandRegistrar getRegistrar() {
-        if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
-            getLogger().debug("InternalRegistrar initialized.");
-        }
-        return registrar;
-    }
-
-    public synchronized GeneralUtils getGeneralUtils() {
-        if (generalUtils == null) {
-            generalUtils = new GeneralUtils(getLogger());
-            getLogger().debug("GeneralUtils initialized.");
-        }
-        return generalUtils;
-    }
-
-    public synchronized CommandDispatcher getCommandExecutor() {
-        if (commandDispatcher == null) {
-            commandDispatcher = new CommandDispatcher();
-            getLogger().debug("CommandDispatcher initialized.");
-        }
-        return commandDispatcher;
-    }
-
-    public synchronized HttpServer getHttpServer() {
-        if (httpServer == null) {
-            httpServer = new HttpServer(logger);
-            getLogger().debug("HttpServer initialized.");
-        }
-        return httpServer;
-    }
-
-    public synchronized Encoder getEncoder() {
-        if (encoder == null) {
-            encoder = new Encoder();
-            getLogger().debug("Encoder initialized.");
-        }
-        return encoder;
     }
 }
 </file>
@@ -4182,84 +3048,6 @@ public class HelpCommand {
 }
 </file>
 
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/helper/InternalRegistrar.java">
-package dev.objz.commandbridge.velocity.helper;
-
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.tree.LiteralCommandNode;
-import com.velocitypowered.api.command.BrigadierCommand;
-import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.proxy.ProxyServer;
-import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.velocity.helper.command.DumpCommand;
-import dev.objz.commandbridge.velocity.helper.command.ListCommand;
-import dev.objz.commandbridge.velocity.helper.command.ReloadCommand;
-import dev.objz.commandbridge.velocity.helper.command.StartCommand;
-import dev.objz.commandbridge.velocity.helper.command.StopCommand;
-import dev.objz.commandbridge.velocity.helper.command.VersionCommand;
-import dev.objz.commandbridge.core.Logger;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-
-import java.util.Set;
-
-public class InternalRegistrar {
-    private final Logger logger;
-    private final ProxyServer proxy;
-    private final Main plugin;
-    private final Set<String> connectedClients;
-
-    public InternalRegistrar(Logger logger, ProxyServer proxy, Main plugin, Set<String> connectedClients) {
-        this.logger = logger;
-        this.proxy = proxy;
-        this.plugin = plugin;
-        this.connectedClients = connectedClients;
-    }
-
-    public void registerCommands() {
-        logger.info("Registering commands for CommandBridge...");
-        try {
-            LiteralArgumentBuilder<CommandSource> commandBridgeBuilder = LiteralArgumentBuilder
-                    .<CommandSource>literal("commandbridge")
-                    .executes(context -> {
-                        if (context.getSource().hasPermission("commandbridge.admin")) {
-                            return HelpCommand.sendHelpMessage(context.getSource(), logger);
-                        }
-                        context.getSource().sendMessage(
-                                Component.text("You do not have permission to use this command", NamedTextColor.RED));
-                        return 0;
-                    });
-
-            commandBridgeBuilder.then(ReloadCommand.build(Runtime.getInstance().getGeneralUtils(), logger));
-            commandBridgeBuilder.then(VersionCommand.build(logger));
-            commandBridgeBuilder.then(HelpCommand.build(logger));
-            commandBridgeBuilder.then(ListCommand.build(connectedClients, logger));
-            commandBridgeBuilder.then(DumpCommand.build(connectedClients, logger));
-            if (logger.getDebug()) {
-                commandBridgeBuilder.then(StopCommand.build(logger));
-                commandBridgeBuilder.then(StartCommand.build(logger));
-            }
-
-            LiteralCommandNode<CommandSource> commandBridgeNode = commandBridgeBuilder.build();
-
-            Runtime.getInstance().getGeneralUtils().setMeta(proxy.getCommandManager()
-                    .metaBuilder("commandbridge")
-                    .aliases("cb")
-                    .plugin(plugin)
-                    .build());
-
-            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
-            proxy.getCommandManager().register(Runtime.getInstance().getGeneralUtils().getMeta(), brigadierCommand);
-            logger.info("CommandBridge commands registered successfully");
-        } catch (Exception e) {
-            logger.error("Failed to register CommandBridge commands: {}", logger.getDebug() ? e : e.getMessage());
-        }
-    }
-
-}
-</file>
-
 <file path="velocity/src/main/java/dev/objz/commandbridge/velocity/helper/StatusManager.java">
 package dev.objz.commandbridge.velocity.helper;
 
@@ -4421,44 +3209,6 @@ public class ProxyUtils {
 }
 </file>
 
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/util/ScriptUtils.java">
-package dev.objz.commandbridge.velocity.util;
-
-import dev.objz.commandbridge.velocity.command.CommandRegistrar;
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ScriptManager;
-
-public class ScriptUtils extends ScriptManager {
-    private final Logger logger;
-    private final CommandRegistrar registrar;
-
-    public ScriptUtils(Logger logger, String pluginName) {
-        super(logger, pluginName);
-        this.logger = logger;
-        this.registrar = Runtime.getInstance().getRegistrar();
-    }
-
-    @Override
-    public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
-        if (scriptConfig.isEnabled()) {
-            logger.info("Loaded script: {}", fileName);
-            try {
-                registrar.registerCommand(getScriptConfig(fileName));
-                Runtime.getInstance().getEncoder().addScriptConfig(scriptConfig);
-                logger.debug("Registered command: {}", scriptConfig.getName());
-            } catch (Exception e) {
-                logger.error("Failed to register script '{}' : {}",
-                        scriptConfig.getName(),
-                        logger.getDebug() ? e : e.getMessage());
-            }
-        } else {
-            logger.info("Skipped disabled script: {}", scriptConfig.getName());
-        }
-    }
-}
-</file>
-
 <file path="velocity/src/main/java/dev/objz/commandbridge/velocity/websocket/HttpServer.java">
 package dev.objz.commandbridge.velocity.websocket;
 
@@ -4531,287 +3281,355 @@ public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest> {
 }
 </file>
 
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/websocket/Server.java">
-package dev.objz.commandbridge.velocity.websocket;
+<file path="gradlew">
+#!/bin/sh
 
-import java.util.*;
+#
+# Copyright © 2015-2021 the original authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 
-import com.velocitypowered.api.proxy.Player;
+##############################################################################
+#
+#   Gradle start up script for POSIX generated by Gradle.
+#
+#   Important for running:
+#
+#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
+#       noncompliant, but you have some other compliant shell such as ksh or
+#       bash, then to run this script, type that shell name before the whole
+#       command line, like:
+#
+#           ksh Gradle
+#
+#       Busybox and similar reduced shells will NOT work, because this script
+#       requires all of these POSIX shell features:
+#         * functions;
+#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
+#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
+#         * compound commands having a testable exit status, especially «case»;
+#         * various built-in commands including «command», «set», and «ulimit».
+#
+#   Important for patching:
+#
+#   (2) This script targets any POSIX shell, so it avoids extensions provided
+#       by Bash, Ksh, etc; in particular arrays are avoided.
+#
+#       The "traditional" practice of packing multiple parameters into a
+#       space-separated string is a well documented source of bugs and security
+#       problems, so this is (mostly) avoided, by progressively accumulating
+#       options in "$@", and eventually passing that to Java.
+#
+#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
+#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
+#       see the in-line comments for details.
+#
+#       There are tweaks for specific operating systems such as AIX, CygWin,
+#       Darwin, MinGW, and NonStop.
+#
+#   (3) This script is generated from the Groovy template
+#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
+#       within the Gradle project.
+#
+#       You can find Gradle at https://github.com/gradle/gradle/.
+#
+##############################################################################
 
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.core.json.MessageBuilder;
-import dev.objz.commandbridge.core.json.MessageParser;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.websocket.WebSocketServer;
-import io.netty.channel.Channel;
+# Attempt to set APP_HOME
 
-public class Server extends WebSocketServer {
-    private final Logger logger;
-    private final Map<String, Channel> clientConnections = new HashMap<>();
+# Resolve links: $0 may be a link
+app_path=$0
 
-    public Server(Logger logger, String secret) {
-        super(logger, secret);
-        super.addHttpHandler(Runtime.getInstance().getHttpServer());
-        this.logger = logger;
-    }
+# Need this for daisy-chained symlinks.
+while
+    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
+    [ -h "$app_path" ]
+do
+    ls=$( ls -ld "$app_path" )
+    link=${ls#*' -> '}
+    case $link in             #(
+      /*)   app_path=$link ;; #(
+      *)    app_path=$APP_HOME$link ;;
+    esac
+done
 
-    @Override
-    protected void onMessage(Channel webSocket, String message) {
-        MessageParser parser = new MessageParser(message);
-        logger.debug("Received message: {}", message);
-        try {
-            String type = parser.getType();
-            switch (type) {
-                case "command" -> handleCommandRequest(webSocket, message);
-                case "system" -> handleSystemRequest(webSocket, message);
-                default -> {
-                    logger.warn("Invalid type: {}", type);
-                    sendError(webSocket, "Invalid type: " + type);
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Error while processing message: {}",
-                    logger.getDebug() ? e : e.getMessage());
-            sendError(webSocket, "Internal server error: " + e.getMessage());
-        }
-    }
+# This is normally unused
+# shellcheck disable=SC2034
+APP_BASE_NAME=${0##*/}
+# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
+APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
-    @Override
-    protected void onConnectionClose(Channel conn, int code, String reason) {
-        String clientAddress = conn.remoteAddress().toString();
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD=maximum
 
-        if (getConnections().contains(conn)) {
-            String disconnectedClientName = clientConnections.entrySet().stream()
-                    .filter(entry -> entry.getValue().equals(conn))
-                    .map(Map.Entry::getKey)
-                    .findFirst()
-                    .orElse(null);
+warn () {
+    echo "$*"
+} >&2
 
-            logger.info("Client '{}' disconnected", clientAddress);
-            if (disconnectedClientName != null) {
-                clientConnections.remove(disconnectedClientName);
-                logger.debug("Removed disconnected client: {}", disconnectedClientName);
-            } else {
-                logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
-            }
-        }
-    }
+die () {
+    echo
+    echo "$*"
+    echo
+    exit 1
+} >&2
 
-    private void handleCommandRequest(Channel webSocket, String message) {
-        logger.debug("Handling command request");
-        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
-    }
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "$( uname )" in                #(
+  CYGWIN* )         cygwin=true  ;; #(
+  Darwin* )         darwin=true  ;; #(
+  MSYS* | MINGW* )  msys=true    ;; #(
+  NONSTOP* )        nonstop=true ;;
+esac
 
-    private void handleSystemRequest(Channel webSocket, String message) {
-        logger.debug("Handling system request");
-        MessageParser parser = new MessageParser(message);
-        String channel = parser.getBodyValueAsString("channel");
-        String name = parser.getBodyValueAsString("name");
-        String client = parser.getBodyValueAsString("client");
-        String status = parser.getStatus();
+CLASSPATH="\\\"\\\""
 
-        switch (channel) {
-            case "name" -> {
-                if (name != null) {
-                    clientConnections.put(name, webSocket);
-                    logger.info("Added connected client: {}", name);
-                } else {
-                    logger.warn("Client did not provide 'name' in system request");
-                }
-            }
-            case "error" -> logger.warn("Message from client '{}' : {}", client, status);
-            case "info" -> logger.info("Message from client '{}' : {}", client, status);
-            case "task" -> systemTask(parser, status, client);
-            default -> logger.warn("Invalid channel: {}", channel);
-        }
-    }
 
-    private void systemTask(MessageParser parser, String status, String client) {
-        String task = parser.getBodyValueAsString("task");
-        switch (task) {
-            case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
-            case "dump" -> Runtime.getInstance().getEncoder().addClient(parser.getBodyValueAsString("client"), parser.getBodyValueAsString("compressed"));
-            default -> logger.warn("Invalid task: {}", task);
-        }
-    }
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD=$JAVA_HOME/jre/sh/java
+    else
+        JAVACMD=$JAVA_HOME/bin/java
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
 
-    public void sendError(Channel webSocket, String errorMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "error")
-                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
-                .withStatus(errorMessage);
-        sendMessage(builder.build(), webSocket);
-    }
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD=java
+    if ! command -v java >/dev/null 2>&1
+    then
+        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
 
-    public void sendInfo(Channel webSocket, String infoMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "info")
-                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
-                .withStatus(infoMessage);
-        sendMessage(builder.build(), webSocket);
-    }
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+fi
 
-    public void sendTask(Channel webSocket, String task, String status) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "task").addToBody("task", task)
-                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
-                .withStatus(status);
-        sendMessage(builder.build(), webSocket);
-    }
+# Increase the maximum file descriptors if we can.
+if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
+    case $MAX_FD in #(
+      max*)
+        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        MAX_FD=$( ulimit -H -n ) ||
+            warn "Could not query maximum file descriptor limit"
+    esac
+    case $MAX_FD in  #(
+      '' | soft) :;; #(
+      *)
+        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
+        # shellcheck disable=SC2039,SC3045
+        ulimit -n "$MAX_FD" ||
+            warn "Could not set maximum file descriptor limit to $MAX_FD"
+    esac
+fi
 
-    public void sendCommand(String command, String client, String target, Player executor) {
-        Channel conn = clientConnections.get(client);
-        if (conn == null) {
-            logger.warn("Client '{}' is not connected, cannot send message.", client);
-            return;
-        }
+# Collect all arguments for the java command, stacking in reverse order:
+#   * args from the command line
+#   * the main class name
+#   * -classpath
+#   * -D...appname settings
+#   * --module-path (only if needed)
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
 
-        MessageBuilder builder = new MessageBuilder("command");
-        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+# For Cygwin or MSYS, switch paths to Windows format before running java
+if "$cygwin" || "$msys" ; then
+    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
+    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
 
-        if (target.equals("player")) {
-            builder.addToBody("name", executor.getUsername()).addToBody("uuid", executor.getUniqueId());
-        }
-        logger.info("Sending command '{}' to client: {}", command, client);
-        logger.debug("Sending payload: {}", builder.build().toString());
-        sendMessage(builder.build(), conn);
-    }
+    JAVACMD=$( cygpath --unix "$JAVACMD" )
 
-    public boolean isServerConnected(String clientName) {
-        boolean exists = clientConnections.containsKey(clientName);
-        logger.debug("Checking if client '{}' is connected: {}", clientName, exists);
-        return exists;
-    }
+    # Now convert the arguments - kludge to limit ourselves to /bin/sh
+    for arg do
+        if
+            case $arg in                                #(
+              -*)   false ;;                            # don't mess with options #(
+              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
+                    [ -e "$t" ] ;;                      #(
+              *)    false ;;
+            esac
+        then
+            arg=$( cygpath --path --ignore --mixed "$arg" )
+        fi
+        # Roll the args list around exactly as many times as the number of
+        # args, so each arg winds up back in the position where it started, but
+        # possibly modified.
+        #
+        # NB: a `for` loop captures its iteration list before it begins, so
+        # changing the positional parameters here affects neither the number of
+        # iterations, nor the values presented in `arg`.
+        shift                   # remove old arg
+        set -- "$@" "$arg"      # push replacement arg
+    done
+fi
 
-    public Set<String> getConnectedClients() {
-        return clientConnections.keySet();
-    }
 
-    public Channel getWebSocket(String client) {
-        return clientConnections.get(client);
-    }
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
-}
+# Collect all arguments for the java command:
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
+#     and any embedded shellness will be escaped.
+#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
+#     treated as '${Hostname}' itself on the command line.
+
+set -- \
+        "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -classpath "$CLASSPATH" \
+        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
+        "$@"
+
+# Stop when "xargs" is not available.
+if ! command -v xargs >/dev/null 2>&1
+then
+    die "xargs is not available"
+fi
+
+# Use "xargs" to parse quoted args.
+#
+# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
+#
+# In Bash we could simply go:
+#
+#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
+#   set -- "${ARGS[@]}" "$@"
+#
+# but POSIX shell has neither arrays nor command substitution, so instead we
+# post-process each arg (as a line of input to sed) to backslash-escape any
+# character that might be a shell metacharacter, then use eval to reverse
+# that process (while maintaining the separation between arguments), and wrap
+# the whole thing up as a single "set" statement.
+#
+# This will of course break if any of these variables contains a newline or
+# an unmatched quote.
+#
+
+eval "set -- $(
+        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
+        xargs -n1 |
+        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
+        tr '\n' ' '
+    )" '"$@"'
+
+exec "$JAVACMD" "$@"
 </file>
 
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/Main.java">
-package dev.objz.commandbridge.velocity;
+<file path="gradlew.bat">
+@rem
+@rem Copyright 2015 the original author or authors.
+@rem
+@rem Licensed under the Apache License, Version 2.0 (the "License");
+@rem you may not use this file except in compliance with the License.
+@rem You may obtain a copy of the License at
+@rem
+@rem      https://www.apache.org/licenses/LICENSE-2.0
+@rem
+@rem Unless required by applicable law or agreed to in writing, software
+@rem distributed under the License is distributed on an "AS IS" BASIS,
+@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@rem See the License for the specific language governing permissions and
+@rem limitations under the License.
+@rem
+@rem SPDX-License-Identifier: Apache-2.0
+@rem
 
-import java.io.InputStream;
-import java.util.Properties;
+@if "%DEBUG%"=="" @echo off
+@rem ##########################################################################
+@rem
+@rem  Gradle startup script for Windows
+@rem
+@rem ##########################################################################
 
-import org.bstats.velocity.Metrics;
+@rem Set local scope for the variables with windows NT shell
+if "%OS%"=="Windows_NT" setlocal
 
-import com.google.inject.Inject;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.connection.PostLoginEvent;
-import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
-import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
-import com.velocitypowered.api.plugin.Plugin;
-import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ProxyServer;
+set DIRNAME=%~dp0
+if "%DIRNAME%"=="" set DIRNAME=.
+@rem This is normally unused
+set APP_BASE_NAME=%~n0
+set APP_HOME=%DIRNAME%
 
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.velocity.util.ProxyUtils;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.VersionChecker;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
+@rem Resolve any "." and ".." in APP_HOME to make it shorter.
+for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 
-@Plugin(id = "commandbridge", name = "CommandBridge", version = "Unknown", authors = "objz")
-public class Main {
-    private static Main instance;
-    public final ProxyServer proxy;
-    private final Logger logger;
-    private final Metrics.Factory metricsFactory;
+@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
-    @Inject
-    public Main(ProxyServer proxy, Logger bLogger, Metrics.Factory metricsFactory) {
-        this.proxy = proxy;
-        this.logger = Runtime.getInstance().getLogger();
-        instance = this;
-        this.metricsFactory = metricsFactory;
-        ProxyUtils.setProxyServer(proxy);
-    }
+@rem Find java.exe
+if defined JAVA_HOME goto findJavaFromJavaHome
 
-    public static Main getInstance() {
-        return instance;
-    }
+set JAVA_EXE=java.exe
+%JAVA_EXE% -version >NUL 2>&1
+if %ERRORLEVEL% equ 0 goto execute
 
-    public static String getVersion() {
-        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
-            if (input == null) {
-                return "Unknown";
-            }
-            Properties properties = new Properties();
-            properties.load(input);
-            return properties.getProperty("plugin.version", "Unknown");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Unknown";
-        }
-    }
+echo. 1>&2
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
 
-    public String getVelocityVersion() {
-        return proxy.getVersion().getVersion().toString();
-    }
+goto fail
 
-    @Subscribe
-    public void onProxyInitialization(ProxyInitializeEvent event) {
-        logger.info("Initializing CommandBridge...");
-        Runtime.getInstance().getStartup().start();
-        int pluginId = 22008;
-        metricsFactory.make(this, pluginId);
+:findJavaFromJavaHome
+set JAVA_HOME=%JAVA_HOME:"=%
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
 
-    }
+if exist "%JAVA_EXE%" goto execute
 
-    @Subscribe
-    public void onProxyShutdown(ProxyShutdownEvent event) {
-        logger.info("Stopping CommandBridge...");
-        Runtime.getInstance().getStartup().stop();
-    }
+echo. 1>&2
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
+echo. 1>&2
+echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+echo location of your Java installation. 1>&2
 
-    @Subscribe
-    public void onPlayerJoin(PostLoginEvent event) {
-        Player player = event.getPlayer();
-        if (player == null) {
-            logger.warn("PostLoginEvent triggered with a null player object.");
-            return;
-        }
+goto fail
 
-        if (player.hasPermission("commandbridge.admin")) {
-            logger.debug("Player '{}' has admin permissions. Checking for updates...", player.getUsername());
+:execute
+@rem Setup the command line
 
-            proxy.getScheduler().buildTask(this, () -> {
-                String currentVersion = Main.getVersion();
-                String latestVersion = VersionChecker.getLatestVersion();
+set CLASSPATH=
 
-                if (latestVersion == null) {
-                    player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
-                    logger.warn("Update check failed: Unable to retrieve the latest version.");
-                    return;
-                }
 
-                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
-                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion)
-                            .color(NamedTextColor.RED));
-                    player.sendMessage(Component.text("Please download the latest release: ")
-                            .append(Component.text("here")
-                                    .color(NamedTextColor.BLUE)
-                                    .decorate(TextDecoration.UNDERLINED)
-                                    .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
-                    logger.debug("Notified player '{}' about the new version: {}", player.getUsername(), latestVersion);
-                } else {
-                    logger.debug("Player '{}' is running the latest version: {}", player.getUsername(), currentVersion);
-                }
-            }).schedule();
-        } else {
-            logger.debug("Player {} does not have admin permissions. No update check performed.", player.getUsername());
-        }
-    }
-}
+@rem Execute Gradle
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %*
+
+:end
+@rem End local scope for the variables with windows NT shell
+if %ERRORLEVEL% equ 0 goto mainEnd
+
+:fail
+rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
+rem the _cmd.exe /c_ return code!
+set EXIT_CODE=%ERRORLEVEL%
+if %EXIT_CODE% equ 0 set EXIT_CODE=1
+if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
+exit /b %EXIT_CODE%
+
+:mainEnd
+if "%OS%"=="Windows_NT" endlocal
+
+:omega
 </file>
 
 <file path="LICENSE">
@@ -5556,6 +4374,521 @@ public class CommandRegistrar {
 }
 </file>
 
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/core/Runtime.java">
+package dev.objz.commandbridge.paper.core;
+
+import dev.objz.commandbridge.paper.Main;
+import dev.objz.commandbridge.paper.command.CommandRegistrar;
+import dev.objz.commandbridge.paper.utils.Encoder;
+import dev.objz.commandbridge.paper.utils.GeneralUtils;
+import dev.objz.commandbridge.paper.utils.ScriptUtils;
+import dev.objz.commandbridge.paper.websocket.Client;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ConfigManager;
+import dev.objz.commandbridge.paper.command.CommandExecutor;
+import dev.objz.commandbridge.paper.command.CommandForwarder;
+
+public class Runtime {
+    private static Runtime instance;
+    private Logger logger;
+    private ConfigManager config;
+    private ScriptUtils scriptUtils;
+    private Client client;
+    private Startup startup;
+    private CommandForwarder forwarder;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
+    private CommandExecutor commandExecutor;
+    private Encoder encoder;
+
+    private Runtime() {
+    }
+
+    public static synchronized Runtime getInstance() {
+        if (instance == null) {
+            instance = new Runtime();
+            instance.getLogger().debug("Runtime singleton instance initialized.");
+        }
+        return instance;
+    }
+
+    public synchronized Logger getLogger() {
+        if (logger == null) {
+            logger = new Logger("CommandBridge");
+            logger.debug("Logger initialized.");
+        }
+        return logger;
+    }
+
+    public synchronized ConfigManager getConfig() {
+        if (config == null) {
+            config = new ConfigManager(getLogger(), "CommandBridge");
+            getLogger().debug("ConfigManager initialized.");
+        }
+        return config;
+    }
+
+    public synchronized ScriptUtils getScriptUtils() {
+        if (scriptUtils == null) {
+            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
+            getLogger().debug("ScriptUtils initialized.");
+        }
+        return scriptUtils;
+    }
+
+    public synchronized Client getClient() {
+        if (client == null) {
+            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
+            getLogger().debug("Server initialized.");
+        }
+        return client;
+    }
+
+    public synchronized Startup getStartup() {
+        if (startup == null) {
+            startup = new Startup(getLogger());
+            getLogger().debug("Startup initialized.");
+        }
+        return startup;
+    }
+
+    public synchronized CommandForwarder getForwarder() {
+        if (forwarder == null) {
+            forwarder = new CommandForwarder(getLogger(), Main.getInstance());
+            getLogger().debug("CommandHelper initialized.");
+        }
+        return forwarder;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("CommandRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
+
+    public synchronized CommandExecutor getCommandExecutor() {
+        if (commandExecutor == null) {
+            commandExecutor = new CommandExecutor();
+            getLogger().debug("CommandExecutor initialized.");
+        }
+        return commandExecutor;
+    }
+    public synchronized Encoder getEncoder() {
+        if (encoder == null) {
+            encoder = new Encoder();
+            getLogger().debug("Encoder initialized.");
+        }
+        return encoder;
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/utils/Encoder.java">
+package dev.objz.commandbridge.paper.utils;
+
+
+import dev.objz.commandbridge.core.utils.ConfigManager;
+import dev.objz.commandbridge.core.utils.ScriptManager.Command;
+import dev.objz.commandbridge.core.utils.ScriptManager.ScriptConfig;
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.paper.Main;
+import dev.objz.commandbridge.paper.Main.ServerInfo;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.GZIPOutputStream;
+
+public class Encoder {
+    private final Map<String, ScriptConfig> scripts = new LinkedHashMap<>();
+
+    public void addScriptConfig(ScriptConfig config) {
+        if (config == null || config.getName() == null) {
+            throw new IllegalArgumentException("ScriptConfig or name cannot be null");
+        }
+        scripts.put(config.getName(), config);
+    }
+
+    public String encode() {
+        StringBuilder sb = new StringBuilder();
+        ServerInfo serverInfo = Main.detectServer();
+        if (serverInfo == null) {
+            throw new IllegalStateException("Server information could not be detected");
+        }
+
+        // header
+        sb.append(serverInfo.name()).append("/").append(System.getProperty("java.version")).append("/")
+                .append(serverInfo.version()).append("/").append(Main.getVersion());
+
+        ConfigManager configManager = Runtime.getInstance().getConfig();
+        sb.append("&");
+        sb.append(configManager.getKey("config.yml", "client-id")).append(","); // server-id
+        sb.append(configManager.getKey("config.yml", "debug")).append(","); // debug mode
+        sb.append(configManager.getKey("config.yml", "remote")).append(","); // timeout
+        sb.append(configManager.getKey("config.yml", "port")).append(","); // port
+        sb.append(configManager.getKey("config.yml", "timeout")); // timeout
+
+        for (ScriptConfig script : scripts.values()) {
+            sb.append("@");
+
+            // name
+            sb.append(encodeField(script.getName())).append(",");
+
+            // aliases
+            sb.append(encodeList(script.getAliases())).append(",");
+
+            // script flags: bit2=enabled, bit1=ignorePerm, bit0=hideWarn
+            int scriptFlags = (script.isEnabled() ? 1 << 2 : 0)
+                    | (script.shouldIgnorePermissionCheck() ? 1 << 1 : 0)
+                    | (script.shouldHidePermissionWarning() ? 1 << 0 : 0);
+            sb.append(Integer.toString(scriptFlags, 36));
+
+            // commands
+            for (Command cmd : script.getCommands()) {
+                sb.append(";");
+                // command
+                sb.append(encodeField(cmd.getCommand())).append(",");
+                // delay
+                sb.append(cmd.getDelay()).append(",");
+                // executor: 'p' or 'c'
+                sb.append(cmd.getTargetExecutor().charAt(0)).append(",");
+                // check-if-executor-is-player flag (bit0)
+                int cFlag = cmd.isCheckIfExecutorIsPlayer() ? 1 : 0;
+                sb.append(Integer.toString(cFlag, 36));
+            }
+        }
+
+        return sb.toString();
+    }
+
+    public String compress(String input) {
+        byte[] raw = input.getBytes(StandardCharsets.UTF_8);
+        byte[] packed = gzip(raw);
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(packed);
+    }
+
+
+    private byte[] gzip(byte[] data) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gos      = new GZIPOutputStream(baos)) {
+            gos.write(data);
+            gos.finish();  // ensure all data is compressed
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException("GZIP compression failed", e);
+        }
+    }
+
+
+
+    // "." for null/empty.
+    private String encodeField(String value) {
+        if (value == null || value.isEmpty())
+            return ".";
+        return value.replace(",", "\\,").replace(";", "\\;");
+    }
+
+    // * join with '|' or return "." if empty
+    private String encodeList(List<String> list) {
+        if (list == null || list.isEmpty())
+            return ".";
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> it = list.iterator();
+        while (it.hasNext()) {
+            sb.append(encodeField(it.next()));
+            if (it.hasNext())
+                sb.append("|");
+        }
+        return sb.toString();
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/utils/ScriptUtils.java">
+package dev.objz.commandbridge.paper.utils;
+
+import dev.objz.commandbridge.paper.Main;
+import dev.objz.commandbridge.paper.command.CommandRegistrar;
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ScriptManager;
+
+public class ScriptUtils extends ScriptManager {
+    private final Logger logger;
+    private final CommandRegistrar registrar;
+
+    public ScriptUtils(Logger logger, String pluginName) {
+        super(logger, pluginName);
+        this.logger = logger;
+        this.registrar = Runtime.getInstance().getRegistrar();
+    }
+
+    @Override
+    public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
+        if (scriptConfig.isEnabled()) {
+            logger.info("Loaded script: {}", fileName);
+            try {
+                registrar.registerCommand(getScriptConfig(fileName));
+                Runtime.getInstance().getEncoder().addScriptConfig(scriptConfig);
+                logger.debug("Registered command: {}", scriptConfig.getName());
+            } catch (Exception e) {
+                logger.error("Failed to register script '{}' : {}",
+                        scriptConfig.getName(),
+                        logger.getDebug() ? e : e.getMessage());
+            }
+        } else {
+            logger.info("Skipped disabled script: {}", scriptConfig.getName());
+        }
+    }
+
+    public void unloadCommands(Runnable callback) {
+        new SchedulerAdapter(Main.getInstance())
+                .run(
+                        () -> {
+                            logger.debug("Running on thread (unload): {}", Thread.currentThread().getName());
+                            Runtime.getInstance().getRegistrar().unregisterAllCommands();
+                            logger.debug("All commands have been unloaded");
+                            callback.run();
+                        });
+    }
+
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/websocket/Client.java">
+package dev.objz.commandbridge.paper.websocket;
+
+import dev.objz.commandbridge.paper.Main;
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
+import dev.objz.commandbridge.core.json.MessageBuilder;
+import dev.objz.commandbridge.core.json.MessageParser;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.websocket.WebSocketClient;
+import org.bukkit.entity.Player;
+
+public class Client extends WebSocketClient {
+    private final Logger logger;
+
+    public Client(Logger logger, String secret) {
+        super(logger, secret);
+        this.logger = logger;
+    }
+
+    @Override
+    protected void onMessage(String message) {
+        MessageParser parser = new MessageParser(message);
+        logger.debug("Received payload: {}", message);
+        try {
+            String type = parser.getType();
+            switch (type) {
+                case "command" -> handleCommandRequest(message);
+                case "system" -> handleSystemRequest(message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError("Invalid type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage());
+            sendError("Internal client error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void afterAuth() {
+        logger.debug("Sending server information's...");
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "name");
+        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build());
+    }
+
+    private void handleCommandRequest(String message) {
+        logger.debug("Handling command response");
+        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
+    }
+
+    private void handleSystemRequest(String message) {
+        logger.debug("Handling system request");
+        MessageParser parser = new MessageParser(message);
+        String channel = parser.getBodyValueAsString("channel");
+        String status = parser.getStatus();
+
+        switch (channel) {
+            case "error" -> logger.warn("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "info" -> logger.info("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "task" -> systemTask(parser, status);
+            default -> logger.warn("Invalid channel: {}", channel);
+        }
+    }
+
+    private void systemTask(MessageParser parser, String status) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" ->
+                Runtime.getInstance().getScriptUtils().unloadCommands(() -> new SchedulerAdapter(Main.getInstance())
+                        .runLater(Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
+            case "reconnect" -> Ping.reconnect(logger);
+            case "dump" -> {
+                String encoded = Runtime.getInstance().getEncoder().encode();
+                String compressed;
+                try {
+                    compressed = Runtime.getInstance().getEncoder().compress(encoded);
+                } catch (Exception e) {
+                    logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
+                    sendError("Error while processing dump data: " + e.getMessage());
+                    return;
+                }
+                MessageBuilder builder = new MessageBuilder("system");
+                builder.addToBody("channel", "task").addToBody("task", "dump")
+                        .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
+                        .addToBody("compressed", compressed)
+                        .withStatus("success");
+                sendMessage(builder.build());
+            }
+            default -> logger.warn("Invalid task: {}", task);
+        }
+    }
+
+    public void sendError(String errorMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "error").withStatus(errorMessage).addToBody("client",
+                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        sendMessage(builder.build());
+    }
+
+    public void sendInfo(String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info").withStatus(infoMessage).addToBody("client",
+                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        sendMessage(builder.build());
+    }
+
+    public void sendTask(String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
+                .withStatus(status);
+        sendMessage(builder.build());
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
+        MessageBuilder builder = new MessageBuilder("command");
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+
+        if (target.equals("player")) {
+            builder.addToBody("name", executor.getName()).addToBody("uuid", executor.getUniqueId());
+        }
+        logger.info("Sending command '{}' to server", command);
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build());
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/Main.java">
+package dev.objz.commandbridge.paper;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.core.Logger;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIBukkitConfig;
+
+public class Main extends JavaPlugin {
+    private static Main instance;
+    private final Logger logger;
+
+    public Main() {
+        instance = this;
+        logger = Runtime.getInstance().getLogger();
+    }
+
+    public static String getVersion() {
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
+    }
+
+    public static Main getInstance() {
+        return instance;
+    }
+
+    @Override
+    public void onLoad() {
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).silentLogs(true)
+                .skipReloadDatapacks(true).shouldHookPaperReload(false));
+    }
+
+    @Override
+    public void onEnable() {
+        CommandAPI.onEnable();
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+    }
+
+    @Override
+    public void onDisable() {
+        CommandAPI.onDisable();
+        logger.info("Stopping CommandBridge...");
+        Runtime.getInstance().getStartup().stop();
+    }
+
+    public record ServerInfo(String name, String version) {
+    }
+
+    public static ServerInfo detectServer() {
+        Package pkg = Bukkit.getServer().getClass().getPackage();
+        String title = pkg.getImplementationTitle();
+        String version = pkg.getImplementationVersion();
+
+        if (title != null && !title.isBlank()
+                && version != null && !version.isBlank()) {
+            return new ServerInfo(title, version);
+        }
+
+        String fallbackName = Bukkit.getServer().getName();
+        String fallbackVersion = Bukkit.getServer().getVersion();
+        return new ServerInfo(fallbackName, fallbackVersion);
+    }
+
+}
+</file>
+
 <file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/CommandRegistrar.java">
 package dev.objz.commandbridge.velocity.command;
 
@@ -5640,6 +4973,457 @@ public class CommandRegistrar {
 }
 </file>
 
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/core/Runtime.java">
+package dev.objz.commandbridge.velocity.core;
+
+import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.velocity.command.CommandDispatcher;
+import dev.objz.commandbridge.velocity.command.CommandForwarder;
+import dev.objz.commandbridge.velocity.command.CommandRegistrar;
+import dev.objz.commandbridge.velocity.util.Encoder;
+import dev.objz.commandbridge.velocity.util.GeneralUtils;
+import dev.objz.commandbridge.velocity.util.ScriptUtils;
+import dev.objz.commandbridge.velocity.websocket.HttpServer;
+import dev.objz.commandbridge.velocity.websocket.Server;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ConfigManager;
+
+public class Runtime {
+    private static Runtime instance;
+    private Logger logger;
+    private ConfigManager config;
+    private ScriptUtils scriptUtils;
+    private Server server;
+    private Startup startup;
+    private CommandForwarder helper;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
+    private CommandDispatcher commandDispatcher;
+    private HttpServer httpServer;
+    private Encoder encoder;
+
+    private Runtime() {
+    }
+
+    public static synchronized Runtime getInstance() {
+        if (instance == null) {
+            instance = new Runtime();
+            instance.getLogger().debug("Runtime singleton instance initialized.");
+        }
+        return instance;
+    }
+
+    public synchronized Logger getLogger() {
+        if (logger == null) {
+            logger = new Logger("CommandBridge");
+            logger.debug("Logger initialized.");
+        }
+        return logger;
+    }
+
+    public synchronized ConfigManager getConfig() {
+        if (config == null) {
+            config = new ConfigManager(getLogger(), "CommandBridge");
+            getLogger().debug("ConfigManager initialized.");
+        }
+        return config;
+    }
+
+    public synchronized ScriptUtils getScriptUtils() {
+        if (scriptUtils == null) {
+            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
+            getLogger().debug("ScriptUtils initialized.");
+        }
+        return scriptUtils;
+    }
+
+    public synchronized Server getServer() {
+        if (server == null) {
+            server = new Server(getLogger(), getConfig().getSecret());
+            getLogger().debug("Server initialized.");
+        }
+        return server;
+    }
+
+    public synchronized Startup getStartup() {
+        if (startup == null) {
+            startup = new Startup(getLogger());
+            getLogger().debug("Startup initialized.");
+        }
+        return startup;
+    }
+
+    public synchronized CommandForwarder getHelper() {
+        if (helper == null) {
+            helper = new CommandForwarder(getLogger(), Main.getInstance());
+            getLogger().debug("CommandForwarder initialized.");
+        }
+        return helper;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("InternalRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
+
+    public synchronized CommandDispatcher getCommandExecutor() {
+        if (commandDispatcher == null) {
+            commandDispatcher = new CommandDispatcher();
+            getLogger().debug("CommandDispatcher initialized.");
+        }
+        return commandDispatcher;
+    }
+
+    public synchronized HttpServer getHttpServer() {
+        if (httpServer == null) {
+            httpServer = new HttpServer(logger);
+            getLogger().debug("HttpServer initialized.");
+        }
+        return httpServer;
+    }
+
+    public synchronized Encoder getEncoder() {
+        if (encoder == null) {
+            encoder = new Encoder();
+            getLogger().debug("Encoder initialized.");
+        }
+        return encoder;
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/util/ScriptUtils.java">
+package dev.objz.commandbridge.velocity.util;
+
+import dev.objz.commandbridge.velocity.command.CommandRegistrar;
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ScriptManager;
+
+public class ScriptUtils extends ScriptManager {
+    private final Logger logger;
+    private final CommandRegistrar registrar;
+
+    public ScriptUtils(Logger logger, String pluginName) {
+        super(logger, pluginName);
+        this.logger = logger;
+        this.registrar = Runtime.getInstance().getRegistrar();
+    }
+
+    @Override
+    public void onFileProcessed(String fileName, ScriptConfig scriptConfig) {
+        if (scriptConfig.isEnabled()) {
+            logger.info("Loaded script: {}", fileName);
+            try {
+                registrar.registerCommand(getScriptConfig(fileName));
+                Runtime.getInstance().getEncoder().addScriptConfig(scriptConfig);
+                logger.debug("Registered command: {}", scriptConfig.getName());
+            } catch (Exception e) {
+                logger.error("Failed to register script '{}' : {}",
+                        scriptConfig.getName(),
+                        logger.getDebug() ? e : e.getMessage());
+            }
+        } else {
+            logger.info("Skipped disabled script: {}", scriptConfig.getName());
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/websocket/Server.java">
+package dev.objz.commandbridge.velocity.websocket;
+
+import java.util.*;
+
+import com.velocitypowered.api.proxy.Player;
+
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.core.json.MessageBuilder;
+import dev.objz.commandbridge.core.json.MessageParser;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.websocket.WebSocketServer;
+import io.netty.channel.Channel;
+
+public class Server extends WebSocketServer {
+    private final Logger logger;
+    private final Map<String, Channel> clientConnections = new HashMap<>();
+
+    public Server(Logger logger, String secret) {
+        super(logger, secret);
+        super.addHttpHandler(Runtime.getInstance().getHttpServer());
+        this.logger = logger;
+    }
+
+    @Override
+    protected void onMessage(Channel webSocket, String message) {
+        MessageParser parser = new MessageParser(message);
+        logger.debug("Received message: {}", message);
+        try {
+            String type = parser.getType();
+            switch (type) {
+                case "command" -> handleCommandRequest(webSocket, message);
+                case "system" -> handleSystemRequest(webSocket, message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError(webSocket, "Invalid type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage());
+            sendError(webSocket, "Internal server error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onConnectionClose(Channel conn, int code, String reason) {
+        String clientAddress = conn.remoteAddress().toString();
+
+        if (getConnections().contains(conn)) {
+            String disconnectedClientName = clientConnections.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(conn))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+
+            logger.info("Client '{}' disconnected", clientAddress);
+            if (disconnectedClientName != null) {
+                clientConnections.remove(disconnectedClientName);
+                logger.debug("Removed disconnected client: {}", disconnectedClientName);
+            } else {
+                logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
+            }
+        }
+    }
+
+    private void handleCommandRequest(Channel webSocket, String message) {
+        logger.debug("Handling command request");
+        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
+    }
+
+    private void handleSystemRequest(Channel webSocket, String message) {
+        logger.debug("Handling system request");
+        MessageParser parser = new MessageParser(message);
+        String channel = parser.getBodyValueAsString("channel");
+        String name = parser.getBodyValueAsString("name");
+        String client = parser.getBodyValueAsString("client");
+        String status = parser.getStatus();
+
+        switch (channel) {
+            case "name" -> {
+                if (name != null) {
+                    clientConnections.put(name, webSocket);
+                    logger.info("Added connected client: {}", name);
+                } else {
+                    logger.warn("Client did not provide 'name' in system request");
+                }
+            }
+            case "error" -> logger.warn("Message from client '{}' : {}", client, status);
+            case "info" -> logger.info("Message from client '{}' : {}", client, status);
+            case "task" -> systemTask(parser, status, client);
+            default -> logger.warn("Invalid channel: {}", channel);
+        }
+    }
+
+    private void systemTask(MessageParser parser, String status, String client) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
+            case "dump" -> Runtime.getInstance().getEncoder().addClient(parser.getBodyValueAsString("client"), parser.getBodyValueAsString("compressed"));
+            default -> logger.warn("Invalid task: {}", task);
+        }
+    }
+
+    public void sendError(Channel webSocket, String errorMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "error")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(errorMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendInfo(Channel webSocket, String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(infoMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendTask(Channel webSocket, String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(status);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
+        Channel conn = clientConnections.get(client);
+        if (conn == null) {
+            logger.warn("Client '{}' is not connected, cannot send message.", client);
+            return;
+        }
+
+        MessageBuilder builder = new MessageBuilder("command");
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+
+        if (target.equals("player")) {
+            builder.addToBody("name", executor.getUsername()).addToBody("uuid", executor.getUniqueId());
+        }
+        logger.info("Sending command '{}' to client: {}", command, client);
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build(), conn);
+    }
+
+    public boolean isServerConnected(String clientName) {
+        boolean exists = clientConnections.containsKey(clientName);
+        logger.debug("Checking if client '{}' is connected: {}", clientName, exists);
+        return exists;
+    }
+
+    public Set<String> getConnectedClients() {
+        return clientConnections.keySet();
+    }
+
+    public Channel getWebSocket(String client) {
+        return clientConnections.get(client);
+    }
+
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/Main.java">
+package dev.objz.commandbridge.velocity;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import org.bstats.velocity.Metrics;
+
+import com.google.inject.Inject;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.util.ProxyUtils;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.VersionChecker;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+@Plugin(id = "commandbridge", name = "CommandBridge", version = "Unknown", authors = "objz")
+public class Main {
+    private static Main instance;
+    public final ProxyServer proxy;
+    private final Logger logger;
+    private final Metrics.Factory metricsFactory;
+
+    @Inject
+    public Main(ProxyServer proxy, Logger bLogger, Metrics.Factory metricsFactory) {
+        this.proxy = proxy;
+        this.logger = Runtime.getInstance().getLogger();
+        instance = this;
+        this.metricsFactory = metricsFactory;
+        ProxyUtils.setProxyServer(proxy);
+    }
+
+    public static Main getInstance() {
+        return instance;
+    }
+
+    public static String getVersion() {
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
+    }
+
+    public String getVelocityVersion() {
+        return proxy.getVersion().getVersion().toString();
+    }
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+        int pluginId = 22008;
+        metricsFactory.make(this, pluginId);
+
+    }
+
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent event) {
+        logger.info("Stopping CommandBridge...");
+        Runtime.getInstance().getStartup().stop();
+    }
+
+    @Subscribe
+    public void onPlayerJoin(PostLoginEvent event) {
+        Player player = event.getPlayer();
+        if (player == null) {
+            logger.warn("PostLoginEvent triggered with a null player object.");
+            return;
+        }
+
+        if (player.hasPermission("commandbridge.admin")) {
+            logger.debug("Player '{}' has admin permissions. Checking for updates...", player.getUsername());
+
+            proxy.getScheduler().buildTask(this, () -> {
+                String currentVersion = Main.getVersion();
+                String latestVersion = VersionChecker.getLatestVersion();
+
+                if (latestVersion == null) {
+                    player.sendMessage(Component.text("Unable to check for updates.").color(NamedTextColor.RED));
+                    logger.warn("Update check failed: Unable to retrieve the latest version.");
+                    return;
+                }
+
+                if (VersionChecker.isNewerVersion(latestVersion, currentVersion)) {
+                    player.sendMessage(Component.text("A new version of CommandBridge is available: " + latestVersion)
+                            .color(NamedTextColor.RED));
+                    player.sendMessage(Component.text("Please download the latest release: ")
+                            .append(Component.text("here")
+                                    .color(NamedTextColor.BLUE)
+                                    .decorate(TextDecoration.UNDERLINED)
+                                    .clickEvent(ClickEvent.openUrl(VersionChecker.getDownloadUrl()))));
+                    logger.debug("Notified player '{}' about the new version: {}", player.getUsername(), latestVersion);
+                } else {
+                    logger.debug("Player '{}' is running the latest version: {}", player.getUsername(), currentVersion);
+                }
+            }).schedule();
+        } else {
+            logger.debug("Player {} does not have admin permissions. No update check performed.", player.getUsername());
+        }
+    }
+}
+</file>
+
 <file path="velocity/src/main/resources/velocity-example.yml">
 ##########################################################################
 # EXAMPLE CONFIGURATION
@@ -5675,7 +5459,6 @@ commands:
     delay: 0                      # Delay (in seconds) before executing the command.
     target-client-ids:            # List of target server IDs where the command will be executed.
       - 'lobby'
-      - 'survival'
     target-executor: 'player'     # Who executes the command: 'player' or 'console'.
     wait-until-player-is-online: true  # If true, waits until the player is online to execute.
     check-if-executor-is-player: true  # If true, ensures the executor is a player.
@@ -5951,6 +5734,156 @@ public abstract class ScriptManager {
 }
 </file>
 
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/util/Encoder.java">
+package dev.objz.commandbridge.velocity.util;
+
+import dev.objz.commandbridge.core.utils.ConfigManager;
+import dev.objz.commandbridge.core.utils.ScriptManager.Command;
+import dev.objz.commandbridge.core.utils.ScriptManager.ScriptConfig;
+import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.velocity.core.Runtime;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.GZIPOutputStream;
+
+public class Encoder {
+    private final Map<String, ScriptConfig> scripts = new LinkedHashMap<>();
+
+    private final Map<String, String> clientsScripts = new HashMap<>();
+
+    public Map<String, String> getClientsScripts() {
+        return new LinkedHashMap<>(clientsScripts);
+    }
+
+    public void clearClientsScripts() {
+        clientsScripts.clear();
+    }
+
+    public void addScriptConfig(ScriptConfig config) {
+        if (config == null || config.getName() == null) {
+            throw new IllegalArgumentException("ScriptConfig or name cannot be null");
+        }
+        scripts.put(config.getName(), config);
+    }
+
+    public String encode() {
+        StringBuilder sb = new StringBuilder();
+
+        // header
+        sb.append("V").append("/").append(System.getProperty("java.version")).append("/")
+                .append(Main.getInstance().getVelocityVersion()).append("/").append(Main.getVersion());
+
+        // config output
+        ConfigManager configManager = Runtime.getInstance().getConfig();
+        sb.append("&");
+        sb.append(configManager.getKey("config.yml", "server-id")).append(","); // server-id
+        sb.append(configManager.getKey("config.yml", "debug")).append(","); // debug mode
+        sb.append(configManager.getKey("config.yml", "host")).append(","); // timeout
+        sb.append(configManager.getKey("config.yml", "san")).append(","); // port
+        sb.append(configManager.getKey("config.yml", "port")).append(","); // port
+        sb.append(configManager.getKey("config.yml", "timeout")); // timeout
+
+        for (ScriptConfig script : scripts.values()) {
+            sb.append("@");
+
+            // name
+            sb.append(encodeField(script.getName())).append(",");
+
+            // aliases
+            sb.append(encodeList(script.getAliases())).append(",");
+
+            // script flags: bit2=enabled, bit1=ignorePerm, bit0=hideWarn
+            int scriptFlags = (script.isEnabled() ? 1 << 2 : 0)
+                    | (script.shouldIgnorePermissionCheck() ? 1 << 1 : 0)
+                    | (script.shouldHidePermissionWarning() ? 1 << 0 : 0);
+            sb.append(Integer.toString(scriptFlags, 36));
+
+            // commands
+            for (Command cmd : script.getCommands()) {
+                sb.append(";");
+                sb.append(encodeField(cmd.getCommand())).append(","); // command
+                sb.append(cmd.getDelay()).append(","); // delay
+                sb.append(encodeList(cmd.getTargetClientIds())).append(","); // targets
+                sb.append(cmd.getTargetExecutor().charAt(0)).append(","); // executor: 'p'/'c'
+
+                // command flags: bit2=waitOnline, bit1=checkPlayer, bit0=checkOnServer
+                int cmdFlags = (cmd.shouldWaitUntilPlayerIsOnline() ? 1 << 2 : 0)
+                        | (cmd.isCheckIfExecutorIsPlayer() ? 1 << 1 : 0)
+                        | (cmd.isCheckIfExecutorIsOnServer() ? 1 << 0 : 0);
+                sb.append(Integer.toString(cmdFlags, 36));
+            }
+        }
+
+        return sb.toString();
+    }
+
+    public void addClient(String clientId, String encodedString) {
+        if (clientId == null || clientId.isEmpty() || encodedString == null || encodedString.isEmpty()) {
+            throw new IllegalArgumentException("Client ID and encoded string cannot be null or empty");
+        }
+        clientsScripts.put(clientId, encodedString);
+    }
+
+    public String compress(String input) {
+        byte[] raw     = input.getBytes(StandardCharsets.UTF_8);
+        byte[] packed  = gzip(raw);
+        String base64  = Base64.getUrlEncoder()
+                               .withoutPadding()
+                               .encodeToString(packed);
+
+        StringBuilder sb = new StringBuilder(base64);
+        for (Map.Entry<String, String> entry : clientsScripts.entrySet()) {
+            sb.append('#')
+              .append(entry.getKey())
+              .append(',')
+              .append(entry.getValue());
+        }
+        return sb.toString();
+    }
+
+    private byte[] gzip(byte[] data) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             GZIPOutputStream gos      = new GZIPOutputStream(baos)) {
+            gos.write(data);
+            gos.finish();  // ensure all data is compressed
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException("GZIP compression failed", e);
+        }
+    }
+
+    // "." for null/empty.
+    private String encodeField(String value) {
+        if (value == null || value.isEmpty())
+            return ".";
+        return value.replace(",", "\\,").replace(";", "\\;");
+    }
+
+    // * join with '|' or return "." if empty
+    private String encodeList(List<String> list) {
+        if (list == null || list.isEmpty())
+            return ".";
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> it = list.iterator();
+        while (it.hasNext()) {
+            sb.append(encodeField(it.next()));
+            if (it.hasNext())
+                sb.append("|");
+        }
+        return sb.toString();
+    }
+}
+</file>
+
 <file path="paper/src/main/resources/bukkit-example.yml">
 ##########################################################################
 # EXAMPLE CONFIGURATION
@@ -5992,6 +5925,256 @@ commands:
     delay: 0                      # Delay (in seconds) before executing the command.
     target-executor: 'console'    # Who executes the command: 'player' or 'console'.
     check-if-executor-is-player: false  # If true, ensures the executor is a player.
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/helper/command/DumpCommand.java">
+package dev.objz.commandbridge.velocity.helper.command;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.json.MessageBuilder;
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.helper.DumpFailureChecker;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.Set;
+
+public class DumpCommand {
+    public static LiteralArgumentBuilder<CommandSource> build(Set<String> connectedClients, Logger logger) {
+        return LiteralArgumentBuilder.<CommandSource>literal("dump")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+
+                    if (!source.hasPermission("commandbridge.admin")) {
+                        source.sendMessage(Component.text("You do not have permission to list connected clients",
+                                NamedTextColor.RED));
+                        return 0;
+                    }
+
+                    MessageBuilder builder = new MessageBuilder("system");
+                    builder.addToBody("channel", "task").addToBody("task", "dump")
+                            .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"));
+
+                    Runtime.getInstance().getServer().broadcastServerMessage(builder.build());
+
+                    source.sendMessage(
+                            Component.text("Generating Dump...")
+                                    .color(NamedTextColor.YELLOW));
+
+                    new DumpFailureChecker(source, logger).run(); 
+
+                    return 1;
+                });
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/helper/DumpFailureChecker.java">
+package dev.objz.commandbridge.velocity.helper;
+
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.util.ProxyUtils;
+import dev.objz.commandbridge.core.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+public class DumpFailureChecker implements Runnable {
+    private static final String DUMP_API_URL = "https://cb.objz.dev/api/dump";
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final Main plugin;
+    private final CommandSource source;
+    private final int maxRetries;
+    private int attempt = 0;
+
+    public DumpFailureChecker(CommandSource source, Logger logger) {
+        this.source = source;
+        this.logger = logger;
+        this.proxy = ProxyUtils.getProxyServer();
+        this.plugin = Main.getInstance();
+        this.maxRetries = Integer.parseInt(
+                Runtime.getInstance().getConfig().getKey("config.yml", "timeout"));
+    }
+
+    @Override
+    public void run() {
+        attempt++;
+        logger.debug("Dump check attempt {}/{}", attempt, maxRetries);
+
+        Set<String> connected = Runtime.getInstance().getServer().getConnectedClients();
+        Map<String, String> scripts = Runtime.getInstance().getEncoder().getClientsScripts();
+
+        Set<String> missing = connected.stream()
+                .filter(client -> !scripts.containsKey(client))
+                .collect(Collectors.toSet());
+
+        if (missing.isEmpty()) {
+            String compact = Runtime.getInstance().getEncoder().encode();
+            String compressed;
+            try {
+                compressed = Runtime.getInstance().getEncoder().compress(compact);
+            } catch (Exception e) {
+                logger.error("Failed to compress aggregated dump: {}", logger.getDebug() ? e : e.getMessage());
+                source.sendMessage(Component.text("Error while compressing dump data")
+                        .color(NamedTextColor.RED));
+                return;
+            }
+
+            try {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(DUMP_API_URL))
+                        .header("Content-Type", "text/plain")
+                        .POST(HttpRequest.BodyPublishers.ofString(compressed))
+                        .build();
+
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+                int status = resp.statusCode();
+                if (status == 429) {
+                    logger.warn("Rate limit exceeded when posting dump");
+                    source.sendMessage(Component.text("Rate limit exceeded, please try again later")
+                            .color(NamedTextColor.RED));
+                    return;
+                }
+
+                if (status != 200) {
+                    throw new IOException("HTTP " + status);
+                }
+
+                String body = resp.body().trim();
+                int start = body.indexOf("\"id\":\"") + 6;
+                int end = body.indexOf("\"", start);
+                if (start < 6 || end < start) {
+                    throw new IOException("Unexpected API response: " + body);
+                }
+                String id = body.substring(start, end);
+
+                String link = "https://cb.objz.dev/dump?id=" + id;
+                source.sendMessage(Component.text("Your dump is here: ")
+                        .append(Component.text("https://cb.objz.dev/dump?id=" + id)
+                                .color(NamedTextColor.LIGHT_PURPLE)
+                                .decorate(TextDecoration.UNDERLINED)
+                                .clickEvent(ClickEvent.openUrl("https://cb.objz.dev/dump?id=" + id))));
+                logger.info("dump link: {}", link);
+
+            } catch (IOException | InterruptedException e) {
+                logger.error("Failed to POST dump to remote API: {}", e.getMessage());
+                source.sendMessage(Component.text("Failed to upload dump: " + e.getMessage())
+                        .color(NamedTextColor.RED));
+            } finally {
+                Runtime.getInstance().getEncoder().clearClientsScripts();
+            }
+
+        } else if (attempt >= maxRetries) {
+            String missingList = String.join(", ", missing);
+            source.sendMessage(Component.text("DumpCommand failed: missing responses from " + missingList)
+                    .color(NamedTextColor.RED));
+            logger.error("Dump command failed: missing responses from {}", missingList);
+            Runtime.getInstance().getEncoder().clearClientsScripts();
+        } else {
+            // retry after 1 second
+            proxy.getScheduler()
+                    .buildTask(plugin, this)
+                    .delay(1, TimeUnit.SECONDS)
+                    .schedule();
+        }
+    }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/helper/InternalRegistrar.java">
+package dev.objz.commandbridge.velocity.helper;
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.helper.command.DumpCommand;
+import dev.objz.commandbridge.velocity.helper.command.ListCommand;
+import dev.objz.commandbridge.velocity.helper.command.ReloadCommand;
+import dev.objz.commandbridge.velocity.helper.command.StartCommand;
+import dev.objz.commandbridge.velocity.helper.command.StopCommand;
+import dev.objz.commandbridge.velocity.helper.command.VersionCommand;
+import dev.objz.commandbridge.core.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+
+import java.util.Set;
+
+public class InternalRegistrar {
+    private final Logger logger;
+    private final ProxyServer proxy;
+    private final Main plugin;
+    private final Set<String> connectedClients;
+
+    public InternalRegistrar(Logger logger, ProxyServer proxy, Main plugin, Set<String> connectedClients) {
+        this.logger = logger;
+        this.proxy = proxy;
+        this.plugin = plugin;
+        this.connectedClients = connectedClients;
+    }
+
+    public void registerCommands() {
+        logger.info("Registering commands for CommandBridge...");
+        try {
+            LiteralArgumentBuilder<CommandSource> commandBridgeBuilder = LiteralArgumentBuilder
+                    .<CommandSource>literal("commandbridge")
+                    .executes(context -> {
+                        if (context.getSource().hasPermission("commandbridge.admin")) {
+                            return HelpCommand.sendHelpMessage(context.getSource(), logger);
+                        }
+                        context.getSource().sendMessage(
+                                Component.text("You do not have permission to use this command", NamedTextColor.RED));
+                        return 0;
+                    });
+
+            commandBridgeBuilder.then(ReloadCommand.build(Runtime.getInstance().getGeneralUtils(), logger));
+            commandBridgeBuilder.then(VersionCommand.build(logger));
+            commandBridgeBuilder.then(HelpCommand.build(logger));
+            commandBridgeBuilder.then(ListCommand.build(connectedClients, logger));
+            commandBridgeBuilder.then(DumpCommand.build(connectedClients, logger));
+            if (logger.getDebug()) {
+                commandBridgeBuilder.then(StopCommand.build(logger));
+                commandBridgeBuilder.then(StartCommand.build(logger));
+            }
+
+            LiteralCommandNode<CommandSource> commandBridgeNode = commandBridgeBuilder.build();
+
+            Runtime.getInstance().getGeneralUtils().setMeta(proxy.getCommandManager()
+                    .metaBuilder("commandbridge")
+                    .aliases("cb")
+                    .plugin(plugin)
+                    .build());
+
+            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBridgeNode);
+            proxy.getCommandManager().register(Runtime.getInstance().getGeneralUtils().getMeta(), brigadierCommand);
+            logger.info("CommandBridge commands registered successfully");
+        } catch (Exception e) {
+            logger.error("Failed to register CommandBridge commands: {}", logger.getDebug() ? e : e.getMessage());
+        }
+    }
+
+}
 </file>
 
 <file path="core/build.gradle.kts">
@@ -6073,7 +6256,7 @@ Licensed under GPLv3. Don’t sell it, don’t strip the license, thanks!
 
 <file path="paper/src/main/resources/plugin.yml">
 name: CommandBridge
-version: 2.2.8
+version: 2.2.9
 main: dev.objz.commandbridge.paper.Main
 author: objz
 api-version: '1.20'
@@ -6082,94 +6265,10 @@ softdepend:
 - PlaceholderAPI
 </file>
 
-<file path="CHANGELOG.md">
-**[v2.2.7] - 2025-07-02**
-
-- updated to minecraft version 1.21.7
-- introduced aliases for scripts.
-
-go outside, great weather!
-</file>
-
-<file path="paper/src/main/resources/paper-plugin.yml">
-name: CommandBridge
-version: 2.2.8
-main: dev.objz.commandbridge.paper.Main
-author: objz
-api-version: '1.20'
-folia-supported: true
-dependencies:
-  server:
-    PlaceholderAPI:
-      load: BEFORE
-      required: false
-</file>
-
-<file path="velocity/build.gradle.kts">
-import com.google.gson.JsonParser
-import java.nio.file.Files
-
-plugins {
-    id("java")
-}
-
-repositories {
-    maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
-    maven { url = uri("https://repo.william278.net/releases/") }
-}
-
-dependencies {
-    implementation("io.netty:netty-all:4.2.2.Final")
-    implementation("org.json:json:20250517")
-    compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    compileOnly("net.william278:papiproxybridge:1.7.2")
-    implementation("org.bstats:bstats-velocity:3.1.0")
-    implementation("com.github.luben:zstd-jni:1.5.7-4")
-
-    implementation(project(":core"))
-}
-
-tasks.register("modifyVelocityPluginJson") {
-    doLast {
-        val jsonFile = layout.buildDirectory.file("classes/java/main/velocity-plugin.json").get().asFile
-        if (jsonFile.exists()) {
-            println("Found velocity-plugin.json")
-
-            val jsonContent = Files.readString(jsonFile.toPath())
-            val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
-
-            jsonObject.addProperty("version", version.toString())
-
-            Files.writeString(jsonFile.toPath(), jsonObject.toString())
-            println("velocity-plugin.json updated successfully with version $version")
-        } else {
-            println("velocity-plugin.json not found")
-        }
-    }
-}
-
-tasks.register("generatePluginProperties") {
-    doLast {
-        println("Generating plugin.properties file")
-
-        val propertiesFile = layout.buildDirectory.file("resources/main/plugin.properties").get().asFile
-        propertiesFile.parentFile.mkdirs()
-        propertiesFile.writeText("plugin.version=$version")
-
-        println("Successfully generated plugin.properties file")
-    }
-}
-
-tasks.named("processResources") {
-    dependsOn("generatePluginProperties")
-    finalizedBy("modifyVelocityPluginJson")
-}
-</file>
-
 <file path="build.gradle.kts">
 plugins {
     id("java")
+    id("eclipse")
     id("com.gradleup.shadow") version "8.3.8"
     id("maven-publish")
     id("com.modrinth.minotaur") version "2.+"
@@ -6256,14 +6355,86 @@ afterEvaluate {
 }
 </file>
 
-<file path="settings.gradle.kts">
-rootProject.name = "CommandBridge"
-include("paper", "velocity", "core")
+<file path="velocity/build.gradle.kts">
+import com.google.gson.JsonParser
+import java.nio.file.Files
 
-gradle.extra["pversion"] = "2.2.8"
-gradle.extra["pluginType"] = "release"
-gradle.extra["pluginVersions"] = listOf("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7")
-gradle.extra["pluginLoaders"] = listOf("folia", "paper", "purpur", "velocity", "bukkit", "spigot", "waterfall")
+plugins {
+    id("java")
+}
+
+repositories {
+    maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { url = uri("https://repo.william278.net/releases/") }
+}
+
+dependencies {
+    implementation("io.netty:netty-all:4.2.2.Final")
+    implementation("org.json:json:20250517")
+    compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
+    compileOnly("net.william278:papiproxybridge:1.7.2")
+    implementation("org.bstats:bstats-velocity:3.1.0")
+
+    implementation(project(":core"))
+}
+
+tasks.register("modifyVelocityPluginJson") {
+    doLast {
+        val jsonFile = layout.buildDirectory.file("classes/java/main/velocity-plugin.json").get().asFile
+        if (jsonFile.exists()) {
+            println("Found velocity-plugin.json")
+
+            val jsonContent = Files.readString(jsonFile.toPath())
+            val jsonObject = JsonParser.parseString(jsonContent).asJsonObject
+
+            jsonObject.addProperty("version", version.toString())
+
+            Files.writeString(jsonFile.toPath(), jsonObject.toString())
+            println("velocity-plugin.json updated successfully with version $version")
+        } else {
+            println("velocity-plugin.json not found")
+        }
+    }
+}
+
+tasks.register("generatePluginProperties") {
+    doLast {
+        println("Generating plugin.properties file")
+
+        val propertiesFile = layout.buildDirectory.file("resources/main/plugin.properties").get().asFile
+        propertiesFile.parentFile.mkdirs()
+        propertiesFile.writeText("plugin.version=$version")
+
+        println("Successfully generated plugin.properties file")
+    }
+}
+
+tasks.named("processResources") {
+    dependsOn("generatePluginProperties")
+    finalizedBy("modifyVelocityPluginJson")
+}
+</file>
+
+<file path="CHANGELOG.md">
+**[v2.2.9] - 2025-07-22**
+
+- Added /cb dump command to dump the current configuration and scripts.
+You can view the results on the website. It will generate a link for you.
+</file>
+
+<file path="paper/src/main/resources/paper-plugin.yml">
+name: CommandBridge
+version: 2.2.9
+main: dev.objz.commandbridge.paper.Main
+author: objz
+api-version: '1.20'
+folia-supported: true
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
 </file>
 
 <file path="paper/build.gradle.kts">
@@ -6295,11 +6466,10 @@ dependencies {
     implementation("org.json:json:20250517")
     compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
     implementation("org.ow2.asm:asm:9.8")
-    implementation("dev.jorel:commandapi-bukkit-shade:10.1.1")
-    implementation("com.github.luben:zstd-jni:1.5.7-4")
-    compileOnly("dev.jorel:commandapi-annotations:10.1.1")
+    implementation("dev.jorel:commandapi-bukkit-shade:10.1.2")
+    compileOnly("dev.jorel:commandapi-annotations:10.1.2")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    annotationProcessor("dev.jorel:commandapi-annotations:10.1.1")
+    annotationProcessor("dev.jorel:commandapi-annotations:10.1.2")
 
     implementation(project(":core"))
 }
@@ -6337,6 +6507,16 @@ val modifyLegacyPluginYaml = createYamlModificationTask("modifyLegacyPluginYaml"
 tasks.named("processResources") {
     dependsOn(modifyPaperPluginYaml, modifyLegacyPluginYaml)
 }
+</file>
+
+<file path="settings.gradle.kts">
+rootProject.name = "CommandBridge"
+include("paper", "velocity", "core")
+
+gradle.extra["pversion"] = "2.2.9"
+gradle.extra["pluginType"] = "release"
+gradle.extra["pluginVersions"] = listOf("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8")
+gradle.extra["pluginLoaders"] = listOf("folia", "paper", "purpur", "velocity", "bukkit", "spigot", "waterfall")
 </file>
 
 </files>

@@ -44,14 +44,14 @@ public class CommandExecutor {
     private void executeConsoleCommand(String command) {
         logger.debug("Executing command '{}' as console", command);
 
-        if (CommandUtils.isCommandValid(command)) {
-            logger.warn("Invalid command: {}", command);
-            Runtime.getInstance().getClient().sendError("Invalid command: " + command);
-            return;
-        }
-
         CommandSender console = Bukkit.getConsoleSender();
         new SchedulerAdapter(plugin).run(() -> {
+            if (CommandUtils.isCommandValid(command)) {
+                logger.warn("Invalid command: {}", command);
+                Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+                return;
+            }
+
             boolean status = Bukkit.dispatchCommand(console, command);
             logResult("console", command, status);
         });
@@ -76,14 +76,14 @@ public class CommandExecutor {
     }
 
     private void handlePlayerCommand(Player player, String command) {
-        if (CommandUtils.isCommandValid(command)) {
-            logger.warn("Invalid command: {}", command);
-            Runtime.getInstance().getClient().sendError("Invalid command: " + command);
-            player.sendMessage("§cThe command '" + command + "' is invalid");
-            return;
-        }
-
         new SchedulerAdapter(plugin).run(() -> {
+            if (CommandUtils.isCommandValid(command)) {
+                logger.warn("Invalid command: {}", command);
+                Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+                player.sendMessage("§cThe command '" + command + "' is invalid");
+                return;
+            }
+
             boolean status = Bukkit.dispatchCommand(player, command);
             logResult("player", command, status);
         });
