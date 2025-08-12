@@ -1,0 +1,23 @@
+package dev.objz.commandbridge.backends.folia;
+
+import org.bukkit.plugin.java.JavaPlugin;
+
+import dev.objz.commandbridge.backends.PlatformInterface;
+
+public final class Main implements PlatformInterface {
+	private final JavaPlugin plugin;
+
+	public Main(JavaPlugin plugin) {
+		this.plugin = plugin;
+	}
+
+	@Override
+	public void enable() {
+		plugin.getLogger().info("Hello from folia");
+	}
+
+	@Override
+	public void disable() {
+		plugin.getLogger().info("Bye from folia");
+	}
+}
