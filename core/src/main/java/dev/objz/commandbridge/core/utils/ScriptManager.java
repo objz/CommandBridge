@@ -121,6 +121,7 @@ public abstract class ScriptManager {
 		private final boolean enabled;
 		private final boolean ignorePermissionCheck;
 		private final boolean hidePermissionWarning;
+		private final int cooldown;
 		private final List<Command> commands;
 
 		public ScriptConfig(Map<String, Object> data) {
@@ -138,6 +139,7 @@ public abstract class ScriptManager {
 			this.enabled = (boolean) data.getOrDefault("enabled", false);
 			this.ignorePermissionCheck = (boolean) data.getOrDefault("ignore-permission-check", false);
 			this.hidePermissionWarning = (boolean) data.getOrDefault("hide-permission-warning", false);
+			this.cooldown = (int) data.getOrDefault("cooldown", 0);
 
 			this.commands = new ArrayList<>();
 			Object commandsObject = data.get("commands");
@@ -170,6 +172,10 @@ public abstract class ScriptManager {
 			return hidePermissionWarning;
 		}
 
+		public int getCooldown() {
+			return cooldown;
+		}
+
 		public List<Command> getCommands() {
 			return commands;
 		}
@@ -178,7 +184,6 @@ public abstract class ScriptManager {
 	public static class Command {
 		private final String command;
 		private final int delay;
-		private final int cooldown;
 		private final List<String> targetClientIds;
 		private final String targetExecutor;
 		private final boolean waitUntilPlayerIsOnline;
@@ -189,7 +194,6 @@ public abstract class ScriptManager {
 		public Command(Map<String, Object> data) {
 			this.command = (String) data.get("command");
 			this.delay = (int) data.getOrDefault("delay", 0);
-			this.cooldown = (int) data.getOrDefault("cooldown", 0);
 			this.targetClientIds = (List<String>) data.getOrDefault("target-client-ids", new ArrayList<>());
 			this.targetExecutor = (String) data.getOrDefault("target-executor", "console");
 			this.waitUntilPlayerIsOnline = (boolean) data.getOrDefault("wait-until-player-is-online",
@@ -205,10 +209,6 @@ public abstract class ScriptManager {
 
 		public int getDelay() {
 			return delay;
-		}
-
-		public int getCooldown() {
-			return cooldown;
 		}
 
 		public List<String> getTargetClientIds() {
