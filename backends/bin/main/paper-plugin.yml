@@ -1,0 +1,6 @@
+name: CommandBridge
+version: 3.0.0
+main: dev.objz.commandbridge.backends.Main
+author: objz
+api-version: '1.20'
+folia-supported: true

@@ -7,3 +7,7 @@ rootProject.name = "CommandBridge"
 include("core")
 include("velocity")
 include("backends")
+include("backends:bukkit")
+include("backends:folia")
+
+include("dist")
