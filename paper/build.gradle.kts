@@ -12,7 +12,7 @@ import org.yaml.snakeyaml.Yaml
 
 plugins {
     id("java")
-    id("com.gradleup.shadow") version "8.3.8"
+    id("com.gradleup.shadow") version "9.0.1"
 }
 
 repositories {
