@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.paper.command;
+package dev.objz.commandbridge.paper.command.inbound;
 
 import java.util.UUID;
 
@@ -13,11 +13,11 @@ import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
 import dev.objz.commandbridge.core.json.MessageParser;
 import dev.objz.commandbridge.core.Logger;
 
-public class CommandExecutor {
+public class CommandHandler {
 	private final Main plugin;
 	private final Logger logger;
 
-	public CommandExecutor() {
+	public CommandHandler() {
 		this.plugin = Main.getInstance();
 		this.logger = Runtime.getInstance().getLogger();
 	}

@@ -1,8 +1,8 @@
 package dev.objz.commandbridge.velocity.core;
 
 import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.command.CommandDispatcher;
-import dev.objz.commandbridge.velocity.command.CommandForwarder;
+import dev.objz.commandbridge.velocity.command.inbound.CommandHandler;
+import dev.objz.commandbridge.velocity.command.outbound.CommandSender;
 import dev.objz.commandbridge.velocity.command.CommandRegistrar;
 import dev.objz.commandbridge.velocity.util.Encoder;
 import dev.objz.commandbridge.velocity.util.GeneralUtils;
@@ -19,10 +19,10 @@ public class Runtime {
     private ScriptUtils scriptUtils;
     private Server server;
     private Startup startup;
-    private CommandForwarder helper;
+    private CommandSender sender;
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
-    private CommandDispatcher commandDispatcher;
+    private CommandHandler handler;
     private HttpServer httpServer;
     private Encoder encoder;
 
@@ -77,12 +77,12 @@ public class Runtime {
         return startup;
     }
 
-    public synchronized CommandForwarder getHelper() {
-        if (helper == null) {
-            helper = new CommandForwarder(getLogger(), Main.getInstance());
-            getLogger().debug("CommandForwarder initialized.");
+    public synchronized CommandSender getSender() {
+        if (sender == null) {
+            sender = new CommandSender(getLogger(), Main.getInstance());
+            getLogger().debug("CommandSender initialized.");
         }
-        return helper;
+        return sender;
     }
 
     public synchronized CommandRegistrar getRegistrar() {
@@ -101,12 +101,12 @@ public class Runtime {
         return generalUtils;
     }
 
-    public synchronized CommandDispatcher getCommandExecutor() {
-        if (commandDispatcher == null) {
-            commandDispatcher = new CommandDispatcher();
-            getLogger().debug("CommandDispatcher initialized.");
+    public synchronized CommandHandler getCommandHandler() {
+        if (handler == null) {
+            handler = new CommandHandler();
+            getLogger().debug("CommandHandler initialized.");
         }
-        return commandDispatcher;
+        return handler;
     }
 
     public synchronized HttpServer getHttpServer() {

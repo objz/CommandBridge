@@ -11,6 +11,7 @@ import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
 
+import dev.objz.commandbridge.velocity.command.outbound.CommandSender;
 import dev.objz.commandbridge.velocity.core.Runtime;
 import dev.objz.commandbridge.velocity.util.ProxyUtils;
 import dev.objz.commandbridge.core.Logger;
@@ -19,13 +20,13 @@ import dev.objz.commandbridge.core.utils.ScriptManager;
 public class CommandRegistrar {
     private final Logger logger;
     private final ProxyServer proxy;
-    private final CommandForwarder helper;
+    private final CommandSender sender;
     private final Map<String, CommandMeta> registeredCommands = new HashMap<>();
 
     public CommandRegistrar(Logger logger) {
         this.logger = logger;
         this.proxy = ProxyUtils.getProxyServer();
-        this.helper = Runtime.getInstance().getHelper();
+        this.sender = Runtime.getInstance().getSender();
     }
 
     public void unregisterAllCommands() {
@@ -51,7 +52,7 @@ public class CommandRegistrar {
                     .<CommandSource>literal(commandName)
                     .executes(context -> {
                         logger.debug("Executing base command: {}", commandName);
-                        return helper.executeScriptCommands(context.getSource(), script, new String[0]);
+                        return sender.executeScriptCommands(context.getSource(), script, new String[0]);
                     });
             RequiredArgumentBuilder<CommandSource, String> argsArgument = RequiredArgumentBuilder
                     .<CommandSource, String>argument("args", StringArgumentType.greedyString())
@@ -59,7 +60,7 @@ public class CommandRegistrar {
                         String argsString = context.getArgument("args", String.class);
                         logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
                         String[] args = argsString.split(" ");
-                        return helper.executeScriptCommands(context.getSource(), script, args);
+                        return sender.executeScriptCommands(context.getSource(), script, args);
                     });
             commandBuilder.then(argsArgument);
 

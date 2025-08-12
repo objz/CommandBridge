@@ -65,7 +65,7 @@ public class Server extends WebSocketServer {
 
     private void handleCommandRequest(Channel webSocket, String message) {
         logger.debug("Handling command request");
-        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
+        Runtime.getInstance().getCommandHandler().dispatchCommand(message);
     }
 
     private void handleSystemRequest(Channel webSocket, String message) {

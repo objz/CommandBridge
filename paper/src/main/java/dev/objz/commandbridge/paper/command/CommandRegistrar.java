@@ -3,7 +3,7 @@ package dev.objz.commandbridge.paper.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.paper.command.outbound.CommandSender;
 import dev.objz.commandbridge.core.Logger;
 import dev.objz.commandbridge.core.utils.ScriptManager;
 import dev.jorel.commandapi.CommandAPI;
@@ -12,12 +12,10 @@ import dev.jorel.commandapi.arguments.GreedyStringArgument;
 
 public class CommandRegistrar {
     private final Logger logger;
-    private final CommandForwarder forwarder;
     private final List<String> registeredCommands = new ArrayList<>();
 
     public CommandRegistrar(Logger logger) {
         this.logger = logger;
-        this.forwarder = Runtime.getInstance().getForwarder();
     }
 
     public void unregisterAllCommands() {
@@ -47,7 +45,7 @@ public class CommandRegistrar {
                         String argsString = (String) args.get("args");
                         logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
                         String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
-                        return forwarder.executeScriptCommands(sender, script, splitArgs);
+                        return ((CommandSender) sender).executeScriptCommands(sender, script, splitArgs);
                     });
             command.register();
             registeredCommands.add(commandName);

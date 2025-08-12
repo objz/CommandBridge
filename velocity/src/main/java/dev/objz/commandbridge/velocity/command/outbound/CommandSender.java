@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.command;
+package dev.objz.commandbridge.velocity.command.outbound;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
@@ -18,12 +18,12 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.william278.papiproxybridge.api.PlaceholderAPI;
 
-public class CommandForwarder {
+public class CommandSender {
     private final Logger logger;
     private final ProxyServer proxy;
     private final Main plugin;
 
-    public CommandForwarder(Logger logger, Main plugin) {
+    public CommandSender(Logger logger, Main plugin) {
         this.logger = logger;
         this.proxy = ProxyUtils.getProxyServer();
         this.plugin = plugin;

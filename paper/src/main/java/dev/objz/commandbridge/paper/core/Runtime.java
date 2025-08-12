@@ -2,14 +2,14 @@ package dev.objz.commandbridge.paper.core;
 
 import dev.objz.commandbridge.paper.Main;
 import dev.objz.commandbridge.paper.command.CommandRegistrar;
+import dev.objz.commandbridge.paper.command.inbound.CommandHandler;
+import dev.objz.commandbridge.paper.command.outbound.CommandSender;
 import dev.objz.commandbridge.paper.utils.Encoder;
 import dev.objz.commandbridge.paper.utils.GeneralUtils;
 import dev.objz.commandbridge.paper.utils.ScriptUtils;
 import dev.objz.commandbridge.paper.websocket.Client;
 import dev.objz.commandbridge.core.Logger;
 import dev.objz.commandbridge.core.utils.ConfigManager;
-import dev.objz.commandbridge.paper.command.CommandExecutor;
-import dev.objz.commandbridge.paper.command.CommandForwarder;
 
 public class Runtime {
     private static Runtime instance;
@@ -18,10 +18,10 @@ public class Runtime {
     private ScriptUtils scriptUtils;
     private Client client;
     private Startup startup;
-    private CommandForwarder forwarder;
+    private CommandSender sender;
     private CommandRegistrar registrar;
     private GeneralUtils generalUtils;
-    private CommandExecutor commandExecutor;
+    private CommandHandler handler;
     private Encoder encoder;
 
     private Runtime() {
@@ -75,12 +75,12 @@ public class Runtime {
         return startup;
     }
 
-    public synchronized CommandForwarder getForwarder() {
-        if (forwarder == null) {
-            forwarder = new CommandForwarder(getLogger(), Main.getInstance());
-            getLogger().debug("CommandHelper initialized.");
+    public synchronized CommandSender getSender() {
+        if (sender == null) {
+            sender = new CommandSender(getLogger(), Main.getInstance());
+            getLogger().debug("CommandSender initialized.");
         }
-        return forwarder;
+        return sender;
     }
 
     public synchronized CommandRegistrar getRegistrar() {
@@ -99,12 +99,12 @@ public class Runtime {
         return generalUtils;
     }
 
-    public synchronized CommandExecutor getCommandExecutor() {
-        if (commandExecutor == null) {
-            commandExecutor = new CommandExecutor();
-            getLogger().debug("CommandExecutor initialized.");
+    public synchronized CommandHandler getHandler() {
+        if (handler == null) {
+            handler = new CommandHandler();
+            getLogger().debug("CommandHandler initialized.");
         }
-        return commandExecutor;
+        return handler;
     }
     public synchronized Encoder getEncoder() {
         if (encoder == null) {
