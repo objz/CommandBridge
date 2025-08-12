@@ -50,7 +50,7 @@ public class Client extends WebSocketClient {
 
     private void handleCommandRequest(String message) {
         logger.debug("Handling command response");
-        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
+        Runtime.getInstance().getHandler().dispatchCommand(message);
     }
 
     private void handleSystemRequest(String message) {

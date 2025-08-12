@@ -1,10 +1,9 @@
-package dev.objz.commandbridge.paper.command;
+package dev.objz.commandbridge.paper.command.outbound;
 
 import java.util.HashSet;
 import java.util.Set;
 
 import org.bukkit.ChatColor;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import dev.objz.commandbridge.paper.Main;
@@ -15,16 +14,16 @@ import dev.objz.commandbridge.core.utils.ScriptManager;
 import dev.objz.commandbridge.core.utils.StringParser;
 import me.clip.placeholderapi.PlaceholderAPI;
 
-public class CommandForwarder {
+public class CommandSender {
     private final Logger logger;
     private final Main plugin;
 
-    public CommandForwarder(Logger logger, Main plugin) {
+    public CommandSender(Logger logger, Main plugin) {
         this.logger = logger;
         this.plugin = plugin;
     }
 
-    public int executeScriptCommands(CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
+    public int executeScriptCommands(org.bukkit.command.CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
         if (isPermissionDenied(sender, script)) {
             return 0;
         }
@@ -42,7 +41,7 @@ public class CommandForwarder {
         return 1;
     }
 
-    private boolean isPermissionDenied(CommandSender sender, ScriptManager.ScriptConfig script) {
+    private boolean isPermissionDenied(org.bukkit.command.CommandSender sender, ScriptManager.ScriptConfig script) {
         if (!script.shouldIgnorePermissionCheck()
                 && !sender.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Sender '{}' has no permission to use this command", sender);
@@ -54,7 +53,7 @@ public class CommandForwarder {
         return false;
     }
 
-    private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
+    private void handlePlayerExecutor(ScriptManager.Command cmd, org.bukkit.command.CommandSender sender, String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
             logger.warn("This command requires a player as executor, but sender is not a player.");
             sender.sendMessage(

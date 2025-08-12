@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.command;
+package dev.objz.commandbridge.velocity.command.inbound;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -11,11 +11,11 @@ import dev.objz.commandbridge.velocity.util.ProxyUtils;
 import dev.objz.commandbridge.core.json.MessageParser;
 import dev.objz.commandbridge.core.Logger;
 
-public class CommandDispatcher {
+public class CommandHandler {
     private final ProxyServer proxy;
     private final Logger logger;
 
-    public CommandDispatcher() {
+    public CommandHandler() {
         this.proxy = ProxyUtils.getProxyServer();
         this.logger = Runtime.getInstance().getLogger();
     }
