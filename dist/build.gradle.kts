@@ -50,5 +50,20 @@ tasks {
         }
     }
 
+    //
+    // val copyToPaperPlugins by registering(Copy::class) {
+    //     dependsOn(shadowJar)
+    //     from(shadowJar.get().outputs.files)
+    //     into("/mnt/Storage/Server-TEST/CommandBridge/Paper/plugins")
+    // }
+
+    val copyToVelocityPlugins by registering(Copy::class) {
+        dependsOn(shadowJar)
+        from(shadowJar.get().outputs.files)
+        into("/mnt/Storage/Server-TEST/CB-v2/Velocity/plugins")
+    }
+
+    register("dev") { dependsOn(copyToVelocityPlugins) }
+
     build { dependsOn(shadowJar) }
 }
