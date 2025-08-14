@@ -1,0 +1,18 @@
+bindHost: "0.0.0.0"     # listen address
+bindPort: 8765          # websocket port
+
+serverId: "proxy-1"     # identifier used in message 'from'
+
+heartbeat:
+  appPingSeconds: 10        # JSON PING interval
+  staleAfterSeconds: 60     # drop client if no PONG within this window
+
+security:
+  requireAuth: true         # requires HMAC auth using secret.key
+  authTimeoutSeconds: 10    # time to complete HELLO/AUTH after connecting
+
+limits:
+  maxConnections: 100       # hard cap to prevent runaway memory usage
+  maxMessageSizeBytes: 65536 # drop messages over this size (64 KiB)
+
+debug: false                # extra logging for troubleshooting
