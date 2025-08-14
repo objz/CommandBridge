@@ -1,6 +1,25 @@
-# Ignore Gradle project-specific cache directory
-.gradle
+/bin/
+/target/
+/build/
+/out/
 
-# Ignore Gradle build output directory
-build
-repomix-output.xml
+.classpath
+.project
+.settings/
+
+.gradle/
+**/build/
+**/target/
+!gradle/wrapper/gradle-wrapper.jar
+
+
+velocity/bin/
+core/bin/
+backends/**/bin/
+dist/bin/
+**/bin/
+*.log
+
+*.tmp
+*.bak
+*.swp
