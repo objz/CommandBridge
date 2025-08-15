@@ -38,8 +38,9 @@ public final class AuthHandler implements ServerMessageHandler {
 		}
 
 		if (!ok) {
-			Log.warn("AUTH failed for {} from {}", clientId, ch.getSourceAddress());
+			Log.error("AUTH failed for {} from {}", clientId, ch.getSourceAddress());
 			try {
+				sessions.send(ch, Envelope.make(MessageType.AUTH_FAIL, serverId, clientId, null));
 				ch.close();
 			} catch (Exception ignored) {
 			}

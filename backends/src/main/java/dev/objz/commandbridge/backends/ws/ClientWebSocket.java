@@ -89,6 +89,11 @@ public final class ClientWebSocket extends WebSocketListener implements Closeabl
 		state = ClientState.AUTHENTICATED;
 	}
 
+	public void markNotAuthenticated() {
+		state = ClientState.DISCONNECTED;
+		close();
+	}
+
 
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
@@ -117,9 +122,9 @@ public final class ClientWebSocket extends WebSocketListener implements Closeabl
 	public void onFailure(WebSocket webSocket, Throwable t, Response r) {
 		state = ClientState.DISCONNECTED;
 		if (t instanceof java.io.EOFException) {
-			Log.warn("Server closed the connection (EOF).");
+			Log.warn("Server closed the connection (EOF)");
 		} else if (t instanceof java.net.ConnectException) {
-			Log.warn("Cannot connect (connection refused).");
+			Log.warn("Cannot connect (connection refused)");
 		} else {
 			Log.error(t, "WS failure");
 		}

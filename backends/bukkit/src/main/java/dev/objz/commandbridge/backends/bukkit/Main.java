@@ -37,6 +37,6 @@ public final class Main implements PlatformInterface {
 				client.close();
 		} catch (Exception ignored) {
 		}
-		Log.info("Backend (Bukkit) stopped.");
+		Log.info("Backend (Bukkit) stopped");
 	}
 }

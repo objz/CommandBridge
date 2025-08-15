@@ -37,7 +37,7 @@ public final class Log {
 	private static Log get() {
 		Log l = GLOBAL.get();
 		if (l == null) {
-			throw new IllegalStateException("Log is not installed.");
+			throw new IllegalStateException("Log is not installed");
 		}
 		return l;
 	}
