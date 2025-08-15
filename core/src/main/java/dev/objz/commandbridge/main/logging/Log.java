@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class Log {
 
 	private static final AtomicReference<Log> GLOBAL = new AtomicReference<>();
-	private static volatile boolean DEBUG = false;
+	private static volatile boolean DEBUG = true;
 
 	private final Logger base;
 	private final boolean ansi;
@@ -24,12 +24,11 @@ public final class Log {
 		this.ansi = ansi;
 	}
 
-	public static void install(Logger injectedVelocityLogger) {
-		Objects.requireNonNull(injectedVelocityLogger, "injectedVelocityLogger");
+	public static void install(Logger slf4JLogger) {
+		Objects.requireNonNull(slf4JLogger, "injectedVelocityLogger");
 		Log instance = new Log(
-				injectedVelocityLogger,
-				!"false".equalsIgnoreCase(System.getProperty("cb.ansi", "true"))
-		);
+				slf4JLogger,
+				!"false".equalsIgnoreCase(System.getProperty("cb.ansi", "true")));
 		if (!GLOBAL.compareAndSet(null, instance)) {
 			throw new IllegalStateException("Log is already installed");
 		}
@@ -104,12 +103,14 @@ public final class Log {
 			base.error(color(message, RED), args, t);
 		} else {
 			Throwable root = rootCause(t);
-			base.error(color(message + " (" + root.getClass().getSimpleName() + ": " + root.getMessage() + ")", RED), args);
+			base.error(color(message + " (" + root.getClass().getSimpleName() + ": " + root.getMessage()
+					+ ")", RED), args);
 		}
 	}
 
 	private String color(String msg, String color) {
-		if (!ansi || color == null) return msg != null ? msg : "";
+		if (!ansi || color == null)
+			return msg != null ? msg : "";
 		return color + (msg != null ? msg : "") + RESET;
 	}
 
@@ -126,7 +127,8 @@ public final class Log {
 
 	private static Throwable rootCause(Throwable t) {
 		Throwable c = t;
-		while (c.getCause() != null && c.getCause() != c) c = c.getCause();
+		while (c.getCause() != null && c.getCause() != c)
+			c = c.getCause();
 		return c;
 	}
 }

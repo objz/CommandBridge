@@ -13,4 +13,6 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    implementation(project(":core"))
+    api("com.squareup.okhttp3:okhttp:4.12.0")
 }
