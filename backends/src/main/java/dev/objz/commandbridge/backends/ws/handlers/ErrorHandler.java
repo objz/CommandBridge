@@ -1,14 +1,14 @@
 package dev.objz.commandbridge.backends.ws.handlers;
 
-import dev.objz.commandbridge.backends.ws.ClientWebSocket;
+import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.IncomingDispatcher.InboundHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 
 public final class ErrorHandler implements InboundHandler {
-	private final ClientWebSocket ws;
+	private final WsClient ws;
 
-	public ErrorHandler(ClientWebSocket ws) {
+	public ErrorHandler(WsClient ws) {
 		this.ws = ws;
 	}
 

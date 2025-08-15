@@ -3,7 +3,7 @@ package dev.objz.commandbridge.backends.folia;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.objz.commandbridge.backends.PlatformInterface;
-import dev.objz.commandbridge.backends.ws.ClientWebSocket;
+import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.main.config.ConfigManager;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.logging.Log;
@@ -12,7 +12,7 @@ import java.nio.file.Path;
 
 public final class Main implements PlatformInterface {
 	private final JavaPlugin plugin;
-	private ClientWebSocket client;
+	private WsClient client;
 
 	public Main(JavaPlugin plugin) {
 		this.plugin = plugin;
@@ -25,7 +25,7 @@ public final class Main implements PlatformInterface {
 		BackendsConfig cfg = cfgMgr.load(BackendsConfig.class);
 		Log.setDebug(cfg.debug());
 		Log.info("Backend running on Folia");
-		client = new ClientWebSocket(cfg);
+		client = new WsClient(cfg);
 		client.start();
 	}
 

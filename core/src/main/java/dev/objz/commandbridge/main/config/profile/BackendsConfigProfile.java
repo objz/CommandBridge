@@ -14,7 +14,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 
 	@Override
 	public Set<String> validKeys() {
-		return Set.of("host", "port", "client-id", "secret", "debug");
+		return Set.of("host", "port", "tls", "client-id", "secret", "debug");
 	}
 
 	@Override
@@ -22,8 +22,11 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 		if (cfg.port() <= 0 || cfg.port() > 65535) {
 			Log.error("port must be between 1 and 65535");
 		}
-		if (cfg.host() == null || !(cfg.host().startsWith("ws://") || cfg.host().startsWith("wss://"))) {
-			Log.error("host must start with ws:// or wss://");
+		if (cfg.host() == null || cfg.host().isBlank()) {
+			Log.error("host must not be empty");
+		}
+		if (cfg.host() != null && (cfg.host().startsWith("ws://") || cfg.host().startsWith("wss://"))) {
+			Log.warn("host contains a ws:// or wss:// scheme. This is supported for compatibility but deprecated. Remove the scheme and use the 'tls' boolean instead");
 		}
 		if (cfg.clientId() == null || cfg.clientId().isBlank()) {
 			Log.error("client-id must not be empty");
@@ -32,7 +35,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			Log.error("secret must not be empty");
 		}
 		if ("change-me".equals(cfg.secret())) {
-			Log.warn("secret is 'change-me' - change this to connect to the server");
+			Log.warn("Update 'secret' in config.yml using the key from secret.key on your Velocity server");
 		}
 	}
 }

@@ -19,7 +19,7 @@ public final class IncomingDispatcher {
 		void handle(Envelope env) throws Exception;
 	}
 
-	public IncomingDispatcher(ClientWebSocket ws, ObjectMapper mapper) {
+	public IncomingDispatcher(WsClient ws, ObjectMapper mapper) {
 		this.mapper = mapper;
 		byType.put(MessageType.AUTH_OK, new AuthHandler(ws, AuthHandler.AuthStatus.AUTHENTICATED));
 		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthHandler.AuthStatus.NOT_AUTHENTICATED));

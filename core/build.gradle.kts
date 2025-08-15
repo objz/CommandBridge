@@ -20,6 +20,8 @@ dependencies {
 implementation("com.guicedee.services:slf4j:1.2.2.1")
     implementation("io.undertow:undertow-core:2.3.12.Final")
     implementation("io.undertow:undertow-websockets-jsr:2.3.12.Final")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
 
     implementation(libs.guava)
 

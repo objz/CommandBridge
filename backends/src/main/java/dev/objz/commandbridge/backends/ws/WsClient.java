@@ -9,9 +9,15 @@ import dev.objz.commandbridge.main.proto.MessageType;
 import okhttp3.*;
 
 import java.io.Closeable;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 
-public final class ClientWebSocket extends WebSocketListener implements Closeable {
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+public final class WsClient extends WebSocketListener implements Closeable {
 	private final BackendsConfig cfg;
 	private final OkHttpClient http;
 	private final ObjectMapper mapper = new ObjectMapper();
@@ -20,12 +26,25 @@ public final class ClientWebSocket extends WebSocketListener implements Closeabl
 	private volatile WebSocket socket;
 	private volatile ClientState state = ClientState.DISCONNECTED;
 
-	public ClientWebSocket(BackendsConfig cfg) {
+	public WsClient(BackendsConfig cfg) {
 		this.cfg = cfg;
-		this.http = new OkHttpClient.Builder()
+		OkHttpClient.Builder b = new OkHttpClient.Builder()
 				.callTimeout(Duration.ZERO)
-				.readTimeout(Duration.ZERO)
-				.build();
+				.readTimeout(Duration.ZERO);
+
+		if (cfg.tls()) {
+			try {
+				X509TrustManager tm = trustAllManager();
+				SSLContext sc = SSLContext.getInstance("TLS");
+				sc.init(null, new TrustManager[] { tm }, new SecureRandom());
+				b.sslSocketFactory(sc.getSocketFactory(), tm)
+						.hostnameVerifier((hostname, session) -> true);
+			} catch (Exception e) {
+				Log.error(e, "Failed to init insecure TLS context");
+			}
+		}
+
+		this.http = b.build();
 		this.dispatcher = new IncomingDispatcher(this, mapper);
 	}
 
@@ -94,7 +113,6 @@ public final class ClientWebSocket extends WebSocketListener implements Closeabl
 		close();
 	}
 
-
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
 		state = ClientState.AUTHENTICATING;
@@ -128,5 +146,19 @@ public final class ClientWebSocket extends WebSocketListener implements Closeabl
 		} else {
 			Log.error(t, "WS failure");
 		}
+	}
+
+	private static X509TrustManager trustAllManager() {
+		return new X509TrustManager() {
+			public void checkClientTrusted(X509Certificate[] chain, String authType) {
+			}
+
+			public void checkServerTrusted(X509Certificate[] chain, String authType) {
+			}
+
+			public X509Certificate[] getAcceptedIssuers() {
+				return new X509Certificate[0];
+			}
+		};
 	}
 }

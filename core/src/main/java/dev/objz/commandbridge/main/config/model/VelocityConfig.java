@@ -21,7 +21,8 @@ public record VelocityConfig(
 	@ConfigSerializable
 	public static record Security(
 			@Setting("require-auth") boolean requireAuth,
-			@Setting("auth-timeout-seconds") int authTimeoutSeconds) {
+			@Setting("auth-timeout-seconds") int authTimeoutSeconds, 
+			@Setting("tls") boolean tls) {
 	}
 
 	@ConfigSerializable
@@ -40,7 +41,7 @@ public record VelocityConfig(
 				8765,
 				"proxy-1",
 				new Heartbeat(10, 60),
-				new Security(true, 10),
+				new Security(true, 10, true),
 				new Limits(100, 65_536),
 				false);
 	}
