@@ -27,8 +27,11 @@ tasks {
         archiveBaseName.set("CommandBridge")
         archiveClassifier.set("all") // produce CommandBridge-<version>.jar
 
-        mergeServiceFiles()
         relocate("com.fasterxml.jackson", "dev.objz.shaded.jackson")
+        relocate("io.undertow", "dev.objz.libs.undertow")
+        relocate("org.xnio", "dev.objz.libs.xnio")
+        relocate("org.jboss.threads", "dev.objz.libs.jboss.threads")
+	mergeServiceFiles()
 
         dependencies {
             exclude(dependency("com.google.guava:.*"))
@@ -50,12 +53,12 @@ tasks {
         }
     }
 
-    //
-    // val copyToPaperPlugins by registering(Copy::class) {
-    //     dependsOn(shadowJar)
-    //     from(shadowJar.get().outputs.files)
-    //     into("/mnt/Storage/Server-TEST/CommandBridge/Paper/plugins")
-    // }
+
+    val copyToPaperPlugins by registering(Copy::class) {
+        dependsOn(shadowJar)
+        from(shadowJar.get().outputs.files)
+        into("/mnt/Storage/Server-TEST/CB-v2/Paper/plugins")
+    }
 
     val copyToVelocityPlugins by registering(Copy::class) {
         dependsOn(shadowJar)
@@ -63,7 +66,7 @@ tasks {
         into("/mnt/Storage/Server-TEST/CB-v2/Velocity/plugins")
     }
 
-    register("dev") { dependsOn(copyToVelocityPlugins) }
+    register("dev") { dependsOn(copyToVelocityPlugins, copyToPaperPlugins) }
 
     build { dependsOn(shadowJar) }
 }

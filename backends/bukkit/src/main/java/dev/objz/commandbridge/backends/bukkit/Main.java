@@ -3,9 +3,16 @@ package dev.objz.commandbridge.backends.bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.objz.commandbridge.backends.PlatformInterface;
+import dev.objz.commandbridge.backends.ws.ClientWebSocket;
+import dev.objz.commandbridge.main.config.ConfigManager;
+import dev.objz.commandbridge.main.config.model.BackendsConfig;
+import dev.objz.commandbridge.main.logging.Log;
+
+import java.nio.file.Path;
 
 public final class Main implements PlatformInterface {
 	private final JavaPlugin plugin;
+	private ClientWebSocket client;
 
 	public Main(JavaPlugin plugin) {
 		this.plugin = plugin;
@@ -13,11 +20,23 @@ public final class Main implements PlatformInterface {
 
 	@Override
 	public void enable() {
-		plugin.getLogger().info("Hello from bukkit");
+		Path dataDir = plugin.getDataFolder().toPath();
+		var cfgMgr = new ConfigManager(dataDir);
+		BackendsConfig cfg = cfgMgr.load(BackendsConfig.class);
+		Log.setDebug(cfg.debug());
+		Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+		Log.info("Backend running on Bukkit");
+		client = new ClientWebSocket(cfg);
+		client.start();
 	}
 
 	@Override
 	public void disable() {
-		plugin.getLogger().info("Bye from bukkit");
+		try {
+			if (client != null)
+				client.close();
+		} catch (Exception ignored) {
+		}
+		Log.info("Backend (Bukkit) stopped.");
 	}
 }
