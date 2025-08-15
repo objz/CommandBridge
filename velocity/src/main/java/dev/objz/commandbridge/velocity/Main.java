@@ -15,10 +15,13 @@ import dev.objz.commandbridge.main.core.CommandRouter;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.main.security.SecretLoader;
+import dev.objz.commandbridge.main.security.TLS;
 import dev.objz.commandbridge.main.ws.SessionHub;
 import dev.objz.commandbridge.main.ws.WsServer;
 
 import java.nio.file.Path;
+
+import javax.net.ssl.SSLContext;
 
 import org.slf4j.Logger;
 
@@ -49,7 +52,15 @@ public final class Main {
 
 		var sessions = new SessionHub(config, mapper);
 		var router = new CommandRouter(mapper, sessions, auth, config.serverId());
-		var ws = new WsServer(config.bindHost(), config.bindPort(), router, sessions);
+		boolean is_tls = config.security().tls();
+		SSLContext ssl = null;
+		if (is_tls) {
+			ssl = TLS.ensure(dataDir, "localhost");
+		}
+
+		var ws = is_tls
+				? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true, ssl)
+				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
 
 		ws.start();
 

@@ -1,12 +1,12 @@
 package dev.objz.commandbridge.backends.ws.handlers;
 
-import dev.objz.commandbridge.backends.ws.ClientWebSocket;
+import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.IncomingDispatcher.InboundHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 
 public final class AuthHandler implements InboundHandler {
-	private final ClientWebSocket ws;
+	private final WsClient ws;
 	private final AuthStatus status;
 
 	public enum AuthStatus {
@@ -14,7 +14,7 @@ public final class AuthHandler implements InboundHandler {
 		AUTHENTICATED
 	}
 
-	public AuthHandler(ClientWebSocket ws, AuthStatus status) {
+	public AuthHandler(WsClient ws, AuthStatus status) {
 		this.ws = ws;
 		this.status = status;
 	}
