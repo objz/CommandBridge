@@ -1,12 +1,12 @@
 package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.backends.ws.handlers.AuthOkHandler;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
+import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -21,7 +21,8 @@ public final class IncomingDispatcher {
 
 	public IncomingDispatcher(ClientWebSocket ws, ObjectMapper mapper) {
 		this.mapper = mapper;
-		byType.put(MessageType.AUTH_OK, new AuthOkHandler(ws));
+		byType.put(MessageType.AUTH_OK, new AuthHandler(ws, AuthHandler.AuthStatus.AUTHENTICATED));
+		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthHandler.AuthStatus.NOT_AUTHENTICATED));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
 	}

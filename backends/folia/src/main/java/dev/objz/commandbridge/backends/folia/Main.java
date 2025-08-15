@@ -36,6 +36,6 @@ public final class Main implements PlatformInterface {
 				client.close();
 		} catch (Exception ignored) {
 		}
-		Log.info("Backend (Folia) stopped.");
+		Log.info("Backend (Folia) stopped");
 	}
 }

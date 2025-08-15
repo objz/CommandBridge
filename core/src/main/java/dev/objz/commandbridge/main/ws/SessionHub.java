@@ -78,7 +78,7 @@ public final class SessionHub {
 			if (!s.authed())
 				continue;
 			if (now - s.lastPongNanos() > staleNs) {
-				Log.warn("Client '{}' stale (no PONG). Closing.", s.clientId());
+				Log.warn("Client '{}' stale (no PONG). Closing", s.clientId());
 				try {
 					s.ch().close();
 				} catch (Exception ignored) {
