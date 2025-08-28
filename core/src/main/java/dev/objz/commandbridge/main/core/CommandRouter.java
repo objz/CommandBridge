@@ -28,6 +28,10 @@ public final class CommandRouter {
 		handlers.put(MessageType.PONG, new PongHandler(sessions));
 	}
 
+	public void register(MessageType type, ServerMessageHandler handler) {
+		handlers.put(type, handler);
+	}
+
 	public void onText(WebSocketChannel ch, String text) {
 		Envelope env;
 		try {
