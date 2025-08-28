@@ -145,7 +145,7 @@ public final class ScriptManager {
 		for (Entry e : errs) {
 			String header = "Script '" + e.name() + "' invalid:";
 			String details = e.error()
-					.map(err -> formatBulleted(err))
+					.map(ScriptManager::formatBulleted)
 					.orElse("    - <unknown error>");
 			Log.error("{}\n{}", header, details);
 		}
@@ -153,7 +153,15 @@ public final class ScriptManager {
 		long en = entries.stream().filter(e -> e.status == Status.ENABLED).count();
 		long dis = entries.stream().filter(e -> e.status == Status.DISABLED).count();
 		long err = errs.size();
-		Log.info("Scripts: loaded {}, enabled {}, disabled {}, errors {}", loadedCount, en, dis, err);
+
+		String msg = String.format(
+				"%sScripts:%s loaded %s%d%s, enabled %s%d%s, disabled %s%d%s, errors %s%d%s",
+				Log.GRAY, Log.RESET,
+				Log.GRAY, loadedCount, Log.RESET,
+				Log.GREEN, en, Log.RESET,
+				Log.YELLOW, dis, Log.RESET,
+				(err > 0 ? Log.RED : Log.GREEN), err, Log.RESET);
+		Log.info(msg);
 
 		if (includeFileList) {
 			try {
