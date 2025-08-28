@@ -2,8 +2,6 @@ package dev.objz.commandbridge.main.scripting;
 
 import dev.objz.commandbridge.main.scripting.ScriptTypes.*;
 import dev.objz.commandbridge.main.scripting.model.Spec;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.scripting.Schema.FieldRule;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -15,6 +13,25 @@ public final class ScriptResolver {
 
 	public ScriptResolver(Schema.Registry schema) {
 		this.schema = schema;
+	}
+
+	public static final class ValidationException extends RuntimeException {
+		private final String scriptName;
+		private final List<String> errors;
+
+		public ValidationException(String scriptName, List<String> errors) {
+			super("Script '" + scriptName + "' invalid");
+			this.scriptName = scriptName;
+			this.errors = List.copyOf(errors);
+		}
+
+		public String scriptName() {
+			return scriptName;
+		}
+
+		public List<String> errors() {
+			return errors;
+		}
 	}
 
 	public Effective.Script resolve(Spec.ScriptSpecV2 s) {
@@ -59,7 +76,7 @@ public final class ScriptResolver {
 		}
 
 		if (!errs.isEmpty()) {
-			Log.error("Script '" + name + "' invalid: " + String.join("; ", errs));
+			throw new ValidationException(name != null ? name : "<unnamed>", errs);
 		}
 
 		return new Effective.Script(
@@ -67,14 +84,13 @@ public final class ScriptResolver {
 				perms, runAs, globalTarget, defaults, args, steps);
 	}
 
-
-	private Effective.Permissions resolvePermissions(Spec.Permissions p, FieldRule.Context ctx) {
+	private Effective.Permissions resolvePermissions(Spec.Permissions p, Schema.FieldRule.Context ctx) {
 		boolean enabled = def("permissions.enabled", p != null ? p.enabled() : null, Boolean.TRUE, ctx);
 		boolean silent = def("permissions.silent", p != null ? p.silent() : null, Boolean.FALSE, ctx);
 		return new Effective.Permissions(enabled, silent);
 	}
 
-	private Effective.Target resolveTarget(String base, Spec.TargetSpec t, FieldRule.Context ctx,
+	private Effective.Target resolveTarget(String base, Spec.TargetSpec t, Schema.FieldRule.Context ctx,
 			List<String> errs) {
 		TargetMode mode = def(base + ".mode", t != null ? t.mode() : null, TargetMode.PLAYERS_SERVER, ctx);
 		String fixed = def(base + ".fixed", t != null ? t.fixed() : null, null, ctx);
@@ -98,7 +114,7 @@ public final class ScriptResolver {
 		return new Effective.Target(mode, fixed, idx, reqOnl, reqSrv);
 	}
 
-	private Effective.Defaults resolveDefaults(Spec.Defaults d, FieldRule.Context ctx, List<String> errs) {
+	private Effective.Defaults resolveDefaults(Spec.Defaults d, Schema.FieldRule.Context ctx, List<String> errs) {
 		Duration delay = parseOrDefault("defaults.delay", d != null ? d.delay() : null, Duration.ZERO, ctx,
 				errs);
 		Duration timeout = parseOrDefault("defaults.timeout", d != null ? d.timeout() : null,
@@ -110,7 +126,7 @@ public final class ScriptResolver {
 		return new Effective.Defaults(delay, timeout, cooldown, rl);
 	}
 
-	private Effective.Args resolveArgs(Spec.ArgsBlock a, FieldRule.Context ctx) {
+	private Effective.Args resolveArgs(Spec.ArgsBlock a, Schema.FieldRule.Context ctx) {
 		if (a == null || a.spec() == null || a.spec().isEmpty())
 			return new Effective.Args(def("args.description", a != null ? a.description() : null, "", ctx),
 					List.of());
@@ -124,7 +140,7 @@ public final class ScriptResolver {
 			var type = pick(s.type(), ScriptTypes.ArgType.WORD);
 			Long min = s.min();
 			Long max = s.max();
-			List<String>choices = pick(s.choices(), List.of());
+			List<String> choices = pick(s.choices(), List.of());
 			String pattern = s.pattern();
 			boolean rest = def("args.spec[].rest", s.rest(), Boolean.FALSE, ctx);
 			out.add(new Effective.Arg(name, index, required, type, min, max, choices, pattern, rest));
@@ -154,7 +170,6 @@ public final class ScriptResolver {
 		}
 	}
 
-
 	private void require(String path, Object value, List<String> errs) {
 		var r = schema.ruleFor(path);
 		if (r.isPresent() && r.get().isRequired() && isNullOrEmpty(value)) {
@@ -167,13 +182,12 @@ public final class ScriptResolver {
 			return got;
 		var r = schema.ruleFor(path);
 		if (r.isPresent()) {
-			var typed = (FieldRule<T>) r.get();
+			var typed = (Schema.FieldRule<T>) r.get();
 			T def = typed.defaultValue(ctx);
 			return def != null ? def : fallback;
 		}
 		return fallback;
 	}
-
 
 	private static boolean isNullOrEmpty(Object v) {
 		if (v == null)
@@ -214,10 +228,7 @@ public final class ScriptResolver {
 		throw new IllegalArgumentException("invalid duration: " + s);
 	}
 
-	private Duration parseOrDefault(String path,
-			String raw,
-			Duration def,
-			Schema.FieldRule.Context ctx,
+	private Duration parseOrDefault(String path, String raw, Duration def, Schema.FieldRule.Context ctx,
 			List<String> errs) {
 		String val = def(path, raw, null, ctx);
 		if (val == null || val.isBlank())

@@ -1,4 +1,3 @@
-
 package dev.objz.commandbridge.velocity.scripting;
 
 import dev.objz.commandbridge.main.logging.Log;
@@ -94,23 +93,23 @@ public final class ScriptManager {
 
 			if (!errs.isEmpty()) {
 				String nm = nonBlankOr(spec.name(), "<unnamed>");
-				out.add(new Entry(Status.ERROR, nm, null, String.join("; ", errs)));
+				out.add(new Entry(Status.ERROR, nm, null, String.join("\n", errs)));
 				continue;
 			}
 
-			final Effective.Script eff;
 			try {
-				eff = resolver.resolve(spec);
+				final Effective.Script eff = resolver.resolve(spec);
+				if (eff.enabled()) {
+					out.add(new Entry(Status.ENABLED, eff.name(), eff, null));
+				} else {
+					out.add(new Entry(Status.DISABLED, eff.name(), eff, null));
+				}
+			} catch (ScriptResolver.ValidationException vex) {
+				String nm = nonBlankOr(spec.name(), "<unnamed>");
+				out.add(new Entry(Status.ERROR, nm, null, String.join("\n", vex.errors())));
 			} catch (Exception ex) {
 				String nm = nonBlankOr(spec.name(), "<unnamed>");
 				out.add(new Entry(Status.ERROR, nm, null, "resolution failed: " + ex.getMessage()));
-				continue;
-			}
-
-			if (eff.enabled()) {
-				out.add(new Entry(Status.ENABLED, eff.name(), eff, null));
-			} else {
-				out.add(new Entry(Status.DISABLED, eff.name(), eff, null));
 			}
 		}
 
@@ -144,13 +143,16 @@ public final class ScriptManager {
 	public void logReport(Path scriptsDir, boolean includeFileList) {
 		List<Entry> errs = errors();
 		for (Entry e : errs) {
-			Log.error("Script '{}' invalid: {}", e.name(), e.error().orElse("<unknown error>"));
+			String header = "Script '" + e.name() + "' invalid:";
+			String details = e.error()
+					.map(err -> formatBulleted(err))
+					.orElse("    - <unknown error>");
+			Log.error("{}\n{}", header, details);
 		}
 
 		long en = entries.stream().filter(e -> e.status == Status.ENABLED).count();
 		long dis = entries.stream().filter(e -> e.status == Status.DISABLED).count();
 		long err = errs.size();
-
 		Log.info("Scripts: loaded {}, enabled {}, disabled {}, errors {}", loadedCount, en, dis, err);
 
 		if (includeFileList) {
@@ -167,6 +169,15 @@ public final class ScriptManager {
 				Log.warn("Could not list scripts in {}: {}", scriptsDir, ioe.toString());
 			}
 		}
+	}
+
+	private static String formatBulleted(String raw) {
+		String[] lines = raw.split("\\r?\\n|;\\s*");
+		return Arrays.stream(lines)
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.map(s -> "    - " + s)
+				.collect(Collectors.joining(System.lineSeparator()));
 	}
 
 	private static void require(String field, Object value, List<String> errs) {
