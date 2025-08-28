@@ -21,6 +21,7 @@ import dev.objz.commandbridge.main.ws.WsServer;
 
 import dev.objz.commandbridge.main.scripting.ScriptTypes.ScriptKind.Side;
 import dev.objz.commandbridge.velocity.debug.ScriptDebug;
+import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
 import dev.objz.commandbridge.velocity.scripting.ScriptManager;
 import dev.objz.commandbridge.velocity.scripting.ScriptsBootstrap;
 
@@ -72,6 +73,9 @@ public final class Main {
 
 		Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
 		var mgr = ScriptManager.loadForSide(scriptsDir, Side.VELOCITY);
+
+		OnAuthRegisterCommands.install(
+				sessions, mgr, mapper, config.serverId());
 
 		mgr.enabled().forEach(ScriptDebug::dump);
 

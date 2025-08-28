@@ -7,6 +7,8 @@ import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.main.ws.SessionHub;
 import dev.objz.commandbridge.main.ws.handlers.AuthHandler;
+import dev.objz.commandbridge.main.ws.handlers.CommandInvokedHandler;
+import dev.objz.commandbridge.main.ws.handlers.CommandResultHandler;
 import dev.objz.commandbridge.main.ws.handlers.PingHandler;
 import dev.objz.commandbridge.main.ws.handlers.PongHandler;
 import dev.objz.commandbridge.main.ws.handlers.ServerMessageHandler;
@@ -26,6 +28,8 @@ public final class CommandRouter {
 		handlers.put(MessageType.AUTH, new AuthHandler(sessions, auth, serverId));
 		handlers.put(MessageType.PING, new PingHandler(sessions, serverId));
 		handlers.put(MessageType.PONG, new PongHandler(sessions));
+		handlers.put(MessageType.COMMAND_INVOKED, new CommandInvokedHandler(mapper, sessions));
+		handlers.put(MessageType.COMMAND_RESULT, new CommandResultHandler(mapper, sessions));
 	}
 
 	public void register(MessageType type, ServerMessageHandler handler) {

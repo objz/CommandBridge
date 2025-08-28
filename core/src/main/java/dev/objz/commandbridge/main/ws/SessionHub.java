@@ -9,6 +9,8 @@ import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 public final class SessionHub {
 	private final Map<WebSocketChannel, ClientSession> byCh = new ConcurrentHashMap<>();
@@ -17,9 +19,16 @@ public final class SessionHub {
 	private final VelocityConfig cfg;
 	private final ObjectMapper mapper;
 
+	private final List<Consumer<ClientSession>> authedListeners = new CopyOnWriteArrayList<>();
+
 	public SessionHub(VelocityConfig cfg, ObjectMapper mapper) {
 		this.cfg = cfg;
 		this.mapper = mapper;
+	}
+
+	// callback
+	public void onAuthed(Consumer<ClientSession> listener) {
+		authedListeners.add(listener);
 	}
 
 	public void start() {
@@ -45,6 +54,14 @@ public final class SessionHub {
 		s.markAuthed(clientId, caps);
 		byId.put(clientId, s);
 		Log.success("Authenticated client '{}'", clientId);
+
+		for (Consumer<ClientSession> c : authedListeners) {
+			try {
+				c.accept(s);
+			} catch (Exception e) {
+				Log.warn("onAuthed listener failed: {}", e.toString());
+			}
+		}
 	}
 
 	public void remove(WebSocketChannel ch) {

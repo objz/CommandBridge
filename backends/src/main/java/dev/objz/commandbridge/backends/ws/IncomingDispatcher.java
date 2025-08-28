@@ -2,7 +2,9 @@ package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
+import dev.objz.commandbridge.backends.ws.handlers.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
+import dev.objz.commandbridge.backends.ws.handlers.RegisterCommandsHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
@@ -25,6 +27,9 @@ public final class IncomingDispatcher {
 		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthHandler.AuthStatus.NOT_AUTHENTICATED));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
+
+		byType.put(MessageType.REGISTER_COMMANDS, new RegisterCommandsHandler(ws, mapper));
+		byType.put(MessageType.EXECUTE_COMMAND, new ExecuteCommandHandler(ws, mapper));
 	}
 
 	public void dispatch(String json) {
