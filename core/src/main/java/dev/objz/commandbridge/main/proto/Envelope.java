@@ -22,4 +22,9 @@ public record Envelope(int v, UUID id, MessageType type, String from, String to,
 		return new Envelope(1, UUID.randomUUID(), type, from, to, System.currentTimeMillis(),
 				payload != null ? payload : M.nullNode());
 	}
+
+	public static Envelope reply(Envelope req, MessageType type, String from, JsonNode payload) {
+		return new Envelope(req.v(), req.id(), type, from, req.from(), System.currentTimeMillis(),
+				payload != null ? payload : M.nullNode());
+	}
 }
