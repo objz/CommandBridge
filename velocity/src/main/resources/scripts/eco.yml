@@ -1,0 +1,56 @@
+version: 2
+kind: VELOCITY_TO_BACKEND
+
+name: eco-give
+description: Simple demo script that proxies /eco to a backend server
+enabled: true
+aliases: [ eco ]
+
+permissions:
+  enabled: true
+  silent: false
+
+# Default executor when not overridden by a step
+run-as: CONSOLE
+
+# Default target resolution for steps (overridable per step)
+target:
+  mode: BY_ARG
+  arg-index: 2
+  require-online: false
+  require-on-server: false
+
+defaults:
+  delay: 0s
+  timeout: 2s
+  cooldown: 0s
+  rate-limit: "5/10s per-executor"
+
+args:
+  description: "/eco <player> <amount> <serverId>"
+  spec:
+    - name: player
+      index: 0
+      required: true
+      type: PLAYER
+    - name: amount
+      index: 1
+      required: true
+      type: NUMBER
+      min: 1
+      max: 1000000
+    - name: serverId
+      index: 2
+      required: true
+      type: SERVER
+
+commands:
+  - command: "eco give ${args.player} ${args.amount}"
+    run-as: CONSOLE
+    target:
+      mode: BY_ARG
+      arg-index: 2
+      require-online: false
+      require-on-server: false
+    delay: 0
+    timeout: 2s
