@@ -19,11 +19,16 @@ import dev.objz.commandbridge.main.security.TLS;
 import dev.objz.commandbridge.main.ws.SessionHub;
 import dev.objz.commandbridge.main.ws.WsServer;
 
-import java.nio.file.Path;
+import dev.objz.commandbridge.main.scripting.ScriptTypes.ScriptKind.Side;
+import dev.objz.commandbridge.velocity.debug.ScriptDebug;
+import dev.objz.commandbridge.velocity.scripting.ScriptManager;
+import dev.objz.commandbridge.velocity.scripting.ScriptsBootstrap;
 
 import javax.net.ssl.SSLContext;
 
 import org.slf4j.Logger;
+
+import java.nio.file.Path;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
 		"objz" })
@@ -52,17 +57,25 @@ public final class Main {
 
 		var sessions = new SessionHub(config, mapper);
 		var router = new CommandRouter(mapper, sessions, auth, config.serverId());
-		boolean is_tls = config.security().tls();
+
+		boolean tlsEnabled = config.security().tls();
 		SSLContext ssl = null;
-		if (is_tls) {
+		if (tlsEnabled) {
 			ssl = TLS.ensure(dataDir, "localhost");
 		}
 
-		var ws = is_tls
+		var ws = tlsEnabled
 				? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true, ssl)
 				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
 
 		ws.start();
+
+		Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
+		var mgr = ScriptManager.loadForSide(scriptsDir, Side.VELOCITY);
+
+		mgr.enabled().forEach(ScriptDebug::dump);
+
+		mgr.logReport(scriptsDir, true);
 
 		Log.debug("Config loaded:");
 		Log.debug("  Host: {}", config.bindHost());
