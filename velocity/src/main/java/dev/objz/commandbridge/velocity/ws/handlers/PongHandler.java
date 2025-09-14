@@ -1,10 +1,11 @@
-package dev.objz.commandbridge.main.ws.handlers;
+package dev.objz.commandbridge.velocity.ws.handlers;
 
 import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.ws.SessionHub;
+import dev.objz.commandbridge.velocity.ws.MessageRouter.InboundHandler;
+import dev.objz.commandbridge.velocity.ws.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;
 
-public final class PongHandler implements ServerMessageHandler {
+public final class PongHandler implements InboundHandler {
 	private final SessionHub sessions;
 
 	public PongHandler(SessionHub sessions) {

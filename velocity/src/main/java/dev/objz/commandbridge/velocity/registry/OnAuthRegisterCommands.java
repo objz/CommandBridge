@@ -6,9 +6,9 @@ import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import dev.objz.commandbridge.main.ws.ClientSession;
-import dev.objz.commandbridge.main.ws.SessionHub;
 import dev.objz.commandbridge.velocity.scripting.ScriptManager;
+import dev.objz.commandbridge.velocity.ws.ClientSession;
+import dev.objz.commandbridge.velocity.ws.SessionHub;
 
 import java.util.List;
 

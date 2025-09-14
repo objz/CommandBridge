@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.backends.ws.handlers;
 
 import dev.objz.commandbridge.backends.ws.WsClient;
-import dev.objz.commandbridge.backends.ws.IncomingDispatcher.InboundHandler;
+import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 

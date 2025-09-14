@@ -1,6 +1,5 @@
-package dev.objz.commandbridge.main.ws;
+package dev.objz.commandbridge.velocity.ws;
 
-import dev.objz.commandbridge.main.core.CommandRouter;
 import dev.objz.commandbridge.main.logging.Log;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
@@ -14,7 +13,7 @@ import io.undertow.websockets.spi.WebSocketHttpExchange;
 import javax.net.ssl.SSLContext;
 
 public final class WsServer {
-	private final CommandRouter router;
+	private final MessageRouter router;
 	private final SessionHub sessions;
 	private final String host;
 	private final int port;
@@ -23,11 +22,11 @@ public final class WsServer {
 
 	private Undertow server;
 
-	public WsServer(String host, int port, CommandRouter router, SessionHub sessions) {
+	public WsServer(String host, int port, MessageRouter router, SessionHub sessions) {
 		this(host, port, router, sessions, false, null);
 	}
 
-	public WsServer(String host, int port, CommandRouter router, SessionHub sessions, boolean tlsEnabled,
+	public WsServer(String host, int port, MessageRouter router, SessionHub sessions, boolean tlsEnabled,
 			SSLContext sslContext) {
 		this.host = host;
 		this.port = port;

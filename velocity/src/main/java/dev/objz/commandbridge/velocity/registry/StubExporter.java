@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * A stub contains just enough metadata for
- * backends to register a dummy command
+ * backends to register the command
  */
 public final class StubExporter {
 	private StubExporter() {
