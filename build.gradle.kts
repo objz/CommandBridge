@@ -59,13 +59,13 @@ tasks {
     val copyToPaperPlugins by registering(Copy::class) {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
-        into("/mnt/Storage/Server-TEST/CommandBridge/Paper/plugins")
+        into("/mnt/storage/Server-TEST/CB-v2/Paper/plugins")
     }
 
     val copyToVelocityPlugins by registering(Copy::class) {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
-        into("/mnt/Storage/Server-TEST/CommandBridge/Velocity/plugins")
+        into("/mnt/storage/Server-TEST/CB-v2/Velocity/plugins")
     }
 
     register("dev") { dependsOn(copyToPaperPlugins, copyToVelocityPlugins) }

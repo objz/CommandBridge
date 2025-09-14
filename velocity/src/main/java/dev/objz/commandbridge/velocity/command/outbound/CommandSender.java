@@ -48,14 +48,11 @@ public class CommandSender {
 			switch (cmd.getTargetExecutor().toLowerCase()) {
 				case "player" -> handlePlayerExecutor(cmd, source, args);
 				case "console" -> handleConsoleExecutor(cmd, source, args);
-				default ->
-					logger.warn("Unknown target executor for command: {}",
-							cmd.getCommand());
+				default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
 			}
 		}
 
-		logger.info("Script commands executed successfully for command: {}",
-				script.getName());
+		logger.info("Script commands executed successfully for command: {}", script.getName());
 		return com.mojang.brigadier.Command.SINGLE_SUCCESS;
 	}
 
@@ -66,8 +63,7 @@ public class CommandSender {
 			logger.warn("Sender '{}' has no permission to use this command", source);
 			if (!script.shouldHidePermissionWarning()) {
 				source.sendMessage(
-						Component.text("You do not have permission to use this command",
-								NamedTextColor.RED));
+						Component.text("You do not have permission to use this command", NamedTextColor.RED));
 			}
 			return true;
 		}
@@ -77,30 +73,24 @@ public class CommandSender {
 	private void handlePlayerExecutor(ScriptManager.Command cmd,
 			CommandSource source, String[] args) {
 		if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
-			logger.warn("This command requires a player as executor, but source is " +
-					"not a player");
+			logger.warn("This command requires a player as executor, but source is not a player");
 			source.sendMessage(
-					Component.text("This command requires a player as executor, but " +
-							"source is not a player object",
+					Component.text("This command requires a player as executor, but source is not a player object",
 							NamedTextColor.RED));
 			return;
 		}
 
 		Player player = (Player) source;
 
-		if (cmd.isCheckIfExecutorIsOnServer() &&
-				!isPlayerOnTargetServer(player, cmd)) {
-			logger.warn("Player '{}' is not on the required server for this command.",
-					player.getUsername());
-			source.sendMessage(Component.text("Player " + player.getUsername() +
-					" is not on the required server",
+		if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(player, cmd)) {
+			logger.warn("Player '{}' is not on the required server for this command.", player.getUsername());
+			source.sendMessage(Component.text("Player " + player.getUsername() + " is not on the required server",
 					NamedTextColor.YELLOW));
 			return;
 		}
 
 		parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
-			if (parsedCommand == null)
-				return;
+			if (parsedCommand == null) return;
 
 			if (cmd.getDelay() > 0) {
 				scheduleCommand(cmd, parsedCommand, args, player, 0);
@@ -112,15 +102,35 @@ public class CommandSender {
 
 	private void handleConsoleExecutor(ScriptManager.Command cmd,
 			CommandSource source, String[] args) {
-
-		parseCommand(cmd, args, null).thenAccept(parsedCommand -> {
-			if (parsedCommand == null)
+		final Player playerCtx;
+		if (cmd.isCheckIfExecutorIsPlayer()) {
+			if (!(source instanceof Player)) {
+				logger.warn("Console target requires a player executor, but source is not a player");
+				source.sendMessage(Component.text(
+						"This command requires a player as executor, but source is not a player object",
+						NamedTextColor.RED));
 				return;
+			}
+			playerCtx = (Player) source;
+
+			if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(playerCtx, cmd)) {
+				logger.warn("Player '{}' is not on the required server for this command.", playerCtx.getUsername());
+				source.sendMessage(Component.text(
+						"Player " + playerCtx.getUsername() + " is not on the required server",
+						NamedTextColor.YELLOW));
+				return;
+			}
+		} else {
+			playerCtx = null;
+		}
+
+		parseCommand(cmd, args, playerCtx).thenAccept(parsedCommand -> {
+			if (parsedCommand == null) return;
 
 			if (cmd.getDelay() > 0) {
-				scheduleCommand(cmd, parsedCommand, args, null, 0);
+				scheduleCommand(cmd, parsedCommand, args, playerCtx, 0);
 			} else {
-				sendCommand(cmd, parsedCommand, args, null, 0);
+				sendCommand(cmd, parsedCommand, args, playerCtx, 0);
 			}
 		});
 	}
@@ -137,7 +147,8 @@ public class CommandSender {
 			String[] args, Player player) {
 		StringParser parser = StringParser.create();
 
-		if (player != null && cmd.getTargetExecutor().equals("player")) {
+		// Inject player placeholders whenever we have a player context.
+		if (player != null) {
 			addPlayerPlaceholders(parser, player);
 		}
 
@@ -147,7 +158,8 @@ public class CommandSender {
 			if (!result.isValid()) {
 				Set<String> unresolved = result.getUnresolved();
 
-				if (player == null && cmd.getTargetExecutor().equals("console")) {
+				// If we are executing as console without a player context, block if player placeholders are present.
+				if (player == null && cmd.getTargetExecutor().equalsIgnoreCase("console")) {
 					Set<String> playerPlaceholders = new HashSet<>();
 					for (String placeholder : unresolved) {
 						if (isPlayerPlaceholder(placeholder)) {
@@ -156,50 +168,41 @@ public class CommandSender {
 					}
 
 					if (!playerPlaceholders.isEmpty()) {
-						logger.error(
-								"Console command '{}' contains player placeholders: {}",
+						logger.error("Console command '{}' contains player placeholders: {}",
 								cmd.getCommand(), playerPlaceholders);
 
 						for (String conn : cmd.getTargetClientIds()) {
 							Runtime.getInstance().getServer().sendError(
-									Runtime.getInstance().getServer()
-											.getWebSocket(conn),
-									"Console command contains unresolvable player "
-											+
-											"placeholders: " +
-											playerPlaceholders);
+									Runtime.getInstance().getServer().getWebSocket(conn),
+									"Console command contains unresolvable player placeholders: " + playerPlaceholders);
 						}
 						return CompletableFuture.completedFuture(null);
 					}
 				}
 
 				if (!unresolved.isEmpty()) {
-					logger.warn("Command '{}' contains unresolved placeholders: {}",
-							cmd.getCommand(), unresolved);
+					logger.warn("Command '{}' contains unresolved placeholders: {}", cmd.getCommand(), unresolved);
 				}
 			}
 
 			String parsedCommand = result.getParsed();
 
-			if (Runtime.getInstance().getStartup().isPlaceholderAPI() &&
-					player != null) {
+			// Run through PAPI when we have a player context.
+			if (Runtime.getInstance().getStartup().isPlaceholderAPI() && player != null) {
 				return PlaceholderAPI.createInstance()
 						.formatPlaceholders(parsedCommand, player.getUniqueId())
 						.exceptionally(e -> {
-							logger.error("PlaceholderAPI error: {}",
-									logger.getDebug() ? e : e.getMessage());
+							logger.error("PlaceholderAPI error: {}", logger.getDebug() ? e : e.getMessage());
 							return parsedCommand;
 						});
 			}
 
 			return CompletableFuture.completedFuture(parsedCommand);
 		} catch (Exception e) {
-			logger.error("Error occurred while parsing command: {}",
-					logger.getDebug() ? e : e.getMessage());
+			logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
 			if (player != null) {
 				player.sendMessage(
-						Component.text("Error occurred while parsing command")
-								.color(NamedTextColor.RED));
+						Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
 			}
 			for (String conn : cmd.getTargetClientIds()) {
 				Runtime.getInstance().getServer().sendError(
@@ -227,44 +230,39 @@ public class CommandSender {
 
 	private void scheduleCommand(ScriptManager.Command cmd, String command,
 			String[] args, Player player, int retryCount) {
-		logger.debug("Scheduling command '{}' with delay: {} seconds",
-				cmd.getCommand(), cmd.getDelay());
+		logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
 		proxy.getScheduler()
-				.buildTask(plugin,
-						() -> sendCommand(cmd, command, args, player, retryCount))
+				.buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount))
 				.delay(cmd.getDelay(), TimeUnit.SECONDS)
 				.schedule();
 	}
 
 	private void sendCommand(ScriptManager.Command cmd, String command,
 			String[] args, Player player, int retryCount) {
-		logger.debug("Executing command: {} with retryCount: {}", cmd.getCommand(),
-				retryCount);
+		logger.debug("Executing command: {} with retryCount: {}", cmd.getCommand(), retryCount);
 
 		if (retryCount >= 30) {
 			logger.warn("Max retries reached for command: {}", cmd.getCommand());
 			if (player != null) {
-				player.sendMessage(
-						Component.text("Max retries reached", NamedTextColor.YELLOW));
+				player.sendMessage(Component.text("Max retries reached", NamedTextColor.YELLOW));
 			}
 			return;
 		}
 
-		if (cmd.shouldWaitUntilPlayerIsOnline() &&
-				"player".equalsIgnoreCase(cmd.getTargetExecutor())) {
+		boolean shouldGateOnPlayerOnline =
+				cmd.shouldWaitUntilPlayerIsOnline() &&
+						("player".equalsIgnoreCase(cmd.getTargetExecutor())
+								|| (player != null && cmd.isCheckIfExecutorIsPlayer()));
+
+		if (shouldGateOnPlayerOnline) {
 			if (player == null || !player.isActive()) {
-				logger.warn("Player is not online. Retrying command: {}",
-						cmd.getCommand());
+				logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
 				if (player != null) {
-					player.sendMessage(Component.text(
-							"Player is not online. Retrying command",
-							NamedTextColor.YELLOW));
+					player.sendMessage(
+							Component.text("Player is not online. Retrying command", NamedTextColor.YELLOW));
 				}
 				proxy.getScheduler()
-						.buildTask(
-								plugin,
-								() -> sendCommand(cmd, command, args, player,
-										retryCount + 1))
+						.buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount + 1))
 						.delay(1, TimeUnit.SECONDS)
 						.schedule();
 				return;
@@ -273,12 +271,10 @@ public class CommandSender {
 
 		List<String> targetClients = cmd.getTargetClientIds();
 		if (targetClients.isEmpty()) {
-			logger.warn("No target clients defined for command: {}",
-					cmd.getCommand());
+			logger.warn("No target clients defined for command: {}", cmd.getCommand());
 			if (player != null) {
 				player.sendMessage(
-						Component.text("No target clients are defined for this command",
-								NamedTextColor.RED));
+						Component.text("No target clients are defined for this command", NamedTextColor.RED));
 			}
 			return;
 		}
@@ -286,14 +282,16 @@ public class CommandSender {
 		for (String clientId : targetClients) {
 			if (Runtime.getInstance().getServer().isServerConnected(clientId)) {
 				logger.info("Sending command to client '{}' as {}", clientId,
-						player == null ? "console" : "player");
+						player == null ? "console"
+								: cmd.getTargetExecutor().equalsIgnoreCase("console") && cmd.isCheckIfExecutorIsPlayer()
+									? "console (parsed with player context)"
+									: "player");
 				Runtime.getInstance().getServer().sendCommand(
 						command, clientId, cmd.getTargetExecutor(), player);
 			} else {
 				logger.warn("Client '{}' not found", clientId);
 				if (player != null) {
-					player.sendMessage(Component.text(
-							"Client '" + clientId + "' not found", NamedTextColor.RED));
+					player.sendMessage(Component.text("Client '" + clientId + "' not found", NamedTextColor.RED));
 				}
 			}
 		}
