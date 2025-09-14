@@ -27,12 +27,15 @@ public final class Main implements PlatformInterface {
 		Path lowerCaseDataDir = parentDir.resolve(lowerCaseName);
 
 		var cfgMgr = new ConfigManager(lowerCaseDataDir);
-		BackendsConfig cfg = cfgMgr.load(BackendsConfig.class);
-		Log.setDebug(cfg.debug());
-		Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
-		Log.info("Backend running on Bukkit");
-		client = new WsClient(cfg);
-		client.start();
+		boolean ok = cfgMgr.load(BackendsConfig.class);
+		BackendsConfig cfg = cfgMgr.current(BackendsConfig.class);
+		if (ok) {
+			Log.setDebug(cfg.debug());
+			Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+			Log.info("Backend running on Bukkit");
+			client = new WsClient(cfg);
+			client.start();
+		}
 	}
 
 	@Override

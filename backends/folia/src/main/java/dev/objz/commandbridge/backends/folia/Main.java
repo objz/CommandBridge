@@ -9,6 +9,7 @@ import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.logging.Log;
 
 import java.nio.file.Path;
+import java.util.Locale;
 
 public final class Main implements PlatformInterface {
 	private final JavaPlugin plugin;
@@ -21,12 +22,20 @@ public final class Main implements PlatformInterface {
 	@Override
 	public void enable() {
 		Path dataDir = plugin.getDataFolder().toPath();
-		var cfgMgr = new ConfigManager(dataDir);
-		BackendsConfig cfg = cfgMgr.load(BackendsConfig.class);
-		Log.setDebug(cfg.debug());
-		Log.info("Backend running on Folia");
-		client = new WsClient(cfg);
-		client.start();
+		Path parentDir = dataDir.getParent();
+		String lowerCaseName = dataDir.getFileName().toString().toLowerCase(Locale.ROOT);
+		Path lowerCaseDataDir = parentDir.resolve(lowerCaseName);
+
+		var cfgMgr = new ConfigManager(lowerCaseDataDir);
+		boolean ok = cfgMgr.load(BackendsConfig.class);
+		BackendsConfig cfg = cfgMgr.current(BackendsConfig.class);
+		if (ok) {
+			Log.setDebug(cfg.debug());
+			Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+			Log.info("Backend running on Bukkit");
+			client = new WsClient(cfg);
+			client.start();
+		}
 	}
 
 	@Override

@@ -18,24 +18,33 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 	}
 
 	@Override
-	public void validate(BackendsConfig cfg) {
+	public boolean validate(BackendsConfig cfg) {
+		boolean ok = true;
 		if (cfg.port() <= 0 || cfg.port() > 65535) {
 			Log.error("port must be between 1 and 65535");
+			ok = false;
 		}
 		if (cfg.host() == null || cfg.host().isBlank()) {
 			Log.error("host must not be empty");
+			ok = false;
 		}
 		if (cfg.host() != null && (cfg.host().startsWith("ws://") || cfg.host().startsWith("wss://"))) {
 			Log.warn("host contains a ws:// or wss:// scheme. This is supported for compatibility but deprecated. Remove the scheme and use the 'tls' boolean instead");
+			ok = true;
 		}
 		if (cfg.clientId() == null || cfg.clientId().isBlank()) {
 			Log.error("client-id must not be empty");
+			ok = false;
 		}
 		if (cfg.secret() == null || cfg.secret().isBlank()) {
 			Log.error("secret must not be empty");
+			ok = false;
 		}
 		if ("change-me".equals(cfg.secret())) {
 			Log.warn("Update 'secret' in config.yml using the key from secret.key on your Velocity server");
+			ok = false;
 		}
+
+		return ok;
 	}
 }

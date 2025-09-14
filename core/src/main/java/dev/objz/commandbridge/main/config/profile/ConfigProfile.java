@@ -7,5 +7,5 @@ public interface ConfigProfile<T> {
 
 	Set<String> validKeys();
 
-	void validate(T cfg);
+	boolean validate(T cfg);
 }

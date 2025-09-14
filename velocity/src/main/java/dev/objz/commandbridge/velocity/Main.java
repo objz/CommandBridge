@@ -49,46 +49,52 @@ public final class Main {
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		Log.info("Initializing CommandBridge...");
 		this.configManager = new ConfigManager(dataDir);
-		VelocityConfig config = configManager.load(VelocityConfig.class);
+		boolean ok = configManager.load(VelocityConfig.class);
+		VelocityConfig config = configManager.current(VelocityConfig.class);
 		Log.setDebug(config.debug());
 
 		var secret = new SecretLoader(dataDir).loadOrCreate();
 		var auth = new AuthService(secret);
 		var mapper = new ObjectMapper();
 
-		var sessions = new SessionHub(config, mapper);
-		var router = new MessageRouter(mapper, sessions, auth, config.serverId());
+		if (ok) {
 
-		boolean tlsEnabled = config.security().tls();
-		SSLContext ssl = null;
-		if (tlsEnabled) {
-			ssl = TLS.ensure(dataDir, "localhost");
-		}
+			var sessions = new SessionHub(config, mapper);
+			var router = new MessageRouter(mapper, sessions, auth, config.serverId());
 
-		var ws = tlsEnabled
-				? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true, ssl)
-				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
+			boolean tlsEnabled = config.security().tls();
+			SSLContext ssl = null;
+			if (tlsEnabled) {
+				ssl = TLS.ensure(dataDir, "localhost");
+			}
 
-		ws.start();
+			var ws = tlsEnabled
+					? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true,
+							ssl)
+					: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
 
-		Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
-		var mgr = ScriptManager.loadForSide(scriptsDir, Side.VELOCITY);
+			ws.start();
 
-		OnAuthRegisterCommands.install(
-				sessions, mgr, mapper, config.serverId());
+			Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
+			var mgr = ScriptManager.loadForSide(scriptsDir, Side.VELOCITY);
 
-		mgr.enabled().forEach(ScriptDebug::dump);
+			OnAuthRegisterCommands.install(
+					sessions, mgr, mapper, config.serverId());
 
-		mgr.logReport(scriptsDir, true);
+			mgr.enabled().forEach(ScriptDebug::dump);
 
-		Log.debug("Config loaded:");
-		Log.debug("  Host: {}", config.bindHost());
-		Log.debug("  Port: {}", config.bindPort());
-		Log.debug("  Server ID: {}", config.serverId());
-		Log.debug("  Heartbeat: {}s ping, {}s stale timeout",
-				config.heartbeat().appPingSeconds(),
-				config.heartbeat().staleAfterSeconds());
-		Log.debug("  RequireAuth: {}", config.security().requireAuth());
+			mgr.logReport(scriptsDir, true);
+
+			Log.debug("Config loaded:");
+			Log.debug("  Host: {}", config.bindHost());
+			Log.debug("  Port: {}", config.bindPort());
+			Log.debug("  Server ID: {}", config.serverId());
+			Log.debug("  Heartbeat: {}s ping, {}s stale timeout",
+					config.heartbeat().appPingSeconds(),
+					config.heartbeat().staleAfterSeconds());
+			Log.debug("  RequireAuth: {}", config.security().requireAuth());
+
+		} 
 	}
 
 	@Subscribe

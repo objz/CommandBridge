@@ -36,7 +36,7 @@ public final class ConfigManager {
 				.build();
 	}
 
-	public <T> T load(Class<T> modelClass) {
+	public <T> boolean load(Class<T> modelClass) {
 		ensureDir();
 
 		if (!Files.exists(filePath)) {
@@ -65,24 +65,24 @@ public final class ConfigManager {
 			}
 
 			T loaded = root.get(modelClass, profile.defaults());
-			profile.validate(loaded);
-			this.current = loaded;
-			return loaded;
 
-		} catch (IllegalArgumentException e) {
-			Log.error("Error loading config.yml: {}", e.getMessage());
-			T d = profileOf(modelClass).defaults();
-			this.current = d;
-			return d;
+			if (!profile.validate(loaded)) {
+				Log.error("Invalid config.yml");
+				this.current = profile.defaults();
+				return false;
+			}
+
+			this.current = loaded;
+			return true;
+
 		} catch (Exception e) {
 			Log.error("Error loading config.yml: " + e.getMessage(), e);
-			T d = profileOf(modelClass).defaults();
-			this.current = d;
-			return d;
+			this.current = profileOf(modelClass).defaults();
+			return false;
 		}
 	}
 
-	public <T> T reload(Class<T> modelClass) {
+	public <T> boolean reload(Class<T> modelClass) {
 		return load(modelClass);
 	}
 
