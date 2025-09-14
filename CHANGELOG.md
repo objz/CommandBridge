@@ -1,6 +1,6 @@
-**[v2.3.0] - 2025-08-01**
+**[v2.3.1] - 2025-09-14**
 
-- Fixed multithreading issues on folia servers.
+- feat: Inject player placeholders whenever we have a player context, regardless the target executor is set to.
 
 
 

@@ -23,7 +23,9 @@ public class CommandSender {
         this.plugin = plugin;
     }
 
-    public int executeScriptCommands(org.bukkit.command.CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
+    public int executeScriptCommands(org.bukkit.command.CommandSender sender,
+                                     ScriptManager.ScriptConfig script,
+                                     String[] args) {
         if (isPermissionDenied(sender, script)) {
             return 0;
         }
@@ -33,7 +35,7 @@ public class CommandSender {
 
             switch (cmd.getTargetExecutor().toLowerCase()) {
                 case "player" -> handlePlayerExecutor(cmd, sender, args);
-                case "console" -> handleConsoleExecutor(cmd, args);
+                case "console" -> handleConsoleExecutor(cmd, sender, args); 
                 default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
             }
         }
@@ -41,7 +43,8 @@ public class CommandSender {
         return 1;
     }
 
-    private boolean isPermissionDenied(org.bukkit.command.CommandSender sender, ScriptManager.ScriptConfig script) {
+    private boolean isPermissionDenied(org.bukkit.command.CommandSender sender,
+                                       ScriptManager.ScriptConfig script) {
         if (!script.shouldIgnorePermissionCheck()
                 && !sender.hasPermission("commandbridge.command." + script.getName())) {
             logger.warn("Sender '{}' has no permission to use this command", sender);
@@ -53,19 +56,19 @@ public class CommandSender {
         return false;
     }
 
-    private void handlePlayerExecutor(ScriptManager.Command cmd, org.bukkit.command.CommandSender sender, String[] args) {
+    private void handlePlayerExecutor(ScriptManager.Command cmd,
+                                      org.bukkit.command.CommandSender sender,
+                                      String[] args) {
         if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
             logger.warn("This command requires a player as executor, but sender is not a player.");
-            sender.sendMessage(
-                    ChatColor.RED + "This command requires a player as executor, but source is not a player object");
+            sender.sendMessage(ChatColor.RED + "This command requires a player as executor, but source is not a player object");
             return;
         }
 
         Player player = (Player) sender;
         String parsedCommand = parseCommand(cmd, args, player);
 
-        if (parsedCommand == null)
-            return;
+        if (parsedCommand == null) return;
 
         if (cmd.getDelay() > 0) {
             scheduleCommand(cmd, parsedCommand, player);
@@ -74,23 +77,37 @@ public class CommandSender {
         }
     }
 
-    private void handleConsoleExecutor(ScriptManager.Command cmd, String[] args) {
-        String parsedCommand = parseCommand(cmd, args, null);
+    private void handleConsoleExecutor(ScriptManager.Command cmd,
+                                       org.bukkit.command.CommandSender sender,
+                                       String[] args) {
+        final Player playerCtx;
+        if (cmd.isCheckIfExecutorIsPlayer()) {
+            if (!(sender instanceof Player)) {
+                logger.warn("Console target requires a player executor, but sender is not a player.");
+                sender.sendMessage(ChatColor.RED + "This command requires a player as executor, but source is not a player object");
+                return;
+            }
+            playerCtx = (Player) sender;
+        } else {
+            playerCtx = null;
+        }
 
-        if (parsedCommand == null)
-            return;
+        String parsedCommand = parseCommand(cmd, args, playerCtx);
+
+        if (parsedCommand == null) return;
 
         if (cmd.getDelay() > 0) {
-            scheduleCommand(cmd, parsedCommand, null);
+            scheduleCommand(cmd, parsedCommand, playerCtx);
         } else {
-            sendCommand(cmd, parsedCommand, null);
+            sendCommand(cmd, parsedCommand, playerCtx);
         }
     }
 
     private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
         StringParser parser = StringParser.create();
 
-        if (player != null && cmd.getTargetExecutor().equals("player")) {
+        // Inject player placeholders whenever a player context is available 
+        if (player != null) {
             addPlayerPlaceholders(parser, player);
         }
 
@@ -100,7 +117,8 @@ public class CommandSender {
             if (!result.isValid()) {
                 Set<String> unresolved = result.getUnresolved();
 
-                if (player == null && cmd.getTargetExecutor().equals("console")) {
+                // If executing as console without a player context, block if player placeholders are present.
+                if (player == null && cmd.getTargetExecutor().equalsIgnoreCase("console")) {
                     Set<String> playerPlaceholders = new HashSet<>();
                     for (String placeholder : unresolved) {
                         if (isPlayerPlaceholder(placeholder)) {
@@ -142,9 +160,9 @@ public class CommandSender {
     }
 
     private boolean isPlayerPlaceholder(String placeholder) {
-        return placeholder.equals("%cb_player%") ||
-                placeholder.equals("%cb_uuid%") ||
-                placeholder.equals("%cb_world%");
+        return placeholder.equals("%cb_player%")
+                || placeholder.equals("%cb_uuid%")
+                || placeholder.equals("%cb_world%");
     }
 
     private void addPlayerPlaceholders(StringParser parser, Player player) {
@@ -163,7 +181,7 @@ public class CommandSender {
     }
 
     private void sendCommand(ScriptManager.Command cmd, String command, Player player) {
-        logger.info("Sending command to server as {}", player == null ? "console" : "player");
+        logger.info("Sending command to server as {}", player == null ? "console" : "player-context for console");
         Runtime.getInstance().getClient().sendCommand(command, "", cmd.getTargetExecutor(), player);
     }
 }
