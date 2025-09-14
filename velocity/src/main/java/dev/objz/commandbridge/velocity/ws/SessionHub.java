@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.main.ws;
+package dev.objz.commandbridge.velocity.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.main.config.model.VelocityConfig;

@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.main.ws;
+package dev.objz.commandbridge.velocity.ws;
 
 import io.undertow.websockets.core.WebSocketChannel;
 

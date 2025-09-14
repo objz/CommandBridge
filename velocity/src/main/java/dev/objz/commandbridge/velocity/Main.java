@@ -11,19 +11,19 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.objz.commandbridge.main.config.ConfigManager;
 import dev.objz.commandbridge.main.config.model.VelocityConfig;
-import dev.objz.commandbridge.main.core.CommandRouter;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.main.security.SecretLoader;
 import dev.objz.commandbridge.main.security.TLS;
-import dev.objz.commandbridge.main.ws.SessionHub;
-import dev.objz.commandbridge.main.ws.WsServer;
 
 import dev.objz.commandbridge.main.scripting.ScriptTypes.ScriptKind.Side;
 import dev.objz.commandbridge.velocity.debug.ScriptDebug;
 import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
 import dev.objz.commandbridge.velocity.scripting.ScriptManager;
 import dev.objz.commandbridge.velocity.scripting.ScriptsBootstrap;
+import dev.objz.commandbridge.velocity.ws.MessageRouter;
+import dev.objz.commandbridge.velocity.ws.SessionHub;
+import dev.objz.commandbridge.velocity.ws.WsServer;
 
 import javax.net.ssl.SSLContext;
 
@@ -57,7 +57,7 @@ public final class Main {
 		var mapper = new ObjectMapper();
 
 		var sessions = new SessionHub(config, mapper);
-		var router = new CommandRouter(mapper, sessions, auth, config.serverId());
+		var router = new MessageRouter(mapper, sessions, auth, config.serverId());
 
 		boolean tlsEnabled = config.security().tls();
 		SSLContext ssl = null;

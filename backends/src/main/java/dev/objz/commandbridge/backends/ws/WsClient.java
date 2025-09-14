@@ -21,7 +21,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	private final BackendsConfig cfg;
 	private final OkHttpClient http;
 	private final ObjectMapper mapper = new ObjectMapper();
-	private final IncomingDispatcher dispatcher;
+	private final MessageRouter router;
 
 	private volatile WebSocket socket;
 	private volatile ClientState state = ClientState.DISCONNECTED;
@@ -45,7 +45,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		}
 
 		this.http = b.build();
-		this.dispatcher = new IncomingDispatcher(this, mapper);
+		this.router = new MessageRouter(this, mapper);
 	}
 
 	public String clientId() {
@@ -122,7 +122,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 
 	@Override
 	public void onMessage(WebSocket webSocket, String text) {
-		dispatcher.dispatch(text);
+		router.dispatch(text);
 	}
 
 	@Override

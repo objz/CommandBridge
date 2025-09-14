@@ -1,16 +1,17 @@
-package dev.objz.commandbridge.main.ws.handlers;
+package dev.objz.commandbridge.velocity.ws.handlers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.security.AuthService;
-import dev.objz.commandbridge.main.ws.SessionHub;
+import dev.objz.commandbridge.velocity.ws.MessageRouter.InboundHandler;
+import dev.objz.commandbridge.velocity.ws.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Set;
 
-public final class AuthHandler implements ServerMessageHandler {
+public final class AuthHandler implements InboundHandler {
 	private final SessionHub sessions;
 	private final AuthService auth;
 	private final String serverId;
