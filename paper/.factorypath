@@ -1,0 +1,5 @@
+<factorypath>
+    <factorypathentry kind="EXTJAR" id="/home/consti/.gradle/caches/modules-2/files-2.1/dev.jorel/commandapi-core/10.1.2/484d868fd555993d8f58f471a889d58d730f331e/commandapi-core-10.1.2.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/home/consti/.gradle/caches/modules-2/files-2.1/dev.jorel/commandapi-annotations/10.1.2/544641cfb81e3939daa778de9dba73944fa87db1/commandapi-annotations-10.1.2.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="EXTJAR" id="/home/consti/.gradle/caches/modules-2/files-2.1/dev.jorel/commandapi-bukkit-core/10.1.2/9386218c25abafa083090b4327d386ac8be21e74/commandapi-bukkit-core-10.1.2.jar" enabled="true" runInBatchMode="false"/>
+</factorypath>
