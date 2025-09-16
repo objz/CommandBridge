@@ -4,15 +4,12 @@ import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
+import dev.objz.commandbridge.main.security.AuthStatus;
 
 public final class AuthHandler implements InboundHandler {
 	private final WsClient ws;
 	private final AuthStatus status;
 
-	public enum AuthStatus {
-		NOT_AUTHENTICATED,
-		AUTHENTICATED
-	}
 
 	public AuthHandler(WsClient ws, AuthStatus status) {
 		this.ws = ws;

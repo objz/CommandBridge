@@ -56,21 +56,45 @@ public final class WsServer {
 		Undertow.Builder builder = Undertow.builder()
 				.setHandler(Handlers.path().addPrefixPath("/ws", Handlers.websocket(cb)));
 
-		if (tlsEnabled) {
-			if (sslContext == null) {
-				throw new IllegalStateException("TLS is enabled but SSLContext is null");
+		try {
+			if (tlsEnabled) {
+				if (sslContext == null) {
+					throw new IllegalStateException("TLS is enabled but SSLContext is null");
+				}
+				builder.addHttpsListener(port, host, sslContext);
+				Log.info("Starting WebSocket TLS on {}:{}", host, port);
+			} else {
+				builder.addHttpListener(port, host);
+				Log.warn("TLS is disabled! This is insecure and not recommended for production use");
+				Log.info("Starting WebSocket HTTP on {}:{}", host, port);
 			}
-			builder.addHttpsListener(port, host, sslContext);
-			Log.success("WebSocket TLS listening on {}:{}", host, port);
-		} else {
-			builder.addHttpListener(port, host);
-			Log.warn("TLS is disabled! This is insecure and not recommended for production use");
-			Log.success("WebSocket HTTP listening on {}:{}", host, port);
-		}
 
-		server = builder.build();
-		server.start();
-		sessions.start();
+			server = builder.build();
+			server.start(); 
+			sessions.start();
+
+			if (tlsEnabled) {
+				Log.success(true, "WebSocket TLS listening on {}:{}", host, port);
+			} else {
+				Log.success(true, "WebSocket HTTP listening on {}:{}", host, port);
+			}
+		} catch (Exception e) {
+			try {
+				if (server != null)
+					server.stop();
+			} catch (Exception ignore) {
+			}
+
+			Throwable cause = (e.getCause() != null) ? e.getCause() : e;
+			if (cause instanceof java.net.BindException) {
+				Log.error("WebSocket {} failed to bind on {}:{} ({})",
+						(tlsEnabled ? "TLS" : "HTTP"), host, port, cause.getMessage());
+			} else {
+				Log.error(e, "WebSocket {} failed to start on {}:{}",
+						(tlsEnabled ? "TLS" : "HTTP"), host, port);
+			}
+			throw (e instanceof RuntimeException re) ? re : new RuntimeException(e);
+		}
 	}
 
 	public void stop() {

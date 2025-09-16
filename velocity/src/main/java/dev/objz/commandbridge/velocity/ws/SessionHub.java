@@ -4,6 +4,7 @@ import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
+import dev.objz.commandbridge.main.security.AuthStatus;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSockets;
 import java.util.*;
@@ -64,7 +65,7 @@ public final class SessionHub {
 			return;
 		s.markAuthed(clientId, caps);
 		byId.put(clientId, s);
-		Log.success("Authenticated client '{}'", clientId);
+		Log.success(true, "Authenticated client '{}'", clientId);
 
 		for (Consumer<ClientSession> c : authedListeners) {
 			try {
@@ -93,6 +94,18 @@ public final class SessionHub {
 
 	public void send(WebSocketChannel ch, Envelope env) {
 		try {
+			ClientSession s = byCh.get(ch);
+			if (s == null)
+				return;
+
+			boolean allowPreAuth = (env.type() == MessageType.AUTH_OK
+					|| env.type() == MessageType.AUTH_FAIL);
+			if (s.status() != AuthStatus.AUTHENTICATED && !allowPreAuth) {
+				Log.warn("Refusing to send {} to unauthenticated client '{}'", env.type(),
+						s.clientId());
+				return;
+			}
+
 			WebSockets.sendText(mapper.writeValueAsString(env), ch, null);
 		} catch (Exception e) {
 			Log.error(e, "Send failed to {}", ch.getSourceAddress());
@@ -103,7 +116,7 @@ public final class SessionHub {
 		long staleNs = TimeUnit.SECONDS.toNanos(cfg.heartbeat().staleAfterSeconds());
 		long now = System.nanoTime();
 		for (var s : all()) {
-			if (!s.authed())
+			if (s.status() != AuthStatus.AUTHENTICATED)
 				continue;
 			if (now - s.lastPongNanos() > staleNs) {
 				Log.warn("Client '{}' stale (no PONG). Closing", s.clientId());

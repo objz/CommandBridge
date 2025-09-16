@@ -49,7 +49,9 @@ public final class AuthHandler implements InboundHandler {
 			return;
 		}
 
-		sessions.authed(ch, clientId, Set.of());
 		sessions.send(ch, Envelope.make(MessageType.AUTH_OK, serverId, clientId, null));
+		// send AUTH_OK before marking it authed to send it before the RegisterCommands Message
+		// This was a headache to figure out
+		sessions.authed(ch, clientId, Set.of());
 	}
 }
