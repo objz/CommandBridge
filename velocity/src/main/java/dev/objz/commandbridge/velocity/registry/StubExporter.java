@@ -18,12 +18,11 @@ public final class StubExporter {
 	public static List<CommandStub> export(ScriptManager mgr) {
 		var out = new ArrayList<CommandStub>();
 		for (Effective.Script s : mgr.enabled()) {
-			String id = s.name();
-			String primary = s.name();
+			String name = s.name();
 			List<String> aliases = s.aliases() != null ? s.aliases() : List.of();
 			String desc = s.description() != null ? s.description() : "";
 			String usage = s.args() != null ? s.args().description() : "";
-			out.add(new CommandStub(id, primary, aliases, desc, usage));
+			out.add(new CommandStub(name, aliases, desc, usage));
 		}
 		return out;
 	}

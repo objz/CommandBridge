@@ -2,6 +2,8 @@ package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import dev.objz.commandbridge.backends.PlatformInterface;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
@@ -22,12 +24,14 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	private final OkHttpClient http;
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final MessageRouter router;
+	private final PlatformInterface platform;
 
 	private volatile WebSocket socket;
 	private volatile ClientState state = ClientState.DISCONNECTED;
 
-	public WsClient(BackendsConfig cfg) {
+	public WsClient(BackendsConfig cfg, PlatformInterface platform) {
 		this.cfg = cfg;
+		this.platform = platform;
 		OkHttpClient.Builder b = new OkHttpClient.Builder()
 				.callTimeout(Duration.ZERO)
 				.readTimeout(Duration.ZERO);
@@ -45,7 +49,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		}
 
 		this.http = b.build();
-		this.router = new MessageRouter(this, mapper);
+		this.router = new MessageRouter(this, mapper, platform);
 	}
 
 	public String clientId() {

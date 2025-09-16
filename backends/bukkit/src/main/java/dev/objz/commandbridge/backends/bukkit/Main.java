@@ -3,6 +3,8 @@ package dev.objz.commandbridge.backends.bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.objz.commandbridge.backends.PlatformInterface;
+import dev.objz.commandbridge.backends.api.PlatformRegistry;
+import dev.objz.commandbridge.backends.bukkit.cmd.CommandRegistry;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.main.config.ConfigManager;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
@@ -13,6 +15,7 @@ import java.util.Locale;
 
 public final class Main implements PlatformInterface {
 	private final JavaPlugin plugin;
+	private PlatformRegistry registry;
 	private WsClient client;
 
 	public Main(JavaPlugin plugin) {
@@ -26,6 +29,8 @@ public final class Main implements PlatformInterface {
 		String lowerCaseName = dataDir.getFileName().toString().toLowerCase(Locale.ROOT);
 		Path lowerCaseDataDir = parentDir.resolve(lowerCaseName);
 
+		this.registry = new CommandRegistry(plugin);
+
 		var cfgMgr = new ConfigManager(lowerCaseDataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
 		BackendsConfig cfg = cfgMgr.current(BackendsConfig.class);
@@ -33,7 +38,7 @@ public final class Main implements PlatformInterface {
 			Log.setDebug(cfg.debug());
 			Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 			Log.info("Backend running on Bukkit");
-			client = new WsClient(cfg);
+			client = new WsClient(cfg, this);
 			client.start();
 		}
 	}
@@ -46,5 +51,10 @@ public final class Main implements PlatformInterface {
 		} catch (Exception ignored) {
 		}
 		Log.info("Backend (Bukkit) stopped");
+	}
+
+	@Override
+	public PlatformRegistry platformRegistry() {
+		return registry;
 	}
 }

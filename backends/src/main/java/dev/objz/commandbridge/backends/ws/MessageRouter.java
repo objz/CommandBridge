@@ -3,9 +3,11 @@ package dev.objz.commandbridge.backends.ws;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
+import dev.objz.commandbridge.backends.ws.handlers.RegisterCommandsHandler;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
+import dev.objz.commandbridge.backends.PlatformInterface;
 import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
 
 import java.util.EnumMap;
@@ -19,12 +21,14 @@ public final class MessageRouter {
 		void handle(Envelope env) throws Exception;
 	}
 
-	public MessageRouter(WsClient ws, ObjectMapper mapper) {
+	public MessageRouter(WsClient ws, ObjectMapper mapper, PlatformInterface platform) {
 		this.mapper = mapper;
 		byType.put(MessageType.AUTH_OK, new AuthHandler(ws, AuthHandler.AuthStatus.AUTHENTICATED));
 		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthHandler.AuthStatus.NOT_AUTHENTICATED));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
+
+		byType.put(MessageType.REGISTER_COMMANDS, new RegisterCommandsHandler(ws, mapper, platform));
 
 	}
 
