@@ -9,6 +9,7 @@ import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.backends.PlatformInterface;
 import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
+import dev.objz.commandbridge.main.security.AuthStatus;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -16,15 +17,17 @@ import java.util.Map;
 public final class MessageRouter {
 	private final Map<MessageType, InboundHandler> byType = new EnumMap<>(MessageType.class);
 	private final ObjectMapper mapper;
+	private final WsClient ws;
 
 	public interface InboundHandler {
 		void handle(Envelope env) throws Exception;
 	}
 
 	public MessageRouter(WsClient ws, ObjectMapper mapper, PlatformInterface platform) {
+		this.ws = ws;
 		this.mapper = mapper;
-		byType.put(MessageType.AUTH_OK, new AuthHandler(ws, AuthHandler.AuthStatus.AUTHENTICATED));
-		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthHandler.AuthStatus.NOT_AUTHENTICATED));
+		byType.put(MessageType.AUTH_OK, new AuthHandler(ws, AuthStatus.AUTHENTICATED));
+		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthStatus.NOT_AUTHENTICATED));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
 
@@ -41,10 +44,16 @@ public final class MessageRouter {
 			return;
 		}
 
+		boolean authed = (ws.state() == ClientState.AUTHENTICATED);
+		if (!authed && env.type() != MessageType.AUTH_OK && env.type() != MessageType.AUTH_FAIL
+				&& env.type() != MessageType.ERROR) {
+			Log.warn("Dropping {} before AUTH_OK", env.type());
+			return;
+		}
+
 		InboundHandler h = byType.get(env.type());
 		if (h == null) {
-			if (Log.isDebug())
-				Log.debug("Unhandled WS message: {}", json);
+			Log.debug("Unhandled WS message: {}", env.type());
 			return;
 		}
 		try {

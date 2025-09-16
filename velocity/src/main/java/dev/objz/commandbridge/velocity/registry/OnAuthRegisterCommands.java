@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.velocity.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.main.logging.Log;
+import dev.objz.commandbridge.main.logging.StatusLog;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
@@ -37,13 +37,8 @@ public final class OnAuthRegisterCommands {
 					"Register",
 					s.clientId());
 
-			final int n = stubs.size();
-			final String msg = String.format(
-					"%sRegister:%s pushed %s%d%s command stub%s to %s'%s'%s",
-					Log.GRAY, Log.RESET,
-					(n > 0 ? Log.GREEN : Log.GRAY), n, Log.RESET, (n == 1 ? "" : "s"),
-					Log.GRAY, s.clientId(), Log.RESET);
-			Log.info(msg);
+
+			StatusLog.registerPushed(stubs.size(), s.clientId());
 		});
 	}
 }

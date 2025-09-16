@@ -6,28 +6,41 @@ public final class FeedbackLog {
 	private FeedbackLog() {
 	}
 
-	/** Unified summary (no warning count in the summary). */
-	public static void summary(String prefix, Feedback f) {
+	/**
+	 * "<Title> stats: requested R, registered S, skipped F, errors E"
+	 * - title gray
+	 * - requested: ALWAYS emphasized (bold + magenta)
+	 * - registered: green if >0 else reset
+	 * - skipped (formerly 'failed'): yellow if >0 else reset
+	 * - errors: red if >0 else reset
+	 */
+	public static void summary(String title, Feedback f) {
+		int errorsCount = (f.errors() == null) ? 0 : f.errors().size();
+
 		final String line = String.format(
-				"%s%s:%s requested %s%d%s, registered %s%d%s, failed %s%d%s, errors %s%d%s",
-				Log.GRAY, prefix, Log.RESET,
-				Log.GRAY, f.requested(), Log.RESET,
-				(f.succeeded() > 0 ? Log.GREEN : Log.GRAY), f.succeeded(), Log.RESET,
-				(f.failed() > 0 ? Log.RED : Log.GREEN), f.failed(), Log.RESET,
-				(f.errors() != null && !f.errors().isEmpty() ? Log.RED : Log.GREEN),
-				(f.errors() == null ? 0 : f.errors().size()), Log.RESET);
+				"%s%s stats:%s requested %s%s%d%s, registered %s%d%s, skipped %s%d%s, errors %s%d%s",
+				Log.GRAY, title, Log.RESET,
+				Log.BOLD, Log.MAGENTA, f.requested(), Log.RESET,
+				colorIf(f.succeeded() > 0, Log.GREEN), f.succeeded(), Log.RESET,
+				colorIf(f.failed() > 0, Log.YELLOW), f.failed(), Log.RESET,
+				colorIf(errorsCount > 0, Log.RED), errorsCount, Log.RESET);
 		Log.info(line);
 	}
 
-	/** Details: log warnings and errors if present. */
 	public static void details(Feedback f) {
 		if (f.warnings() != null && !f.warnings().isEmpty()) {
-			for (String w : f.warnings())
+			for (String w : f.warnings()) {
 				Log.info(String.format("%sWarn:%s %s", Log.YELLOW, Log.RESET, w));
+			}
 		}
 		if (f.errors() != null && !f.errors().isEmpty()) {
-			for (String e : f.errors())
+			for (String e : f.errors()) {
 				Log.info(String.format("%sError:%s %s", Log.RED, Log.RESET, e));
+			}
 		}
+	}
+
+	private static String colorIf(boolean cond, String color) {
+		return cond ? color : "";
 	}
 }

@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.velocity.scripting;
 
 import dev.objz.commandbridge.main.logging.Log;
+import dev.objz.commandbridge.main.logging.StatusLog;
 import dev.objz.commandbridge.main.scripting.Effective;
 import dev.objz.commandbridge.main.scripting.Schema;
 import dev.objz.commandbridge.main.scripting.ScriptLoader;
@@ -154,14 +155,7 @@ public final class ScriptManager {
 		long dis = entries.stream().filter(e -> e.status == Status.DISABLED).count();
 		long err = errs.size();
 
-		String msg = String.format(
-				"%sScripts:%s loaded %s%d%s, enabled %s%d%s, disabled %s%d%s, errors %s%d%s",
-				Log.GRAY, Log.RESET,
-				Log.GRAY, loadedCount, Log.RESET,
-				Log.GREEN, en, Log.RESET,
-				Log.YELLOW, dis, Log.RESET,
-				(err > 0 ? Log.RED : Log.GREEN), err, Log.RESET);
-		Log.info(msg);
+		StatusLog.scriptsSummary(loadedCount, en, dis, err);
 
 		if (includeFileList) {
 			try {

@@ -18,7 +18,9 @@ public final class Log {
 	public static final String YELLOW = "\u001B[33m";
 	public static final String RED = "\u001B[31m";
 	public static final String CYAN = "\u001B[36m";
-	public static final String GRAY  = "\u001B[37m";
+	public static final String GRAY = "\u001B[37m";
+	public static final String MAGENTA = "\u001B[35m";
+	public static final String BOLD = "\u001B[1m";
 
 	private Log(Logger base, boolean ansi) {
 		this.base = Objects.requireNonNull(base, "base logger");
@@ -65,6 +67,17 @@ public final class Log {
 
 	public static void success(String msg, Object... args) {
 		get().successI(msg, args);
+	}
+
+	public static void success(boolean highlight, String msg, Object... args) {
+		Log self = get();
+		if (!highlight || args == null || args.length == 0 || !self.ansi) {
+			self.successI(msg, args); 
+			return;
+		}
+
+		String rendered = self.renderHighlightedSuccess(msg, args);
+		self.base.info(rendered);
 	}
 
 	public static void debug(String msg, Object... args) {
@@ -124,6 +137,41 @@ public final class Log {
 			}
 		}
 		return "";
+	}
+
+	private String renderHighlightedSuccess(String template, Object... args) {
+		final String GREEN = Log.GREEN, GRAY = Log.GRAY, RESET = Log.RESET;
+		StringBuilder sb = new StringBuilder(template.length() + 32);
+		sb.append(GREEN);
+
+		int pos = 0, argIdx = 0, n = template.length();
+		while (argIdx < args.length) {
+			int i = template.indexOf("{}", pos);
+			if (i < 0)
+				break; 
+
+			// Is it exactly `'{}'` 
+			boolean hasLeading = (i - 1) >= 0 && template.charAt(i - 1) == '\'';
+			boolean hasTrailing = (i + 2) < n && template.charAt(i + 2) == '\'';
+			boolean quoted = hasLeading && hasTrailing;
+
+			if (quoted) {
+				sb.append(template, pos, i - 1);
+				sb.append(GRAY).append('\'').append(String.valueOf(args[argIdx++])).append('\'')
+						.append(RESET).append(GREEN);
+				pos = i + 3; 
+			} else {
+				sb.append(template, pos, i);
+				sb.append(GRAY).append(String.valueOf(args[argIdx++])).append(RESET).append(GREEN);
+				pos = i + 2; // skip {}
+			}
+		}
+
+		if (pos < n)
+			sb.append(template, pos, n);
+
+		sb.append(RESET);
+		return sb.toString();
 	}
 
 	private static Throwable rootCause(Throwable t) {
