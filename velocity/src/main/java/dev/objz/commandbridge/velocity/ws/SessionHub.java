@@ -1,16 +1,16 @@
 package dev.objz.commandbridge.velocity.ws;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
-import io.undertow.websockets.core.WebSockets;
+import dev.objz.commandbridge.main.proto.MessageType;
 import io.undertow.websockets.core.WebSocketChannel;
-
+import io.undertow.websockets.core.WebSockets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public final class SessionHub {
 	private final Map<WebSocketChannel, ClientSession> byCh = new ConcurrentHashMap<>();
@@ -18,12 +18,22 @@ public final class SessionHub {
 	private final ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
 	private final VelocityConfig cfg;
 	private final ObjectMapper mapper;
+	private final FeedbackAwaiter feedback = new FeedbackAwaiter();
 
 	private final List<Consumer<ClientSession>> authedListeners = new CopyOnWriteArrayList<>();
 
 	public SessionHub(VelocityConfig cfg, ObjectMapper mapper) {
 		this.cfg = cfg;
 		this.mapper = mapper;
+	}
+
+	public void expectFeedback(String envelopeId, MessageType resultType, java.time.Duration timeout,
+			String opName, String backendId) {
+		feedback.expect(envelopeId, resultType, timeout, opName, backendId);
+	}
+
+	public void completeFeedback(Envelope env) {
+		feedback.complete(env);
 	}
 
 	// callback
@@ -38,6 +48,7 @@ public final class SessionHub {
 
 	public void stop() {
 		exec.shutdownNow();
+		feedback.shutdown();
 	}
 
 	public ClientSession register(WebSocketChannel ch) {

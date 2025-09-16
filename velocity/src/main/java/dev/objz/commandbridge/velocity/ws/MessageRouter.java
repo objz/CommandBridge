@@ -6,9 +6,9 @@ import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.velocity.ws.handlers.AuthHandler;
+import dev.objz.commandbridge.velocity.ws.handlers.FeedbackHandler;
 import dev.objz.commandbridge.velocity.ws.handlers.PingHandler;
 import dev.objz.commandbridge.velocity.ws.handlers.PongHandler;
-import dev.objz.commandbridge.velocity.ws.handlers.RegisterCommandsResultHandler;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.EnumMap;
@@ -30,7 +30,8 @@ public final class MessageRouter {
 		handlers.put(MessageType.PING, new PingHandler(sessions, serverId));
 		handlers.put(MessageType.PONG, new PongHandler(sessions));
 
-		handlers.put(MessageType.REGISTER_COMMANDS_RESULT, new RegisterCommandsResultHandler(mapper));
+		handlers.put(MessageType.FEEDBACK, new FeedbackHandler(mapper, sessions));
+
 	}
 
 	public void register(MessageType type, InboundHandler handler) {

@@ -5,14 +5,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.objz.commandbridge.backends.PlatformInterface;
-import dev.objz.commandbridge.backends.api.PlatformRegistry;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
+import dev.objz.commandbridge.main.logging.FeedbackLog;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import dev.objz.commandbridge.main.proto.cmd.RegisterCommandsResultPayload;
+import dev.objz.commandbridge.main.proto.feedback.Feedback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ public final class RegisterCommandsHandler implements InboundHandler {
 		boolean reload = false;
 		List<CommandStub> stubs = List.of();
 
-		// Accept both ArrayList payload and Record
+		// Accept both array payload and { reload, commands } record payload
 		if (p.isArray()) {
 			stubs = mapper.convertValue(p, new TypeReference<List<CommandStub>>() {
 			});
@@ -47,35 +47,18 @@ public final class RegisterCommandsHandler implements InboundHandler {
 			}
 		}
 
-		PlatformRegistry.RegistrationResult rr;
+		Feedback fb;
 		try {
-			rr = platform.platformRegistry().registerAll(reload, new ArrayList<>(stubs));
+			fb = platform.platformRegistry().registerAll(reload, new ArrayList<>(stubs));
 		} catch (Throwable t) {
 			Log.error(t, "REGISTER_COMMANDS failed");
-			rr = new PlatformRegistry.RegistrationResult(
-					stubs.size(), 0, stubs.size(), List.of(), List.of(t.getMessage()));
+			fb = new Feedback(stubs.size(), 0, stubs.size(), List.of(), List.of(t.getMessage()));
 		}
 
-		final int requested = rr.requested();
-		final int registered = rr.registered();
-		final int failed = rr.failed();
-		final int warnCount = rr.warnings() == null ? 0 : rr.warnings().size();
-		final int errCount = rr.errors() == null ? 0 : rr.errors().size();
+		FeedbackLog.summary("Register", fb);
+		FeedbackLog.details(fb);
 
-		if (warnCount > 0) {
-			for (String w : rr.warnings()) {
-				Log.info(String.format("%sWarn:%s %s", Log.YELLOW, Log.RESET, w));
-			}
-		}
-		if (errCount > 0) {
-			for (String e : rr.errors()) {
-				Log.info(String.format("%sError:%s %s", Log.RED, Log.RESET, e));
-			}
-		}
-
-		RegisterCommandsResultPayload ackPayload = new RegisterCommandsResultPayload(
-				requested, registered, failed, rr.warnings(), rr.errors());
-		ws.send(Envelope.reply(env, MessageType.REGISTER_COMMANDS_RESULT, ws.clientId(),
-				mapper.valueToTree(ackPayload)));
+		ws.send(Envelope.reply(env, MessageType.FEEDBACK, ws.clientId(),
+				mapper.valueToTree(fb)));
 	}
 }

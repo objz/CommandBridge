@@ -1,15 +1,16 @@
 package dev.objz.commandbridge.backends.bukkit.cmd;
 
-import dev.objz.commandbridge.backends.api.AbstractCommandRegistry;
-import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import org.bukkit.plugin.java.JavaPlugin;
-
 import java.util.Objects;
 
-public final class CommandRegistry extends AbstractCommandRegistry {
+import org.bukkit.plugin.java.JavaPlugin;
+
+import dev.objz.commandbridge.backends.PlatformRegistry;
+import dev.objz.commandbridge.main.proto.cmd.CommandStub;
+
+public final class CommandManager extends PlatformRegistry {
 	private final JavaPlugin plugin;
 
-	public CommandRegistry(JavaPlugin plugin) {
+	public CommandManager(JavaPlugin plugin) {
 		this.plugin = Objects.requireNonNull(plugin, "plugin");
 	}
 
@@ -20,10 +21,7 @@ public final class CommandRegistry extends AbstractCommandRegistry {
 
 	@Override
 	protected void doRegister(CommandStub stub) throws Exception {
-		// TODO 
-		
-		// NOTE: base class will add to 'installed' on success.
-		// Throw an exception to count as a failure.
+		// TODO
 	}
 
 	@Override

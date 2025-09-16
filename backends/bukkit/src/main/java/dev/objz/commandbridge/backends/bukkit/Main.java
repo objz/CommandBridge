@@ -1,21 +1,21 @@
 package dev.objz.commandbridge.backends.bukkit;
 
+import java.nio.file.Path;
+import java.util.Locale;
+
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.objz.commandbridge.backends.PlatformInterface;
-import dev.objz.commandbridge.backends.api.PlatformRegistry;
-import dev.objz.commandbridge.backends.bukkit.cmd.CommandRegistry;
+import dev.objz.commandbridge.backends.PlatformRegistry;
+import dev.objz.commandbridge.backends.bukkit.cmd.CommandManager;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.main.config.ConfigManager;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.logging.Log;
 
-import java.nio.file.Path;
-import java.util.Locale;
-
 public final class Main implements PlatformInterface {
 	private final JavaPlugin plugin;
-	private PlatformRegistry registry;
+	private CommandManager registry;
 	private WsClient client;
 
 	public Main(JavaPlugin plugin) {
@@ -29,7 +29,7 @@ public final class Main implements PlatformInterface {
 		String lowerCaseName = dataDir.getFileName().toString().toLowerCase(Locale.ROOT);
 		Path lowerCaseDataDir = parentDir.resolve(lowerCaseName);
 
-		this.registry = new CommandRegistry(plugin);
+		this.registry = new CommandManager(plugin);
 
 		var cfgMgr = new ConfigManager(lowerCaseDataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
