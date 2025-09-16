@@ -10,6 +10,7 @@ import dev.objz.commandbridge.velocity.scripting.ScriptManager;
 import dev.objz.commandbridge.velocity.ws.ClientSession;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 
+import java.time.Duration;
 import java.util.List;
 
 public final class OnAuthRegisterCommands {
@@ -29,6 +30,13 @@ public final class OnAuthRegisterCommands {
 			Envelope env = Envelope.make(MessageType.REGISTER_COMMANDS, serverId, s.clientId(),
 					mapper.valueToTree(payload));
 			sessions.send(s.ch(), env);
+			sessions.expectFeedback(
+					env.id().toString(),
+					MessageType.FEEDBACK,
+					Duration.ofSeconds(5),
+					"Register",
+					s.clientId());
+
 			final int n = stubs.size();
 			final String msg = String.format(
 					"%sRegister:%s pushed %s%d%s command stub%s to %s'%s'%s",

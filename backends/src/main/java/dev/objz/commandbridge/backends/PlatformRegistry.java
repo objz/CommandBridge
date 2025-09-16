@@ -1,21 +1,25 @@
-
-package dev.objz.commandbridge.backends.api;
+package dev.objz.commandbridge.backends;
 
 import dev.objz.commandbridge.backends.debug.CommandRegistrationDebug;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
+import dev.objz.commandbridge.main.proto.feedback.Feedback;
+import dev.objz.commandbridge.main.proto.feedback.FeedbackCollector;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-//Shared template for platform registries.
-public abstract class AbstractCommandRegistry implements PlatformRegistry {
+/**
+ * Unified base for platform registries (Bukkit/Folia).
+ * - Implements reload logic
+ * - Counts with FeedbackCollector
+ * - Optional deep debug dump
+ */
+public abstract class PlatformRegistry {
 
 	protected final List<CommandStub> installed = new CopyOnWriteArrayList<>();
 
-	@Override
-	public final RegistrationResult registerAll(boolean reload, List<CommandStub> stubs) {
+	public final Feedback registerAll(boolean reload, List<CommandStub> stubs) {
 		if (reload) {
 			try {
 				unregisterAll();
@@ -23,36 +27,26 @@ public abstract class AbstractCommandRegistry implements PlatformRegistry {
 				Log.warn("{} unregister during reload reported: {}", platformName(), t.toString());
 			}
 		}
-
 		if (stubs == null || stubs.isEmpty()) {
-			return RegistrationResult.empty();
+			return Feedback.empty();
 		}
 
-		CommandRegistrationDebug.dumpStubs(stubs);
+		if (Log.isDebug())
+			CommandRegistrationDebug.dumpStubs(stubs);
 
-		final int requested = stubs.size();
-		int registered = 0;
-		int failed = 0;
-		List<String> warnings = new ArrayList<>();
-		List<String> errors = new ArrayList<>();
-
+		FeedbackCollector fc = new FeedbackCollector();
 		for (CommandStub s : stubs) {
 			try {
-				doRegister(s);
+				doRegister(s); // platform-specific
 				installed.add(s);
-				registered++;
+				fc.success();
 			} catch (Throwable t) {
-				errors.add("Failed: " + s.name() + " -> " + t.getMessage());
-				failed++;
+				fc.failure("Failed: " + s.name() + " -> " + t.getMessage());
 			}
 		}
-
-		RegistrationResult result = new RegistrationResult(requested, registered, failed, warnings, errors);
-		CommandRegistrationDebug.dumpResult(result);
-		return result;
+		return fc.build();
 	}
 
-	@Override
 	public final void unregisterAll() {
 		try {
 			doUnregisterAll();
@@ -63,9 +57,14 @@ public abstract class AbstractCommandRegistry implements PlatformRegistry {
 		}
 	}
 
+	/** Human-friendly platform name for logs. */
 	protected abstract String platformName();
 
+	/** Hook: perform the actual registration against the platform’s command API. */
 	protected abstract void doRegister(CommandStub stub) throws Exception;
 
+	/**
+	 * Hook: perform platform-wide deregistration of commands previously registered.
+	 */
 	protected abstract void doUnregisterAll() throws Exception;
 }
