@@ -46,6 +46,8 @@ public final class TLS {
 	private TLS() {
 	}
 
+	//Implement HMAC to ensure clients only accept commands from the real proxy
+
 	public static SSLContext ensure(Path dataDir, String cnHint) {
 		try {
 			ensureBcProvider();

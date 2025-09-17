@@ -47,4 +47,8 @@ public record BackendsConfig(
 		// If it's an IPv6 literal without brackets
 		return h.indexOf(':') >= 0 && !(h.startsWith("[") && h.endsWith("]"));
 	}
+
+
+	//TODO:IDK wher to add this, but host is supported using hostname or ip. FOR hostname I need to implement a warning that can be suppressed 
+	//by a setting that tells the user that this can possible has a security issue. the domain can be changed and boom
 }
