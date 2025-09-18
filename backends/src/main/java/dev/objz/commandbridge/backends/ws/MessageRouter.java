@@ -21,7 +21,7 @@ public final class MessageRouter {
 	private final Map<MessageType, InboundHandler> byType = new EnumMap<>(MessageType.class);
 	private final ObjectMapper mapper;
 	private final WsClient ws;
-	private final RateLimiter<String> limiter = new RateLimiter<>(60); // single-conn limiter
+	private final RateLimiter<String> limiter;
 
 	public interface InboundHandler {
 		void handle(Envelope env) throws Exception;
@@ -30,6 +30,7 @@ public final class MessageRouter {
 	public MessageRouter(WsClient ws, ObjectMapper mapper, PlatformInterface platform, BackendsConfig config) {
 		this.ws = ws;
 		this.mapper = mapper;
+		this.limiter = new RateLimiter<>(config.limits().inboundMessagesSec());
 		byType.put(MessageType.AUTH_OK,
 				new AuthHandler(ws, AuthStatus.AUTHENTICATED, config));
 		byType.put(MessageType.AUTH_FAIL,

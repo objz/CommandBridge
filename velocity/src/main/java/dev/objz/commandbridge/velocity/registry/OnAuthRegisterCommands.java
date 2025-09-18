@@ -2,6 +2,7 @@ package dev.objz.commandbridge.velocity.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.logging.StatusLog;
 import dev.objz.commandbridge.main.proto.Envelope;
@@ -20,7 +21,7 @@ public final class OnAuthRegisterCommands {
 	private OnAuthRegisterCommands() {
 	}
 
-	public static void install(SessionHub sessions, ScriptManager mgr, ObjectMapper mapper, String serverId) {
+	public static void install(SessionHub sessions, ScriptManager mgr, ObjectMapper mapper, String serverId, VelocityConfig config) {
 		sessions.onAuthed((ClientSession s) -> {
 			List<CommandStub> stubs = StubExporter.export(mgr);
 			RegisterCommandsPayload payload = new RegisterCommandsPayload(true, stubs);
@@ -32,7 +33,7 @@ public final class OnAuthRegisterCommands {
 
 			CompletableFuture<Envelope> fut = new CompletableFuture<>();
 			sessions.expectFeedback(env.id().toString(), s.clientId(), fut);
-			fut.orTimeout(5, TimeUnit.SECONDS).exceptionally(ex -> {
+			fut.orTimeout(config.timeouts().registerTimeout(), TimeUnit.SECONDS).exceptionally(ex -> {
 				Log.error(
 						"Register feedback timeout from '{}' (envelope-id={})",
 						s.clientId(), env.id());

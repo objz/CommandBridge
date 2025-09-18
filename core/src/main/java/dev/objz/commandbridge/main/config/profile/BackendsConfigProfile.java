@@ -35,7 +35,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			}
 		}
 
-		// port 
+		// port
 		int port = in.port();
 		if (port <= 0 || port > 65535) {
 			Log.error("'port' must be between 1 and 65535");
@@ -43,15 +43,26 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			ok = false;
 		}
 
-		// client-id 
+		// client-id
 		String clientId = in.clientId();
 		if (clientId == null || clientId.isBlank()) {
 			Log.warn("'client-id' missing or blank");
 			clientId = d.clientId();
 			ok = false;
-		} 
+		}
 
-		// security 
+		// limits
+		BackendsConfig.Limits limitsIn = in.limits();
+		int inboundMessagesSec = (limitsIn != null ? limitsIn.inboundMessagesSec()
+				: d.limits().inboundMessagesSec());
+		if (inboundMessagesSec <= 0) {
+			Log.error("'limits.inbound-messages-per-sec' must be positive");
+			inboundMessagesSec = d.limits().inboundMessagesSec();
+			ok = false;
+		}
+		BackendsConfig.Limits limitsOut = new BackendsConfig.Limits(inboundMessagesSec);
+
+		// security
 		BackendsConfig.Security secIn = in.security();
 		BackendsConfig.Security secOut;
 
@@ -62,11 +73,11 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			ok = false;
 		}
 
-		// tls-pin 
+		// tls-pin
 		String tlsPin = (secIn.tlsPin() != null && !secIn.tlsPin().isBlank()) ? secIn.tlsPin().trim()
 				: d.security().tlsPin();
 
-		// secret 
+		// secret
 		String secret = secIn.secret();
 		if (secret == null || secret.isBlank()) {
 			Log.error("'security.secret' must not be empty");
@@ -76,7 +87,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			Log.warn("'security.secret' contains 'change-me'. replace with real key");
 		}
 
-		// require-auth 
+		// require-auth
 		Boolean requireAuth = secIn.requireAuth();
 		if (requireAuth == null) {
 			Log.warn("'security.require-auth' must be set");
@@ -91,7 +102,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 
 		secOut = new BackendsConfig.Security(tlsMode, tlsPin, secret, requireAuth);
 
-		BackendsConfig out = new BackendsConfig(host, port, clientId, secOut, in.debug());
+		BackendsConfig out = new BackendsConfig(host, port, clientId, secOut, limitsOut, in.debug());
 		return new Result<>(out, ok);
 	}
 }

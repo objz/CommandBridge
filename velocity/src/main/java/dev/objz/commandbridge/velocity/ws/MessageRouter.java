@@ -2,6 +2,8 @@
 package dev.objz.commandbridge.velocity.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
@@ -24,17 +26,18 @@ public final class MessageRouter {
 	private final SessionHub sessions;
 	private final boolean requireAuth;
 
-	private final RateLimiter<WebSocketChannel> limiter = new RateLimiter<>(60);
+	private final RateLimiter<WebSocketChannel> limiter;
 
 	public interface InboundHandler {
 		void handle(WebSocketChannel ch, Envelope env) throws Exception;
 	}
 
 	public MessageRouter(ObjectMapper mapper, SessionHub sessions, AuthService auth, String serverId,
-			boolean requireAuth) {
+			boolean requireAuth, VelocityConfig config) {
 		this.mapper = mapper;
 		this.sessions = sessions;
 		this.requireAuth = requireAuth;
+		this.limiter = new RateLimiter<>(config.limits().inboundMessagesSec());
 		handlers.put(MessageType.AUTH, new AuthHandler(sessions, auth, serverId, requireAuth));
 		handlers.put(MessageType.PING, new PingHandler(sessions, serverId));
 		handlers.put(MessageType.PONG, new PongHandler(sessions));

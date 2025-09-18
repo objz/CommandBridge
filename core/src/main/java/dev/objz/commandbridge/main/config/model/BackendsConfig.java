@@ -9,6 +9,7 @@ public record BackendsConfig(
 		@Setting("port") int port,
 		@Setting("client-id") String clientId,
 		@Setting("security") Security security,
+		@Setting("limits") Limits limits,
 		@Setting("debug") boolean debug) {
 	@ConfigSerializable
 	public static record Security(
@@ -18,12 +19,18 @@ public record BackendsConfig(
 			@Setting("require-auth") Boolean requireAuth) {
 	}
 
+	@ConfigSerializable
+	public static record Limits(
+			@Setting("inbound-messages-per-sec") int inboundMessagesSec){
+	}
+
 	public static BackendsConfig defaults() {
 		return new BackendsConfig(
 				"127.0.0.1",
 				8765,
 				"survival-1",
 				new Security(TlsMode.TOFU, "", "change-me", true),
+				new Limits(60),
 				false);
 	}
 }

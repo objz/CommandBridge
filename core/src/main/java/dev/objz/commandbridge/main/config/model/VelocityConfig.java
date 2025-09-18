@@ -10,6 +10,7 @@ public record VelocityConfig(
 		@Setting("server-id") String serverId,
 		@Setting("heartbeat") Heartbeat heartbeat,
 		@Setting("security") Security security,
+		@Setting("timeouts") Timeouts timeouts,
 		@Setting("limits") Limits limits,
 		@Setting("debug") boolean debug) {
 	@ConfigSerializable
@@ -30,7 +31,13 @@ public record VelocityConfig(
 	}
 
 	@ConfigSerializable
+	public static record Timeouts(
+			@Setting("register-timout") int registerTimeout) {
+	}
+
+	@ConfigSerializable
 	public static record Limits(
+			@Setting("inbound-messages-per-sec") int inboundMessagesSec,
 			@Setting("max-connections") int maxConnections,
 			@Setting("max-message-size-bytes") int maxMessageSizeBytes) {
 	}
@@ -42,7 +49,8 @@ public record VelocityConfig(
 				"proxy-1",
 				new Heartbeat(10, 60),
 				new Security(true, 10, TlsMode.TOFU, "", "", "PKCS12"),
-				new Limits(100, 65_536),
+				new Timeouts(5),
+				new Limits(60, 100, 65_536),
 				false);
 	}
 }
