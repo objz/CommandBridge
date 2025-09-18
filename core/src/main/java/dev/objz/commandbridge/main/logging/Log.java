@@ -23,7 +23,7 @@ public final class Log {
 	public static final String BOLD = "\u001B[1m";
 
 	private Log(Logger base, boolean ansi) {
-		this.base = Objects.requireNonNull(base, "base logger");
+		this.base = Objects.requireNonNull(base, "logger");
 		this.ansi = ansi;
 	}
 

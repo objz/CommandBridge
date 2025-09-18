@@ -1,6 +1,8 @@
 package dev.objz.commandbridge.velocity.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.logging.StatusLog;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
@@ -31,7 +33,7 @@ public final class OnAuthRegisterCommands {
 			CompletableFuture<Envelope> fut = new CompletableFuture<>();
 			sessions.expectFeedback(env.id().toString(), s.clientId(), fut);
 			fut.orTimeout(5, TimeUnit.SECONDS).exceptionally(ex -> {
-				dev.objz.commandbridge.main.logging.Log.error(
+				Log.error(
 						"Register feedback timeout from '{}' (envelope-id={})",
 						s.clientId(), env.id());
 				return null;

@@ -22,6 +22,7 @@ public final class MessageRouter {
 	private final ObjectMapper mapper;
 	private final Map<MessageType, InboundHandler> handlers = new EnumMap<>(MessageType.class);
 	private final SessionHub sessions;
+	private final boolean requireAuth;
 
 	private final RateLimiter<WebSocketChannel> limiter = new RateLimiter<>(60);
 
@@ -29,10 +30,12 @@ public final class MessageRouter {
 		void handle(WebSocketChannel ch, Envelope env) throws Exception;
 	}
 
-	public MessageRouter(ObjectMapper mapper, SessionHub sessions, AuthService auth, String serverId) {
+	public MessageRouter(ObjectMapper mapper, SessionHub sessions, AuthService auth, String serverId,
+			boolean requireAuth) {
 		this.mapper = mapper;
 		this.sessions = sessions;
-		handlers.put(MessageType.AUTH, new AuthHandler(sessions, auth, serverId));
+		this.requireAuth = requireAuth;
+		handlers.put(MessageType.AUTH, new AuthHandler(sessions, auth, serverId, requireAuth));
 		handlers.put(MessageType.PING, new PingHandler(sessions, serverId));
 		handlers.put(MessageType.PONG, new PongHandler(sessions));
 		handlers.put(MessageType.FEEDBACK, new FeedbackHandler(mapper, sessions));
@@ -58,9 +61,12 @@ public final class MessageRouter {
 
 		final ClientSession s = sessions.find(ch);
 		final boolean authed = (s != null && s.status() == AuthStatus.AUTHENTICATED);
-		if (!PreAuth.proxyInboundAllowed(authed, env.type())) {
-			Log.warn("Dropping {} from unauthenticated client {}", env.type(), ch.getSourceAddress());
-			return;
+		if (requireAuth) {
+			if (!PreAuth.proxyInboundAllowed(authed, env.type())) {
+				Log.warn("Dropping {} from unauthenticated client {}", env.type(),
+						ch.getSourceAddress());
+				return;
+			}
 		}
 
 		final InboundHandler h = handlers.get(env.type());

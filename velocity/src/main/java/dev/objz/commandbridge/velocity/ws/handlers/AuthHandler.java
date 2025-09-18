@@ -17,12 +17,14 @@ public final class AuthHandler implements InboundHandler {
 	private final SessionHub sessions;
 	private final AuthService auth;
 	private final String serverId;
+	private boolean requireAuth;
 	private final ObjectMapper mapper = new ObjectMapper();
 
-	public AuthHandler(SessionHub sessions, AuthService auth, String serverId) {
+	public AuthHandler(SessionHub sessions, AuthService auth, String serverId, boolean requireAuth) {
 		this.sessions = sessions;
 		this.auth = auth;
 		this.serverId = serverId;
+		this.requireAuth = requireAuth;
 	}
 
 	@Override
@@ -36,7 +38,7 @@ public final class AuthHandler implements InboundHandler {
 		boolean ok = (!clientId.isBlank() && cNonce != null && cMac != null)
 				&& auth.verify(clientId, cNonce, cMac);
 
-		if (!ok) {
+		if (requireAuth && !ok) {
 			Log.error("AUTH failed for {} from {}", clientId, ch.getSourceAddress());
 			try {
 				sessions.send(ch, Envelope.make(MessageType.AUTH_FAIL, serverId, clientId, null));

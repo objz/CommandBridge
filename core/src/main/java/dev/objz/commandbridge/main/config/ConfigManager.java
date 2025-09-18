@@ -19,7 +19,6 @@ public final class ConfigManager {
 	private final Path filePath;
 	private volatile Object current;
 
-	// Register all supported config models here
 	private static final Map<Class<?>, ConfigProfile<?>> PROFILES = Map.of(
 			dev.objz.commandbridge.main.config.model.VelocityConfig.class, new VelocityConfigProfile(),
 			dev.objz.commandbridge.main.config.model.BackendsConfig.class, new BackendsConfigProfile());
@@ -66,14 +65,13 @@ public final class ConfigManager {
 
 			T loaded = root.get(modelClass, profile.defaults());
 
-			if (!profile.validate(loaded)) {
-				Log.error("Invalid config.yml");
-				this.current = profile.defaults();
-				return false;
-			}
+			var result = profile.normalize(loaded);
+			this.current = result.config();
 
-			this.current = loaded;
-			return true;
+			if (!result.ok()) {
+				Log.error("Invalid config.yml. Using defaults where possible");
+			}
+			return result.ok();
 
 		} catch (Exception e) {
 			Log.error("Error loading config.yml: " + e.getMessage(), e);
