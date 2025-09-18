@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.main.config.profile;
 
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
+import dev.objz.commandbridge.main.config.model.BackendsConfig.TlsMode;
 import dev.objz.commandbridge.main.logging.Log;
 
 import java.util.Set;
@@ -14,7 +15,14 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 
 	@Override
 	public Set<String> validKeys() {
-		return Set.of("host", "port", "tls", "client-id", "secret", "debug");
+		return Set.of(
+				"host",
+				"port",
+				"tls-mode",
+				"tls-pin",
+				"client-id",
+				"secret",
+				"debug");
 	}
 
 	@Override
@@ -29,8 +37,8 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			ok = false;
 		}
 		if (cfg.host() != null && (cfg.host().startsWith("ws://") || cfg.host().startsWith("wss://"))) {
-			Log.warn("host contains a ws:// or wss:// scheme. This is supported for compatibility but deprecated. Remove the scheme and use the 'tls' boolean instead");
-			ok = true;
+			Log.error("host must NOT include ws:// or wss:// (remove scheme; use 'tls-mode' to control TLS)");
+			ok = false;
 		}
 		if (cfg.clientId() == null || cfg.clientId().isBlank()) {
 			Log.error("client-id must not be empty");
@@ -45,6 +53,10 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 			ok = false;
 		}
 
+		TlsMode mode = cfg.effectiveTlsMode();
+		if (mode == TlsMode.PLAINTEXT) {
+			Log.warn("TLS is disabled (PLAINTEXT). This is not recommended in production.");
+		}
 		return ok;
 	}
 }

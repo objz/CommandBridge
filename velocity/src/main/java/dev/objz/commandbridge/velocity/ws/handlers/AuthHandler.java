@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.velocity.ws.handlers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
@@ -10,11 +11,13 @@ import dev.objz.commandbridge.velocity.ws.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Set;
+import java.util.UUID;
 
 public final class AuthHandler implements InboundHandler {
 	private final SessionHub sessions;
 	private final AuthService auth;
 	private final String serverId;
+	private final ObjectMapper mapper = new ObjectMapper();
 
 	public AuthHandler(SessionHub sessions, AuthService auth, String serverId) {
 		this.sessions = sessions;
@@ -27,16 +30,11 @@ public final class AuthHandler implements InboundHandler {
 		JsonNode p = env.payload();
 
 		String clientId = p.path("clientId").asText("");
-		String secret = p.hasNonNull("secret") ? p.get("secret").asText() : null;
-		String nonce = p.hasNonNull("nonce") ? p.get("nonce").asText() : null;
-		String hmac = p.hasNonNull("hmac") ? p.get("hmac").asText() : null;
+		String cNonce = p.hasNonNull("nonce") ? p.get("nonce").asText() : null;
+		String cMac = p.hasNonNull("hmac") ? p.get("hmac").asText() : null;
 
-		boolean ok = false;
-		if (secret != null && !secret.isBlank()) {
-			ok = auth.verifyShared(secret);
-		} else if (!clientId.isBlank() && nonce != null && hmac != null) {
-			ok = auth.verify(clientId, nonce, hmac);
-		}
+		boolean ok = (!clientId.isBlank() && cNonce != null && cMac != null)
+				&& auth.verify(clientId, cNonce, cMac);
 
 		if (!ok) {
 			Log.error("AUTH failed for {} from {}", clientId, ch.getSourceAddress());
@@ -49,9 +47,14 @@ public final class AuthHandler implements InboundHandler {
 			return;
 		}
 
-		sessions.send(ch, Envelope.make(MessageType.AUTH_OK, serverId, clientId, null));
-		// send AUTH_OK before marking it authed to send it before the RegisterCommands Message
-		// This was a headache to figure out
+		String sNonce = UUID.randomUUID().toString().replace("-", "");
+		String sMac = auth.signServerProof(clientId, cNonce, sNonce);
+
+		var payload = mapper.createObjectNode()
+				.put("serverNonce", sNonce)
+				.put("hmac", sMac);
+
+		sessions.send(ch, Envelope.make(MessageType.AUTH_OK, serverId, clientId, payload));
 		sessions.authed(ch, clientId, Set.of());
 	}
 }

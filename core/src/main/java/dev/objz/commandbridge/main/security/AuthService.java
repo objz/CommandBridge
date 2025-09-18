@@ -12,34 +12,30 @@ public final class AuthService {
 		this.key = shared.getBytes(StandardCharsets.UTF_8);
 	}
 
-	public boolean verifyShared(String providedSecret) {
-		if (providedSecret == null)
-			return false;
-		byte[] provided = providedSecret.getBytes(StandardCharsets.UTF_8);
-		return constantTimeEquals(this.key, provided);
+	public String sign(String clientId, String clientNonce) {
+		return hmac(clientId + ":" + clientNonce);
 	}
 
-	private static boolean constantTimeEquals(byte[] a, byte[] b) {
-		if (a == null || b == null || a.length != b.length)
-			return false;
-		int r = 0;
-		for (int i = 0; i < a.length; i++)
-			r |= (a[i] ^ b[i]);
-		return r == 0;
+	public boolean verify(String clientId, String clientNonce, String macB64) {
+		return sign(clientId, clientNonce).equals(macB64);
 	}
 
-	public String sign(String clientId, String nonce) {
+	public String signServerProof(String clientId, String clientNonce, String serverNonce) {
+		return hmac(clientId + ":" + clientNonce + ":" + serverNonce);
+	}
+
+	public boolean verifyServerProof(String clientId, String clientNonce, String serverNonce, String macB64) {
+		return signServerProof(clientId, clientNonce, serverNonce).equals(macB64);
+	}
+
+	private String hmac(String data) {
 		try {
 			Mac mac = Mac.getInstance("HmacSHA256");
 			mac.init(new SecretKeySpec(key, "HmacSHA256"));
-			byte[] out = mac.doFinal((clientId + ":" + nonce).getBytes(StandardCharsets.UTF_8));
+			byte[] out = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
 			return Base64.getEncoder().encodeToString(out);
 		} catch (Exception e) {
 			throw new IllegalStateException("HMAC failure", e);
 		}
-	}
-
-	public boolean verify(String clientId, String nonce, String macB64) {
-		return sign(clientId, nonce).equals(macB64);
 	}
 }

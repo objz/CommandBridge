@@ -14,8 +14,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 
 	@Override
 	public Set<String> validKeys() {
-		return Set.of("bind-host", "bind-port", "server-id", "heartbeat", "security", "network", "limits",
-				"debug");
+		return Set.of("bind-host", "bind-port", "server-id", "heartbeat", "security", "limits", "debug");
 	}
 
 	@Override

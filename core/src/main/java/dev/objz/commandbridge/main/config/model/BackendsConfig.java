@@ -7,48 +7,51 @@ import java.net.URI;
 
 @ConfigSerializable
 public record BackendsConfig(
-		@Setting("host") String host, // hostname or IP only (no scheme)
+		@Setting("host") String host,
 		@Setting("port") int port,
-		@Setting("tls") boolean tls, // true = wss, false = ws
+		@Setting("tls-mode") TlsMode tlsMode,
+		@Setting("tls-pin") String tlsPin,
 		@Setting("client-id") String clientId,
 		@Setting("secret") String secret,
 		@Setting("debug") boolean debug) {
+
+	public enum TlsMode {
+		/** Plain WS */
+		PLAINTEXT,
+		/** WSS with TOFU pinning */
+		TOFU,
+		/** WSS with normal validation + hostname verification */
+		STRICT
+	}
 
 	public static BackendsConfig defaults() {
 		return new BackendsConfig(
 				"127.0.0.1",
 				8765,
-				true, // default to wss
+				TlsMode.TOFU,
+				"",
 				"survival-1",
 				"change-me",
 				false);
+	}
+
+	public TlsMode effectiveTlsMode() {
+		return (tlsMode != null) ? tlsMode : TlsMode.TOFU;
+	}
+
+	public boolean isTlsEnabled() {
+		return effectiveTlsMode() != TlsMode.PLAINTEXT;
+	}
+
+	public boolean isStrict() {
+		return effectiveTlsMode() == TlsMode.STRICT;
 	}
 
 	public URI uri() {
 		String h = host != null ? host.trim() : "";
 		if (h.isEmpty())
 			throw new IllegalStateException("host must not be empty");
-
-		// Backward compatibility: if users still provide ws:// or wss:// in host, honor it 69
-		if (hasScheme(h)) {
-			return URI.create(h + ":" + port + "/ws");
-		}
-
-		String scheme = tls ? "wss" : "ws";
-		String authority = needsIpv6Brackets(h) ? "[" + h + "]" : h;
-		return URI.create(scheme + "://" + authority + ":" + port + "/ws");
+		String scheme = isTlsEnabled() ? "wss" : "ws";
+		return URI.create(scheme + "://" + h + ":" + port + "/ws");
 	}
-
-	private static boolean hasScheme(String h) {
-		return h.startsWith("ws://") || h.startsWith("wss://");
-	}
-
-	private static boolean needsIpv6Brackets(String h) {
-		// If it's an IPv6 literal without brackets
-		return h.indexOf(':') >= 0 && !(h.startsWith("[") && h.endsWith("]"));
-	}
-
-
-	//TODO:IDK wher to add this, but host is supported using hostname or ip. FOR hostname I need to implement a warning that can be suppressed 
-	//by a setting that tells the user that this can possible has a security issue. the domain can be changed and boom
 }

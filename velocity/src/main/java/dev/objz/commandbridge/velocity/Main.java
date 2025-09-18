@@ -57,12 +57,9 @@ public final class Main {
 		var auth = new AuthService(secret);
 		var mapper = new ObjectMapper();
 
-		Log.success(true,"Test message: '{}' test", "abcdefg");
-		Log.success(true,"Test message: '{}' test {}", "abcdefg", "test2");
-
 		if (ok) {
 
-			var sessions = new SessionHub(config, mapper);
+			var sessions = new SessionHub();
 			var router = new MessageRouter(mapper, sessions, auth, config.serverId());
 
 			boolean tlsEnabled = config.security().tls();
@@ -97,7 +94,7 @@ public final class Main {
 					config.heartbeat().staleAfterSeconds());
 			Log.debug("  RequireAuth: {}", config.security().requireAuth());
 
-		} 
+		}
 	}
 
 	@Subscribe

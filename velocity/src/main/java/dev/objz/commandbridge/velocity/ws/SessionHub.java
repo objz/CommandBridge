@@ -1,134 +1,104 @@
 package dev.objz.commandbridge.velocity.ws;
 
-import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.security.AuthStatus;
 import io.undertow.websockets.core.WebSocketChannel;
-import io.undertow.websockets.core.WebSockets;
+
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public final class SessionHub {
 	private final Map<WebSocketChannel, ClientSession> byCh = new ConcurrentHashMap<>();
 	private final Map<String, ClientSession> byId = new ConcurrentHashMap<>();
-	private final ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor();
-	private final VelocityConfig cfg;
-	private final ObjectMapper mapper;
-	private final FeedbackAwaiter feedback = new FeedbackAwaiter();
 
 	private final List<Consumer<ClientSession>> authedListeners = new CopyOnWriteArrayList<>();
 
-	public SessionHub(VelocityConfig cfg, ObjectMapper mapper) {
-		this.cfg = cfg;
-		this.mapper = mapper;
+	private record FbWait(String expectedFrom, CompletableFuture<Envelope> fut) {
 	}
 
-	public void expectFeedback(String envelopeId, MessageType resultType, java.time.Duration timeout,
-			String opName, String backendId) {
-		feedback.expect(envelopeId, resultType, timeout, opName, backendId);
-	}
-
-	public void completeFeedback(Envelope env) {
-		feedback.complete(env);
-	}
-
-	// callback
-	public void onAuthed(Consumer<ClientSession> listener) {
-		authedListeners.add(listener);
-	}
+	private final Map<String, FbWait> feedbackWaiters = new ConcurrentHashMap<>();
 
 	public void start() {
-		exec.scheduleAtFixedRate(this::tick, cfg.heartbeat().appPingSeconds(),
-				cfg.heartbeat().appPingSeconds(), TimeUnit.SECONDS);
-	}
+		/* no-op */ }
 
 	public void stop() {
-		exec.shutdownNow();
-		feedback.shutdown();
+		feedbackWaiters.clear();
+		byCh.clear();
+		byId.clear();
+		authedListeners.clear();
 	}
 
-	public ClientSession register(WebSocketChannel ch) {
-		var s = new ClientSession(ch);
-		byCh.put(ch, s);
-		Log.info("Client connected: {}", ch.getSourceAddress());
-		return s;
+	public void onAuthed(Consumer<ClientSession> listener) {
+		authedListeners.add(Objects.requireNonNull(listener, "listener"));
 	}
 
-	public void authed(WebSocketChannel ch, String clientId, Set<String> caps) {
-		var s = byCh.get(ch);
-		if (s == null)
-			return;
-		s.markAuthed(clientId, caps);
-		byId.put(clientId, s);
-		Log.success(true, "Authenticated client '{}'", clientId);
-
-		for (Consumer<ClientSession> c : authedListeners) {
-			try {
-				c.accept(s);
-			} catch (Exception e) {
-				Log.warn("onAuthed listener failed: {}", e.toString());
-			}
-		}
+	public void register(WebSocketChannel ch) {
+		byCh.put(ch, new ClientSession(ch));
 	}
 
 	public void remove(WebSocketChannel ch) {
-		var s = byCh.remove(ch);
-		if (s != null) {
-			byId.remove(s.clientId(), s);
-			Log.info("Client disconnected: {} ({})", s.clientId(), ch.getSourceAddress());
-		}
+		ClientSession s = byCh.remove(ch);
+		if (s != null && s.clientId() != null)
+			byId.remove(s.clientId());
 	}
 
-	public ClientSession byClientId(String id) {
-		return byId.get(id);
+	public ClientSession find(WebSocketChannel ch) {
+		return byCh.get(ch);
 	}
 
 	public Collection<ClientSession> all() {
 		return byCh.values();
 	}
 
-	public void send(WebSocketChannel ch, Envelope env) {
-		try {
-			ClientSession s = byCh.get(ch);
-			if (s == null)
-				return;
+	public void authed(WebSocketChannel ch, String clientId, Set<String> caps) {
+		ClientSession s = byCh.get(ch);
+		if (s == null)
+			return;
 
-			boolean allowPreAuth = (env.type() == MessageType.AUTH_OK
-					|| env.type() == MessageType.AUTH_FAIL);
-			if (s.status() != AuthStatus.AUTHENTICATED && !allowPreAuth) {
-				Log.warn("Refusing to send {} to unauthenticated client '{}'", env.type(),
-						s.clientId());
-				return;
+		s.markAuthed(clientId, (caps != null ? caps : Set.of()));
+		byId.put(clientId, s);
+		Log.success(true, "Authenticated client '{}'", clientId);
+
+		for (var l : authedListeners) {
+			try {
+				l.accept(s);
+			} catch (Throwable t) {
+				Log.warn("onAuthed listener failed: {}", t.toString());
 			}
-
-			WebSockets.sendText(mapper.writeValueAsString(env), ch, null);
-		} catch (Exception e) {
-			Log.error(e, "Send failed to {}", ch.getSourceAddress());
 		}
 	}
 
-	private void tick() {
-		long staleNs = TimeUnit.SECONDS.toNanos(cfg.heartbeat().staleAfterSeconds());
-		long now = System.nanoTime();
-		for (var s : all()) {
-			if (s.status() != AuthStatus.AUTHENTICATED)
-				continue;
-			if (now - s.lastPongNanos() > staleNs) {
-				Log.warn("Client '{}' stale (no PONG). Closing", s.clientId());
-				try {
-					s.ch().close();
-				} catch (Exception ignored) {
-				}
-				remove(s.ch());
-			} else {
-				var ping = Envelope.ping(cfg.serverId());
-				send(s.ch(), ping);
-			}
+	public void send(WebSocketChannel ch, Envelope env) {
+		ClientSession s = byCh.get(ch);
+		boolean authed = (s != null && s.status() == AuthStatus.AUTHENTICATED);
+		if (!dev.objz.commandbridge.main.proto.PreAuth.proxyOutboundAllowed(authed, env.type())) {
+			Log.warn("Block send {} to unauthenticated {}", env.type(), ch.getSourceAddress());
+			return;
 		}
+		WsIO.sendText(ch, env);
+	}
+
+	public void expectFeedback(String id, String expectedFrom, CompletableFuture<Envelope> fut) {
+		feedbackWaiters.put(id, new FbWait(expectedFrom, fut));
+	}
+
+	public void completeFeedback(Envelope env) {
+		FbWait w = feedbackWaiters.remove(String.valueOf(env.id()));
+		if (w == null)
+			return;
+		if (w.expectedFrom != null && !w.expectedFrom.equals(env.from())) {
+			Log.warn("Ignoring FEEDBACK {}, unexpected sender '{}', expected '{}'",
+					env.id(), env.from(), w.expectedFrom);
+			return;
+		}
+		w.fut.complete(env);
+	}
+
+	public Optional<ClientSession> byClientId(String clientId) {
+		return Optional.ofNullable(byId.get(clientId));
 	}
 }

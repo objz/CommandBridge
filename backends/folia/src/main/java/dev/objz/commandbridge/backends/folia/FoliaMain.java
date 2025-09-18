@@ -11,12 +11,12 @@ import java.nio.file.Path;
 import java.util.Locale;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class Main implements PlatformInterface {
+public final class FoliaMain implements PlatformInterface {
 	private final JavaPlugin plugin;
 	private CommandManager registry;
 	private WsClient client;
 
-	public Main(JavaPlugin plugin) {
+	public FoliaMain(JavaPlugin plugin) {
 		this.plugin = plugin;
 	}
 
@@ -36,7 +36,7 @@ public final class Main implements PlatformInterface {
 			Log.setDebug(cfg.debug());
 			Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 			Log.info("Backend running on Folia");
-			client = new WsClient(cfg, this);
+			client = new WsClient(cfg, this, lowerCaseDataDir);
 			client.start();
 		}
 	}

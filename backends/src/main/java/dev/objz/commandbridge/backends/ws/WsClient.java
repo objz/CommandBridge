@@ -2,22 +2,27 @@ package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import dev.objz.commandbridge.backends.PlatformInterface;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
+import dev.objz.commandbridge.main.config.model.BackendsConfig.TlsMode;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
+import dev.objz.commandbridge.main.security.AuthService;
 import okhttp3.*;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.X509TrustManager;
 import java.io.Closeable;
-import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.security.MessageDigest;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
 
 public final class WsClient extends WebSocketListener implements Closeable {
 	private final BackendsConfig cfg;
@@ -25,26 +30,54 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final MessageRouter router;
 	private final PlatformInterface platform;
+	private final Path dataDir;
 
 	private volatile WebSocket socket;
 	private volatile ClientState state = ClientState.DISCONNECTED;
 
-	public WsClient(BackendsConfig cfg, PlatformInterface platform) {
-		this.cfg = cfg;
-		this.platform = platform;
+	private final AuthService auth;
+	private volatile String clientNonce;
+
+	private volatile Handshake lastHandshake;
+
+	public WsClient(BackendsConfig cfg, PlatformInterface platform, Path dataDir) {
+		this.cfg = Objects.requireNonNull(cfg, "cfg");
+		this.platform = Objects.requireNonNull(platform, "platform");
+		this.dataDir = Objects.requireNonNull(dataDir, "dataDir");
+		this.auth = new AuthService(cfg.secret());
+
 		OkHttpClient.Builder b = new OkHttpClient.Builder()
 				.callTimeout(Duration.ZERO)
 				.readTimeout(Duration.ZERO);
 
-		if (cfg.tls()) {
+		TlsMode mode = cfg.effectiveTlsMode();
+		if (mode != TlsMode.PLAINTEXT) {
 			try {
-				X509TrustManager tm = trustAllManager();
-				SSLContext sc = SSLContext.getInstance("TLS");
-				sc.init(null, new TrustManager[] { tm }, new SecureRandom());
-				b.sslSocketFactory(sc.getSocketFactory(), tm)
-						.hostnameVerifier((hostname, session) -> true);
+				if (mode == TlsMode.TOFU) {
+					X509TrustManager tm = trustAllManager();
+					SSLContext sc = SSLContext.getInstance("TLS");
+					sc.init(null, new javax.net.ssl.TrustManager[] { tm },
+							new java.security.SecureRandom());
+					b.sslSocketFactory(sc.getSocketFactory(), tm)
+							.hostnameVerifier((hostname, session) -> true);
+				} 
 			} catch (Exception e) {
-				Log.error(e, "Failed to init insecure TLS context");
+				Log.error(e, "Failed to init TLS socket factory");
+			}
+
+			String explicitPin = (cfg.tlsPin() != null && !cfg.tlsPin().isBlank()) ? cfg.tlsPin().trim()
+					: null;
+			String tofuPin = loadTofuPinIfAny();
+			String host = cfg.uri().getHost();
+
+			if (explicitPin != null) {
+				b.certificatePinner(new CertificatePinner.Builder().add(host, explicitPin).build());
+				Log.info("TLS pin enabled for {}", host);
+			} else if (tofuPin != null) {
+				b.certificatePinner(new CertificatePinner.Builder().add(host, tofuPin).build());
+				Log.info("TLS TOFU pin loaded for {}", host);
+			} else if (mode == TlsMode.TOFU) {
+				Log.warn("TOFU will pin automatically after first successful auth");
 			}
 		}
 
@@ -60,16 +93,22 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		return state;
 	}
 
+	public AuthService auth() {
+		return auth;
+	}
+
+	public String getClientNonce() {
+		return clientNonce;
+	}
+
 	public synchronized void start() {
 		if (state != ClientState.DISCONNECTED)
 			return;
 		state = ClientState.CONNECTING;
-
 		Request req = new Request.Builder()
 				.url(cfg.uri().toString())
 				.header("User-Agent", "CommandBridge-Backend (" + cfg.clientId() + ")")
 				.build();
-
 		this.socket = http.newWebSocket(req, this);
 		Log.info("Connecting to {} ...", cfg.uri());
 	}
@@ -79,12 +118,11 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		WebSocket s = socket;
 		socket = null;
 		state = ClientState.DISCONNECTED;
-		if (s != null) {
+		if (s != null)
 			try {
 				s.close(1000, "shutdown");
 			} catch (Throwable ignored) {
 			}
-		}
 		http.dispatcher().executorService().shutdown();
 		http.connectionPool().evictAll();
 	}
@@ -101,11 +139,12 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	}
 
 	private void sendAuth() {
+		this.clientNonce = java.util.UUID.randomUUID().toString().replace("-", "");
 		ObjectNode payload = mapper.createObjectNode();
 		payload.put("clientId", cfg.clientId());
-		payload.put("secret", cfg.secret());
-		Envelope env = Envelope.make(MessageType.AUTH, cfg.clientId(), null, payload);
-		send(env);
+		payload.put("nonce", clientNonce);
+		payload.put("hmac", auth.sign(cfg.clientId(), clientNonce));
+		send(Envelope.make(MessageType.AUTH, cfg.clientId(), null, payload));
 	}
 
 	public void markAuthenticated() {
@@ -120,6 +159,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
 		state = ClientState.AUTHENTICATING;
+		lastHandshake = response != null ? response.handshake() : null;
 		Log.success("Connected (HTTP {})", response != null ? response.code() : 101);
 		sendAuth();
 	}
@@ -143,25 +183,70 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	@Override
 	public void onFailure(WebSocket webSocket, Throwable t, Response r) {
 		state = ClientState.DISCONNECTED;
-		if (t instanceof java.io.EOFException) {
+		if (t instanceof java.io.EOFException)
 			Log.warn("Server closed the connection (EOF)");
-		} else if (t instanceof java.net.ConnectException) {
+		else if (t instanceof java.net.ConnectException)
 			Log.warn("Cannot connect (connection refused)");
-		} else {
+		else
 			Log.error(t, "WS failure");
+	}
+
+	public void persistTlsPinIfNeeded() {
+		if (!cfg.isTlsEnabled())
+			return;
+		if (cfg.tlsPin() != null && !cfg.tlsPin().isBlank())
+			return;
+
+		try {
+			String host = cfg.uri().getHost();
+			Path pinFile = dataDir.resolve("tls.pin");
+			if (Files.exists(pinFile))
+				return;
+
+			if (lastHandshake == null)
+				return;
+			List<Certificate> chain = lastHandshake.peerCertificates();
+			if (chain == null || chain.isEmpty())
+				return;
+
+			String pin = spkiPin((X509Certificate) chain.get(0));
+			Files.createDirectories(dataDir);
+			Files.writeString(pinFile, pin + System.lineSeparator(), StandardCharsets.UTF_8,
+					StandardOpenOption.CREATE_NEW);
+			Log.success(true, "Pinned TLS (TOFU) for {} -> '{}'", host, pin);
+		} catch (Exception e) {
+			Log.warn("Could not persist TLS TOFU pin: {}", e.toString());
 		}
+	}
+
+	private String loadTofuPinIfAny() {
+		try {
+			Path pinFile = dataDir.resolve("tls.pin");
+			if (Files.exists(pinFile)) {
+				String pin = Files.readString(pinFile, StandardCharsets.UTF_8).trim();
+				return pin.isEmpty() ? null : pin;
+			}
+		} catch (Exception ignored) {
+		}
+		return null;
+	}
+
+	private static String spkiPin(X509Certificate cert) throws Exception {
+		byte[] spki = cert.getPublicKey().getEncoded();
+		byte[] sha = MessageDigest.getInstance("SHA-256").digest(spki);
+		return "sha256/" + Base64.getEncoder().encodeToString(sha);
 	}
 
 	private static X509TrustManager trustAllManager() {
 		return new X509TrustManager() {
-			public void checkClientTrusted(X509Certificate[] chain, String authType) {
+			public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
 			}
 
-			public void checkServerTrusted(X509Certificate[] chain, String authType) {
+			public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
 			}
 
-			public X509Certificate[] getAcceptedIssuers() {
-				return new X509Certificate[0];
+			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+				return new java.security.cert.X509Certificate[0];
 			}
 		};
 	}

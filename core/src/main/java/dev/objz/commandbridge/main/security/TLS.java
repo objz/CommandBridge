@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -18,7 +19,6 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Set;
 
-// BouncyCastle
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.Extension;
@@ -46,8 +46,6 @@ public final class TLS {
 	private TLS() {
 	}
 
-	//Implement HMAC to ensure clients only accept commands from the real proxy
-
 	public static SSLContext ensure(Path dataDir, String cnHint) {
 		try {
 			ensureBcProvider();
@@ -65,7 +63,7 @@ public final class TLS {
 				writePassword(pwPath, password);
 				String cn = (cnHint != null && !cnHint.isBlank()) ? cnHint : "localhost";
 				generateKeystoreBc(ksPath, password, cn);
-				Log.success("Generated self-signed TLS keystore at {}", ksPath);
+				Log.success("Generated TLS keystore at {}", ksPath);
 			}
 
 			KeyStore ks = KeyStore.getInstance(STORE_TYPE);
@@ -77,6 +75,17 @@ public final class TLS {
 
 			SSLContext ssl = SSLContext.getInstance("TLS");
 			ssl.init(kmf.getKeyManagers(), null, null);
+
+			try {
+				String spki = spkiPinFromKeystore(ks, password);
+				if (spki != null) {
+					Log.info("Velocity TLS SPKI pin: {}", spki); 
+										
+				}
+			} catch (Exception e) {
+				Log.warn("Could not compute SPKI pin: {}", e.toString());
+			}
+
 			return ssl;
 
 		} catch (Throwable e) {
@@ -125,9 +134,44 @@ public final class TLS {
 			kmf.init(ks, password.toCharArray());
 			SSLContext ssl = SSLContext.getInstance("TLS");
 			ssl.init(kmf.getKeyManagers(), null, null);
+
+			try {
+				String spki = spkiPinFromKeystore(ks, password);
+				if (spki != null) {
+					Log.info("Velocity TLS SPKI pin: {}", spki);
+				}
+			} catch (Exception e) {
+				Log.warn("Could not compute SPKI pin (keytool path): {}", e.toString());
+			}
+
 			return ssl;
 		} catch (Exception e) {
 			throw new IllegalStateException("TLS bootstrap failed", e);
+		}
+	}
+
+	private static String spkiPinFromKeystore(KeyStore ks, String password) throws Exception {
+		Certificate c = ks.getCertificate(ALIAS);
+		if (c instanceof X509Certificate x) {
+			return spkiPin(x);
+		}
+		return null;
+	}
+
+	public static String readServerSpkiPin(Path dataDir) {
+		try {
+			Path ksPath = dataDir.resolve(KS_NAME);
+			Path pwPath = dataDir.resolve(PASS_NAME);
+			if (!Files.exists(ksPath) || !Files.exists(pwPath))
+				return null;
+			String password = Files.readString(pwPath, StandardCharsets.UTF_8).trim();
+			KeyStore ks = KeyStore.getInstance(STORE_TYPE);
+			try (InputStream in = Files.newInputStream(ksPath)) {
+				ks.load(in, password.toCharArray());
+			}
+			return spkiPinFromKeystore(ks, password);
+		} catch (Exception e) {
+			return null;
 		}
 	}
 
@@ -163,50 +207,41 @@ public final class TLS {
 		ZonedDateTime notBefore = ZonedDateTime.now().minusMinutes(1);
 		ZonedDateTime notAfter = notBefore.plus(3650, ChronoUnit.DAYS);
 
-		BigInteger serial = new BigInteger(160, new SecureRandom()).abs();
 		X500Name subject = new X500Name("CN=" + cn);
-		X500Name issuer = subject; // self-signed
+		BigInteger serial = new BigInteger(64, new SecureRandom());
+
 		SubjectPublicKeyInfo spki = SubjectPublicKeyInfo.getInstance(kp.getPublic().getEncoded());
+		X509v3CertificateBuilder b = new X509v3CertificateBuilder(
+				subject, serial, Date.from(notBefore.toInstant()), Date.from(notAfter.toInstant()),
+				subject, spki);
 
-		X509v3CertificateBuilder builder = new X509v3CertificateBuilder(
-				issuer,
-				serial,
-				Date.from(notBefore.toInstant()),
-				Date.from(notAfter.toInstant()),
-				subject,
-				spki);
-
-		JcaX509ExtensionUtils extUtils = new JcaX509ExtensionUtils();
-		builder.addExtension(Extension.subjectKeyIdentifier, false,
-				extUtils.createSubjectKeyIdentifier(kp.getPublic()));
-		builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
-		builder.addExtension(Extension.keyUsage, true,
+		JcaX509ExtensionUtils ext = new JcaX509ExtensionUtils();
+		b.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+		b.addExtension(Extension.subjectKeyIdentifier, false, ext.createSubjectKeyIdentifier(kp.getPublic()));
+		b.addExtension(Extension.keyUsage, true,
 				new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
-		builder.addExtension(Extension.extendedKeyUsage, false,
-				new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
-
-		GeneralNames sans = new GeneralNames(new GeneralName[] {
-				new GeneralName(GeneralName.dNSName, cn),
-				new GeneralName(GeneralName.dNSName, "localhost"),
-				new GeneralName(GeneralName.iPAddress, "127.0.0.1"),
-				new GeneralName(GeneralName.iPAddress, "::1")
-		});
-		builder.addExtension(Extension.subjectAlternativeName, false, sans);
+		b.addExtension(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(new KeyPurposeId[] {
+				KeyPurposeId.id_kp_serverAuth
+		}));
+		b.addExtension(Extension.subjectAlternativeName, false, new GeneralNames(
+				new GeneralName(GeneralName.dNSName, cn)));
 
 		ContentSigner signer = new JcaContentSignerBuilder(SIG_ALG).build(kp.getPrivate());
-		X509CertificateHolder holder = builder.build(signer);
-		X509Certificate cert = new JcaX509CertificateConverter()
-				.setProvider("BC")
-				.getCertificate(holder);
-		cert.checkValidity(new Date());
-		cert.verify(kp.getPublic());
+		X509CertificateHolder holder = b.build(signer);
+		X509Certificate cert = new JcaX509CertificateConverter().getCertificate(holder);
 
 		KeyStore ks = KeyStore.getInstance(STORE_TYPE);
-		ks.load(null, null);
-		ks.setKeyEntry(ALIAS, kp.getPrivate(), password.toCharArray(),
-				new java.security.cert.Certificate[] { cert });
-		try (OutputStream out = Files.newOutputStream(ksPath, StandardOpenOption.CREATE_NEW)) {
+		ks.load(null, password.toCharArray());
+		ks.setKeyEntry(ALIAS, kp.getPrivate(), password.toCharArray(), new Certificate[] { cert });
+		try (OutputStream out = Files.newOutputStream(ksPath, StandardOpenOption.CREATE,
+				StandardOpenOption.TRUNCATE_EXISTING)) {
 			ks.store(out, password.toCharArray());
 		}
+	}
+
+	private static String spkiPin(X509Certificate cert) throws Exception {
+		byte[] spki = cert.getPublicKey().getEncoded();
+		byte[] sha = MessageDigest.getInstance("SHA-256").digest(spki);
+		return "sha256/" + Base64.getEncoder().encodeToString(sha);
 	}
 }
