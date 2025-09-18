@@ -8,8 +8,8 @@ public final class PlatformResolver {
     public static PlatformInterface detect(JavaPlugin plugin) {
         boolean isFolia = classPresent("io.papermc.paper.threadedregions.RegionizedServer");
         String implClassName = isFolia
-                ? "dev.objz.commandbridge.backends.folia.Main"
-                : "dev.objz.commandbridge.backends.bukkit.Main";
+                ? "dev.objz.commandbridge.backends.folia.FoliaMain"
+                : "dev.objz.commandbridge.backends.bukkit.BukkitMain";
 
         try {
             Class<?> clazz = Class.forName(implClassName);

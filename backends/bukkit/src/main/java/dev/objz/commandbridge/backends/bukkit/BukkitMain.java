@@ -13,12 +13,12 @@ import dev.objz.commandbridge.main.config.ConfigManager;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.logging.Log;
 
-public final class Main implements PlatformInterface {
+public final class BukkitMain implements PlatformInterface {
 	private final JavaPlugin plugin;
 	private CommandManager registry;
 	private WsClient client;
 
-	public Main(JavaPlugin plugin) {
+	public BukkitMain(JavaPlugin plugin) {
 		this.plugin = plugin;
 	}
 
@@ -38,7 +38,7 @@ public final class Main implements PlatformInterface {
 			Log.setDebug(cfg.debug());
 			Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 			Log.info("Backend running on Bukkit");
-			client = new WsClient(cfg, this);
+			client = new WsClient(cfg, this, lowerCaseDataDir);
 			client.start();
 		}
 	}
