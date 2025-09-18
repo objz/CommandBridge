@@ -6,10 +6,12 @@ import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
 import dev.objz.commandbridge.backends.ws.handlers.RegisterCommandsHandler;
+import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.proto.PreAuth;
+import dev.objz.commandbridge.main.security.AuthStatus;
 import dev.objz.commandbridge.main.util.RateLimiter;
 
 import java.util.EnumMap;
@@ -25,13 +27,13 @@ public final class MessageRouter {
 		void handle(Envelope env) throws Exception;
 	}
 
-	public MessageRouter(WsClient ws, ObjectMapper mapper, PlatformInterface platform) {
+	public MessageRouter(WsClient ws, ObjectMapper mapper, PlatformInterface platform, BackendsConfig config) {
 		this.ws = ws;
 		this.mapper = mapper;
 		byType.put(MessageType.AUTH_OK,
-				new AuthHandler(ws, dev.objz.commandbridge.main.security.AuthStatus.AUTHENTICATED));
+				new AuthHandler(ws, AuthStatus.AUTHENTICATED, config));
 		byType.put(MessageType.AUTH_FAIL,
-				new AuthHandler(ws, dev.objz.commandbridge.main.security.AuthStatus.NOT_AUTHENTICATED));
+				new AuthHandler(ws, AuthStatus.NOT_AUTHENTICATED, config));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
 		byType.put(MessageType.REGISTER_COMMANDS, new RegisterCommandsHandler(ws, mapper, platform));

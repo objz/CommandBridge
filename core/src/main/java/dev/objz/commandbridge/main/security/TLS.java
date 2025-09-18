@@ -79,8 +79,8 @@ public final class TLS {
 			try {
 				String spki = spkiPinFromKeystore(ks, password);
 				if (spki != null) {
-					Log.info("Velocity TLS SPKI pin: {}", spki); 
-										
+					Log.info("Velocity TLS SPKI pin: {}", spki);
+
 				}
 			} catch (Exception e) {
 				Log.warn("Could not compute SPKI pin: {}", e.toString());
@@ -147,6 +147,51 @@ public final class TLS {
 			return ssl;
 		} catch (Exception e) {
 			throw new IllegalStateException("TLS bootstrap failed", e);
+		}
+	}
+
+	public static javax.net.ssl.SSLContext fromKeystore(String path, String type, String password) {
+		try {
+			if (path == null || path.isBlank())
+				throw new IllegalArgumentException("keystore path is empty");
+			if (password == null)
+				throw new IllegalArgumentException("keystore password is null");
+			String t = (type == null || type.isBlank()) ? "PKCS12" : type;
+
+			java.security.KeyStore ks = java.security.KeyStore.getInstance(t);
+			try (java.io.InputStream in = java.nio.file.Files.newInputStream(java.nio.file.Path.of(path))) {
+				ks.load(in, password.toCharArray());
+			}
+
+			javax.net.ssl.KeyManagerFactory kmf = javax.net.ssl.KeyManagerFactory.getInstance(
+					javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());
+			kmf.init(ks, password.toCharArray());
+
+			javax.net.ssl.SSLContext ssl = javax.net.ssl.SSLContext.getInstance("TLS");
+			ssl.init(kmf.getKeyManagers(), null, null);
+
+			// Best-effort: log SPKI like TOFU path does
+			try {
+				var aliases = ks.aliases();
+				while (aliases.hasMoreElements()) {
+					String alias = aliases.nextElement();
+					if (ks.isKeyEntry(alias)) {
+						var cert = (java.security.cert.X509Certificate) ks
+								.getCertificate(alias);
+						String spki = "sha256/" + java.util.Base64.getEncoder().encodeToString(
+								java.security.MessageDigest.getInstance("SHA-256")
+										.digest(cert.getPublicKey()
+												.getEncoded()));
+						dev.objz.commandbridge.main.logging.Log
+								.info("Velocity TLS SPKI pin: {}", spki);
+						break;
+					}
+				}
+			} catch (Exception ignore) {
+			}
+			return ssl;
+		} catch (Exception e) {
+			throw new IllegalStateException("Failed to load STRICT keystore", e);
 		}
 	}
 

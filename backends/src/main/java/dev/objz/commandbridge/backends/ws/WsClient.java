@@ -4,16 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.objz.commandbridge.backends.PlatformInterface;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
-import dev.objz.commandbridge.main.config.model.BackendsConfig.TlsMode;
+import dev.objz.commandbridge.main.config.model.TlsMode;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.proto.Envelope;
 import dev.objz.commandbridge.main.proto.MessageType;
 import dev.objz.commandbridge.main.security.AuthService;
+import dev.objz.commandbridge.main.security.TlsResolver;
 import okhttp3.*;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509TrustManager;
 import java.io.Closeable;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.MessageDigest;
@@ -22,15 +24,22 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
-import java.util.Objects;
 
 public final class WsClient extends WebSocketListener implements Closeable {
 	private final BackendsConfig cfg;
+	private final BackendsConfig.Security sec;
+	private final TlsMode mode;
+	private final String host;
+	private final int port;
+	private final URI serverUri;
+
 	private final OkHttpClient http;
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final MessageRouter router;
 	private final PlatformInterface platform;
 	private final Path dataDir;
+
+	private final boolean requireAuth;
 
 	private volatile WebSocket socket;
 	private volatile ClientState state = ClientState.DISCONNECTED;
@@ -41,17 +50,27 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	private volatile Handshake lastHandshake;
 
 	public WsClient(BackendsConfig cfg, PlatformInterface platform, Path dataDir) {
-		this.cfg = Objects.requireNonNull(cfg, "cfg");
-		this.platform = Objects.requireNonNull(platform, "platform");
-		this.dataDir = Objects.requireNonNull(dataDir, "dataDir");
-		this.auth = new AuthService(cfg.secret());
+		this.cfg = cfg;
+		this.platform = platform;
+		this.dataDir = dataDir;
+
+		this.requireAuth = Boolean.TRUE.equals(cfg.security().requireAuth());
+
+		this.sec = cfg.security();
+		this.mode = sec.tlsMode();
+		this.host = cfg.host();
+		this.port = cfg.port();
+
+		String scheme = TlsResolver.schemeFor(mode); // "ws" | "wss"
+		this.serverUri = URI.create(scheme + "://" + host + ":" + port + "/ws");
+
+		this.auth = new AuthService(sec.secret());
 
 		OkHttpClient.Builder b = new OkHttpClient.Builder()
 				.callTimeout(Duration.ZERO)
 				.readTimeout(Duration.ZERO);
 
-		TlsMode mode = cfg.effectiveTlsMode();
-		if (mode != TlsMode.PLAINTEXT) {
+		if (mode != TlsMode.PLAIN) {
 			try {
 				if (mode == TlsMode.TOFU) {
 					X509TrustManager tm = trustAllManager();
@@ -60,15 +79,14 @@ public final class WsClient extends WebSocketListener implements Closeable {
 							new java.security.SecureRandom());
 					b.sslSocketFactory(sc.getSocketFactory(), tm)
 							.hostnameVerifier((hostname, session) -> true);
-				} 
+				}
 			} catch (Exception e) {
 				Log.error(e, "Failed to init TLS socket factory");
 			}
 
-			String explicitPin = (cfg.tlsPin() != null && !cfg.tlsPin().isBlank()) ? cfg.tlsPin().trim()
+			String explicitPin = (sec.tlsPin() != null && !sec.tlsPin().isBlank()) ? sec.tlsPin().trim()
 					: null;
 			String tofuPin = loadTofuPinIfAny();
-			String host = cfg.uri().getHost();
 
 			if (explicitPin != null) {
 				b.certificatePinner(new CertificatePinner.Builder().add(host, explicitPin).build());
@@ -82,7 +100,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		}
 
 		this.http = b.build();
-		this.router = new MessageRouter(this, mapper, platform);
+		this.router = new MessageRouter(this, mapper, platform, cfg);
 	}
 
 	public String clientId() {
@@ -101,16 +119,20 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		return clientNonce;
 	}
 
+	public boolean requireAuth() {
+		return requireAuth;
+	}
+
 	public synchronized void start() {
 		if (state != ClientState.DISCONNECTED)
 			return;
 		state = ClientState.CONNECTING;
 		Request req = new Request.Builder()
-				.url(cfg.uri().toString())
+				.url(serverUri.toString())
 				.header("User-Agent", "CommandBridge-Backend (" + cfg.clientId() + ")")
 				.build();
 		this.socket = http.newWebSocket(req, this);
-		Log.info("Connecting to {} ...", cfg.uri());
+		Log.info("Connecting to {} ...", serverUri);
 	}
 
 	@Override
@@ -192,13 +214,12 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	}
 
 	public void persistTlsPinIfNeeded() {
-		if (!cfg.isTlsEnabled())
+		if (mode == TlsMode.PLAIN)
 			return;
-		if (cfg.tlsPin() != null && !cfg.tlsPin().isBlank())
+		if (sec.tlsPin() != null && !sec.tlsPin().isBlank())
 			return;
 
 		try {
-			String host = cfg.uri().getHost();
 			Path pinFile = dataDir.resolve("tls.pin");
 			if (Files.exists(pinFile))
 				return;

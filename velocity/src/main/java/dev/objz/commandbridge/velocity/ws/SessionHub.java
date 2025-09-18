@@ -33,7 +33,7 @@ public final class SessionHub {
 	}
 
 	public void onAuthed(Consumer<ClientSession> listener) {
-		authedListeners.add(Objects.requireNonNull(listener, "listener"));
+		authedListeners.add(listener);
 	}
 
 	public void register(WebSocketChannel ch) {

@@ -7,5 +7,7 @@ public interface ConfigProfile<T> {
 
 	Set<String> validKeys();
 
-	boolean validate(T cfg);
+	Result<T> normalize(T in);
+
+	record Result<T>(T config, boolean ok) {} 
 }

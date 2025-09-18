@@ -21,12 +21,12 @@ public record VelocityConfig(
 	@ConfigSerializable
 	public static record Security(
 			@Setting("require-auth") boolean requireAuth,
-			@Setting("auth-timeout-seconds") int authTimeoutSeconds, 
-			@Setting("tls") boolean tls) {
-	}
-
-	@ConfigSerializable
-	public static record Network() {
+			@Setting("auth-timeout-seconds") int authTimeoutSeconds,
+			@Setting("tls-mode") TlsMode tlsMode,
+			@Setting("keystore-path") String keystorePath,
+			@Setting("keystore-password") String keystorePassword,
+			@Setting("keystore-type") String keystoreType // PKCS12 | JKS
+	) {
 	}
 
 	@ConfigSerializable
@@ -41,7 +41,7 @@ public record VelocityConfig(
 				8765,
 				"proxy-1",
 				new Heartbeat(10, 60),
-				new Security(true, 10, true),
+				new Security(true, 10, TlsMode.TOFU, "", "", "PKCS12"),
 				new Limits(100, 65_536),
 				false);
 	}

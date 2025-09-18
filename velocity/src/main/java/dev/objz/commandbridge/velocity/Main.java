@@ -14,8 +14,7 @@ import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.main.security.SecretLoader;
-import dev.objz.commandbridge.main.security.TLS;
-
+import dev.objz.commandbridge.main.security.TlsResolver;
 import dev.objz.commandbridge.main.scripting.ScriptTypes.ScriptKind.Side;
 import dev.objz.commandbridge.velocity.debug.ScriptDebug;
 import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
@@ -25,7 +24,6 @@ import dev.objz.commandbridge.velocity.ws.MessageRouter;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import dev.objz.commandbridge.velocity.ws.WsServer;
 
-import javax.net.ssl.SSLContext;
 
 import org.slf4j.Logger;
 
@@ -60,19 +58,14 @@ public final class Main {
 		if (ok) {
 
 			var sessions = new SessionHub();
-			var router = new MessageRouter(mapper, sessions, auth, config.serverId());
+			boolean requireAuth = config.security().requireAuth();
+			var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth);
 
-			boolean tlsEnabled = config.security().tls();
-			SSLContext ssl = null;
-			if (tlsEnabled) {
-				ssl = TLS.ensure(dataDir, "localhost");
-			}
-
-			var ws = tlsEnabled
+			var tls = TlsResolver.resolveServer(dataDir, config.security());
+			var ws = tls.enabled()
 					? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true,
-							ssl)
+							tls.context())
 					: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
-
 			ws.start();
 
 			Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
