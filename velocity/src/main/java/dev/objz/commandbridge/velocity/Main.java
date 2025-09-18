@@ -59,7 +59,7 @@ public final class Main {
 
 			var sessions = new SessionHub();
 			boolean requireAuth = config.security().requireAuth();
-			var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth);
+			var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
 
 			var tls = TlsResolver.resolveServer(dataDir, config.security());
 			var ws = tls.enabled()
@@ -72,7 +72,7 @@ public final class Main {
 			var mgr = ScriptManager.loadForSide(scriptsDir, Side.VELOCITY);
 
 			OnAuthRegisterCommands.install(
-					sessions, mgr, mapper, config.serverId());
+					sessions, mgr, mapper, config.serverId(), config);
 
 			mgr.enabled().forEach(ScriptDebug::dump);
 

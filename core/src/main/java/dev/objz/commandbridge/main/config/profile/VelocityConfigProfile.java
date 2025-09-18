@@ -69,10 +69,20 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 		}
 		hb = new VelocityConfig.Heartbeat(appPing, stale);
 
+		VelocityConfig.Timeouts to = in.timeouts();
+		int registerTimeout = to.registerTimeout();
+		if (registerTimeout <= 0) {
+			Log.error("'timeouts.register-timout' must be > 0");
+			registerTimeout = d.timeouts().registerTimeout();
+			ok = false;
+		}
+		to = new VelocityConfig.Timeouts(registerTimeout);
+
 		// limits
 		VelocityConfig.Limits limits = in.limits();
 		int maxCon = limits.maxConnections();
 		int maxMsg = limits.maxMessageSizeBytes();
+		int inboundPerSec = limits.inboundMessagesSec();
 		if (maxCon <= 0) {
 			Log.error("'max-connections' must be positive");
 			maxCon = d.limits().maxConnections();
@@ -83,7 +93,12 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 			maxMsg = Math.max(1024, d.limits().maxMessageSizeBytes());
 			ok = false;
 		}
-		limits = new VelocityConfig.Limits(maxCon, maxMsg);
+		if (inboundPerSec <= 0) {
+			Log.error("'inbound-messages-per-sec' must be positive");
+			inboundPerSec = d.limits().inboundMessagesSec();
+			ok = false;
+		}
+		limits = new VelocityConfig.Limits(inboundPerSec, maxCon, maxMsg);
 
 		// security
 		VelocityConfig.Security secIn = in.security();
@@ -132,7 +147,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 		VelocityConfig.Security secOut = new VelocityConfig.Security(
 				requireAuth, authTimeout, tlsMode, keystorePath, keystorePassword, keystoreType);
 
-		VelocityConfig out = new VelocityConfig(bindHost, bindPort, serverId, hb, secOut, limits, in.debug());
+		VelocityConfig out = new VelocityConfig(bindHost, bindPort, serverId, hb, secOut, to, limits, in.debug());
 		return new Result<>(out, ok);
 	}
 
