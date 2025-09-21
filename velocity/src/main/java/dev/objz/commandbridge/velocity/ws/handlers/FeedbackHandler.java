@@ -21,8 +21,8 @@ public final class FeedbackHandler implements InboundHandler {
 	public void handle(WebSocketChannel ch, Envelope env) throws Exception {
 		Feedback fb = mapper.treeToValue(env.payload(), Feedback.class);
 
-		FeedbackLog.summary("Feedback", fb);
-		FeedbackLog.details(fb);
+		FeedbackLog.summary("Feedback", fb, env.from());
+		FeedbackLog.details(fb, env.from());
 
 		sessions.completeFeedback(env);
 	}

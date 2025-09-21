@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.backends.ws.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.backends.PlatformInterface;
+import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.main.logging.FeedbackLog;
@@ -13,13 +13,14 @@ import dev.objz.commandbridge.main.proto.feedback.Feedback;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class RegisterCommandsHandler implements InboundHandler {
 	private final WsClient ws;
 	private final ObjectMapper mapper;
-	private final PlatformInterface platform;
+	private final Supplier<PlatformRegistry> platform;
 
-	public RegisterCommandsHandler(WsClient ws, ObjectMapper mapper, PlatformInterface platform) {
+	public RegisterCommandsHandler(WsClient ws, ObjectMapper mapper, Supplier<PlatformRegistry> platform) {
 		this.ws = ws;
 		this.mapper = mapper;
 		this.platform = platform;
@@ -32,9 +33,9 @@ public final class RegisterCommandsHandler implements InboundHandler {
 			payload = mapper.treeToValue(env.payload(), RegisterCommandsPayload.class);
 		} catch (Exception e) {
 			Log.error(e, "REGISTER_COMMANDS payload invalid");
-			var fb = new Feedback(0, 0, 0, List.of(), List.of("invalid register payload"));
-			FeedbackLog.summary("Register", fb);
-			FeedbackLog.details(fb);
+			var fb = new Feedback(0, 0, 0, List.of(), List.of("Invalid register payload"));
+			// FeedbackLog.summary("Register", fb, env.from());
+			FeedbackLog.details(fb, null, true);
 			ws.send(Envelope.reply(env, MessageType.FEEDBACK, ws.clientId(), mapper.valueToTree(fb)));
 			return;
 		}
@@ -45,14 +46,20 @@ public final class RegisterCommandsHandler implements InboundHandler {
 
 		Feedback fb;
 		try {
-			fb = platform.platformRegistry().registerAll(payload.reload(), new ArrayList<>(stubs));
+			PlatformRegistry reg = platform.get(); 
+			if (reg == null) {
+				fb = new Feedback(stubs.size(), 0, stubs.size(), List.of(),
+						List.of("Platform not initialized"));
+			} else {
+				fb = reg.registerAll(payload.reload(), new ArrayList<>(stubs));
+			}
 		} catch (Throwable t) {
 			Log.error(t, "REGISTER_COMMANDS failed");
 			fb = new Feedback(stubs.size(), 0, stubs.size(), List.of(), List.of(t.getMessage()));
 		}
 
-		FeedbackLog.summary("Register", fb);
-		FeedbackLog.details(fb);
+		// FeedbackLog.summary("Register", fb, env.from());
+		FeedbackLog.details(fb, null, true);
 
 		ws.send(Envelope.reply(env, MessageType.FEEDBACK, ws.clientId(), mapper.valueToTree(fb)));
 	}

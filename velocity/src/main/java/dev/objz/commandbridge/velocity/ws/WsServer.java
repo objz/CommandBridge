@@ -74,9 +74,9 @@ public final class WsServer {
 			sessions.start();
 
 			if (tlsEnabled) {
-				Log.success(true, "WebSocket TLS listening on {}:{}", host, port);
+				Log.success(true, "WebSocket TLS listening on {}{}{}", host,":", port);
 			} else {
-				Log.success(true, "WebSocket HTTP listening on {}:{}", host, port);
+				Log.success(true, "WebSocket HTTP listening on {}{}{}", host,":", port);
 			}
 		} catch (Exception e) {
 			try {

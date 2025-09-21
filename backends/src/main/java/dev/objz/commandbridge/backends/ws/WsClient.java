@@ -2,7 +2,7 @@ package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import dev.objz.commandbridge.backends.PlatformInterface;
+import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.config.model.TlsMode;
 import dev.objz.commandbridge.main.logging.Log;
@@ -24,6 +24,7 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class WsClient extends WebSocketListener implements Closeable {
 	private final BackendsConfig cfg;
@@ -36,7 +37,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	private final OkHttpClient http;
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final MessageRouter router;
-	private final PlatformInterface platform;
+	private final Supplier<PlatformRegistry> platform;
 	private final Path dataDir;
 
 	private final boolean requireAuth;
@@ -49,7 +50,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 
 	private volatile Handshake lastHandshake;
 
-	public WsClient(BackendsConfig cfg, PlatformInterface platform, Path dataDir) {
+	public WsClient(BackendsConfig cfg, Supplier<PlatformRegistry> platform, Path dataDir) {
 		this.cfg = cfg;
 		this.platform = platform;
 		this.dataDir = dataDir;
@@ -95,7 +96,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 				b.certificatePinner(new CertificatePinner.Builder().add(host, tofuPin).build());
 				Log.info("TLS TOFU pin loaded for {}", host);
 			} else if (mode == TlsMode.TOFU) {
-				Log.warn("TOFU will pin automatically after first successful auth");
+				Log.info("TOFU will pin automatically after first successful auth");
 			}
 		}
 

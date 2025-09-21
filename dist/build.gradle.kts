@@ -16,8 +16,11 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":velocity"))
     implementation(project(":backends"))
-    implementation(project(":backends:bukkit"))
-    implementation(project(":backends:folia"))
+    implementation(project(":backends:loader"))
+    implementation(project(":backends:bootstrap"))
+    implementation(project(":backends:impl:bukkit"))
+    implementation(project(":backends:impl:paper"))
+    implementation(project(":backends:impl:folia"))
 }
 
 tasks {

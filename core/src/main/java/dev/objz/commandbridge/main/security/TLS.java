@@ -63,7 +63,7 @@ public final class TLS {
 				writePassword(pwPath, password);
 				String cn = (cnHint != null && !cnHint.isBlank()) ? cnHint : "localhost";
 				generateKeystoreBc(ksPath, password, cn);
-				Log.success("Generated TLS keystore at {}", ksPath);
+				Log.success(true, "Generated TLS keystore at '{}'", ksPath);
 			}
 
 			KeyStore ks = KeyStore.getInstance(STORE_TYPE);
@@ -79,7 +79,7 @@ public final class TLS {
 			try {
 				String spki = spkiPinFromKeystore(ks, password);
 				if (spki != null) {
-					Log.info("Velocity TLS SPKI pin: {}", spki);
+					Log.success(true, "Velocity TLS SPKI pin: {}", spki);
 
 				}
 			} catch (Exception e) {
@@ -138,7 +138,7 @@ public final class TLS {
 			try {
 				String spki = spkiPinFromKeystore(ks, password);
 				if (spki != null) {
-					Log.info("Velocity TLS SPKI pin: {}", spki);
+					Log.success(true, "Velocity TLS SPKI pin: {}", spki);
 				}
 			} catch (Exception e) {
 				Log.warn("Could not compute SPKI pin (keytool path): {}", e.toString());
@@ -182,8 +182,7 @@ public final class TLS {
 								java.security.MessageDigest.getInstance("SHA-256")
 										.digest(cert.getPublicKey()
 												.getEncoded()));
-						dev.objz.commandbridge.main.logging.Log
-								.info("Velocity TLS SPKI pin: {}", spki);
+						Log.success(true, "Velocity TLS SPKI pin: {}", spki);
 						break;
 					}
 				}

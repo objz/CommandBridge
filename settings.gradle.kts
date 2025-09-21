@@ -6,8 +6,12 @@ plugins {
 rootProject.name = "CommandBridge"
 include("core")
 include("velocity")
-include("backends")
-include("backends:bukkit")
-include("backends:folia")
 
 include("dist")
+
+include("backends")                
+include("backends:loader")         
+include("backends:impl:bukkit")    
+include("backends:impl:paper")     
+include("backends:impl:folia")     
+include("backends:bootstrap")      
