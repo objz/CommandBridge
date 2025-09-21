@@ -29,7 +29,7 @@ public final class SecretLoader {
 									PosixFilePermission.OWNER_WRITE));
 				} catch (UnsupportedOperationException ignored) {
 				}
-				Log.success("Generated new secret at " + secretFile);
+				Log.success(true, "Generated new secret at '{}'", secretFile);
 				return k;
 			}
 			var key = Files.readString(secretFile, StandardCharsets.UTF_8).trim();

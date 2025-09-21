@@ -21,7 +21,7 @@ public final class ScriptsBootstrap {
 						Log.warn("Demo resource '/scripts/eco.yml' is missing on the classpath");
 					} else {
 						Files.copy(in, demoDst);
-						Log.success("Generated demo script at {}", demoDst.toAbsolutePath());
+						Log.success(true, "Generated demo script at '{}'", demoDst.toAbsolutePath());
 					}
 				}
 			}

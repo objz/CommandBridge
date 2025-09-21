@@ -1,6 +1,8 @@
 package dev.objz.commandbridge.main.config;
 
 import dev.objz.commandbridge.main.config.profile.ConfigProfile;
+import dev.objz.commandbridge.main.config.model.BackendsConfig;
+import dev.objz.commandbridge.main.config.model.VelocityConfig;
 import dev.objz.commandbridge.main.config.profile.BackendsConfigProfile;
 import dev.objz.commandbridge.main.config.profile.VelocityConfigProfile;
 import dev.objz.commandbridge.main.logging.Log;
@@ -12,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,9 +22,8 @@ public final class ConfigManager {
 	private final Path filePath;
 	private volatile Object current;
 
-	private static final Map<Class<?>, ConfigProfile<?>> PROFILES = Map.of(
-			dev.objz.commandbridge.main.config.model.VelocityConfig.class, new VelocityConfigProfile(),
-			dev.objz.commandbridge.main.config.model.BackendsConfig.class, new BackendsConfigProfile());
+	private static final Map<Class<?>, ConfigProfile<?>> PROFILES = Map.of(VelocityConfig.class,
+			new VelocityConfigProfile(), BackendsConfig.class, new BackendsConfigProfile());
 
 	public ConfigManager(Path dataDir) {
 		this.filePath = dataDir.resolve("config.yml");
@@ -48,8 +50,7 @@ public final class ConfigManager {
 
 			ConfigProfile<T> profile = profileOf(modelClass);
 
-			// unknown-key warnings
-			Set<String> valid = profile.validKeys();
+			Set<String> valid = new HashSet<>(ConfigKeys.topLevelKeysOf(modelClass));
 			for (var key : root.childrenMap().keySet()) {
 				String k = String.valueOf(key);
 				if (!valid.contains(k)) {
@@ -69,7 +70,7 @@ public final class ConfigManager {
 			this.current = result.config();
 
 			if (!result.ok()) {
-				Log.error("Invalid config.yml. Using defaults where possible");
+				Log.error("Invalid config.yml");
 			}
 			return result.ok();
 

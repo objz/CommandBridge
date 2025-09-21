@@ -6,20 +6,12 @@ public final class FeedbackLog {
 	private FeedbackLog() {
 	}
 
-	/**
-	 * "<Title> stats: requested R, registered S, skipped F, errors E"
-	 * - title gray
-	 * - requested: ALWAYS emphasized (bold + magenta)
-	 * - registered: green if >0 else reset
-	 * - skipped (formerly 'failed'): yellow if >0 else reset
-	 * - errors: red if >0 else reset
-	 */
-	public static void summary(String title, Feedback f) {
+	public static void summary(String title, Feedback f, String from) {
 		int errorsCount = (f.errors() == null) ? 0 : f.errors().size();
 
 		final String line = String.format(
-				"%s%s stats:%s requested %s%s%d%s, registered %s%d%s, skipped %s%d%s, errors %s%d%s",
-				Log.GRAY, title, Log.RESET,
+				"%s%s @%s:%s requested %s%s%d%s, registered %s%d%s, skipped %s%d%s, errors %s%d%s",
+				Log.GRAY, title, from, Log.RESET,
 				Log.BOLD, Log.MAGENTA, f.requested(), Log.RESET,
 				colorIf(f.succeeded() > 0, Log.GREEN), f.succeeded(), Log.RESET,
 				colorIf(f.failed() > 0, Log.YELLOW), f.failed(), Log.RESET,
@@ -27,15 +19,27 @@ public final class FeedbackLog {
 		Log.info(line);
 	}
 
-	public static void details(Feedback f) {
+	public static void details(Feedback f, String from) {
+		details(f, from, false);
+	}
+
+	public static void details(Feedback f, String from, boolean backendMode) {
 		if (f.warnings() != null && !f.warnings().isEmpty()) {
 			for (String w : f.warnings()) {
-				Log.info(String.format("%sWarn:%s %s", Log.YELLOW, Log.RESET, w));
+				if (backendMode) {
+					Log.warn(w);
+				} else {
+					Log.warn("@" + from + ": " + w);
+				}
 			}
 		}
 		if (f.errors() != null && !f.errors().isEmpty()) {
 			for (String e : f.errors()) {
-				Log.info(String.format("%sError:%s %s", Log.RED, Log.RESET, e));
+				if (backendMode) {
+					Log.error(e);
+				} else {
+					Log.error("@" + from + ": " + e);
+				}
 			}
 		}
 	}

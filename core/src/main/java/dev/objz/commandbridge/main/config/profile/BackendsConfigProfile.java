@@ -4,17 +4,11 @@ import dev.objz.commandbridge.main.config.model.BackendsConfig;
 import dev.objz.commandbridge.main.config.model.TlsMode;
 import dev.objz.commandbridge.main.logging.Log;
 
-import java.util.Set;
 
 public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig> {
 	@Override
 	public BackendsConfig defaults() {
 		return BackendsConfig.defaults();
-	}
-
-	@Override
-	public Set<String> validKeys() {
-		return Set.of("host", "port", "client-id", "security", "debug");
 	}
 
 	@Override

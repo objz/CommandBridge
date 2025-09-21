@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.backends.PlatformInterface;
+import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
@@ -16,6 +16,7 @@ import dev.objz.commandbridge.main.util.RateLimiter;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public final class MessageRouter {
 	private final Map<MessageType, InboundHandler> byType = new EnumMap<>(MessageType.class);
@@ -27,7 +28,7 @@ public final class MessageRouter {
 		void handle(Envelope env) throws Exception;
 	}
 
-	public MessageRouter(WsClient ws, ObjectMapper mapper, PlatformInterface platform, BackendsConfig config) {
+	public MessageRouter(WsClient ws, ObjectMapper mapper, Supplier<PlatformRegistry> platform, BackendsConfig config) {
 		this.ws = ws;
 		this.mapper = mapper;
 		this.limiter = new RateLimiter<>(config.limits().inboundMessagesSec());
