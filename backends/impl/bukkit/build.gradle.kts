@@ -9,9 +9,11 @@ java {
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
+    maven("https://oss.sonatype.org/content/repositories/snapshots")
 }
 dependencies {
-    implementation(project(":backends"))          // WsClient, MessageRouter, etc.
-    implementation(project(":backends:loader"))   // PlatformAdapter API
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    implementation(project(":backends"))         
+    implementation(project(":backends:loader")) 
+    compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
 }
