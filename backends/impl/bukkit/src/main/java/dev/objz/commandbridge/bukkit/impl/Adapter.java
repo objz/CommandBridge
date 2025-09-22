@@ -33,8 +33,12 @@ public final class Adapter implements PlatformAdapter {
 		}
 
 		Log.setDebug(cfg.debug());
-		Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+		Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		Log.info("Backend running on Bukkit");
+
+		Log.installThreadMarshalling(
+				() -> Bukkit.isPrimaryThread(),
+				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
 
 		this.client = new WsClient(cfg, () -> registry, dataDir);
 		client.start();
@@ -49,6 +53,5 @@ public final class Adapter implements PlatformAdapter {
 			Log.info("Backend (Bukkit) stopped");
 		}
 	}
-
 
 }
