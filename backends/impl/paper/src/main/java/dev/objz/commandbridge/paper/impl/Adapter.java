@@ -33,7 +33,7 @@ public final class Adapter implements PlatformAdapter {
 		}
 
 		Log.setDebug(cfg.debug());
-		Log.debug("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+		Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		Log.info("Backend running on Paper");
 
 		this.client = new WsClient(cfg, () -> registry, dataDir);

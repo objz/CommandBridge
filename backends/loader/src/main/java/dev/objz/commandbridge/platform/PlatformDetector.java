@@ -9,13 +9,17 @@ public final class PlatformDetector {
 		FOLIA, PAPER, BUKKIT, FORGE, FABRIC, UNKNOWN
 	}
 
+	private static volatile Platform platform;
+
 	private PlatformDetector() {
 	}
 
-	/**
-	 * Detection with strict priority inside the Bukkit family:
-	 * FOLIA → PAPER → SPIGOT
-	 */
+
+	// maybe use it later somewhere idk
+	public static Platform getPlatform() {
+		return platform;
+	}
+
 	public static Platform detectPlatform() {
 		if (classExists("io.papermc.paper.threadedregions.RegionizedServer"))
 			return Platform.FOLIA;
@@ -41,13 +45,9 @@ public final class PlatformDetector {
 		}
 	}
 
-	/**
-	 * Adapter resolution:
-	 * Handles Bukkit-family explicitly with fixed priority.
-	 * Extend this switch for Fabric/Forge/etc. as needed.
-	 */
 	public static Optional<PlatformAdapter> loadAdapter() {
 		Platform p = detectPlatform();
+		platform = p;
 		String implClass = switch (p) {
 			case FOLIA -> "dev.objz.commandbridge.folia.impl.Adapter";
 			case PAPER -> "dev.objz.commandbridge.paper.impl.Adapter";
