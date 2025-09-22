@@ -21,6 +21,13 @@ dependencies {
     implementation(project(":backends:impl:bukkit"))
     implementation(project(":backends:impl:paper"))
     implementation(project(":backends:impl:folia"))
+
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    
+    implementation("org.spongepowered:configurate-yaml:4.2.0")
+    implementation("org.spongepowered:configurate-core:4.2.0")
+    implementation("org.yaml:snakeyaml:2.2")
 }
 
 tasks {
@@ -34,19 +41,9 @@ tasks {
         relocate("io.undertow", "dev.objz.libs.undertow")
         relocate("org.xnio", "dev.objz.libs.xnio")
         relocate("org.jboss.threads", "dev.objz.libs.jboss.threads")
+        relocate("org.spongepowered.configurate", "dev.objz.libs.configurate")
+        relocate("org.yaml.snakeyaml", "dev.objz.libs.snakeyaml")
 	mergeServiceFiles()
-
-        dependencies {
-            exclude(dependency("com.google.guava:.*"))
-            exclude(dependency("com.google.guava:listenablefuture:.*"))
-            exclude(dependency("com.google.j2objc:j2objc-annotations:.*"))
-            exclude(dependency("com.google.code.findbugs:jsr305:.*"))
-            exclude(dependency("org.slf4j:.*"))
-            exclude(dependency("net.kyori:.*"))
-            exclude(dependency("org.spongepowered:configurate-.*"))
-            exclude(dependency("com.velocitypowered:velocity-.*"))
-            exclude(dependency("com.mojang:brigadier:.*"))
-        }
 
         from(project(":velocity").layout.projectDirectory.dir("src/main/resources")) {
             include("velocity-plugin.json")
