@@ -29,7 +29,7 @@ dependencies {
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.2")
 
-    implementation("dev.jorel:commandapi-bukkit-shade:10.0.1")
+    implementation("dev.jorel:commandapi-bukkit-shade:10.1.2")
 }
 
 tasks {
