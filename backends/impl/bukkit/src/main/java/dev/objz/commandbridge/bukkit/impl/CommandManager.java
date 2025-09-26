@@ -21,7 +21,7 @@ public final class CommandManager extends PlatformRegistry {
 
 	@Override
 	protected void doRegister(CommandStub stub) throws Exception {
-		// TODO
+
 	}
 
 	@Override

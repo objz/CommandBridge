@@ -28,6 +28,8 @@ dependencies {
     implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.2")
+
+    implementation("dev.jorel:commandapi-bukkit-shade:10.0.1")
 }
 
 tasks {
@@ -37,7 +39,11 @@ tasks {
         archiveBaseName.set("CommandBridge")
         archiveClassifier.set("all") // produce CommandBridge-<version>.jar
 
-        relocate("com.fasterxml.jackson", "dev.objz.shaded.jackson")
+        manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
+
+
+        relocate("dev.jorel.commandapi", "dev.objz.libs.commandapi.spigotapi")
+        relocate("com.fasterxml.jackson", "dev.objz.libs.jackson")
         relocate("io.undertow", "dev.objz.libs.undertow")
         relocate("org.xnio", "dev.objz.libs.xnio")
         relocate("org.jboss.threads", "dev.objz.libs.jboss.threads")
