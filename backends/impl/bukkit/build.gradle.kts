@@ -16,5 +16,5 @@ dependencies {
     implementation(project(":backends"))         
     implementation(project(":backends:loader")) 
     compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
-    compileOnly("dev.jorel:commandapi-bukkit-shade:10.0.1")
+    compileOnly("dev.jorel:commandapi-bukkit-shade:10.1.2")
 }

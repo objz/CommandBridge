@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
+import dev.jorel.commandapi.CommandAPICommand;
 import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
 
@@ -21,6 +22,16 @@ public final class CommandManager extends PlatformRegistry {
 
 	@Override
 	protected void doRegister(CommandStub stub) throws Exception {
+		CommandAPICommand cmd = new CommandAPICommand(stub.name());
+
+		var aliases = stub.aliases();
+		if (aliases != null && !aliases.isEmpty()) {
+			cmd.withAliases(aliases.toArray(String[]::new));
+		}
+
+		
+
+		cmd.register();
 
 	}
 

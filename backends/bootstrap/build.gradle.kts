@@ -20,4 +20,5 @@ dependencies {
     runtimeOnly(project(":backends:impl:paper"))
     runtimeOnly(project(":backends:impl:folia"))
     compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("dev.jorel:commandapi-bukkit-shade:10.1.2")
 }
