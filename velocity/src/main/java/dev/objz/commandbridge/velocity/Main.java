@@ -15,7 +15,6 @@ import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.main.security.SecretLoader;
 import dev.objz.commandbridge.main.security.TlsResolver;
-import dev.objz.commandbridge.main.scripting.ScriptTypes.ScriptKind.Side;
 import dev.objz.commandbridge.velocity.debug.ScriptDebug;
 import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
 import dev.objz.commandbridge.velocity.scripting.ScriptManager;
@@ -23,7 +22,7 @@ import dev.objz.commandbridge.velocity.scripting.ScriptsBootstrap;
 import dev.objz.commandbridge.velocity.ws.MessageRouter;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import dev.objz.commandbridge.velocity.ws.WsServer;
-
+import dev.objz.commandbridge.main.scripting.v3.enums.ScriptSide;
 
 import org.slf4j.Logger;
 
@@ -69,7 +68,7 @@ public final class Main {
 			ws.start();
 
 			Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
-			var mgr = ScriptManager.loadForSide(scriptsDir, Side.VELOCITY);
+			var mgr = ScriptManager.loadForSide(scriptsDir, ScriptSide.VELOCITY);
 
 			OnAuthRegisterCommands.install(
 					sessions, mgr, mapper, config.serverId(), config);

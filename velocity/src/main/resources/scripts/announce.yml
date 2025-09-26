@@ -1,0 +1,39 @@
+version: 2
+name: announce-proxy
+description: Broadcast a message on a backend server
+enabled: true
+aliases: [announce, bc]
+
+permissions:
+  enabled: true
+  silent: false
+
+defaults:
+  target:
+    run-as: CONSOLE
+    id: "client-1"
+    kind:
+      register: VELOCITY
+      execute: BACKEND
+    server:
+      target-required: false
+      schedule-online: false
+      timeout: 1s
+      frequency: 2s
+  delay: 0s
+  cooldown: 0s
+  timeout: 2s
+
+args:
+  - name: message
+    required: true
+    type: GREEDY_TEXT
+
+commands:
+  - command: "say ${message}"
+    # Example of per-step override (optional):
+    # target:
+    #   run-as: CONSOLE
+    #   id: "client-1"
+    delay: 0s
+    timeout: 2s

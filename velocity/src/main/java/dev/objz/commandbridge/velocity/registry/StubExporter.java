@@ -1,29 +1,20 @@
 package dev.objz.commandbridge.velocity.registry;
 
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import dev.objz.commandbridge.velocity.scripting.ScriptManager;
-import dev.objz.commandbridge.main.scripting.Effective;
+import dev.objz.commandbridge.main.scripting.v3.effective.EffectiveModels;
+import dev.objz.commandbridge.main.scripting.v3.usage.UsageBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A stub contains just enough metadata for
- * backends to register the command
- */
 public final class StubExporter {
 	private StubExporter() {
 	}
 
-	public static List<CommandStub> export(ScriptManager mgr) {
+	public static List<CommandStub> export(List<EffectiveModels.Script> scripts) {
 		var out = new ArrayList<CommandStub>();
-		for (Effective.Script s : mgr.enabled()) {
-			String name = s.name();
-			List<String> aliases = s.aliases() != null ? s.aliases() : List.of();
-			String desc = s.description() != null ? s.description() : "";
-			String usage = s.args() != null ? s.args().description() : "";
-			out.add(new CommandStub(name, aliases, desc, usage));
-		}
+		for (var s : scripts)
+			out.add(new CommandStub(s.name(), s.aliases(), s.description(), UsageBuilder.build(s)));
 		return out;
 	}
 }
