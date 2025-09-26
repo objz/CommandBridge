@@ -23,7 +23,7 @@ public final class OnAuthRegisterCommands {
 
 	public static void install(SessionHub sessions, ScriptManager mgr, ObjectMapper mapper, String serverId, VelocityConfig config) {
 		sessions.onAuthed((ClientSession s) -> {
-			List<CommandStub> stubs = StubExporter.export(mgr);
+			List<CommandStub> stubs = StubExporter.export(mgr.enabled());
 			RegisterCommandsPayload payload = new RegisterCommandsPayload(true, stubs);
 			Envelope env = Envelope.make(MessageType.REGISTER_COMMANDS, serverId, s.clientId(),
 					mapper.valueToTree(payload));

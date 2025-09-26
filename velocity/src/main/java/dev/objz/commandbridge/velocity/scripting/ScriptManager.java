@@ -2,12 +2,9 @@ package dev.objz.commandbridge.velocity.scripting;
 
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.logging.StatusLog;
-import dev.objz.commandbridge.main.scripting.Effective;
-import dev.objz.commandbridge.main.scripting.Schema;
-import dev.objz.commandbridge.main.scripting.ScriptLoader;
-import dev.objz.commandbridge.main.scripting.ScriptResolver;
-import dev.objz.commandbridge.main.scripting.ScriptTypes.ScriptKind.Side;
-import dev.objz.commandbridge.main.scripting.model.Spec;
+import dev.objz.commandbridge.main.scripting.v3.ScriptEngine;
+import dev.objz.commandbridge.main.scripting.v3.effective.EffectiveModels;
+import dev.objz.commandbridge.main.scripting.v3.enums.ScriptSide;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,6 +12,10 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * v3 ScriptManager: loads scripts through the new ScriptEngine and exposes
+ * enabled/disabled/error entries. No backward compatibility with v2.
+ */
 public final class ScriptManager {
 
 	public enum Status {
@@ -24,10 +25,10 @@ public final class ScriptManager {
 	public static final class Entry {
 		private final Status status;
 		private final String name;
-		private final Effective.Script script;
+		private final EffectiveModels.Script script;
 		private final String error;
 
-		Entry(Status status, String name, Effective.Script script, String error) {
+		Entry(Status status, String name, EffectiveModels.Script script, String error) {
 			this.status = status;
 			this.name = name;
 			this.script = script;
@@ -42,7 +43,7 @@ public final class ScriptManager {
 			return name;
 		}
 
-		public Optional<Effective.Script> script() {
+		public Optional<EffectiveModels.Script> script() {
 			return Optional.ofNullable(script);
 		}
 
@@ -59,103 +60,91 @@ public final class ScriptManager {
 		this.loadedCount = loadedCount;
 	}
 
-	public static ScriptManager loadForSide(Path scriptsDir, Side side) {
-		var registry = new Schema.Registry();
-		var resolver = new ScriptResolver(registry);
-		var loader = new ScriptLoader();
+	public static ScriptManager loadForSide(Path scriptsDir, ScriptSide side) {
+		Objects.requireNonNull(side, "side");
+		var engine = new ScriptEngine();
+
+		List<Path> files = List.of();
+		try {
+			if (Files.isDirectory(scriptsDir)) {
+				files = Files.list(scriptsDir)
+						.filter(Files::isRegularFile)
+						.filter(p -> {
+							String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+							return n.endsWith(".yml") || n.endsWith(".yaml");
+						})
+						.sorted()
+						.toList();
+			}
+		} catch (IOException ioe) {
+			Log.error("Failed to list scripts dir '{}': {}", scriptsDir, ioe.toString());
+		}
 
 		List<Entry> out = new ArrayList<>();
-		List<Spec.ScriptSpecV2> specs;
-
-		try {
-			specs = loader.loadAll(scriptsDir);
-		} catch (IOException e) {
-			out.add(new Entry(Status.ERROR, "<system>", null, "failed to read scripts: " + e.getMessage()));
-			return new ScriptManager(out, 0);
-		}
-
-		for (Spec.ScriptSpecV2 spec : specs) {
-			if (spec == null) {
-				out.add(new Entry(Status.ERROR, "<unnamed>", null, "parse failure (null spec)"));
-				continue;
-			}
-
-			if (spec.kind() == null || !spec.kind().registersOn(side)) {
-				String nm = nonBlankOr(spec.name(), "<unnamed>");
-				out.add(new Entry(Status.DISABLED, nm, null, null));
-				continue;
-			}
-
-			List<String> errs = new ArrayList<>();
-			require("version", spec.version(), errs);
-			require("kind", spec.kind(), errs);
-			require("name", spec.name(), errs);
-			require("commands", spec.commands(), errs);
-
-			if (!errs.isEmpty()) {
-				String nm = nonBlankOr(spec.name(), "<unnamed>");
-				out.add(new Entry(Status.ERROR, nm, null, String.join("\n", errs)));
-				continue;
-			}
-
+		for (Path f : files) {
+			EffectiveModels.Script s = null;
 			try {
-				final Effective.Script eff = resolver.resolve(spec);
-				if (eff.enabled()) {
-					out.add(new Entry(Status.ENABLED, eff.name(), eff, null));
-				} else {
-					out.add(new Entry(Status.DISABLED, eff.name(), eff, null));
-				}
-			} catch (ScriptResolver.ValidationException vex) {
-				String nm = nonBlankOr(spec.name(), "<unnamed>");
-				out.add(new Entry(Status.ERROR, nm, null, String.join("\n", vex.errors())));
-			} catch (Exception ex) {
-				String nm = nonBlankOr(spec.name(), "<unnamed>");
-				out.add(new Entry(Status.ERROR, nm, null, "resolution failed: " + ex.getMessage()));
+				s = engine.load(f);
+			} catch (Exception e) {
+				String nm = dropExt(f.getFileName().toString());
+				out.add(new Entry(Status.ERROR, nm, null, e.getMessage()));
+				continue;
+			}
+			if (s == null) {
+				String nm = dropExt(f.getFileName().toString());
+				out.add(new Entry(Status.ERROR, nm, null, "could not read this YAML file"));
+				continue;
+			}
+
+			if (s.defaults() == null || s.defaults().target() == null) {
+				out.add(new Entry(Status.ERROR, s.name(), null, "missing defaults/target"));
+				continue;
+			}
+			if (s.defaults().target().register() != side) {
+				out.add(new Entry(Status.DISABLED, s.name(), s, null));
+				continue;
+			}
+
+			if (s.enabled()) {
+				out.add(new Entry(Status.ENABLED, s.name(), s, null));
+			} else {
+				out.add(new Entry(Status.DISABLED, s.name(), s, null));
 			}
 		}
 
-		return new ScriptManager(out, specs.size());
+		return new ScriptManager(out, files.size());
 	}
 
 	public List<Entry> entries() {
 		return entries;
 	}
 
-	public List<Effective.Script> enabled() {
-		return entries.stream()
-				.filter(e -> e.status == Status.ENABLED && e.script != null)
-				.map(e -> e.script)
-				.collect(Collectors.toUnmodifiableList());
+	public List<EffectiveModels.Script> enabled() {
+		return entries.stream().filter(e -> e.status == Status.ENABLED && e.script != null)
+				.map(e -> e.script).collect(Collectors.toUnmodifiableList());
 	}
 
-	public List<Effective.Script> disabled() {
-		return entries.stream()
-				.filter(e -> e.status == Status.DISABLED && e.script != null)
-				.map(e -> e.script)
-				.collect(Collectors.toUnmodifiableList());
+	public List<EffectiveModels.Script> disabled() {
+		return entries.stream().filter(e -> e.status == Status.DISABLED && e.script != null)
+				.map(e -> e.script).collect(Collectors.toUnmodifiableList());
 	}
 
 	public List<Entry> errors() {
-		return entries.stream()
-				.filter(e -> e.status == Status.ERROR)
-				.collect(Collectors.toUnmodifiableList());
+		return entries.stream().filter(e -> e.status == Status.ERROR).collect(Collectors.toUnmodifiableList());
 	}
 
 	public void logReport(Path scriptsDir, boolean includeFileList) {
 		List<Entry> errs = errors();
 		for (Entry e : errs) {
 			String header = "Script '" + e.name() + "' invalid:";
-			String details = e.error()
-					.map(ScriptManager::formatBulleted)
-					.orElse("    - <unknown error>");
+			String details = e.error().map(ScriptManager::formatBulleted).orElse("    - <unknown error>");
 			Log.error("{}\n{}", header, details);
 		}
 
 		long en = entries.stream().filter(e -> e.status == Status.ENABLED).count();
 		long dis = entries.stream().filter(e -> e.status == Status.DISABLED).count();
 		long err = errs.size();
-
-		StatusLog.scriptsSummary(loadedCount, en, dis, err);
+		StatusLog.scriptsSummary(loadedCount, en, dis + err, err);
 
 		if (includeFileList) {
 			try {
@@ -175,26 +164,12 @@ public final class ScriptManager {
 
 	private static String formatBulleted(String raw) {
 		String[] lines = raw.split("\\r?\\n|;\\s*");
-		return Arrays.stream(lines)
-				.map(String::trim)
-				.filter(s -> !s.isEmpty())
-				.map(s -> "    - " + s)
-				.collect(Collectors.joining(System.lineSeparator()));
+		return Arrays.stream(lines).map(String::trim).filter(s -> !s.isEmpty())
+				.map(s -> "    - " + s).collect(Collectors.joining(System.lineSeparator()));
 	}
 
-	private static void require(String field, Object value, List<String> errs) {
-		if (value == null) {
-			errs.add(field + " is required");
-			return;
-		}
-		if (value instanceof String s && s.isBlank()) {
-			errs.add(field + " is required");
-		} else if (value instanceof Collection<?> c && c.isEmpty()) {
-			errs.add(field + " is required");
-		}
-	}
-
-	private static String nonBlankOr(String v, String fb) {
-		return (v == null || v.isBlank()) ? fb : v;
+	private static String dropExt(String n) {
+		int i = n.lastIndexOf('.');
+		return (i > 0) ? n.substring(0, i) : n;
 	}
 }

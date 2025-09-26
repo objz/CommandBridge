@@ -14,11 +14,11 @@ public final class ScriptsBootstrap {
 		try {
 			Files.createDirectories(scriptsDir);
 
-			Path demoDst = scriptsDir.resolve("eco.yml");
+			Path demoDst = scriptsDir.resolve("announce.yml");
 			if (!Files.exists(demoDst)) {
-				try (InputStream in = ScriptsBootstrap.class.getResourceAsStream("/scripts/eco.yml")) {
+				try (InputStream in = ScriptsBootstrap.class.getResourceAsStream("/scripts/announce.yml")) {
 					if (in == null) {
-						Log.warn("Demo resource '/scripts/eco.yml' is missing on the classpath");
+						Log.warn("Demo resource '/scripts/announce.yml' is missing on the classpath");
 					} else {
 						Files.copy(in, demoDst);
 						Log.success(true, "Generated demo script at '{}'", demoDst.toAbsolutePath());
