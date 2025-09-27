@@ -47,12 +47,6 @@ public final class SpecValidator {
 				if (a.name() != null && !seen.add(a.name()))
 					e.add("duplicate arg name: " + a.name());
 
-				if (a instanceof RangeArgDef r) {
-					if (r.min() == null || r.max() == null)
-						e.add("args[" + i + "] RANGE requires min and max");
-					else if (r.min() > r.max())
-						e.add("args[" + i + "] RANGE min must be <= max");
-				}
 				if (a instanceof ChoiceArgDef c) {
 					if (c.choices() == null || c.choices().isEmpty())
 						e.add("args[" + i + "] CHOICE requires non-empty choices");
