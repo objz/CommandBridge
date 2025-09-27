@@ -2,7 +2,6 @@ package dev.objz.commandbridge.main.scripting.v3.loader;
 
 import dev.objz.commandbridge.main.scripting.v3.model.args.ArgDef;
 import dev.objz.commandbridge.main.scripting.v3.model.args.ChoiceArgDef;
-import dev.objz.commandbridge.main.scripting.v3.model.args.RangeArgDef;
 import dev.objz.commandbridge.main.scripting.v3.model.args.SimpleArgDef;
 import org.spongepowered.configurate.objectmapping.meta.Setting;
 
@@ -48,7 +47,6 @@ public final class PathIntrospector {
 				out.add(arr);
 				if (toClass(elem) != null && ArgDef.class.isAssignableFrom(toClass(elem))) {
 					walk(SimpleArgDef.class, arr, out, seen);
-					walk(RangeArgDef.class, arr, out, seen);
 					walk(ChoiceArgDef.class, arr, out, seen);
 				} else {
 					walk(elem, arr, out, seen);

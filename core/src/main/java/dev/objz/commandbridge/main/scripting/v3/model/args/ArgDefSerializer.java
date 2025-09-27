@@ -25,7 +25,6 @@ public final class ArgDefSerializer implements TypeSerializer<ArgDef> {
 		}
 
 		Class<? extends ArgDef> impl = (argType == ArgType.CHOICE) ? ChoiceArgDef.class
-				: (argType == ArgType.RANGE) ? RangeArgDef.class
 						: SimpleArgDef.class;
 
 		return node.get(impl);
@@ -39,8 +38,6 @@ public final class ArgDefSerializer implements TypeSerializer<ArgDef> {
 		}
 		if (obj instanceof ChoiceArgDef c) {
 			target.set(ChoiceArgDef.class, c);
-		} else if (obj instanceof RangeArgDef r) {
-			target.set(RangeArgDef.class, r);
 		} else if (obj instanceof SimpleArgDef s) {
 			target.set(SimpleArgDef.class, s);
 		} else {

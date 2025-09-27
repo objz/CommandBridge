@@ -18,10 +18,7 @@ public final class ArgsResolver {
 			ArgType type = d.type();
 			Long min = null, max = null;
 			java.util.List<String> choices = java.util.List.of();
-			if (d instanceof RangeArgDef r) {
-				min = r.min();
-				max = r.max();
-			}
+
 			if (d instanceof ChoiceArgDef c) {
 				choices = c.choices() == null ? java.util.List.of()
 						: java.util.List.copyOf(c.choices());

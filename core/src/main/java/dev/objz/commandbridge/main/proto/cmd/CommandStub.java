@@ -6,5 +6,5 @@ public record CommandStub(
         String name,              // script name (unique)
         List<String> aliases,   // extra aliases
         String description,     // short help text
-        String usage            // e.g. "/eco <player> <amount> <serverId>"
+        List<CommandArg> args            
 ) {}
