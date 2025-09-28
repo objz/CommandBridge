@@ -1,8 +1,9 @@
 package dev.objz.commandbridge.main.proto.cmd;
 
-import dev.objz.commandbridge.main.scripting.v3.enums.ArgType;
 
 import java.util.List;
+
+import dev.objz.commandbridge.main.scripting.v3.api.groups.args.ArgType;
 
 public record CommandArg(
 		String name,

@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Objects;
 
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.jorel.commandapi.CommandAPICommand;
@@ -29,7 +28,7 @@ import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.main.proto.cmd.CommandArg;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import dev.objz.commandbridge.main.scripting.v3.enums.ArgType;
+import dev.objz.commandbridge.main.scripting.v3.api.groups.args.ArgType;
 
 public final class CommandManager extends PlatformRegistry {
 	private final JavaPlugin plugin;

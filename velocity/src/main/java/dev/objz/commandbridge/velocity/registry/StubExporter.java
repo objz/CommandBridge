@@ -14,8 +14,8 @@ public final class StubExporter {
 	public static List<CommandStub> export(List<EffectiveModels.Script> scripts) {
 		var out = new ArrayList<CommandStub>();
 		for (var s : scripts) {
-			var effArgs = (s.args() == null || s.args().spec() == null) ? List.<CommandArg>of()
-					: s.args().spec().stream()
+			var effArgs = (s.args() == null || s.args().specs() == null) ? List.<CommandArg>of()
+					: s.args().specs().stream()
 							.map(a -> new CommandArg(
 									a.name(), a.index(), a.required(), a.type(),
 									a.min(), a.max(), a.choices()))

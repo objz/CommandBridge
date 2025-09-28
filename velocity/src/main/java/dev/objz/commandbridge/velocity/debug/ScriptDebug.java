@@ -42,11 +42,11 @@ public final class ScriptDebug {
 				t.scheduleFrequency().toMillis());
 
 		var a = s.args();
-		if (a == null || a.spec() == null || a.spec().isEmpty()) {
+		if (a == null || a.specs() == null || a.specs().isEmpty()) {
 			Log.debug("[dbg] args.spec        : <empty>");
 		} else {
-			for (int i = 0; i < a.spec().size(); i++) {
-				var arg = a.spec().get(i);
+			for (int i = 0; i < a.specs().size(); i++) {
+				var arg = a.specs().get(i);
 				Log.debug("[dbg] args.spec[{}].name      : {}", i, arg.name());
 				Log.debug("[dbg] args.spec[{}].index     : {}", i, arg.index());
 				Log.debug("[dbg] args.spec[{}].required  : {}", i, arg.required());
@@ -68,17 +68,16 @@ public final class ScriptDebug {
 			Log.debug("[dbg] step[{}].delay     : {} ({} ms)", i, st.delay(), st.delay().toMillis());
 			Log.debug("[dbg] step[{}].timeout   : {} ({} ms)", i, st.timeout(), st.timeout().toMillis());
 
-			var tt = st.target();
-			Log.debug("[dbg] step[{}].target.run-as        : {}", i, tt.runAs());
-			Log.debug("[dbg] step[{}].target.id            : {}", i, nvl(tt.id()));
-			Log.debug("[dbg] step[{}].target.kind.register : {}", i, tt.register());
-			Log.debug("[dbg] step[{}].target.kind.execute  : {}", i, tt.execute());
-			Log.debug("[dbg] step[{}].target.targetRequired: {}", i, tt.targetRequired());
-			Log.debug("[dbg] step[{}].target.scheduleOnline: {}", i, tt.scheduleOnline());
-			Log.debug("[dbg] step[{}].target.timeout       : {} ({} ms)", i, tt.scheduleTimeout(),
-					tt.scheduleTimeout().toMillis());
-			Log.debug("[dbg] step[{}].target.frequency     : {} ({} ms)", i, tt.scheduleFrequency(),
-					tt.scheduleFrequency().toMillis());
+			Log.debug("[dbg] step[{}].run-as    : {}", i, st.runAs());
+			Log.debug("[dbg] step[{}].id        : {}", i, nvl(st.id()));
+			Log.debug("[dbg] step[{}].register  : {}", i, st.register());
+			Log.debug("[dbg] step[{}].execute   : {}", i, st.execute());
+			Log.debug("[dbg] step[{}].tgtRequired: {}", i, st.targetRequired());
+			Log.debug("[dbg] step[{}].schedOnline: {}", i, st.scheduleOnline());
+			Log.debug("[dbg] step[{}].timeout   : {} ({} ms)", i, st.timeout(),
+					st.timeout() == null ? 0 : st.timeout().toMillis());
+			Log.debug("[dbg] step[{}].frequency : {} ({} ms)", i, st.frequency(),
+					st.frequency() == null ? 0 : st.frequency().toMillis());
 		}
 
 		Log.debug("[dbg] ----------------------------------------------------------------");
