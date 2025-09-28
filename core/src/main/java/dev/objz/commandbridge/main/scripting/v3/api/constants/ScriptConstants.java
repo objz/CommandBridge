@@ -4,8 +4,6 @@ import java.util.List;
 
 public final class ScriptConstants {
 
-	public static final Integer VERSION = 3;
-	
 	public static final String DESCRIPTION = null;
 
 	public static final Boolean ENABLED = true;
