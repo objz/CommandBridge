@@ -8,6 +8,7 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import org.slf4j.Logger;
 
 import dev.objz.commandbridge.main.config.ConfigManager;
 import dev.objz.commandbridge.main.config.model.VelocityConfig;
@@ -15,16 +16,11 @@ import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.security.AuthService;
 import dev.objz.commandbridge.main.security.SecretLoader;
 import dev.objz.commandbridge.main.security.TlsResolver;
-import dev.objz.commandbridge.velocity.debug.ScriptDebug;
 import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
-import dev.objz.commandbridge.velocity.scripting.ScriptManager;
-import dev.objz.commandbridge.velocity.scripting.ScriptsBootstrap;
+import dev.objz.commandbridge.velocity.registry.ScriptManager;
 import dev.objz.commandbridge.velocity.ws.MessageRouter;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import dev.objz.commandbridge.velocity.ws.WsServer;
-import dev.objz.commandbridge.main.scripting.v3.enums.ScriptSide;
-
-import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
@@ -34,6 +30,11 @@ public final class Main {
 	private final ProxyServer server;
 	private final Path dataDir;
 	private ConfigManager configManager;
+
+	// Configurate's ObjectMapper factory (name clash with Jackson; keep
+	// fully-qualified type)
+	private final org.spongepowered.configurate.objectmapping.ObjectMapper.Factory cfgMapperFactory = org.spongepowered.configurate.objectmapping.ObjectMapper
+			.factoryBuilder().build();
 
 	@Inject
 	public Main(ProxyServer server, Logger velocityLogger, @DataDirectory Path dataDir) {
@@ -45,48 +46,50 @@ public final class Main {
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		Log.info("Initializing CommandBridge...");
+
+		// --- Load config ---
 		this.configManager = new ConfigManager(dataDir);
 		boolean ok = configManager.load(VelocityConfig.class);
 		VelocityConfig config = configManager.current(VelocityConfig.class);
+		if (!ok || config == null) {
+			Log.error("Failed to load velocity config; aborting enable.");
+			return;
+		}
 		Log.setDebug(config.debug());
 
+		// --- Auth & JSON ---
 		var secret = new SecretLoader(dataDir).loadOrCreate();
 		var auth = new AuthService(secret);
-		var mapper = new ObjectMapper();
+		var mapper = new ObjectMapper(); // Jackson for our JSON envelopes
 
-		if (ok) {
+		// --- WS / Router ---
+		var sessions = new SessionHub();
+		boolean requireAuth = config.security().requireAuth();
+		var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
 
-			var sessions = new SessionHub();
-			boolean requireAuth = config.security().requireAuth();
-			var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
+		var tls = TlsResolver.resolveServer(dataDir, config.security());
+		var ws = tls.enabled()
+				? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true,
+						tls.context())
+				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
+		ws.start();
 
-			var tls = TlsResolver.resolveServer(dataDir, config.security());
-			var ws = tls.enabled()
-					? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true,
-							tls.context())
-					: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
-			ws.start();
+		// --- Scripts ---
+		var scripts = new ScriptManager(cfgMapperFactory);
+		scripts.loadAll(dataDir.resolve("scripts"));
 
-			Path scriptsDir = ScriptsBootstrap.ensureWithDemo(dataDir);
-			var mgr = ScriptManager.loadForSide(scriptsDir, ScriptSide.VELOCITY);
+		// --- Register commands to newly-authenticated clients with new system ---
+		OnAuthRegisterCommands.install(sessions, scripts, mapper, config.serverId(), config);
 
-			OnAuthRegisterCommands.install(
-					sessions, mgr, mapper, config.serverId(), config);
-
-			mgr.enabled().forEach(ScriptDebug::dump);
-
-			mgr.logReport(scriptsDir, true);
-
-			Log.debug("Config loaded:");
-			Log.debug("  Host: {}", config.bindHost());
-			Log.debug("  Port: {}", config.bindPort());
-			Log.debug("  Server ID: {}", config.serverId());
-			Log.debug("  Heartbeat: {}s ping, {}s stale timeout",
-					config.heartbeat().appPingSeconds(),
-					config.heartbeat().staleAfterSeconds());
-			Log.debug("  RequireAuth: {}", config.security().requireAuth());
-
-		}
+		// --- Debug summary ---
+		Log.debug("Config loaded:");
+		Log.debug("  Host: {}", config.bindHost());
+		Log.debug("  Port: {}", config.bindPort());
+		Log.debug("  Server ID: {}", config.serverId());
+		Log.debug("  Heartbeat: {}s ping, {}s stale timeout",
+				config.heartbeat().appPingSeconds(),
+				config.heartbeat().staleAfterSeconds());
+		Log.debug("  RequireAuth: {}", config.security().requireAuth());
 	}
 
 	@Subscribe

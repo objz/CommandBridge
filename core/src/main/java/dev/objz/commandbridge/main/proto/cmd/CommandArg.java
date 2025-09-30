@@ -3,7 +3,8 @@ package dev.objz.commandbridge.main.proto.cmd;
 
 import java.util.List;
 
-import dev.objz.commandbridge.main.scripting.v3.api.groups.args.ArgType;
+import dev.objz.commandbridge.main.scripting.v3.model.resolved.Script.ArgType;
+
 
 public record CommandArg(
 		String name,
