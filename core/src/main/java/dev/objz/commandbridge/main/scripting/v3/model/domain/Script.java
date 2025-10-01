@@ -10,7 +10,8 @@ public record Script(
 		List<String> aliases,
 		Permissions permissions,
 		Defaults defaults,
-		List<ArgDef> args) {
+		List<ArgDef> args,
+		List<CommandStep> steps) {
 	public record ArgDef(String name, boolean required, ArgType type) {
 	}
 

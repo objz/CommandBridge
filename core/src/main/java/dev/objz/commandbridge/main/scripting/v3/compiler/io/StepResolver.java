@@ -3,6 +3,8 @@ package dev.objz.commandbridge.main.scripting.v3.compiler.io;
 import dev.objz.commandbridge.main.scripting.v3.model.domain.*;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class StepResolver {
 
@@ -11,6 +13,27 @@ public final class StepResolver {
 			Target target,
 			Duration delay,
 			Duration timeout) {
+	}
+
+	public static ResolvedStep resolve(Defaults defaults, CommandStep step) {
+		Target baseTarget = defaults.target();
+		Target effectiveTarget = (step.targetOverride() != null)
+				? applyTargetOverride(baseTarget, step.targetOverride())
+				: baseTarget;
+
+		Duration delay = pick(step.delayOverride(), defaults.delay());
+		Duration timeout = pick(step.timeoutOverride(), defaults.target().server().timeout());
+
+		return new ResolvedStep(step.command(), effectiveTarget, delay, timeout);
+	}
+
+	public static List<ResolvedStep> resolveAll(Defaults defaults, List<CommandStep> steps) {
+		var out = new ArrayList<ResolvedStep>();
+		if (steps == null || steps.isEmpty())
+			return out;
+		for (var s : steps)
+			out.add(resolve(defaults, s));
+		return out;
 	}
 
 	private static Duration pick(Duration overrideValue, Duration base) {

@@ -24,4 +24,6 @@ public final class ScriptDto {
 	public DefaultsDto defaults;
 	@Setting("args")
 	public List<ArgDto> args;
+	@Setting("commands")
+	public List<CommandStepDto> commands;
 }
