@@ -2,7 +2,7 @@ package dev.objz.commandbridge.velocity.registry;
 
 import dev.objz.commandbridge.main.proto.cmd.CommandArg;
 import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import dev.objz.commandbridge.main.scripting.v3.model.resolved.Script;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.Script;
 
 import java.util.ArrayList;
 import java.util.List;
