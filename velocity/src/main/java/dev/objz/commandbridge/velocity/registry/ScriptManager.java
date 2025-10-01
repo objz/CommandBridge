@@ -2,10 +2,10 @@ package dev.objz.commandbridge.velocity.registry;
 
 import dev.objz.commandbridge.main.logging.Log;
 import dev.objz.commandbridge.main.logging.StatusLog;
-import dev.objz.commandbridge.main.scripting.v3.ScriptLoader;
-import dev.objz.commandbridge.main.scripting.v3.compile.core.Problem;
-import dev.objz.commandbridge.main.scripting.v3.compile.core.Severity;
-import dev.objz.commandbridge.main.scripting.v3.model.resolved.Script;
+import dev.objz.commandbridge.main.scripting.v3.compiler.ScriptCompiler;
+import dev.objz.commandbridge.main.scripting.v3.compiler.problems.Problem;
+import dev.objz.commandbridge.main.scripting.v3.compiler.problems.Severity;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.Script;
 import dev.objz.commandbridge.velocity.ScriptDebug;
 
 import org.spongepowered.configurate.ConfigurationNode;
@@ -76,7 +76,7 @@ public final class ScriptManager {
 		int enabledCount = 0;
 		int disabledCount = 0;
 
-		var loader = new ScriptLoader(mapperFactory);
+		var loader = new ScriptCompiler(mapperFactory);
 
 		for (Path file : files) {
 			String source = scriptsDir.relativize(file).toString();
@@ -98,7 +98,7 @@ public final class ScriptManager {
 				continue;
 			}
 
-			ScriptLoader.Result res;
+			ScriptCompiler.Result res;
 			try {
 				res = loader.load(node, source);
 			} catch (SerializationException ex) {

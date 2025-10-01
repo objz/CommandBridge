@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.velocity;
 
 import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.scripting.v3.model.resolved.*;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.*;
 
 import java.time.Duration;
 import java.util.List;
@@ -54,60 +54,23 @@ public final class ScriptDebug {
         }
 
         // Commands with resolved values
-        Log.debug("--- Commands ({}) ---", script.commands().size());
-        List<CommandStep> commands = script.commands();
-        if (commands.isEmpty()) {
-            Log.debug("  <no commands>");
-        } else {
-            for (int i = 0; i < commands.size(); i++) {
-                CommandStep cmd = commands.get(i);
-                Log.debug("  commands[{}].command : '{}'", i, cmd.command());
-                
-                // Print resolved values for this command
-                printResolvedCommand(i, cmd, def, sourceName);
-            }
-        }
+        // Log.debug("--- Commands ({}) ---", script.commands().size());
+        // List<CommandStep> commands = script.commands();
+        // if (commands.isEmpty()) {
+        //     Log.debug("  <no commands>");
+        // } else {
+        //     for (int i = 0; i < commands.size(); i++) {
+        //         CommandStep cmd = commands.get(i);
+        //         Log.debug("  commands[{}].command : '{}'", i, cmd.command());
+        //
+        //         // Print resolved values for this command
+        //         printResolvedCommand(i, cmd, def, sourceName);
+        //     }
+        // }
 
         Log.debug("=== END SCRIPT DEBUG: {} ===", sourceName);
     }
 
-    private static void printResolvedCommand(int index, CommandStep cmd, Defaults defaults, String sourceName) {
-        Log.debug("  --- Resolved Values for commands[{}] ---", index);
-        
-        // Start with defaults
-        Target defaultTarget = defaults.target();
-        Duration defaultDelay = defaults.delay();
-        Duration defaultTimeout = defaultTarget.server().timeout();
-
-        // Apply overrides
-        CommandOverrides overrides = cmd.overrides();
-        
-        // Resolved target values
-        Target resolvedTarget = defaultTarget;
-        if (overrides != null && overrides.target() != null) {
-            resolvedTarget = mergeTarget(defaultTarget, overrides.target());
-        }
-        
-        printTarget(resolvedTarget, "  commands[" + index + "].resolved");
-
-        // Resolved timing values
-        Duration resolvedDelay = defaultDelay;
-        Duration resolvedTimeout = defaultTimeout;
-        
-        if (overrides != null) {
-            if (overrides.delay() != null) {
-                resolvedDelay = overrides.delay();
-            }
-            if (overrides.timeout() != null) {
-                resolvedTimeout = overrides.timeout();
-            }
-        }
-        
-        Log.debug("  commands[{}].resolved.delay   : {} {}", index, formatDuration(resolvedDelay), 
-                  getOverrideInfo(overrides != null ? overrides.delay() : null, "from override", "from defaults"));
-        Log.debug("  commands[{}].resolved.timeout : {} {}", index, formatDuration(resolvedTimeout),
-                  getOverrideInfo(overrides != null ? overrides.timeout() : null, "from override", "from target.server.timeout"));
-    }
 
     private static Target mergeTarget(Target base, Target override) {
         // Merge target values, with override taking precedence
