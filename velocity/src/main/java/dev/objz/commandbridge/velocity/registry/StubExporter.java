@@ -7,7 +7,6 @@ import dev.objz.commandbridge.main.scripting.v3.model.domain.Script;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Convert resolved v3 Scripts -> Command stubs for registration. */
 public final class StubExporter {
 	private StubExporter() {
 	}
@@ -23,7 +22,6 @@ public final class StubExporter {
 			if (defs != null && !defs.isEmpty()) {
 				for (int i = 0; i < defs.size(); i++) {
 					var d = defs.get(i);
-					// min/max/choices not present in current resolved model; keep nulls
 					argsOut.add(new CommandArg(d.name(), i, d.required(), d.type(), null, null,
 							null));
 				}

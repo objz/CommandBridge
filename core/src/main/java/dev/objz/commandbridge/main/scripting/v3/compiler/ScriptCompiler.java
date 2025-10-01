@@ -55,6 +55,8 @@ public final class ScriptCompiler {
 		reg.register(TargetKindDto.class, new TargetKindCompiler(false));
 		reg.register(TargetServerDto.class, new TargetServerCompiler());
 		reg.register(ArgDto.ListWrapper.class, new ArgListCompiler());
+		reg.register(CommandStepDto.class, new CommandStepCompiler());
+		reg.register(CommandStepDto.ListWrapper.class, new CommandListCompiler());
 
 		var sink = new CollectingProblemSink();
 		var ctx = new CompileContext(reg, null);
