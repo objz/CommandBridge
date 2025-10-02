@@ -8,22 +8,26 @@ import dev.objz.commandbridge.main.scripting.v3.compiler.schema.Field;
 import dev.objz.commandbridge.main.scripting.v3.compiler.schema.Path;
 import dev.objz.commandbridge.main.scripting.v3.compiler.schema.Schema;
 import dev.objz.commandbridge.main.scripting.v3.model.domain.CommandStep;
-import dev.objz.commandbridge.main.scripting.v3.model.domain.Target;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.TargetKind;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.TargetServer;
 import dev.objz.commandbridge.main.scripting.v3.model.dto.CommandStepDto;
-import dev.objz.commandbridge.main.scripting.v3.model.dto.TargetDto;
+import dev.objz.commandbridge.main.scripting.v3.model.dto.TargetKindDto;
+import dev.objz.commandbridge.main.scripting.v3.model.dto.TargetServerDto;
 
 public final class CommandStepCompiler implements NodeCompiler<CommandStepDto, CommandStep> {
 	@Override
 	public CommandStep compile(CommandStepDto raw, CompileContext ctx, ProblemSink p, Path path) {
 		var cmd = new Field<>("command", Schema.STEP_COMMAND).required(raw.command, p, path);
 
-		Target t = ctx.compile(TargetDto.class, raw.target, p, path.child("target"));
+		TargetKind kind = ctx.compile(TargetKindDto.class, raw.kind, p, path.child("kind"));
+		TargetServer server = ctx.compile(TargetServerDto.class, raw.server, p, path.child("server"));
+
 		var delay = new Field<>("delay", Schema.STEP_DELAY).orDefault(raw.delay);
 		var timeout = new Field<>("timeout", Schema.STEP_TIMEOUT).orDefault(raw.timeout);
 
 		Validators.nonNegative(delay, path, p, "delay");
 		Validators.positive(timeout, path, p, "timeout");
 
-		return new CommandStep(cmd, t, delay, timeout);
+		return new CommandStep(cmd, kind, server, delay, timeout);
 	}
 }

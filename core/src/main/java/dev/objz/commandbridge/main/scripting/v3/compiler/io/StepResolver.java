@@ -1,30 +1,44 @@
 package dev.objz.commandbridge.main.scripting.v3.compiler.io;
 
-import dev.objz.commandbridge.main.scripting.v3.model.domain.*;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.CommandStep;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.Defaults;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.TargetKind;
+import dev.objz.commandbridge.main.scripting.v3.model.domain.TargetServer;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public final class StepResolver {
 
 	public record ResolvedStep(
 			String command,
-			Target target,
+			Defaults.RunAs runAs,
+			String id,
+			TargetKind kind,
+			TargetServer server,
 			Duration delay,
-			Duration timeout) {
+			Duration cooldown) {
 	}
 
 	public static ResolvedStep resolve(Defaults defaults, CommandStep step) {
-		Target baseTarget = defaults.target();
-		Target effectiveTarget = (step.targetOverride() != null)
-				? applyTargetOverride(baseTarget, step.targetOverride())
-				: baseTarget;
+		Objects.requireNonNull(defaults, "defaults");
+		Objects.requireNonNull(step, "step");
 
-		Duration delay = pick(step.delayOverride(), defaults.delay());
-		Duration timeout = pick(step.timeoutOverride(), defaults.target().server().timeout());
+		var baseRunAs = defaults.runAs();
+		var baseId = defaults.id();
+		var baseKind = defaults.kind();
+		var baseSrv = defaults.server();
 
-		return new ResolvedStep(step.command(), effectiveTarget, delay, timeout);
+		var effKind = mergeKind(baseKind, step.kindOverride());
+		var effSrv = mergeServer(baseSrv, step.serverOverride());
+
+		var effDelay = pick(step.delayOverride(), defaults.delay());
+
+		var effCooldown = defaults.cooldown();
+
+		return new ResolvedStep(step.command(), baseRunAs, baseId, effKind, effSrv, effDelay, effCooldown);
 	}
 
 	public static List<ResolvedStep> resolveAll(Defaults defaults, List<CommandStep> steps) {
@@ -37,35 +51,33 @@ public final class StepResolver {
 	}
 
 	private static Duration pick(Duration overrideValue, Duration base) {
-		return overrideValue != null ? overrideValue : base;
-	}
-
-	private static Target applyTargetOverride(Target base, Target overrideTarget) {
-		var runAs = overrideTarget.runAs() != null ? overrideTarget.runAs() : base.runAs();
-		var id = overrideTarget.id() != null ? overrideTarget.id() : base.id();
-
-		var kind = mergeKind(base.kind(), overrideTarget.kind());
-		var srv = mergeServer(base.server(), overrideTarget.server());
-
-		return new Target(runAs, id, kind, srv);
+		return (overrideValue != null) ? overrideValue : base;
 	}
 
 	private static TargetKind mergeKind(TargetKind base, TargetKind ov) {
+		if (base == null && ov == null)
+			return null;
+		if (base == null)
+			return new TargetKind(ov.register(), ov.execute());
 		if (ov == null)
 			return base;
-		var reg = ov.register() != null ? ov.register() : base.register();
-		var exe = ov.execute() != null ? ov.execute() : base.execute();
+		var reg = (ov.register() != null) ? ov.register() : base.register();
+		var exe = (ov.execute() != null) ? ov.execute() : base.execute();
 		return new TargetKind(reg, exe);
 	}
 
 	private static TargetServer mergeServer(TargetServer base, TargetServer ov) {
+		if (base == null && ov == null)
+			return null;
 		if (ov == null)
 			return base;
-		var req = ov.targetRequired();
-		var sch = ov.scheduleOnline();
-		var to = ov.timeout() != null ? ov.timeout() : base.timeout();
-		var fr = ov.frequency() != null ? ov.frequency() : base.frequency();
-		return new TargetServer(req, sch, to, fr);
+
+		boolean req = ov.targetRequired();
+		boolean sch = ov.scheduleOnline();
+		var timeout = (ov.timeout() != null) ? ov.timeout() : (base != null ? base.timeout() : null);
+		var freq = (ov.frequency() != null) ? ov.frequency() : (base != null ? base.frequency() : null);
+
+		return new TargetServer(req, sch, timeout, freq);
 	}
 
 	private StepResolver() {

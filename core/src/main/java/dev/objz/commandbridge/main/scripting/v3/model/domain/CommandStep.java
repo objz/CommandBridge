@@ -4,7 +4,8 @@ import java.time.Duration;
 
 public record CommandStep(
 		String command,
-		Target targetOverride,
+		TargetKind kindOverride,
+		TargetServer serverOverride,
 		Duration delayOverride,
 		Duration timeoutOverride) {
 }
