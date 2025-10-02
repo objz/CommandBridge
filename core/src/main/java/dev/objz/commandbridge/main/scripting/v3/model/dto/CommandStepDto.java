@@ -11,10 +11,13 @@ public final class CommandStepDto {
 	@Setting("command")
 	public String command;
 
-	//optional
+	// optional
+	
+	@Setting("kind")
+	public TargetKindDto kind;
 
-	@Setting("target")
-	public TargetDto target;
+	@Setting("server")
+	public TargetServerDto server;
 
 	@Setting("delay")
 	public Duration delay;

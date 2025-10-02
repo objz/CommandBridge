@@ -51,7 +51,6 @@ public final class ScriptCompiler {
 		reg.register(ScriptDto.class, new ScriptNodeCompiler());
 		reg.register(PermissionsDto.class, new PermissionsCompiler());
 		reg.register(DefaultsDto.class, new DefaultsCompiler());
-		reg.register(TargetDto.class, new TargetCompiler(false));
 		reg.register(TargetKindDto.class, new TargetKindCompiler(false));
 		reg.register(TargetServerDto.class, new TargetServerCompiler());
 		reg.register(ArgDto.ListWrapper.class, new ArgListCompiler());
