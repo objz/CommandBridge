@@ -1,8 +1,8 @@
 package dev.objz.commandbridge.velocity.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.Envelope;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.Envelope;
 import io.undertow.websockets.core.WebSockets;
 import io.undertow.websockets.core.WebSocketChannel;
 

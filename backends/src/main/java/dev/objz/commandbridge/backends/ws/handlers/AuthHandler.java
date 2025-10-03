@@ -3,11 +3,11 @@ package dev.objz.commandbridge.backends.ws.handlers;
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
-import dev.objz.commandbridge.main.config.model.BackendsConfig;
-import dev.objz.commandbridge.main.config.model.TlsMode;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.security.AuthStatus;
+import dev.objz.commandbridge.config.model.BackendsConfig;
+import dev.objz.commandbridge.config.model.TlsMode;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.Envelope;
+import dev.objz.commandbridge.security.AuthStatus;
 
 public final class AuthHandler implements InboundHandler {
 	private final WsClient ws;

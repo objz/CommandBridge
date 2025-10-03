@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.velocity.ws;
 
-import dev.objz.commandbridge.main.logging.Log;
+import dev.objz.commandbridge.logging.Log;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.websockets.WebSocketConnectionCallback;

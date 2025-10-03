@@ -3,14 +3,14 @@ package dev.objz.commandbridge.velocity.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dev.objz.commandbridge.main.config.model.VelocityConfig;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.proto.MessageType;
-import dev.objz.commandbridge.main.proto.PreAuth;
-import dev.objz.commandbridge.main.security.AuthService;
-import dev.objz.commandbridge.main.security.AuthStatus;
-import dev.objz.commandbridge.main.util.RateLimiter;
+import dev.objz.commandbridge.config.model.VelocityConfig;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.Envelope;
+import dev.objz.commandbridge.proto.MessageType;
+import dev.objz.commandbridge.proto.PreAuth;
+import dev.objz.commandbridge.security.AuthService;
+import dev.objz.commandbridge.security.AuthStatus;
+import dev.objz.commandbridge.util.RateLimiter;
 import dev.objz.commandbridge.velocity.ws.handlers.AuthHandler;
 import dev.objz.commandbridge.velocity.ws.handlers.FeedbackHandler;
 import dev.objz.commandbridge.velocity.ws.handlers.PingHandler;

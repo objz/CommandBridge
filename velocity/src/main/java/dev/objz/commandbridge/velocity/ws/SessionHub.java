@@ -1,8 +1,8 @@
 package dev.objz.commandbridge.velocity.ws;
 
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.security.AuthStatus;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.Envelope;
+import dev.objz.commandbridge.security.AuthStatus;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.*;
@@ -75,7 +75,7 @@ public final class SessionHub {
 	public void send(WebSocketChannel ch, Envelope env) {
 		ClientSession s = byCh.get(ch);
 		boolean authed = (s != null && s.status() == AuthStatus.AUTHENTICATED);
-		if (!dev.objz.commandbridge.main.proto.PreAuth.proxyOutboundAllowed(authed, env.type())) {
+		if (!dev.objz.commandbridge.proto.PreAuth.proxyOutboundAllowed(authed, env.type())) {
 			Log.warn("Block send {} to unauthenticated {}", env.type(), ch.getSourceAddress());
 			return;
 		}

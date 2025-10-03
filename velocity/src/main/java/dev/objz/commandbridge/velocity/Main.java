@@ -10,12 +10,12 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.slf4j.Logger;
 
-import dev.objz.commandbridge.main.config.ConfigManager;
-import dev.objz.commandbridge.main.config.model.VelocityConfig;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.security.AuthService;
-import dev.objz.commandbridge.main.security.SecretLoader;
-import dev.objz.commandbridge.main.security.TlsResolver;
+import dev.objz.commandbridge.config.ConfigManager;
+import dev.objz.commandbridge.config.model.VelocityConfig;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.security.AuthService;
+import dev.objz.commandbridge.security.SecretLoader;
+import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
 import dev.objz.commandbridge.velocity.registry.ScriptManager;
 import dev.objz.commandbridge.velocity.ws.MessageRouter;
@@ -31,8 +31,6 @@ public final class Main {
 	private final Path dataDir;
 	private ConfigManager configManager;
 
-	// Configurate's ObjectMapper factory (name clash with Jackson; keep
-	// fully-qualified type)
 	private final org.spongepowered.configurate.objectmapping.ObjectMapper.Factory cfgMapperFactory = org.spongepowered.configurate.objectmapping.ObjectMapper
 			.factoryBuilder().build();
 
@@ -47,7 +45,6 @@ public final class Main {
 	public void onProxyInitialization(ProxyInitializeEvent event) {
 		Log.info("Initializing CommandBridge...");
 
-		// --- Load config ---
 		this.configManager = new ConfigManager(dataDir);
 		boolean ok = configManager.load(VelocityConfig.class);
 		VelocityConfig config = configManager.current(VelocityConfig.class);
@@ -57,12 +54,10 @@ public final class Main {
 		}
 		Log.setDebug(config.debug());
 
-		// --- Auth & JSON ---
 		var secret = new SecretLoader(dataDir).loadOrCreate();
 		var auth = new AuthService(secret);
-		var mapper = new ObjectMapper(); // Jackson for our JSON envelopes
+		var mapper = new ObjectMapper();
 
-		// --- WS / Router ---
 		var sessions = new SessionHub();
 		boolean requireAuth = config.security().requireAuth();
 		var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
@@ -74,14 +69,16 @@ public final class Main {
 				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
 		ws.start();
 
-		// --- Scripts ---
-		var scripts = new ScriptManager(cfgMapperFactory);
-		scripts.loadAll(dataDir.resolve("scripts"));
+		var scriptManager = new ScriptManager(dataDir);
+		scriptManager.loadAll();
 
-		// --- Register commands to newly-authenticated clients with new system ---
-		OnAuthRegisterCommands.install(sessions, scripts, mapper, config.serverId(), config);
+		OnAuthRegisterCommands.install(
+				sessions,
+				scriptManager,
+				new ObjectMapper(),
+				config.serverId(),
+				config);
 
-		// --- Debug summary ---
 		Log.debug("Config loaded:");
 		Log.debug("  Host: {}", config.bindHost());
 		Log.debug("  Port: {}", config.bindPort());

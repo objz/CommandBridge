@@ -2,7 +2,7 @@ package dev.objz.commandbridge.bootstrap;
 
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
-import dev.objz.commandbridge.main.logging.Log;
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.platform.PlatformAdapter;
 import dev.objz.commandbridge.platform.PlatformDetector;
 import dev.objz.commandbridge.platform.PlatformLauncher;

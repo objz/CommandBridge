@@ -2,10 +2,10 @@ package dev.objz.commandbridge.velocity.ws.handlers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.proto.MessageType;
-import dev.objz.commandbridge.main.security.AuthService;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.Envelope;
+import dev.objz.commandbridge.proto.MessageType;
+import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.velocity.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;

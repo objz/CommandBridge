@@ -3,7 +3,7 @@ package dev.objz.commandbridge.platform;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-import dev.objz.commandbridge.main.logging.Log;
+import dev.objz.commandbridge.logging.Log;
 
 public final class PlatformLauncher {
 	private static final AtomicReference<PlatformAdapter> ADAPTER = new AtomicReference<>();
