@@ -2,9 +2,9 @@ package dev.objz.commandbridge.paper.impl;
 
 import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.backends.ws.WsClient;
-import dev.objz.commandbridge.main.config.ConfigManager;
-import dev.objz.commandbridge.main.config.model.BackendsConfig;
-import dev.objz.commandbridge.main.logging.Log;
+import dev.objz.commandbridge.config.ConfigManager;
+import dev.objz.commandbridge.config.model.BackendsConfig;
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.platform.PathsUtil;
 import dev.objz.commandbridge.platform.PlatformAdapter;
 import org.bukkit.Bukkit;

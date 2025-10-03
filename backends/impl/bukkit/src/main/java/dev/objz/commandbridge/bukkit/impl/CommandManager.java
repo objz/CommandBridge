@@ -5,7 +5,7 @@ import java.util.Objects;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import dev.objz.commandbridge.backends.PlatformRegistry;
-import dev.objz.commandbridge.main.proto.cmd.CommandStub;
+import dev.objz.commandbridge.proto.cmd.CommandStub;
 
 public final class CommandManager extends PlatformRegistry {
 	private final JavaPlugin plugin;

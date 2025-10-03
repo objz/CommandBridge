@@ -1,10 +1,10 @@
 package dev.objz.commandbridge.backends;
 
 import dev.objz.commandbridge.backends.debug.CommandRegistrationDebug;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.cmd.CommandStub;
-import dev.objz.commandbridge.main.proto.feedback.Feedback;
-import dev.objz.commandbridge.main.proto.feedback.FeedbackCollector;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.cmd.CommandStub;
+import dev.objz.commandbridge.proto.feedback.Feedback;
+import dev.objz.commandbridge.proto.feedback.FeedbackCollector;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

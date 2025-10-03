@@ -4,12 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
-import dev.objz.commandbridge.main.logging.FeedbackLog;
-import dev.objz.commandbridge.main.logging.Log;
-import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.proto.MessageType;
-import dev.objz.commandbridge.main.proto.cmd.RegisterCommandsPayload;
-import dev.objz.commandbridge.main.proto.feedback.Feedback;
+import dev.objz.commandbridge.logging.FeedbackLog;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.Envelope;
+import dev.objz.commandbridge.proto.MessageType;
+import dev.objz.commandbridge.proto.cmd.CommandStub;
+import dev.objz.commandbridge.proto.cmd.RegisterCommandsPayload;
+import dev.objz.commandbridge.proto.feedback.Feedback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,7 @@ public final class RegisterCommandsHandler implements InboundHandler {
 			return;
 		}
 
-		List<dev.objz.commandbridge.main.proto.cmd.CommandStub> stubs = (payload.commands() != null
+		List<CommandStub> stubs = (payload.commands() != null
 				? payload.commands()
 				: List.of());
 

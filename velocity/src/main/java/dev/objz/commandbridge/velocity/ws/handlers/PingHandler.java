@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.velocity.ws.handlers;
 
-import dev.objz.commandbridge.main.proto.Envelope;
+import dev.objz.commandbridge.proto.Envelope;
 import dev.objz.commandbridge.velocity.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;

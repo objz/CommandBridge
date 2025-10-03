@@ -1,9 +1,9 @@
 package dev.objz.commandbridge.velocity.ws.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.main.logging.FeedbackLog;
-import dev.objz.commandbridge.main.proto.Envelope;
-import dev.objz.commandbridge.main.proto.feedback.Feedback;
+import dev.objz.commandbridge.logging.FeedbackLog;
+import dev.objz.commandbridge.proto.Envelope;
+import dev.objz.commandbridge.proto.feedback.Feedback;
 import dev.objz.commandbridge.velocity.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;

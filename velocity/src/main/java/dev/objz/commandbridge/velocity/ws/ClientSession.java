@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.velocity.ws;
 
-import dev.objz.commandbridge.main.security.AuthStatus;
+import dev.objz.commandbridge.security.AuthStatus;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Set;
