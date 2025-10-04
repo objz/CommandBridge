@@ -19,8 +19,6 @@ public record Script(
 
 		String description,
 
-		@Default("[]")
-
 		List<String> aliases,
 
 		Permissions permissions,

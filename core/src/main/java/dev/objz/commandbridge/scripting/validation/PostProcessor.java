@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.scripting.process;
+package dev.objz.commandbridge.scripting.validation;
 
 import dev.objz.commandbridge.scripting.bind.BindContext;
 import dev.objz.commandbridge.scripting.bind.RecordBinder;
