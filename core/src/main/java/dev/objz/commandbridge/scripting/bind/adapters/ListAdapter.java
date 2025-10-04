@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import dev.objz.commandbridge.scripting.bind.ConvertContext;
+import dev.objz.commandbridge.scripting.bind.RecordBinder;
 import dev.objz.commandbridge.scripting.bind.TypeAdapter;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 
@@ -29,14 +30,22 @@ public final class ListAdapter implements TypeAdapter<List<?>> {
 
 		var elemAdapter = ctx.adapters().find(elemType);
 		List<Object> out = new ArrayList<>(seq.elements().size());
+
+		String base = RecordBinder.currentPath();
 		int idx = 0;
 		for (YamlNode child : seq.elements()) {
+			String prev = RecordBinder.currentPath();
 			try {
+				String elemPath = (base == null || base.isBlank()) ? ("[" + idx + "]")
+						: (base + "[" + idx + "]");
+				RecordBinder.setCurrentPath(elemPath);
 				out.add(elemAdapter.fromYaml(child, elemType, ctx));
 			} catch (Exception ex) {
-				ctx.problems().error("[list][" + idx + "]",
+				ctx.problems().error((base != null ? base : "list") + "[" + idx + "]",
 						"Element conversion failed: " + ex.getMessage());
 				out.add(null);
+			} finally {
+				RecordBinder.setCurrentPath(prev);
 			}
 			idx++;
 		}
