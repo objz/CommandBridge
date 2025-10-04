@@ -11,7 +11,7 @@ import dev.objz.commandbridge.scripting.bind.adapters.ListAdapter;
 import dev.objz.commandbridge.scripting.bind.adapters.PrimitivesAdapter;
 import dev.objz.commandbridge.scripting.bind.adapters.RecordAdapter;
 import dev.objz.commandbridge.scripting.bind.adapters.StringAdapter;
-import dev.objz.commandbridge.scripting.process.ProblemSink;
+import dev.objz.commandbridge.scripting.validation.ProblemSink;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 import dev.objz.commandbridge.scripting.yaml.YamlParser;
 import org.snakeyaml.engine.v2.exceptions.Mark;

@@ -5,10 +5,10 @@ import dev.objz.commandbridge.scripting.anno.Model;
 import dev.objz.commandbridge.scripting.anno.ModelRoot;
 import dev.objz.commandbridge.scripting.anno.Required;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
-import dev.objz.commandbridge.scripting.process.DefaultApplier;
-import dev.objz.commandbridge.scripting.process.PostProcessor;
-import dev.objz.commandbridge.scripting.process.ProblemSink;
-import dev.objz.commandbridge.scripting.process.RequiredProcessor;
+import dev.objz.commandbridge.scripting.validation.PostProcessor;
+import dev.objz.commandbridge.scripting.validation.ProblemSink;
+import dev.objz.commandbridge.scripting.validation.processor.DefaultProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.RequiredProcessor;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 
 import java.lang.reflect.Constructor;
@@ -36,7 +36,7 @@ public final class RecordBinder {
 
 	public RecordBinder() {
 		this.postProcessors = List.of(
-				new DefaultApplier(),
+				new DefaultProcessor(),
 				new RequiredProcessor());
 	}
 
@@ -151,7 +151,7 @@ public final class RecordBinder {
 		Object[] values = new Object[comps.length];
 		MutableRecordBuffer buffer = new MutableRecordBuffer(recordType, sectionNameForDiagnostics, comps,
 				values);
-		new DefaultApplier().process(buffer, ctx);
+		new DefaultProcessor().process(buffer, ctx);
 		return construct(recordType, comps, buffer.values(), ctx.problems());
 	}
 

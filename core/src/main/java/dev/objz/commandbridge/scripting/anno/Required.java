@@ -8,5 +8,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.RECORD_COMPONENT, ElementType.FIELD})
 public @interface Required {
-	String message() default "Field is required";
+	String message() default "is required";
 }

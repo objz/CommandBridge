@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.scripting.process;
+package dev.objz.commandbridge.scripting.validation;
 
 import java.util.ArrayList;
 import java.util.Collections;

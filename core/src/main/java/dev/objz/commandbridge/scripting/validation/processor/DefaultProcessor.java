@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.scripting.process;
+package dev.objz.commandbridge.scripting.validation.processor;
 
 import java.lang.reflect.Type;
 
@@ -6,9 +6,10 @@ import dev.objz.commandbridge.scripting.anno.Default;
 import dev.objz.commandbridge.scripting.bind.BindContext;
 import dev.objz.commandbridge.scripting.bind.RecordBinder;
 import dev.objz.commandbridge.scripting.bind.TypeAdapter;
+import dev.objz.commandbridge.scripting.validation.PostProcessor;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 
-public final class DefaultApplier implements PostProcessor {
+public final class DefaultProcessor implements PostProcessor {
 
 	@Override
 	public void process(RecordBinder.MutableRecordBuffer buf, BindContext ctx) {
