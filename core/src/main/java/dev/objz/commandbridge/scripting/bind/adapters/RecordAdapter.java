@@ -26,11 +26,15 @@ public final class RecordAdapter implements TypeAdapter<Object> {
 		if (!(targetType instanceof Class<?> c) || !c.isRecord()) {
 			throw new IllegalArgumentException("Target is not a record");
 		}
+		String override = RecordBinder.currentPath();
+		if (override != null && !override.isBlank()) {
+			return binder.bindRecord(c, node, (BindContext) ctx, override);
+		}
 		return binder.bindRecord(c, node, (BindContext) ctx);
 	}
 
 	@Override
 	public YamlNode toYaml(Object value, Type targetType, ConvertContext ctx) {
-		throw new UnsupportedOperationException("Record toYaml not implemented in this minimal sample");
+		throw new UnsupportedOperationException("Record toYaml not implemented");
 	}
 }

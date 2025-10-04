@@ -3,13 +3,13 @@ package dev.objz.commandbridge.scripting.model;
 import java.util.List;
 
 import dev.objz.commandbridge.scripting.anno.Default;
-import dev.objz.commandbridge.scripting.anno.Model;
+import dev.objz.commandbridge.scripting.anno.ModelRoot;
 import dev.objz.commandbridge.scripting.anno.Required;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 
-@Model("script")
+@ModelRoot("script")
 public record Script(
 		@Required int version,
 

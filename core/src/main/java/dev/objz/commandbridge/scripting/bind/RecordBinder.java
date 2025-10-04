@@ -2,6 +2,7 @@ package dev.objz.commandbridge.scripting.bind;
 
 import dev.objz.commandbridge.scripting.anno.Default;
 import dev.objz.commandbridge.scripting.anno.Model;
+import dev.objz.commandbridge.scripting.anno.ModelRoot;
 import dev.objz.commandbridge.scripting.anno.Required;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
 import dev.objz.commandbridge.scripting.process.DefaultApplier;
@@ -18,6 +19,19 @@ import java.util.*;
 
 public final class RecordBinder {
 
+	private static final ThreadLocal<String> PATH = new ThreadLocal<>();
+
+	public static String currentPath() {
+		return PATH.get();
+	}
+
+	public static void setCurrentPath(String p) {
+		if (p == null || p.isBlank())
+			PATH.remove();
+		else
+			PATH.set(p);
+	}
+
 	private final List<PostProcessor> postProcessors;
 
 	public RecordBinder() {
@@ -28,13 +42,34 @@ public final class RecordBinder {
 
 	public <T> T bindRecord(Class<T> recordType, YamlNode node, BindContext ctx) {
 		if (!(node instanceof YamlNode.Mapping mapping)) {
-			ctx.problems().error(pathOf(recordType), "expected a mapping/object");
-			return constructWithDefaults(recordType, ctx);
+			String path = rootLabelOf(recordType);
+			if (path == null)
+				path = sectionNameOf(recordType);
+			ctx.problems().error(path, "expected a mapping/object");
+			return constructWithDefaults(recordType, ctx, path);
 		}
-		return bindFromMapping(recordType, mapping, ctx);
+		String rootLabel = rootLabelOf(recordType);
+		boolean suppressRootForChildren = (rootLabel != null);
+		return bindFromMapping(recordType, mapping, ctx,
+				(rootLabel != null ? rootLabel : sectionNameOf(recordType)), suppressRootForChildren);
 	}
 
-	private <T> T bindFromMapping(Class<T> recordType, YamlNode.Mapping mapping, BindContext ctx) {
+	public <T> T bindRecord(Class<T> recordType, YamlNode node, BindContext ctx, String sectionOverride) {
+		String effective = (sectionOverride != null) ? sectionOverride : currentPath();
+		if (!(node instanceof YamlNode.Mapping mapping)) {
+			String path = (effective != null) ? effective : sectionNameOf(recordType);
+			ctx.problems().error(path, "expected a mapping/object");
+			return constructWithDefaults(recordType, ctx, path);
+		}
+		return bindFromMapping(recordType, mapping, ctx,
+				(effective != null ? effective : sectionNameOf(recordType)), false);
+	}
+
+	private <T> T bindFromMapping(Class<T> recordType,
+			YamlNode.Mapping mapping,
+			BindContext ctx,
+			String sectionNameForDiagnostics,
+			boolean suppressRootForChildren) {
 		var comps = recordType.getRecordComponents();
 		Object[] values = new Object[comps.length];
 
@@ -43,10 +78,20 @@ public final class RecordBinder {
 			String key = keyOf(c);
 			YamlNode child = mapping.entries().get(key);
 
-			values[i] = convertChild(c.getGenericType(), child, ctx, pathOf(recordType, c));
+			final String childPath;
+			if (suppressRootForChildren) {
+				childPath = c.getName();
+			} else if (sectionNameForDiagnostics != null && !sectionNameForDiagnostics.isBlank()) {
+				childPath = sectionNameForDiagnostics + "." + c.getName();
+			} else {
+				childPath = sectionNameOf(recordType) + "." + c.getName();
+			}
+
+			values[i] = convertChild(c.getGenericType(), child, ctx, childPath);
 		}
 
-		MutableRecordBuffer buffer = new MutableRecordBuffer(recordType, comps, values);
+		MutableRecordBuffer buffer = new MutableRecordBuffer(recordType, sectionNameForDiagnostics, comps,
+				values);
 		for (PostProcessor p : postProcessors) {
 			p.process(buffer, ctx);
 		}
@@ -63,10 +108,23 @@ public final class RecordBinder {
 				ctx.problems().error(path, "expected a mapping/object");
 				return null;
 			}
+			try {
+				return bindRecord((Class<?>) targetType, child, ctx, path);
+			} catch (Exception ex) {
+				ctx.problems().error(path, "invalid value: " + ex.getMessage());
+				return null;
+			}
 		} else if (isListType(targetType)) {
 			if (!(child instanceof YamlNode.Sequence)) {
 				ctx.problems().error(path, "expected a list");
 				return null;
+			}
+			String prev = currentPath();
+			try {
+				setCurrentPath(path);
+				return ctx.adapters().find(targetType).fromYaml(child, targetType, ctx);
+			} finally {
+				setCurrentPath(prev);
 			}
 		} else if (isMapType(targetType)) {
 			if (!(child instanceof YamlNode.Mapping)) {
@@ -88,10 +146,11 @@ public final class RecordBinder {
 		}
 	}
 
-	private <T> T constructWithDefaults(Class<T> recordType, BindContext ctx) {
+	private <T> T constructWithDefaults(Class<T> recordType, BindContext ctx, String sectionNameForDiagnostics) {
 		var comps = recordType.getRecordComponents();
 		Object[] values = new Object[comps.length];
-		MutableRecordBuffer buffer = new MutableRecordBuffer(recordType, comps, values);
+		MutableRecordBuffer buffer = new MutableRecordBuffer(recordType, sectionNameForDiagnostics, comps,
+				values);
 		new DefaultApplier().process(buffer, ctx);
 		return construct(recordType, comps, buffer.values(), ctx.problems());
 	}
@@ -117,15 +176,19 @@ public final class RecordBinder {
 		Model m = type.getAnnotation(Model.class);
 		if (m != null && !m.value().isBlank())
 			return m.value();
+		ModelRoot mr = type.getAnnotation(ModelRoot.class);
+		if (mr != null && !mr.value().isBlank())
+			return mr.value();
 		return type.getSimpleName();
+	}
+
+	private static String rootLabelOf(Class<?> type) {
+		ModelRoot mr = type.getAnnotation(ModelRoot.class);
+		return (mr != null && !mr.value().isBlank()) ? mr.value() : null;
 	}
 
 	private static String pathOf(Class<?> type) {
 		return sectionNameOf(type);
-	}
-
-	private static String pathOf(Class<?> owner, RecordComponent c) {
-		return sectionNameOf(owner) + "." + c.getName();
 	}
 
 	private static boolean isRecordType(Type t) {
@@ -154,11 +217,14 @@ public final class RecordBinder {
 		private final RecordComponent[] components;
 		private final Object[] values;
 
-		public MutableRecordBuffer(Class<?> recordClass, RecordComponent[] components, Object[] values) {
+		public MutableRecordBuffer(Class<?> recordClass, String sectionNameForDiagnostics,
+				RecordComponent[] components, Object[] values) {
 			this.recordClass = recordClass;
-			this.sectionName = sectionNameOf(recordClass);
 			this.components = components;
 			this.values = values;
+			this.sectionName = (sectionNameForDiagnostics != null && !sectionNameForDiagnostics.isBlank())
+					? sectionNameForDiagnostics
+					: sectionNameOf(recordClass);
 		}
 
 		public Class<?> recordClass() {

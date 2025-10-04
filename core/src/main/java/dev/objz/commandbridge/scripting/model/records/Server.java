@@ -6,7 +6,6 @@ import dev.objz.commandbridge.scripting.anno.Default;
 import dev.objz.commandbridge.scripting.anno.Model;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
 
-//TODO inherit name from parent
 @Model("server")
 public record Server(
 		@YmlKey("target-required") @Default("false") boolean targetRequired,
