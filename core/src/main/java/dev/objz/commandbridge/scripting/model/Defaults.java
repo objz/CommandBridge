@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.List;
 
 import dev.objz.commandbridge.scripting.anno.Default;
+import dev.objz.commandbridge.scripting.anno.Min;
 import dev.objz.commandbridge.scripting.anno.Model;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
 import dev.objz.commandbridge.scripting.model.enums.RunAs;
@@ -18,9 +19,9 @@ public record Defaults(
 
 		Server server,
 
-		@Default("0s") Duration delay,
+		@Min(0) @Default("0s") Duration delay,
 
-		@Default("0s") Duration cooldown
+		@Min(0) @Default("0s") Duration cooldown
 
 ) {
 
