@@ -3,23 +3,26 @@ package dev.objz.commandbridge.scripting.model.records.mapping;
 import java.time.Duration;
 import java.util.List;
 
+import dev.objz.commandbridge.scripting.anno.Merge;
+import dev.objz.commandbridge.scripting.anno.Min;
 import dev.objz.commandbridge.scripting.anno.Model;
 import dev.objz.commandbridge.scripting.anno.Required;
+import dev.objz.commandbridge.scripting.anno.Resolvable;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
 import dev.objz.commandbridge.scripting.model.enums.RunAs;
 import dev.objz.commandbridge.scripting.model.records.Server;
 
 @Model("commands")
 public record CmdMapping(
-		@Required String command,
+		@Required @Resolvable String command,
 
-		@YmlKey("run-as") RunAs runAs,
+		@Merge @YmlKey("run-as") RunAs runAs,
 
-		List<IdMapping> execute,
+		@Merge List<IdMapping> execute,
 
-		Server server,
+		@Merge Server server,
 
-		Duration delay,
+		@Merge @Min(0) Duration delay,
 
-		Duration cooldown) {
+		@Merge @Min(0) Duration cooldown) {
 }

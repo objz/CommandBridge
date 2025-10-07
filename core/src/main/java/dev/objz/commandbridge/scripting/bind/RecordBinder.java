@@ -8,7 +8,12 @@ import dev.objz.commandbridge.scripting.anno.YmlKey;
 import dev.objz.commandbridge.scripting.validation.PostProcessor;
 import dev.objz.commandbridge.scripting.validation.ProblemSink;
 import dev.objz.commandbridge.scripting.validation.processor.DefaultProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.MaxProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.MergeProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.MinProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.PatternProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.RequiredProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.ResolvableProcessor;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 
 import java.lang.reflect.Constructor;
@@ -37,7 +42,14 @@ public final class RecordBinder {
 	public RecordBinder() {
 		this.postProcessors = List.of(
 				new DefaultProcessor(),
-				new RequiredProcessor());
+				new RequiredProcessor(),
+				new PatternProcessor(),
+				new MinProcessor(),
+				new MaxProcessor(),
+				new ResolvableProcessor(),
+				new MergeProcessor()
+
+		);
 	}
 
 	public <T> T bindRecord(Class<T> recordType, YamlNode node, BindContext ctx) {

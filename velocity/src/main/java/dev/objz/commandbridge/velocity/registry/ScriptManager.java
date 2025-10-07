@@ -51,10 +51,6 @@ public final class ScriptManager {
 						all.add(res.value);
 						if (res.value.enabled())
 							enabled.add(res.value);
-
-						if (Log.isDebug()) {
-							Log.debug("\n" + DebugPrinter.print(res.value));
-						}
 						loaded++;
 					} else {
 						failed++;
@@ -79,6 +75,10 @@ public final class ScriptManager {
 		if (loaded + failed == 0) {
 			Log.warn("No script files found (looking for *.yml or *.yaml)");
 			return;
+		}
+
+		if (Log.isDebug() && !all.isEmpty()) {
+			Log.debug("\n" + DebugPrinter.printGrid(all));
 		}
 
 		long disabled = (loaded - enabled.size()) + failed;

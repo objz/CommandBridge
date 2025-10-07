@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.scripting.validation.processor;
 
+import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 
 import dev.objz.commandbridge.scripting.anno.Default;
@@ -13,7 +14,7 @@ public final class DefaultProcessor implements PostProcessor {
 
 	@Override
 	public void process(RecordBinder.MutableRecordBuffer buf, BindContext ctx) {
-		var comps = buf.components();
+		RecordComponent[] comps = buf.components();
 		for (int i = 0; i < comps.length; i++) {
 			Object cur = buf.get(i);
 			if (cur != null)
@@ -30,7 +31,8 @@ public final class DefaultProcessor implements PostProcessor {
 				Object converted = adapter.fromYaml(node, t, ctx);
 				buf.set(i, converted);
 			} catch (Exception ex) {
-				ctx.problems().error(buf.pathOf(i),
+				String field = comps[i].getName();
+				ctx.problems().error(field,
 						"Invalid default '" + def.value() + "': " + ex.getMessage());
 			}
 		}

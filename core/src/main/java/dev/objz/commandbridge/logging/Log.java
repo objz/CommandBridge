@@ -408,36 +408,75 @@ public final class Log {
 	}
 
 	private void infoI(String message, Object... args) {
-		onConsole(l -> l.info(color(message, null), args));
+		onConsole(l -> {
+			String m = color(message, null);
+			if (args == null || args.length == 0) {
+				l.info("{}", m);
+			} else {
+				l.info(m, args);
+			}
+		});
 	}
 
 	private void warnI(String message, Object... args) {
-		onConsole(l -> l.warn(color(message, YELLOW), args));
+		onConsole(l -> {
+			String m = color(message, YELLOW);
+			if (args == null || args.length == 0) {
+				l.warn("{}", m);
+			} else {
+				l.warn(m, args);
+			}
+		});
 	}
 
 	private void errorI(String message, Object... args) {
-		onConsole(l -> l.error(color(message, RED), args));
+		onConsole(l -> {
+			String m = color(message, RED);
+			if (args == null || args.length == 0) {
+				l.error("{}", m);
+			} else {
+				l.error(m, args);
+			}
+		});
 	}
 
 	private void successI(String message, Object... args) {
-		onConsole(l -> l.info(color(message, GREEN), args));
+		onConsole(l -> {
+			String m = color(message, GREEN);
+			if (args == null || args.length == 0) {
+				l.info("{}", m);
+			} else {
+				l.info(m, args);
+			}
+		});
 	}
 
 	private void debugI(String message, Object... args) {
 		if (DEBUG) {
-			String ext = extendedPrefix(); // cyan
-			String fullMsg = (ansi ? CYAN + ext + RESET : ext) + " " + (message != null ? message : "");
-			base.info(fullMsg, args);
+			String ext = extendedPrefix();
+			String raw = (message != null ? message : "");
+			String fullMsg = (ansi ? CYAN + ext + RESET : ext) + " " + raw;
+			base.info("{}", fullMsg);
 		}
 	}
 
 	private void errorI(Throwable t, String message, Object... args) {
 		if (DEBUG) {
-			base.error(color(message, RED), args, t);
+			String m = color(message, RED);
+			if (args == null || args.length == 0) {
+				base.error("{}", m, t);
+			} else {
+				base.error(m, args, t);
+			}
 		} else {
 			Throwable root = rootCause(t);
-			base.error(color(message + " (" + root.getClass().getSimpleName() + ": " + root.getMessage()
-					+ ")", RED), args);
+			String m = color(message + " (" + root.getClass().getSimpleName() + ": " + root.getMessage()
+					+ ")", RED);
+			if (args == null || args.length == 0) {
+				base.error("{}", m);
+			} else {
+				base.error(m, args);
+			}
 		}
 	}
 
