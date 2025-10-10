@@ -9,7 +9,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import dev.objz.commandbridge.paper.core.Runtime;
 import dev.objz.commandbridge.core.Logger;
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
+import dev.jorel.commandapi.CommandAPISpigotConfig;
 
 public class Main extends JavaPlugin {
     private static Main instance;
@@ -40,8 +40,8 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).silentLogs(true)
-                .skipReloadDatapacks(true).shouldHookPaperReload(false));
+        CommandAPI.onLoad(new CommandAPISpigotConfig(this).verboseOutput(false).silentLogs(true)
+                .skipReloadDatapacks(true));
     }
 
     @Override

@@ -1,6 +1,6 @@
-**[v2.3.2] - 2025-09-15**
+**[v2.3.3] - 2025-10-10**
 
-- fix: fixed ClassCastException
+- feat: now supports minecraft 1.21.9 and 1.21.10
 
 
 
