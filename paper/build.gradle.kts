@@ -28,10 +28,8 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
     implementation("com.cjcrafter:foliascheduler:0.7.2")
     implementation("org.ow2.asm:asm:9.8")
-    implementation("dev.jorel:commandapi-bukkit-shade:10.1.2")
-    compileOnly("dev.jorel:commandapi-annotations:10.1.2")
+    implementation("dev.jorel:commandapi-spigot-shade:11.0.0")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    annotationProcessor("dev.jorel:commandapi-annotations:10.1.2")
 
     implementation(project(":core"))
 }
