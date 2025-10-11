@@ -38,7 +38,7 @@ dependencies {
 tasks {
     shadowJar {
         dependsOn(":paper:shadowJar")
-        manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
+        // manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
 
         relocate("dev.jorel.commandapi", "dev.objz.commandbridge.commandapi")
         relocate("org.bstats", "dev.objz.commandbridge.bstats")

@@ -1,6 +1,6 @@
-**[v2.3.3] - 2025-10-10**
+**[v2.3.4] - 2025-10-11**
 
-- feat: now supports minecraft 1.21.9 and 1.21.10
+- fix: fixed command registration issue on paper 1.21.10
 
 
 

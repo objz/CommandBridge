@@ -79,8 +79,10 @@ paper/
             commandbridge/
               paper/
                 command/
-                  CommandExecutor.java
-                  CommandForwarder.java
+                  inbound/
+                    CommandHandler.java
+                  outbound/
+                    CommandSender.java
                   CommandRegistrar.java
                 core/
                   Runtime.java
@@ -110,8 +112,10 @@ velocity/
             commandbridge/
               velocity/
                 command/
-                  CommandDispatcher.java
-                  CommandForwarder.java
+                  inbound/
+                    CommandHandler.java
+                  outbound/
+                    CommandSender.java
                   CommandRegistrar.java
                 core/
                   Runtime.java
@@ -145,6 +149,7 @@ velocity/
 .gitignore
 build.gradle.kts
 CHANGELOG.md
+debug-jar.sh
 gradlew
 gradlew.bat
 LICENSE
@@ -237,54 +242,6 @@ bin/
 
 
 kls_database.db
-</file>
-
-<file path=".github/ISSUE_TEMPLATE/bug_report.md">
----
-name: Bug report
-about: Create a report to help us improve
-title: "[BUG}"
-labels: bug
-assignees: 72-S
-
----
-
-**Describe the bug**
-A clear and concise description of what the bug is.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
-
-**Expected behavior**
-A clear and concise description of what you expected to happen.
-
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
-**Server (please complete the following information):**
-- OS: [e.g. Linux]
-- Minecraft Version: [e.g. 1.20.6]
-- Plugin Version: [e.g. 1.0.0]
-- Java Version: [e.g. 21]
-
-**Client (please complete the following information):**
-- Device: [e.g. PC]
-- OS: [e.g. Windows 10]
-- Minecraft Version: [e.g. 1.20.6]
-- Java Version: [e.g. 21]
-
-**Troubleshooting Checklist:**
-- [ ] Installed the newest version of the plugin
-- [ ] Checked compatibility with the current Minecraft version
-- [ ] Verified Java version is compatible
-- [ ] Tested with a fresh server setup (no other plugins)
-
-**Additional context**
-Add any other context about the problem here.
 </file>
 
 <file path=".github/ISSUE_TEMPLATE/feature_request.md">
@@ -1508,10 +1465,9 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/command/CommandExecutor.java">
-package dev.objz.commandbridge.paper.command;
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/command/inbound/CommandHandler.java">
+package dev.objz.commandbridge.paper.command.inbound;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -1525,272 +1481,94 @@ import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
 import dev.objz.commandbridge.core.json.MessageParser;
 import dev.objz.commandbridge.core.Logger;
 
-public class CommandExecutor {
-    private final Main plugin;
-    private final Logger logger;
+public class CommandHandler {
+	private final Main plugin;
+	private final Logger logger;
 
-    public CommandExecutor() {
-        this.plugin = Main.getInstance();
-        this.logger = Runtime.getInstance().getLogger();
-    }
+	public CommandHandler() {
+		this.plugin = Main.getInstance();
+		this.logger = Runtime.getInstance().getLogger();
+	}
 
-    public void dispatchCommand(String message) {
-        MessageParser parser = new MessageParser(message);
-        String serverId = Runtime.getInstance().getConfig().getKey("config.yml", "client-id");
-        if (!parser.getBodyValueAsString("client").equals(serverId)) {
-            logger.debug("Message not intended for this client: {}", serverId);
-            return;
-        }
-        String command = parser.getBodyValueAsString("command");
-        String target = parser.getBodyValueAsString("target");
-        logger.info("Dispatching command '{}' for executor: {}", command, target);
+	public void dispatchCommand(String message) {
+		MessageParser parser = new MessageParser(message);
+		String serverId = Runtime.getInstance().getConfig().getKey("config.yml", "client-id");
+		if (!parser.getBodyValueAsString("client").equals(serverId)) {
+			logger.debug("Message not intended for this client: {}", serverId);
+			return;
+		}
+		String command = parser.getBodyValueAsString("command");
+		String target = parser.getBodyValueAsString("target");
+		logger.info("Dispatching command '{}' for executor: {}", command, target);
 
-        switch (target) {
-            case "console" -> executeConsoleCommand(command);
-            case "player" -> executePlayerCommand(parser, command);
-            default -> logger.warn("Invalid target: {}", target);
-        }
-    }
+		switch (target) {
+			case "console" -> executeConsoleCommand(command);
+			case "player" -> executePlayerCommand(parser, command);
+			default -> logger.warn("Invalid target: {}", target);
+		}
+	}
 
-    private void executeConsoleCommand(String command) {
-        logger.debug("Executing command '{}' as console", command);
+	private void executeConsoleCommand(String command) {
+		logger.debug("Executing command '{}' as console", command);
 
-        if (CommandUtils.isCommandValid(command)) {
-            logger.warn("Invalid command: {}", command);
-            Runtime.getInstance().getClient().sendError("Invalid command: " + command);
-            return;
-        }
+		CommandSender console = Bukkit.getConsoleSender();
+		new SchedulerAdapter(plugin).run(() -> {
+			if (CommandUtils.isCommandValid(command)) {
+				logger.warn("Invalid command: {}", command);
+				Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+				return;
+			}
 
-        CommandSender console = Bukkit.getConsoleSender();
-        new SchedulerAdapter(plugin).run(() -> {
-            boolean status = Bukkit.dispatchCommand(console, command);
-            logResult("console", command, status);
-        });
-    }
+			boolean status = Bukkit.dispatchCommand(console, command);
+			logResult("console", command, status);
+		});
+	}
 
-    private void executePlayerCommand(MessageParser parser, String command) {
-        logger.debug("Executing command '{}' as player", command);
-        String uuidStr = parser.getBodyValueAsString("uuid");
-        String name = parser.getBodyValueAsString("name");
+	private void executePlayerCommand(MessageParser parser, String command) {
+		logger.debug("Executing command '{}' as player", command);
+		String uuidStr = parser.getBodyValueAsString("uuid");
+		String name = parser.getBodyValueAsString("name");
+		UUID uuid = UUID.fromString(uuidStr);
 
-        try {
-            UUID uuid = UUID.fromString(uuidStr);
-            Optional<Player> playerOptional = Optional.ofNullable(Bukkit.getPlayer(uuid));
+		Player player = Bukkit.getPlayer(uuid);
 
-            playerOptional.ifPresentOrElse(player -> handlePlayerCommand(player, command),
-                    () -> logger.warn("Player '{}' not found or offline", name));
-        } catch (Exception e) {
-            logger.error("Error while processing player: {}",
-                    logger.getDebug() ? e : e.getMessage());
-            Runtime.getInstance().getClient().sendError("Error while processing player: " + e.getMessage());
-        }
-    }
+		if (player == null || !player.isOnline()) {
+			logger.warn("Player '{}' not found or offline", name);
+			Runtime.getInstance().getClient()
+					.sendError("Player '" + name + "' not found or offline");
+			return;
+		}
 
-    private void handlePlayerCommand(Player player, String command) {
-        if (CommandUtils.isCommandValid(command)) {
-            logger.warn("Invalid command: {}", command);
-            Runtime.getInstance().getClient().sendError("Invalid command: " + command);
-            player.sendMessage("§cThe command '" + command + "' is invalid");
-            return;
-        }
+		if (SchedulerAdapter.isFolia()) {
+			player.getScheduler().execute(plugin, () -> {
+				executeFoliaCommand(player, command);
+			}, null, 0);
+		} else {
+			new SchedulerAdapter(plugin).run(() -> executeFoliaCommand(player, command));
+		}
 
-        new SchedulerAdapter(plugin).run(() -> {
-            boolean status = Bukkit.dispatchCommand(player, command);
-            logResult("player", command, status);
-        });
-    }
+	}
 
-    // private boolean isCommandValid(String command) {
-    // String baseCommand = command.split(" ")[0];
-    // PluginCommand pluginCommand = Bukkit.getPluginCommand(baseCommand);
-    // if (pluginCommand != null) {
-    // return false;
-    // }
-    // return Bukkit.getServer().getCommandMap().getCommand(baseCommand) == null;
-    // }
-    //
-    private void logResult(String target, String command, boolean status) {
-        if (status) {
-            logger.info("Successfully executed command '{}' as {}", command, target);
-        } else {
-            logger.warn("Failed to execute command '{}' as {}", command, target);
-            Runtime.getInstance().getClient().sendError("Failed to execute command '" + command + "' as " + target);
-        }
-    }
+	private void executeFoliaCommand(Player player, String command) {
+		if (CommandUtils.isCommandValid(command)) {
+			logger.warn("Invalid command: {}", command);
+			Runtime.getInstance().getClient().sendError("Invalid command: " + command);
+			return;
+		}
+		boolean status = Bukkit.dispatchCommand(player, command);
+		logResult("player", command, status);
+	}
 
-}
-</file>
+	private void logResult(String target, String command, boolean status) {
+		if (status) {
+			logger.info("Successfully executed command '{}' as {}", command, target);
+		} else {
+			logger.warn("Failed to execute command '{}' as {}", command, target);
+			Runtime.getInstance().getClient()
+					.sendError("Failed to execute command '" + command + "' as " + target);
+		}
+	}
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/command/CommandForwarder.java">
-package dev.objz.commandbridge.paper.command;
-
-import java.util.HashSet;
-import java.util.Set;
-
-import org.bukkit.ChatColor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-
-import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ScriptManager;
-import dev.objz.commandbridge.core.utils.StringParser;
-import me.clip.placeholderapi.PlaceholderAPI;
-
-public class CommandForwarder {
-    private final Logger logger;
-    private final Main plugin;
-
-    public CommandForwarder(Logger logger, Main plugin) {
-        this.logger = logger;
-        this.plugin = plugin;
-    }
-
-    public int executeScriptCommands(CommandSender sender, ScriptManager.ScriptConfig script, String[] args) {
-        if (isPermissionDenied(sender, script)) {
-            return 0;
-        }
-
-        for (ScriptManager.Command cmd : script.getCommands()) {
-            logger.debug("Processing command: {}", cmd.getCommand());
-
-            switch (cmd.getTargetExecutor().toLowerCase()) {
-                case "player" -> handlePlayerExecutor(cmd, sender, args);
-                case "console" -> handleConsoleExecutor(cmd, args);
-                default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
-            }
-        }
-
-        return 1;
-    }
-
-    private boolean isPermissionDenied(CommandSender sender, ScriptManager.ScriptConfig script) {
-        if (!script.shouldIgnorePermissionCheck()
-                && !sender.hasPermission("commandbridge.command." + script.getName())) {
-            logger.warn("Sender '{}' has no permission to use this command", sender);
-            if (!script.shouldHidePermissionWarning()) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private void handlePlayerExecutor(ScriptManager.Command cmd, CommandSender sender, String[] args) {
-        if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
-            logger.warn("This command requires a player as executor, but sender is not a player.");
-            sender.sendMessage(
-                    ChatColor.RED + "This command requires a player as executor, but source is not a player object");
-            return;
-        }
-
-        Player player = (Player) sender;
-        String parsedCommand = parseCommand(cmd, args, player);
-
-        if (parsedCommand == null)
-            return;
-
-        if (cmd.getDelay() > 0) {
-            scheduleCommand(cmd, parsedCommand, player);
-        } else {
-            sendCommand(cmd, parsedCommand, player);
-        }
-    }
-
-    private void handleConsoleExecutor(ScriptManager.Command cmd, String[] args) {
-        String parsedCommand = parseCommand(cmd, args, null);
-
-        if (parsedCommand == null)
-            return;
-
-        if (cmd.getDelay() > 0) {
-            scheduleCommand(cmd, parsedCommand, null);
-        } else {
-            sendCommand(cmd, parsedCommand, null);
-        }
-    }
-
-    private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
-        StringParser parser = StringParser.create();
-
-        if (player != null && cmd.getTargetExecutor().equals("player")) {
-            addPlayerPlaceholders(parser, player);
-        }
-
-        try {
-            StringParser.Result result = parser.validate(cmd.getCommand(), args);
-
-            if (!result.isValid()) {
-                Set<String> unresolved = result.getUnresolved();
-
-                if (player == null && cmd.getTargetExecutor().equals("console")) {
-                    Set<String> playerPlaceholders = new HashSet<>();
-                    for (String placeholder : unresolved) {
-                        if (isPlayerPlaceholder(placeholder)) {
-                            playerPlaceholders.add(placeholder);
-                        }
-                    }
-
-                    if (!playerPlaceholders.isEmpty()) {
-                        logger.error("Console command '{}' contains player placeholders: {}",
-                                cmd.getCommand(), playerPlaceholders);
-
-                        Runtime.getInstance().getClient().sendError(
-                                "Console command contains unresolvable player placeholders: " + playerPlaceholders);
-                        return null;
-                    }
-                }
-
-                if (!unresolved.isEmpty()) {
-                    logger.warn("Command '{}' contains unresolved placeholders: {}", cmd.getCommand(), unresolved);
-                }
-            }
-
-            String parsedCommand = result.getParsed();
-
-            if (Runtime.getInstance().getStartup().isPlaceholderAPI() && player != null) {
-                parsedCommand = PlaceholderAPI.setPlaceholders(player, parsedCommand);
-            }
-
-            return parsedCommand;
-
-        } catch (Exception e) {
-            logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
-            if (player != null) {
-                player.sendMessage(ChatColor.RED + "Error occurred while parsing command");
-            }
-            Runtime.getInstance().getClient().sendError("Error occurred while parsing commands");
-            return null;
-        }
-    }
-
-    private boolean isPlayerPlaceholder(String placeholder) {
-        return placeholder.equals("%cb_player%") ||
-                placeholder.equals("%cb_uuid%") ||
-                placeholder.equals("%cb_world%");
-    }
-
-    private void addPlayerPlaceholders(StringParser parser, Player player) {
-        logger.debug("Adding placeholders for player: {}", player.getName());
-        parser.add("%cb_player%", player.getName());
-        parser.add("%cb_uuid%", player.getUniqueId().toString());
-        parser.add("%cb_world%", player.getWorld().getName());
-    }
-
-    private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
-        logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
-        if (player != null) {
-            player.sendMessage("Scheduling command with '" + cmd.getDelay() + "' seconds");
-        }
-        new SchedulerAdapter(plugin).runLater(() -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
-    }
-
-    private void sendCommand(ScriptManager.Command cmd, String command, Player player) {
-        logger.info("Sending command to server as {}", player == null ? "console" : "player");
-        Runtime.getInstance().getClient().sendCommand(command, "", cmd.getTargetExecutor(), player);
-    }
 }
 </file>
 
@@ -2016,51 +1794,6 @@ public class GeneralUtils {
 }
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/utils/SchedulerAdapter.java">
-package dev.objz.commandbridge.paper.utils;
-
-import java.util.function.Consumer;
-
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
-
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-
-public class SchedulerAdapter {
-    private final JavaPlugin plugin;
-
-    public SchedulerAdapter(JavaPlugin plugin) {
-        this.plugin = plugin;
-    }
-
-    public void run(Runnable task) {
-        if (isFolia()) {
-            Bukkit.getGlobalRegionScheduler().execute(plugin, task);
-        } else {
-            Bukkit.getScheduler().runTask(plugin, task);
-        }
-    }
-
-    public void runLater(Runnable task, long delayTicks) {
-        if (isFolia()) {
-            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, (@NotNull Consumer<ScheduledTask>) task, delayTicks);
-        } else {
-            Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
-        }
-    }
-
-    public static boolean isFolia() {
-        try {
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-    }
-}
-</file>
-
 <file path="paper/src/main/java/dev/objz/commandbridge/paper/websocket/Ping.java">
 package dev.objz.commandbridge.paper.websocket;
 
@@ -2213,8 +1946,8 @@ timeout: 120
 secret: "CHANGE_ME"
 </file>
 
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/CommandDispatcher.java">
-package dev.objz.commandbridge.velocity.command;
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/inbound/CommandHandler.java">
+package dev.objz.commandbridge.velocity.command.inbound;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -2227,11 +1960,11 @@ import dev.objz.commandbridge.velocity.util.ProxyUtils;
 import dev.objz.commandbridge.core.json.MessageParser;
 import dev.objz.commandbridge.core.Logger;
 
-public class CommandDispatcher {
+public class CommandHandler {
     private final ProxyServer proxy;
     private final Logger logger;
 
-    public CommandDispatcher() {
+    public CommandHandler() {
         this.proxy = ProxyUtils.getProxyServer();
         this.logger = Runtime.getInstance().getLogger();
     }
@@ -2284,302 +2017,6 @@ public class CommandDispatcher {
         } catch (Exception e) {
             logger.error("Error while processing player: {}",
                     logger.getDebug() ? e : e.getMessage());
-        }
-    }
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/CommandForwarder.java">
-package dev.objz.commandbridge.velocity.command;
-
-import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ProxyServer;
-import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.velocity.util.ProxyUtils;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ScriptManager;
-import dev.objz.commandbridge.core.utils.StringParser;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.william278.papiproxybridge.api.PlaceholderAPI;
-
-public class CommandForwarder {
-    private final Logger logger;
-    private final ProxyServer proxy;
-    private final Main plugin;
-
-    public CommandForwarder(Logger logger, Main plugin) {
-        this.logger = logger;
-        this.proxy = ProxyUtils.getProxyServer();
-        this.plugin = plugin;
-    }
-
-    public int executeScriptCommands(CommandSource source,
-            ScriptManager.ScriptConfig script,
-            String[] args) {
-        logger.debug("Executing script commands for script: {}", script.getName());
-
-        if (isPermissionDenied(source, script)) {
-            return 0;
-        }
-
-        for (ScriptManager.Command cmd : script.getCommands()) {
-            logger.debug("Processing command: {}", cmd.getCommand());
-
-            switch (cmd.getTargetExecutor().toLowerCase()) {
-                case "player" -> handlePlayerExecutor(cmd, source, args);
-                case "console" -> handleConsoleExecutor(cmd, source, args);
-                default ->
-                    logger.warn("Unknown target executor for command: {}",
-                            cmd.getCommand());
-            }
-        }
-
-        logger.info("Script commands executed successfully for command: {}",
-                script.getName());
-        return com.mojang.brigadier.Command.SINGLE_SUCCESS;
-    }
-
-    private boolean isPermissionDenied(CommandSource source,
-            ScriptManager.ScriptConfig script) {
-        if (!script.shouldIgnorePermissionCheck() &&
-                !source.hasPermission("commandbridge.command." + script.getName())) {
-            logger.warn("Sender '{}' has no permission to use this command", source);
-            if (!script.shouldHidePermissionWarning()) {
-                source.sendMessage(
-                        Component.text("You do not have permission to use this command",
-                                NamedTextColor.RED));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private void handlePlayerExecutor(ScriptManager.Command cmd,
-            CommandSource source, String[] args) {
-        if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
-            logger.warn("This command requires a player as executor, but source is " +
-                    "not a player");
-            source.sendMessage(
-                    Component.text("This command requires a player as executor, but " +
-                            "source is not a player object",
-                            NamedTextColor.RED));
-            return;
-        }
-
-        Player player = (Player) source;
-
-        if (cmd.isCheckIfExecutorIsOnServer() &&
-                !isPlayerOnTargetServer(player, cmd)) {
-            logger.warn("Player '{}' is not on the required server for this command.",
-                    player.getUsername());
-            source.sendMessage(Component.text("Player " + player.getUsername() +
-                    " is not on the required server",
-                    NamedTextColor.YELLOW));
-            return;
-        }
-
-        parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
-            if (parsedCommand == null)
-                return;
-
-            if (cmd.getDelay() > 0) {
-                scheduleCommand(cmd, parsedCommand, args, player, 0);
-            } else {
-                sendCommand(cmd, parsedCommand, args, player, 0);
-            }
-        });
-    }
-
-    private void handleConsoleExecutor(ScriptManager.Command cmd,
-            CommandSource source, String[] args) {
-
-        parseCommand(cmd, args, null).thenAccept(parsedCommand -> {
-            if (parsedCommand == null)
-                return;
-
-            if (cmd.getDelay() > 0) {
-                scheduleCommand(cmd, parsedCommand, args, null, 0);
-            } else {
-                sendCommand(cmd, parsedCommand, args, null, 0);
-            }
-        });
-    }
-
-    private boolean isPlayerOnTargetServer(Player player,
-            ScriptManager.Command cmd) {
-        return player.getCurrentServer()
-                .map(serverConn -> cmd.getTargetClientIds().contains(
-                        serverConn.getServerInfo().getName()))
-                .orElse(false);
-    }
-
-    private CompletableFuture<String> parseCommand(ScriptManager.Command cmd,
-            String[] args, Player player) {
-        StringParser parser = StringParser.create();
-
-        if (player != null && cmd.getTargetExecutor().equals("player")) {
-            addPlayerPlaceholders(parser, player);
-        }
-
-        try {
-            StringParser.Result result = parser.validate(cmd.getCommand(), args);
-
-            if (!result.isValid()) {
-                Set<String> unresolved = result.getUnresolved();
-
-                if (player == null && cmd.getTargetExecutor().equals("console")) {
-                    Set<String> playerPlaceholders = new HashSet<>();
-                    for (String placeholder : unresolved) {
-                        if (isPlayerPlaceholder(placeholder)) {
-                            playerPlaceholders.add(placeholder);
-                        }
-                    }
-
-                    if (!playerPlaceholders.isEmpty()) {
-                        logger.error(
-                                "Console command '{}' contains player placeholders: {}",
-                                cmd.getCommand(), playerPlaceholders);
-
-                        for (String conn : cmd.getTargetClientIds()) {
-                            Runtime.getInstance().getServer().sendError(
-                                    Runtime.getInstance().getServer().getWebSocket(conn),
-                                    "Console command contains unresolvable player " +
-                                            "placeholders: " +
-                                            playerPlaceholders);
-                        }
-                        return CompletableFuture.completedFuture(null);
-                    }
-                }
-
-                if (!unresolved.isEmpty()) {
-                    logger.warn("Command '{}' contains unresolved placeholders: {}",
-                            cmd.getCommand(), unresolved);
-                }
-            }
-
-            String parsedCommand = result.getParsed();
-
-            if (Runtime.getInstance().getStartup().isPlaceholderAPI() &&
-                    player != null) {
-                return PlaceholderAPI.createInstance()
-                        .formatPlaceholders(parsedCommand, player.getUniqueId())
-                        .exceptionally(e -> {
-                            logger.error("PlaceholderAPI error: {}",
-                                    logger.getDebug() ? e : e.getMessage());
-                            return parsedCommand;
-                        });
-            }
-
-            return CompletableFuture.completedFuture(parsedCommand);
-        } catch (Exception e) {
-            logger.error("Error occurred while parsing command: {}",
-                    logger.getDebug() ? e : e.getMessage());
-            if (player != null) {
-                player.sendMessage(
-                        Component.text("Error occurred while parsing command")
-                                .color(NamedTextColor.RED));
-            }
-            for (String conn : cmd.getTargetClientIds()) {
-                Runtime.getInstance().getServer().sendError(
-                        Runtime.getInstance().getServer().getWebSocket(conn),
-                        "Error occurred while parsing commands");
-            }
-
-            return CompletableFuture.completedFuture(null);
-        }
-    }
-
-    private boolean isPlayerPlaceholder(String placeholder) {
-        return placeholder.equals("%cb_player%") ||
-                placeholder.equals("%cb_uuid%") || placeholder.equals("%cb_server%");
-    }
-
-    private void addPlayerPlaceholders(StringParser parser, Player player) {
-        logger.debug("Adding placeholders for player: {}", player.getUsername());
-        parser.add("%cb_player%", player.getUsername());
-        parser.add("%cb_uuid%", player.getUniqueId().toString());
-        parser.add("%cb_server%", player.getCurrentServer()
-                .map(srv -> srv.getServerInfo().getName())
-                .orElse("defaultServerName"));
-    }
-
-    private void scheduleCommand(ScriptManager.Command cmd, String command,
-            String[] args, Player player, int retryCount) {
-        logger.debug("Scheduling command '{}' with delay: {} seconds",
-                cmd.getCommand(), cmd.getDelay());
-        proxy.getScheduler()
-                .buildTask(plugin,
-                        () -> sendCommand(cmd, command, args, player, retryCount))
-                .delay(cmd.getDelay(), TimeUnit.SECONDS)
-                .schedule();
-    }
-
-    private void sendCommand(ScriptManager.Command cmd, String command,
-            String[] args, Player player, int retryCount) {
-        logger.debug("Executing command: {} with retryCount: {}", cmd.getCommand(),
-                retryCount);
-
-        if (retryCount >= 30) {
-            logger.warn("Max retries reached for command: {}", cmd.getCommand());
-            if (player != null) {
-                player.sendMessage(
-                        Component.text("Max retries reached", NamedTextColor.YELLOW));
-            }
-            return;
-        }
-
-        if (cmd.shouldWaitUntilPlayerIsOnline() &&
-                "player".equalsIgnoreCase(cmd.getTargetExecutor())) {
-            if (player == null || !player.isActive()) {
-                logger.warn("Player is not online. Retrying command: {}",
-                        cmd.getCommand());
-                if (player != null) {
-                    player.sendMessage(Component.text(
-                            "Player is not online. Retrying command", NamedTextColor.YELLOW));
-                }
-                proxy.getScheduler()
-                        .buildTask(
-                                plugin,
-                                () -> sendCommand(cmd, command, args, player, retryCount + 1))
-                        .delay(1, TimeUnit.SECONDS)
-                        .schedule();
-                return;
-            }
-        }
-
-        List<String> targetClients = cmd.getTargetClientIds();
-        if (targetClients.isEmpty()) {
-            logger.warn("No target clients defined for command: {}",
-                    cmd.getCommand());
-            if (player != null) {
-                player.sendMessage(
-                        Component.text("No target clients are defined for this command",
-                                NamedTextColor.RED));
-            }
-            return;
-        }
-
-        for (String clientId : targetClients) {
-            if (Runtime.getInstance().getServer().isServerConnected(clientId)) {
-                logger.info("Sending command to client '{}' as {}", clientId,
-                        player == null ? "console" : "player");
-                Runtime.getInstance().getServer().sendCommand(
-                        command, clientId, cmd.getTargetExecutor(), player);
-            } else {
-                logger.warn("Client '{}' not found", clientId);
-                if (player != null) {
-                    player.sendMessage(Component.text(
-                            "Client '" + clientId + "' not found", NamedTextColor.RED));
-                }
-            }
         }
     }
 }
@@ -3279,6 +2716,54 @@ public class HttpServer extends SimpleChannelInboundHandler<FullHttpRequest> {
     }
 
 }
+</file>
+
+<file path="debug-jar.sh">
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: ./debug-jar.sh path/to/app.jar [--port PORT] [--suspend y|n] [--] [extra java args...]
+
+JAR="$1"; shift
+
+if [[ ! -f "$JAR" ]]; then
+  echo "Jar not found: $JAR"
+  echo "Usage: $0 path/to/app.jar [--port PORT] [--suspend y|n] [--] [extra java args...]"
+  exit 1
+fi
+
+# Defaults
+PORT=5005
+SUSPEND="n"
+
+# Parse optional flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --port)
+      PORT="$2"; shift 2;;
+    --port=*)
+      PORT="${1#*=}"; shift;;
+    --suspend)
+      SUSPEND="$2"; shift 2;;
+    --suspend=*)
+      SUSPEND="${1#*=}"; shift;;
+    --)
+      shift; break;;
+    *)
+      break;;
+  esac
+done
+
+EXTRA_ARGS=("$@")
+
+JDWP_OPT="transport=dt_socket,server=y,suspend=${SUSPEND},address=${PORT}"
+JAVA_OPTS="${JAVA_OPTS:--Xmx1G}"
+
+echo "Running JAR: $JAR"
+echo "JDWP: $JDWP_OPT"
+echo "Additional Java args: ${EXTRA_ARGS[*]:-<none>}"
+
+exec java $JAVA_OPTS -agentlib:jdwp=$JDWP_OPT -jar "$JAR" "${EXTRA_ARGS[@]}"
 </file>
 
 <file path="gradlew">
@@ -4309,186 +3794,240 @@ Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/command/CommandRegistrar.java">
-package dev.objz.commandbridge.paper.command;
+<file path=".github/ISSUE_TEMPLATE/bug_report.md">
+---
+name: Bug report
+about: Create a report to help us improve
+title: "[BUG]"
+labels: bug
+assignees: 72-S
 
-import java.util.ArrayList;
-import java.util.List;
+---
 
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ScriptManager;
-import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPICommand;
-import dev.jorel.commandapi.arguments.GreedyStringArgument;
+**Describe the bug**
+A clear and concise description of what the bug is.
 
-public class CommandRegistrar {
-    private final Logger logger;
-    private final CommandForwarder forwarder;
-    private final List<String> registeredCommands = new ArrayList<>();
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
 
-    public CommandRegistrar(Logger logger) {
-        this.logger = logger;
-        this.forwarder = Runtime.getInstance().getForwarder();
-    }
+**Expected behavior**
+A clear and concise description of what you expected to happen.
 
-    public void unregisterAllCommands() {
-        for (String command : registeredCommands) {
-            try {
-                CommandAPI.unregister(command);
-                logger.debug("Unregistered command: {}", command);
-            } catch (Exception e) {
-                logger.error("Failed to unregister command '{}' : {}",
-                        command,
-                        logger.getDebug() ? e : e.getMessage());
-            }
-        }
-        registeredCommands.clear();
-        logger.info("All registered commands have been unregistered.");
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
 
-    }
+**Server (please complete the following information):**
+- OS: [e.g. Linux]
+- Minecraft Version: [e.g. 1.20.6]
+- Plugin Version: [e.g. 1.0.0]
+- Java Version: [e.g. 21]
 
-    public void registerCommand(ScriptManager.ScriptConfig script) {
-        String commandName = script.getName();
+**Client (please complete the following information):**
+- Device: [e.g. PC]
+- OS: [e.g. Windows 10]
+- Minecraft Version: [e.g. 1.20.6]
+- Java Version: [e.g. 21]
 
-        try {
-            CommandAPICommand command = new CommandAPICommand(commandName)
-                    .withOptionalArguments(new GreedyStringArgument("args"))
-                    .withAliases(script.getAliases().toArray(new String[0]))
-                    .executes((sender, args) -> {
-                        String argsString = (String) args.get("args");
-                        logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
-                        String[] splitArgs = argsString != null ? argsString.split(" ") : new String[0];
-                        return forwarder.executeScriptCommands(sender, script, splitArgs);
-                    });
-            command.register();
-            registeredCommands.add(commandName);
-        } catch (Exception e) {
-            logger.error(
-                    "Failed to register command '{}' : {}",
-                    commandName,
-                    logger.getDebug() ? e : e.getMessage());
-        }
-    }
+**Troubleshooting Checklist:**
+- [ ] Installed the newest version of the plugin
+- [ ] Checked compatibility with the current Minecraft version
+- [ ] Verified Java version is compatible
+- [ ] Tested with a fresh server setup (no other plugins)
 
-}
+**Additional context**
+Add any other context about the problem here.
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/core/Runtime.java">
-package dev.objz.commandbridge.paper.core;
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/command/outbound/CommandSender.java">
+package dev.objz.commandbridge.paper.command.outbound;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
 
 import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.command.CommandRegistrar;
-import dev.objz.commandbridge.paper.utils.Encoder;
-import dev.objz.commandbridge.paper.utils.GeneralUtils;
-import dev.objz.commandbridge.paper.utils.ScriptUtils;
-import dev.objz.commandbridge.paper.websocket.Client;
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
 import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ConfigManager;
-import dev.objz.commandbridge.paper.command.CommandExecutor;
-import dev.objz.commandbridge.paper.command.CommandForwarder;
+import dev.objz.commandbridge.core.utils.ScriptManager;
+import dev.objz.commandbridge.core.utils.StringParser;
+import me.clip.placeholderapi.PlaceholderAPI;
 
-public class Runtime {
-    private static Runtime instance;
-    private Logger logger;
-    private ConfigManager config;
-    private ScriptUtils scriptUtils;
-    private Client client;
-    private Startup startup;
-    private CommandForwarder forwarder;
-    private CommandRegistrar registrar;
-    private GeneralUtils generalUtils;
-    private CommandExecutor commandExecutor;
-    private Encoder encoder;
+public class CommandSender {
+    private final Logger logger;
+    private final Main plugin;
 
-    private Runtime() {
+    public CommandSender(Logger logger, Main plugin) {
+        this.logger = logger;
+        this.plugin = plugin;
     }
 
-    public static synchronized Runtime getInstance() {
-        if (instance == null) {
-            instance = new Runtime();
-            instance.getLogger().debug("Runtime singleton instance initialized.");
+    public int executeScriptCommands(org.bukkit.command.CommandSender sender,
+                                     ScriptManager.ScriptConfig script,
+                                     String[] args) {
+        if (isPermissionDenied(sender, script)) {
+            return 0;
         }
-        return instance;
+
+        for (ScriptManager.Command cmd : script.getCommands()) {
+            logger.debug("Processing command: {}", cmd.getCommand());
+
+            switch (cmd.getTargetExecutor().toLowerCase()) {
+                case "player" -> handlePlayerExecutor(cmd, sender, args);
+                case "console" -> handleConsoleExecutor(cmd, sender, args); 
+                default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
+            }
+        }
+
+        return 1;
     }
 
-    public synchronized Logger getLogger() {
-        if (logger == null) {
-            logger = new Logger("CommandBridge");
-            logger.debug("Logger initialized.");
+    private boolean isPermissionDenied(org.bukkit.command.CommandSender sender,
+                                       ScriptManager.ScriptConfig script) {
+        if (!script.shouldIgnorePermissionCheck()
+                && !sender.hasPermission("commandbridge.command." + script.getName())) {
+            logger.warn("Sender '{}' has no permission to use this command", sender);
+            if (!script.shouldHidePermissionWarning()) {
+                sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+            }
+            return true;
         }
-        return logger;
+        return false;
     }
 
-    public synchronized ConfigManager getConfig() {
-        if (config == null) {
-            config = new ConfigManager(getLogger(), "CommandBridge");
-            getLogger().debug("ConfigManager initialized.");
+    private void handlePlayerExecutor(ScriptManager.Command cmd,
+                                      org.bukkit.command.CommandSender sender,
+                                      String[] args) {
+        if (cmd.isCheckIfExecutorIsPlayer() && !(sender instanceof Player)) {
+            logger.warn("This command requires a player as executor, but sender is not a player.");
+            sender.sendMessage(ChatColor.RED + "This command requires a player as executor, but source is not a player object");
+            return;
         }
-        return config;
+
+        Player player = (Player) sender;
+        String parsedCommand = parseCommand(cmd, args, player);
+
+        if (parsedCommand == null) return;
+
+        if (cmd.getDelay() > 0) {
+            scheduleCommand(cmd, parsedCommand, player);
+        } else {
+            sendCommand(cmd, parsedCommand, player);
+        }
     }
 
-    public synchronized ScriptUtils getScriptUtils() {
-        if (scriptUtils == null) {
-            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
-            getLogger().debug("ScriptUtils initialized.");
+    private void handleConsoleExecutor(ScriptManager.Command cmd,
+                                       org.bukkit.command.CommandSender sender,
+                                       String[] args) {
+        final Player playerCtx;
+        if (cmd.isCheckIfExecutorIsPlayer()) {
+            if (!(sender instanceof Player)) {
+                logger.warn("Console target requires a player executor, but sender is not a player.");
+                sender.sendMessage(ChatColor.RED + "This command requires a player as executor, but source is not a player object");
+                return;
+            }
+            playerCtx = (Player) sender;
+        } else {
+            playerCtx = null;
         }
-        return scriptUtils;
+
+        String parsedCommand = parseCommand(cmd, args, playerCtx);
+
+        if (parsedCommand == null) return;
+
+        if (cmd.getDelay() > 0) {
+            scheduleCommand(cmd, parsedCommand, playerCtx);
+        } else {
+            sendCommand(cmd, parsedCommand, playerCtx);
+        }
     }
 
-    public synchronized Client getClient() {
-        if (client == null) {
-            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
-            getLogger().debug("Server initialized.");
+    private String parseCommand(ScriptManager.Command cmd, String[] args, Player player) {
+        StringParser parser = StringParser.create();
+
+        // Inject player placeholders whenever a player context is available 
+        if (player != null) {
+            addPlayerPlaceholders(parser, player);
         }
-        return client;
+
+        try {
+            StringParser.Result result = parser.validate(cmd.getCommand(), args);
+
+            if (!result.isValid()) {
+                Set<String> unresolved = result.getUnresolved();
+
+                // If executing as console without a player context, block if player placeholders are present.
+                if (player == null && cmd.getTargetExecutor().equalsIgnoreCase("console")) {
+                    Set<String> playerPlaceholders = new HashSet<>();
+                    for (String placeholder : unresolved) {
+                        if (isPlayerPlaceholder(placeholder)) {
+                            playerPlaceholders.add(placeholder);
+                        }
+                    }
+
+                    if (!playerPlaceholders.isEmpty()) {
+                        logger.error("Console command '{}' contains player placeholders: {}",
+                                cmd.getCommand(), playerPlaceholders);
+
+                        Runtime.getInstance().getClient().sendError(
+                                "Console command contains unresolvable player placeholders: " + playerPlaceholders);
+                        return null;
+                    }
+                }
+
+                if (!unresolved.isEmpty()) {
+                    logger.warn("Command '{}' contains unresolved placeholders: {}", cmd.getCommand(), unresolved);
+                }
+            }
+
+            String parsedCommand = result.getParsed();
+
+            if (Runtime.getInstance().getStartup().isPlaceholderAPI() && player != null) {
+                parsedCommand = PlaceholderAPI.setPlaceholders(player, parsedCommand);
+            }
+
+            return parsedCommand;
+
+        } catch (Exception e) {
+            logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
+            if (player != null) {
+                player.sendMessage(ChatColor.RED + "Error occurred while parsing command");
+            }
+            Runtime.getInstance().getClient().sendError("Error occurred while parsing commands");
+            return null;
+        }
     }
 
-    public synchronized Startup getStartup() {
-        if (startup == null) {
-            startup = new Startup(getLogger());
-            getLogger().debug("Startup initialized.");
-        }
-        return startup;
+    private boolean isPlayerPlaceholder(String placeholder) {
+        return placeholder.equals("%cb_player%")
+                || placeholder.equals("%cb_uuid%")
+                || placeholder.equals("%cb_world%");
     }
 
-    public synchronized CommandForwarder getForwarder() {
-        if (forwarder == null) {
-            forwarder = new CommandForwarder(getLogger(), Main.getInstance());
-            getLogger().debug("CommandHelper initialized.");
-        }
-        return forwarder;
+    private void addPlayerPlaceholders(StringParser parser, Player player) {
+        logger.debug("Adding placeholders for player: {}", player.getName());
+        parser.add("%cb_player%", player.getName());
+        parser.add("%cb_uuid%", player.getUniqueId().toString());
+        parser.add("%cb_world%", player.getWorld().getName());
     }
 
-    public synchronized CommandRegistrar getRegistrar() {
-        if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
-            getLogger().debug("CommandRegistrar initialized.");
+    private void scheduleCommand(ScriptManager.Command cmd, String command, Player player) {
+        logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
+        if (player != null) {
+            player.sendMessage("Scheduling command with '" + cmd.getDelay() + "' seconds");
         }
-        return registrar;
+        new SchedulerAdapter(plugin).runLater(() -> sendCommand(cmd, command, player), cmd.getDelay() * 20L);
     }
 
-    public synchronized GeneralUtils getGeneralUtils() {
-        if (generalUtils == null) {
-            generalUtils = new GeneralUtils(getLogger());
-            getLogger().debug("GeneralUtils initialized.");
-        }
-        return generalUtils;
-    }
-
-    public synchronized CommandExecutor getCommandExecutor() {
-        if (commandExecutor == null) {
-            commandExecutor = new CommandExecutor();
-            getLogger().debug("CommandExecutor initialized.");
-        }
-        return commandExecutor;
-    }
-    public synchronized Encoder getEncoder() {
-        if (encoder == null) {
-            encoder = new Encoder();
-            getLogger().debug("Encoder initialized.");
-        }
-        return encoder;
+    private void sendCommand(ScriptManager.Command cmd, String command, Player player) {
+        logger.info("Sending command to server as {}", player == null ? "console" : "player-context for console");
+        Runtime.getInstance().getClient().sendCommand(command, "", cmd.getTargetExecutor(), player);
     }
 }
 </file>
@@ -4673,436 +4212,6 @@ public class ScriptUtils extends ScriptManager {
 }
 </file>
 
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/websocket/Client.java">
-package dev.objz.commandbridge.paper.websocket;
-
-import dev.objz.commandbridge.paper.Main;
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
-import dev.objz.commandbridge.core.json.MessageBuilder;
-import dev.objz.commandbridge.core.json.MessageParser;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.websocket.WebSocketClient;
-import org.bukkit.entity.Player;
-
-public class Client extends WebSocketClient {
-    private final Logger logger;
-
-    public Client(Logger logger, String secret) {
-        super(logger, secret);
-        this.logger = logger;
-    }
-
-    @Override
-    protected void onMessage(String message) {
-        MessageParser parser = new MessageParser(message);
-        logger.debug("Received payload: {}", message);
-        try {
-            String type = parser.getType();
-            switch (type) {
-                case "command" -> handleCommandRequest(message);
-                case "system" -> handleSystemRequest(message);
-                default -> {
-                    logger.warn("Invalid type: {}", type);
-                    sendError("Invalid type: " + type);
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Error while processing message: {}",
-                    logger.getDebug() ? e : e.getMessage());
-            sendError("Internal client error: " + e.getMessage());
-        }
-    }
-
-    @Override
-    protected void afterAuth() {
-        logger.debug("Sending server information's...");
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "name");
-        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-        logger.debug("Sending payload: {}", builder.build().toString());
-        sendMessage(builder.build());
-    }
-
-    private void handleCommandRequest(String message) {
-        logger.debug("Handling command response");
-        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
-    }
-
-    private void handleSystemRequest(String message) {
-        logger.debug("Handling system request");
-        MessageParser parser = new MessageParser(message);
-        String channel = parser.getBodyValueAsString("channel");
-        String status = parser.getStatus();
-
-        switch (channel) {
-            case "error" -> logger.warn("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
-            case "info" -> logger.info("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
-            case "task" -> systemTask(parser, status);
-            default -> logger.warn("Invalid channel: {}", channel);
-        }
-    }
-
-    private void systemTask(MessageParser parser, String status) {
-        String task = parser.getBodyValueAsString("task");
-        switch (task) {
-            case "reload" ->
-                Runtime.getInstance().getScriptUtils().unloadCommands(() -> new SchedulerAdapter(Main.getInstance())
-                        .runLater(Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
-            case "reconnect" -> Ping.reconnect(logger);
-            case "dump" -> {
-                String encoded = Runtime.getInstance().getEncoder().encode();
-                String compressed;
-                try {
-                    compressed = Runtime.getInstance().getEncoder().compress(encoded);
-                } catch (Exception e) {
-                    logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
-                    sendError("Error while processing dump data: " + e.getMessage());
-                    return;
-                }
-                MessageBuilder builder = new MessageBuilder("system");
-                builder.addToBody("channel", "task").addToBody("task", "dump")
-                        .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
-                        .addToBody("compressed", compressed)
-                        .withStatus("success");
-                sendMessage(builder.build());
-            }
-            default -> logger.warn("Invalid task: {}", task);
-        }
-    }
-
-    public void sendError(String errorMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "error").withStatus(errorMessage).addToBody("client",
-                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-        sendMessage(builder.build());
-    }
-
-    public void sendInfo(String infoMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "info").withStatus(infoMessage).addToBody("client",
-                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
-        sendMessage(builder.build());
-    }
-
-    public void sendTask(String task, String status) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "task").addToBody("task", task)
-                .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
-                .withStatus(status);
-        sendMessage(builder.build());
-    }
-
-    public void sendCommand(String command, String client, String target, Player executor) {
-        MessageBuilder builder = new MessageBuilder("command");
-        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
-
-        if (target.equals("player")) {
-            builder.addToBody("name", executor.getName()).addToBody("uuid", executor.getUniqueId());
-        }
-        logger.info("Sending command '{}' to server", command);
-        logger.debug("Sending payload: {}", builder.build().toString());
-        sendMessage(builder.build());
-    }
-}
-</file>
-
-<file path="paper/src/main/java/dev/objz/commandbridge/paper/Main.java">
-package dev.objz.commandbridge.paper;
-
-import java.io.InputStream;
-import java.util.Properties;
-
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
-
-import dev.objz.commandbridge.paper.core.Runtime;
-import dev.objz.commandbridge.core.Logger;
-import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
-
-public class Main extends JavaPlugin {
-    private static Main instance;
-    private final Logger logger;
-
-    public Main() {
-        instance = this;
-        logger = Runtime.getInstance().getLogger();
-    }
-
-    public static String getVersion() {
-        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
-            if (input == null) {
-                return "Unknown";
-            }
-            Properties properties = new Properties();
-            properties.load(input);
-            return properties.getProperty("plugin.version", "Unknown");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Unknown";
-        }
-    }
-
-    public static Main getInstance() {
-        return instance;
-    }
-
-    @Override
-    public void onLoad() {
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(this).verboseOutput(false).silentLogs(true)
-                .skipReloadDatapacks(true).shouldHookPaperReload(false));
-    }
-
-    @Override
-    public void onEnable() {
-        CommandAPI.onEnable();
-        logger.info("Initializing CommandBridge...");
-        Runtime.getInstance().getStartup().start();
-    }
-
-    @Override
-    public void onDisable() {
-        CommandAPI.onDisable();
-        logger.info("Stopping CommandBridge...");
-        Runtime.getInstance().getStartup().stop();
-    }
-
-    public record ServerInfo(String name, String version) {
-    }
-
-    public static ServerInfo detectServer() {
-        Package pkg = Bukkit.getServer().getClass().getPackage();
-        String title = pkg.getImplementationTitle();
-        String version = pkg.getImplementationVersion();
-
-        if (title != null && !title.isBlank()
-                && version != null && !version.isBlank()) {
-            return new ServerInfo(title, version);
-        }
-
-        String fallbackName = Bukkit.getServer().getName();
-        String fallbackVersion = Bukkit.getServer().getVersion();
-        return new ServerInfo(fallbackName, fallbackVersion);
-    }
-
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/CommandRegistrar.java">
-package dev.objz.commandbridge.velocity.command;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.velocitypowered.api.command.BrigadierCommand;
-import com.velocitypowered.api.command.CommandMeta;
-import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.proxy.ProxyServer;
-
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.velocity.util.ProxyUtils;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ScriptManager;
-
-public class CommandRegistrar {
-    private final Logger logger;
-    private final ProxyServer proxy;
-    private final CommandForwarder helper;
-    private final Map<String, CommandMeta> registeredCommands = new HashMap<>();
-
-    public CommandRegistrar(Logger logger) {
-        this.logger = logger;
-        this.proxy = ProxyUtils.getProxyServer();
-        this.helper = Runtime.getInstance().getHelper();
-    }
-
-    public void unregisterAllCommands() {
-        for (String command : registeredCommands.keySet()) {
-            try {
-                CommandMeta commandMeta = registeredCommands.get(command);
-                proxy.getCommandManager().unregister(commandMeta);
-                logger.debug("Unregistered command: {}", command);
-            } catch (Exception e) {
-                logger.error("Failed to unregister command '{}' : {}",
-                        command,
-                        logger.getDebug() ? e : e.getMessage());
-            }
-        }
-        registeredCommands.clear();
-        logger.info("All registered commands have been unregistered.");
-    }
-
-    public void registerCommand(ScriptManager.ScriptConfig script) {
-        String commandName = script.getName();
-        try {
-            LiteralArgumentBuilder<CommandSource> commandBuilder = LiteralArgumentBuilder
-                    .<CommandSource>literal(commandName)
-                    .executes(context -> {
-                        logger.debug("Executing base command: {}", commandName);
-                        return helper.executeScriptCommands(context.getSource(), script, new String[0]);
-                    });
-            RequiredArgumentBuilder<CommandSource, String> argsArgument = RequiredArgumentBuilder
-                    .<CommandSource, String>argument("args", StringArgumentType.greedyString())
-                    .executes(context -> {
-                        String argsString = context.getArgument("args", String.class);
-                        logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
-                        String[] args = argsString.split(" ");
-                        return helper.executeScriptCommands(context.getSource(), script, args);
-                    });
-            commandBuilder.then(argsArgument);
-
-            // LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
-            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBuilder.build());
-            CommandMeta commandMeta = proxy.getCommandManager().metaBuilder(commandName)
-                    .aliases(script.getAliases().toArray(new String[0])).build();
-
-            proxy.getCommandManager().register(commandMeta, brigadierCommand);
-            registeredCommands.put(commandName, commandMeta);
-        } catch (Exception e) {
-            logger.error(
-                    "Failed to register command '{}' : {}",
-                    commandName,
-                    logger.getDebug() ? e : e.getMessage());
-        }
-    }
-
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/core/Runtime.java">
-package dev.objz.commandbridge.velocity.core;
-
-import dev.objz.commandbridge.velocity.Main;
-import dev.objz.commandbridge.velocity.command.CommandDispatcher;
-import dev.objz.commandbridge.velocity.command.CommandForwarder;
-import dev.objz.commandbridge.velocity.command.CommandRegistrar;
-import dev.objz.commandbridge.velocity.util.Encoder;
-import dev.objz.commandbridge.velocity.util.GeneralUtils;
-import dev.objz.commandbridge.velocity.util.ScriptUtils;
-import dev.objz.commandbridge.velocity.websocket.HttpServer;
-import dev.objz.commandbridge.velocity.websocket.Server;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.utils.ConfigManager;
-
-public class Runtime {
-    private static Runtime instance;
-    private Logger logger;
-    private ConfigManager config;
-    private ScriptUtils scriptUtils;
-    private Server server;
-    private Startup startup;
-    private CommandForwarder helper;
-    private CommandRegistrar registrar;
-    private GeneralUtils generalUtils;
-    private CommandDispatcher commandDispatcher;
-    private HttpServer httpServer;
-    private Encoder encoder;
-
-    private Runtime() {
-    }
-
-    public static synchronized Runtime getInstance() {
-        if (instance == null) {
-            instance = new Runtime();
-            instance.getLogger().debug("Runtime singleton instance initialized.");
-        }
-        return instance;
-    }
-
-    public synchronized Logger getLogger() {
-        if (logger == null) {
-            logger = new Logger("CommandBridge");
-            logger.debug("Logger initialized.");
-        }
-        return logger;
-    }
-
-    public synchronized ConfigManager getConfig() {
-        if (config == null) {
-            config = new ConfigManager(getLogger(), "CommandBridge");
-            getLogger().debug("ConfigManager initialized.");
-        }
-        return config;
-    }
-
-    public synchronized ScriptUtils getScriptUtils() {
-        if (scriptUtils == null) {
-            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
-            getLogger().debug("ScriptUtils initialized.");
-        }
-        return scriptUtils;
-    }
-
-    public synchronized Server getServer() {
-        if (server == null) {
-            server = new Server(getLogger(), getConfig().getSecret());
-            getLogger().debug("Server initialized.");
-        }
-        return server;
-    }
-
-    public synchronized Startup getStartup() {
-        if (startup == null) {
-            startup = new Startup(getLogger());
-            getLogger().debug("Startup initialized.");
-        }
-        return startup;
-    }
-
-    public synchronized CommandForwarder getHelper() {
-        if (helper == null) {
-            helper = new CommandForwarder(getLogger(), Main.getInstance());
-            getLogger().debug("CommandForwarder initialized.");
-        }
-        return helper;
-    }
-
-    public synchronized CommandRegistrar getRegistrar() {
-        if (registrar == null) {
-            registrar = new CommandRegistrar(getLogger());
-            getLogger().debug("InternalRegistrar initialized.");
-        }
-        return registrar;
-    }
-
-    public synchronized GeneralUtils getGeneralUtils() {
-        if (generalUtils == null) {
-            generalUtils = new GeneralUtils(getLogger());
-            getLogger().debug("GeneralUtils initialized.");
-        }
-        return generalUtils;
-    }
-
-    public synchronized CommandDispatcher getCommandExecutor() {
-        if (commandDispatcher == null) {
-            commandDispatcher = new CommandDispatcher();
-            getLogger().debug("CommandDispatcher initialized.");
-        }
-        return commandDispatcher;
-    }
-
-    public synchronized HttpServer getHttpServer() {
-        if (httpServer == null) {
-            httpServer = new HttpServer(logger);
-            getLogger().debug("HttpServer initialized.");
-        }
-        return httpServer;
-    }
-
-    public synchronized Encoder getEncoder() {
-        if (encoder == null) {
-            encoder = new Encoder();
-            getLogger().debug("Encoder initialized.");
-        }
-        return encoder;
-    }
-}
-</file>
-
 <file path="velocity/src/main/java/dev/objz/commandbridge/velocity/util/ScriptUtils.java">
 package dev.objz.commandbridge.velocity.util;
 
@@ -5138,169 +4247,6 @@ public class ScriptUtils extends ScriptManager {
             logger.info("Skipped disabled script: {}", scriptConfig.getName());
         }
     }
-}
-</file>
-
-<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/websocket/Server.java">
-package dev.objz.commandbridge.velocity.websocket;
-
-import java.util.*;
-
-import com.velocitypowered.api.proxy.Player;
-
-import dev.objz.commandbridge.velocity.core.Runtime;
-import dev.objz.commandbridge.core.json.MessageBuilder;
-import dev.objz.commandbridge.core.json.MessageParser;
-import dev.objz.commandbridge.core.Logger;
-import dev.objz.commandbridge.core.websocket.WebSocketServer;
-import io.netty.channel.Channel;
-
-public class Server extends WebSocketServer {
-    private final Logger logger;
-    private final Map<String, Channel> clientConnections = new HashMap<>();
-
-    public Server(Logger logger, String secret) {
-        super(logger, secret);
-        super.addHttpHandler(Runtime.getInstance().getHttpServer());
-        this.logger = logger;
-    }
-
-    @Override
-    protected void onMessage(Channel webSocket, String message) {
-        MessageParser parser = new MessageParser(message);
-        logger.debug("Received message: {}", message);
-        try {
-            String type = parser.getType();
-            switch (type) {
-                case "command" -> handleCommandRequest(webSocket, message);
-                case "system" -> handleSystemRequest(webSocket, message);
-                default -> {
-                    logger.warn("Invalid type: {}", type);
-                    sendError(webSocket, "Invalid type: " + type);
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Error while processing message: {}",
-                    logger.getDebug() ? e : e.getMessage());
-            sendError(webSocket, "Internal server error: " + e.getMessage());
-        }
-    }
-
-    @Override
-    protected void onConnectionClose(Channel conn, int code, String reason) {
-        String clientAddress = conn.remoteAddress().toString();
-
-        if (getConnections().contains(conn)) {
-            String disconnectedClientName = clientConnections.entrySet().stream()
-                    .filter(entry -> entry.getValue().equals(conn))
-                    .map(Map.Entry::getKey)
-                    .findFirst()
-                    .orElse(null);
-
-            logger.info("Client '{}' disconnected", clientAddress);
-            if (disconnectedClientName != null) {
-                clientConnections.remove(disconnectedClientName);
-                logger.debug("Removed disconnected client: {}", disconnectedClientName);
-            } else {
-                logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
-            }
-        }
-    }
-
-    private void handleCommandRequest(Channel webSocket, String message) {
-        logger.debug("Handling command request");
-        Runtime.getInstance().getCommandExecutor().dispatchCommand(message);
-    }
-
-    private void handleSystemRequest(Channel webSocket, String message) {
-        logger.debug("Handling system request");
-        MessageParser parser = new MessageParser(message);
-        String channel = parser.getBodyValueAsString("channel");
-        String name = parser.getBodyValueAsString("name");
-        String client = parser.getBodyValueAsString("client");
-        String status = parser.getStatus();
-
-        switch (channel) {
-            case "name" -> {
-                if (name != null) {
-                    clientConnections.put(name, webSocket);
-                    logger.info("Added connected client: {}", name);
-                } else {
-                    logger.warn("Client did not provide 'name' in system request");
-                }
-            }
-            case "error" -> logger.warn("Message from client '{}' : {}", client, status);
-            case "info" -> logger.info("Message from client '{}' : {}", client, status);
-            case "task" -> systemTask(parser, status, client);
-            default -> logger.warn("Invalid channel: {}", channel);
-        }
-    }
-
-    private void systemTask(MessageParser parser, String status, String client) {
-        String task = parser.getBodyValueAsString("task");
-        switch (task) {
-            case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
-            case "dump" -> Runtime.getInstance().getEncoder().addClient(parser.getBodyValueAsString("client"), parser.getBodyValueAsString("compressed"));
-            default -> logger.warn("Invalid task: {}", task);
-        }
-    }
-
-    public void sendError(Channel webSocket, String errorMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "error")
-                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
-                .withStatus(errorMessage);
-        sendMessage(builder.build(), webSocket);
-    }
-
-    public void sendInfo(Channel webSocket, String infoMessage) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "info")
-                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
-                .withStatus(infoMessage);
-        sendMessage(builder.build(), webSocket);
-    }
-
-    public void sendTask(Channel webSocket, String task, String status) {
-        MessageBuilder builder = new MessageBuilder("system");
-        builder.addToBody("channel", "task").addToBody("task", task)
-                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
-                .withStatus(status);
-        sendMessage(builder.build(), webSocket);
-    }
-
-    public void sendCommand(String command, String client, String target, Player executor) {
-        Channel conn = clientConnections.get(client);
-        if (conn == null) {
-            logger.warn("Client '{}' is not connected, cannot send message.", client);
-            return;
-        }
-
-        MessageBuilder builder = new MessageBuilder("command");
-        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
-
-        if (target.equals("player")) {
-            builder.addToBody("name", executor.getUsername()).addToBody("uuid", executor.getUniqueId());
-        }
-        logger.info("Sending command '{}' to client: {}", command, client);
-        logger.debug("Sending payload: {}", builder.build().toString());
-        sendMessage(builder.build(), conn);
-    }
-
-    public boolean isServerConnected(String clientName) {
-        boolean exists = clientConnections.containsKey(clientName);
-        logger.debug("Checking if client '{}' is connected: {}", clientName, exists);
-        return exists;
-    }
-
-    public Set<String> getConnectedClients() {
-        return clientConnections.keySet();
-    }
-
-    public Channel getWebSocket(String client) {
-        return clientConnections.get(client);
-    }
-
 }
 </file>
 
@@ -5424,57 +4370,6 @@ public class Main {
 }
 </file>
 
-<file path="velocity/src/main/resources/velocity-example.yml">
-##########################################################################
-# EXAMPLE CONFIGURATION
-# This file demonstrates how to dispatch a command to the Velocity server,
-# where the commands are executed on the Bukkit servers.
-##########################################################################
-
-# The name of the command to be dispatched.
-# This is the identifier for the command configuration.
-name: examplevelocity
-
-# Enable or disable this command.
-# Set to true to allow the command to be executed, or false to disable it.
-enabled: true
-
-# A list of aliases for the command.
-# Remove all or use [] to disable aliases.
-aliases:   
-  - examplevelocitycmd
-
-# Ignore permission checks for this command.
-# Set to true to bypass permission validation, or false to enforce it.
-ignore-permission-check: false
-
-# Hide permission warnings when the executor does not have the required permissions.
-# Set to true to suppress warnings, or false to show them.
-hide-permission-warning: false
-
-# A list of commands to execute on the target servers.
-commands:
-  # Command 1
-  - command: 'say Hello, world!'  # The command string to be executed (use single quotes).
-    delay: 0                      # Delay (in seconds) before executing the command.
-    target-client-ids:            # List of target server IDs where the command will be executed.
-      - 'lobby'
-    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
-    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
-    check-if-executor-is-player: true  # If true, ensures the executor is a player.
-    check-if-executor-is-on-server: true # If true, ensures the executor is online on the server.
-
-  # Command 2
-  - command: 'say I love Coding!' # The command string to be executed (use single quotes).
-    delay: 0                      # Delay (in seconds) before executing the command.
-    target-client-ids:            # List of target server IDs where the command will be executed.
-      - 'lobby'
-    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
-    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
-    check-if-executor-is-player: false # If true, ensures the executor is a player.
-    check-if-executor-is-on-server: false # If true, ensures the executor is online on the server.
-</file>
-
 <file path="server.sh">
 #!/bin/bash
 
@@ -5507,230 +4402,898 @@ kitty bash -c "cd '$SERVER2_DIR' && java -Xmx1024M -Xms1024M -jar '$SERVER2_JAR'
 wait
 </file>
 
-<file path="core/src/main/java/dev/objz/commandbridge/core/utils/ScriptManager.java">
-package dev.objz.commandbridge.core.utils;
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/core/Runtime.java">
+package dev.objz.commandbridge.paper.core;
 
-import java.io.File;
-import java.io.IOException;
+import dev.objz.commandbridge.paper.Main;
+import dev.objz.commandbridge.paper.command.CommandRegistrar;
+import dev.objz.commandbridge.paper.command.inbound.CommandHandler;
+import dev.objz.commandbridge.paper.command.outbound.CommandSender;
+import dev.objz.commandbridge.paper.utils.Encoder;
+import dev.objz.commandbridge.paper.utils.GeneralUtils;
+import dev.objz.commandbridge.paper.utils.ScriptUtils;
+import dev.objz.commandbridge.paper.websocket.Client;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ConfigManager;
+
+public class Runtime {
+    private static Runtime instance;
+    private Logger logger;
+    private ConfigManager config;
+    private ScriptUtils scriptUtils;
+    private Client client;
+    private Startup startup;
+    private CommandSender sender;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
+    private CommandHandler handler;
+    private Encoder encoder;
+
+    private Runtime() {
+    }
+
+    public static synchronized Runtime getInstance() {
+        if (instance == null) {
+            instance = new Runtime();
+            instance.getLogger().debug("Runtime singleton instance initialized.");
+        }
+        return instance;
+    }
+
+    public synchronized Logger getLogger() {
+        if (logger == null) {
+            logger = new Logger("CommandBridge");
+            logger.debug("Logger initialized.");
+        }
+        return logger;
+    }
+
+    public synchronized ConfigManager getConfig() {
+        if (config == null) {
+            config = new ConfigManager(getLogger(), "CommandBridge");
+            getLogger().debug("ConfigManager initialized.");
+        }
+        return config;
+    }
+
+    public synchronized ScriptUtils getScriptUtils() {
+        if (scriptUtils == null) {
+            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
+            getLogger().debug("ScriptUtils initialized.");
+        }
+        return scriptUtils;
+    }
+
+    public synchronized Client getClient() {
+        if (client == null) {
+            client = new Client(getLogger(), getConfig().getKey("config.yml", "secret"));
+            getLogger().debug("Server initialized.");
+        }
+        return client;
+    }
+
+    public synchronized Startup getStartup() {
+        if (startup == null) {
+            startup = new Startup(getLogger());
+            getLogger().debug("Startup initialized.");
+        }
+        return startup;
+    }
+
+    public synchronized CommandSender getSender() {
+        if (sender == null) {
+            sender = new CommandSender(getLogger(), Main.getInstance());
+            getLogger().debug("CommandSender initialized.");
+        }
+        return sender;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("CommandRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
+
+    public synchronized CommandHandler getHandler() {
+        if (handler == null) {
+            handler = new CommandHandler();
+            getLogger().debug("CommandHandler initialized.");
+        }
+        return handler;
+    }
+    public synchronized Encoder getEncoder() {
+        if (encoder == null) {
+            encoder = new Encoder();
+            getLogger().debug("Encoder initialized.");
+        }
+        return encoder;
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/utils/SchedulerAdapter.java">
+package dev.objz.commandbridge.paper.utils;
+
+import org.bukkit.plugin.java.JavaPlugin;
+
+import com.cjcrafter.foliascheduler.FoliaCompatibility;
+import com.cjcrafter.foliascheduler.ServerImplementation;
+
+public class SchedulerAdapter {
+	private final ServerImplementation scheduler;
+
+	public SchedulerAdapter(JavaPlugin plugin) {
+		this.scheduler = new FoliaCompatibility(plugin).getServerImplementation();
+	}
+
+	public void run(Runnable task) {
+		// if (isFolia()) {
+			// Bukkit.getServer().getScheduler().runTask(plugin, (@NotNull Runnable) task);
+		// } else {
+			// Bukkit.getScheduler().runTask(plugin, task);
+		// }
+		scheduler.global().run(task);
+	}
+
+	public void runLater(Runnable task, long delayTicks) {
+		// if (isFolia()) {
+			// Bukkit.getServer().getScheduler().runTaskLater(plugin, (@NotNull Runnable) task, delayTicks);
+		// } else {
+			// Bukkit.getScheduler().runTaskLater(plugin, task, delayTicks);
+		// }
+		scheduler.global().runDelayed(task, delayTicks);
+	}
+
+	public static boolean isFolia() {
+		try {
+			Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+			return true;
+		} catch (ClassNotFoundException e) {
+			return false;
+		}
+	}
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/websocket/Client.java">
+package dev.objz.commandbridge.paper.websocket;
+
+import dev.objz.commandbridge.paper.Main;
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.paper.utils.SchedulerAdapter;
+import dev.objz.commandbridge.core.json.MessageBuilder;
+import dev.objz.commandbridge.core.json.MessageParser;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.websocket.WebSocketClient;
+import org.bukkit.entity.Player;
+
+public class Client extends WebSocketClient {
+    private final Logger logger;
+
+    public Client(Logger logger, String secret) {
+        super(logger, secret);
+        this.logger = logger;
+    }
+
+    @Override
+    protected void onMessage(String message) {
+        MessageParser parser = new MessageParser(message);
+        logger.debug("Received payload: {}", message);
+        try {
+            String type = parser.getType();
+            switch (type) {
+                case "command" -> handleCommandRequest(message);
+                case "system" -> handleSystemRequest(message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError("Invalid type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage());
+            sendError("Internal client error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void afterAuth() {
+        logger.debug("Sending server information's...");
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "name");
+        builder.addToBody("name", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build());
+    }
+
+    private void handleCommandRequest(String message) {
+        logger.debug("Handling command response");
+        Runtime.getInstance().getHandler().dispatchCommand(message);
+    }
+
+    private void handleSystemRequest(String message) {
+        logger.debug("Handling system request");
+        MessageParser parser = new MessageParser(message);
+        String channel = parser.getBodyValueAsString("channel");
+        String status = parser.getStatus();
+
+        switch (channel) {
+            case "error" -> logger.warn("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "info" -> logger.info("Message from server '{}' : {}", parser.getBodyValueAsString("server"), status);
+            case "task" -> systemTask(parser, status);
+            default -> logger.warn("Invalid channel: {}", channel);
+        }
+    }
+
+    private void systemTask(MessageParser parser, String status) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" ->
+                Runtime.getInstance().getScriptUtils().unloadCommands(() -> new SchedulerAdapter(Main.getInstance())
+                        .runLater(Runtime.getInstance().getGeneralUtils()::reloadAll, 10L));
+            case "reconnect" -> Ping.reconnect(logger);
+            case "dump" -> {
+                String encoded = Runtime.getInstance().getEncoder().encode();
+                String compressed;
+                try {
+                    compressed = Runtime.getInstance().getEncoder().compress(encoded);
+                } catch (Exception e) {
+                    logger.error("Failed to compress the dump data: {}", logger.getDebug() ? e : e.getMessage());
+                    sendError("Error while processing dump data: " + e.getMessage());
+                    return;
+                }
+                MessageBuilder builder = new MessageBuilder("system");
+                builder.addToBody("channel", "task").addToBody("task", "dump")
+                        .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
+                        .addToBody("compressed", compressed)
+                        .withStatus("success");
+                sendMessage(builder.build());
+            }
+            default -> logger.warn("Invalid task: {}", task);
+        }
+    }
+
+    public void sendError(String errorMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "error").withStatus(errorMessage).addToBody("client",
+                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        sendMessage(builder.build());
+    }
+
+    public void sendInfo(String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info").withStatus(infoMessage).addToBody("client",
+                Runtime.getInstance().getConfig().getKey("config.yml", "client-id"));
+        sendMessage(builder.build());
+    }
+
+    public void sendTask(String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("client", Runtime.getInstance().getConfig().getKey("config.yml", "client-id"))
+                .withStatus(status);
+        sendMessage(builder.build());
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
+        MessageBuilder builder = new MessageBuilder("command");
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+
+        if (target.equals("player")) {
+            builder.addToBody("name", executor.getName()).addToBody("uuid", executor.getUniqueId());
+        }
+        logger.info("Sending command '{}' to server", command);
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build());
+    }
+}
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/Main.java">
+package dev.objz.commandbridge.paper;
+
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Properties;
+
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.objz.commandbridge.core.Logger;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
+
+public class Main extends JavaPlugin {
+    private static Main instance;
+    private final Logger logger;
+
+    public Main() {
+        instance = this;
+        logger = Runtime.getInstance().getLogger();
+    }
+
+    public static String getVersion() {
+        try (InputStream input = Main.class.getClassLoader().getResourceAsStream("plugin.properties")) {
+            if (input == null) {
+                return "Unknown";
+            }
+            Properties properties = new Properties();
+            properties.load(input);
+            return properties.getProperty("plugin.version", "Unknown");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Unknown";
+        }
+    }
+
+    public static Main getInstance() {
+        return instance;
+    }
+
+    @Override
+    public void onLoad() {
+        CommandAPI.onLoad(new CommandAPIPaperConfig(this).verboseOutput(false).silentLogs(true));
+    }
+
+    @Override
+    public void onEnable() {
+        CommandAPI.onEnable();
+        logger.info("Initializing CommandBridge...");
+        Runtime.getInstance().getStartup().start();
+    }
+
+    @Override
+    public void onDisable() {
+        CommandAPI.onDisable();
+        logger.info("Stopping CommandBridge...");
+        Runtime.getInstance().getStartup().stop();
+    }
+
+    public record ServerInfo(String name, String version) {
+    }
+
+    public static ServerInfo detectServer() {
+        Package pkg = Bukkit.getServer().getClass().getPackage();
+        String title = pkg.getImplementationTitle();
+        String version = pkg.getImplementationVersion();
+
+        if (title != null && !title.isBlank()
+                && version != null && !version.isBlank()) {
+            return new ServerInfo(title, version);
+        }
+
+        String fallbackName = Bukkit.getServer().getName();
+        String fallbackVersion = Bukkit.getServer().getVersion();
+        return new ServerInfo(fallbackName, fallbackVersion);
+    }
+
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/outbound/CommandSender.java">
+package dev.objz.commandbridge.velocity.command.outbound;
+
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.util.ProxyUtils;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ScriptManager;
+import dev.objz.commandbridge.core.utils.StringParser;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.william278.papiproxybridge.api.PlaceholderAPI;
+
+public class CommandSender {
+	private final Logger logger;
+	private final ProxyServer proxy;
+	private final Main plugin;
+
+	private final ConcurrentMap<String, Long> cooldowns = new ConcurrentHashMap<>();
+
+	public CommandSender(Logger logger, Main plugin) {
+		this.logger = logger;
+		this.proxy = ProxyUtils.getProxyServer();
+		this.plugin = plugin;
+	}
+
+	public int executeScriptCommands(CommandSource source,
+			ScriptManager.ScriptConfig script,
+			String[] args) {
+		logger.debug("Executing script commands for script: {}", script.getName());
+
+		if (isPermissionDenied(source, script)) {
+			return 0;
+		}
+
+		for (ScriptManager.Command cmd : script.getCommands()) {
+			logger.debug("Processing command: {}", cmd.getCommand());
+
+			switch (cmd.getTargetExecutor().toLowerCase()) {
+				case "player" -> handlePlayerExecutor(cmd, source, args);
+				case "console" -> handleConsoleExecutor(cmd, source, args);
+				default -> logger.warn("Unknown target executor for command: {}", cmd.getCommand());
+			}
+		}
+
+		logger.info("Script commands executed successfully for command: {}", script.getName());
+		return com.mojang.brigadier.Command.SINGLE_SUCCESS;
+	}
+
+	private boolean isPermissionDenied(CommandSource source,
+			ScriptManager.ScriptConfig script) {
+		if (!script.shouldIgnorePermissionCheck() &&
+				!source.hasPermission("commandbridge.command." + script.getName())) {
+			logger.warn("Sender '{}' has no permission to use this command", source);
+			if (!script.shouldHidePermissionWarning()) {
+				source.sendMessage(
+						Component.text("You do not have permission to use this command", NamedTextColor.RED));
+			}
+			return true;
+		}
+		return false;
+	}
+
+	private void handlePlayerExecutor(ScriptManager.Command cmd,
+			CommandSource source, String[] args) {
+		if (cmd.isCheckIfExecutorIsPlayer() && !(source instanceof Player)) {
+			logger.warn("This command requires a player as executor, but source is not a player");
+			source.sendMessage(
+					Component.text("This command requires a player as executor, but source is not a player object",
+							NamedTextColor.RED));
+			return;
+		}
+
+		Player player = (Player) source;
+
+		if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(player, cmd)) {
+			logger.warn("Player '{}' is not on the required server for this command.", player.getUsername());
+			source.sendMessage(Component.text("Player " + player.getUsername() + " is not on the required server",
+					NamedTextColor.YELLOW));
+			return;
+		}
+
+		parseCommand(cmd, args, player).thenAccept(parsedCommand -> {
+			if (parsedCommand == null) return;
+
+			if (cmd.getDelay() > 0) {
+				scheduleCommand(cmd, parsedCommand, args, player, 0);
+			} else {
+				sendCommand(cmd, parsedCommand, args, player, 0);
+			}
+		});
+	}
+
+	private void handleConsoleExecutor(ScriptManager.Command cmd,
+			CommandSource source, String[] args) {
+		final Player playerCtx;
+		if (cmd.isCheckIfExecutorIsPlayer()) {
+			if (!(source instanceof Player)) {
+				logger.warn("Console target requires a player executor, but source is not a player");
+				source.sendMessage(Component.text(
+						"This command requires a player as executor, but source is not a player object",
+						NamedTextColor.RED));
+				return;
+			}
+			playerCtx = (Player) source;
+
+			if (cmd.isCheckIfExecutorIsOnServer() && !isPlayerOnTargetServer(playerCtx, cmd)) {
+				logger.warn("Player '{}' is not on the required server for this command.", playerCtx.getUsername());
+				source.sendMessage(Component.text(
+						"Player " + playerCtx.getUsername() + " is not on the required server",
+						NamedTextColor.YELLOW));
+				return;
+			}
+		} else {
+			playerCtx = null;
+		}
+
+		parseCommand(cmd, args, playerCtx).thenAccept(parsedCommand -> {
+			if (parsedCommand == null) return;
+
+			if (cmd.getDelay() > 0) {
+				scheduleCommand(cmd, parsedCommand, args, playerCtx, 0);
+			} else {
+				sendCommand(cmd, parsedCommand, args, playerCtx, 0);
+			}
+		});
+	}
+
+	private boolean isPlayerOnTargetServer(Player player,
+			ScriptManager.Command cmd) {
+		return player.getCurrentServer()
+				.map(serverConn -> cmd.getTargetClientIds().contains(
+						serverConn.getServerInfo().getName()))
+				.orElse(false);
+	}
+
+	private CompletableFuture<String> parseCommand(ScriptManager.Command cmd,
+			String[] args, Player player) {
+		StringParser parser = StringParser.create();
+
+		// Inject player placeholders whenever we have a player context.
+		if (player != null) {
+			addPlayerPlaceholders(parser, player);
+		}
+
+		try {
+			StringParser.Result result = parser.validate(cmd.getCommand(), args);
+
+			if (!result.isValid()) {
+				Set<String> unresolved = result.getUnresolved();
+
+				// If we are executing as console without a player context, block if player placeholders are present.
+				if (player == null && cmd.getTargetExecutor().equalsIgnoreCase("console")) {
+					Set<String> playerPlaceholders = new HashSet<>();
+					for (String placeholder : unresolved) {
+						if (isPlayerPlaceholder(placeholder)) {
+							playerPlaceholders.add(placeholder);
+						}
+					}
+
+					if (!playerPlaceholders.isEmpty()) {
+						logger.error("Console command '{}' contains player placeholders: {}",
+								cmd.getCommand(), playerPlaceholders);
+
+						for (String conn : cmd.getTargetClientIds()) {
+							Runtime.getInstance().getServer().sendError(
+									Runtime.getInstance().getServer().getWebSocket(conn),
+									"Console command contains unresolvable player placeholders: " + playerPlaceholders);
+						}
+						return CompletableFuture.completedFuture(null);
+					}
+				}
+
+				if (!unresolved.isEmpty()) {
+					logger.warn("Command '{}' contains unresolved placeholders: {}", cmd.getCommand(), unresolved);
+				}
+			}
+
+			String parsedCommand = result.getParsed();
+
+			// Run through PAPI when we have a player context.
+			if (Runtime.getInstance().getStartup().isPlaceholderAPI() && player != null) {
+				return PlaceholderAPI.createInstance()
+						.formatPlaceholders(parsedCommand, player.getUniqueId())
+						.exceptionally(e -> {
+							logger.error("PlaceholderAPI error: {}", logger.getDebug() ? e : e.getMessage());
+							return parsedCommand;
+						});
+			}
+
+			return CompletableFuture.completedFuture(parsedCommand);
+		} catch (Exception e) {
+			logger.error("Error occurred while parsing command: {}", logger.getDebug() ? e : e.getMessage());
+			if (player != null) {
+				player.sendMessage(
+						Component.text("Error occurred while parsing command").color(NamedTextColor.RED));
+			}
+			for (String conn : cmd.getTargetClientIds()) {
+				Runtime.getInstance().getServer().sendError(
+						Runtime.getInstance().getServer().getWebSocket(conn),
+						"Error occurred while parsing commands");
+			}
+
+			return CompletableFuture.completedFuture(null);
+		}
+	}
+
+	private boolean isPlayerPlaceholder(String placeholder) {
+		return placeholder.equals("%cb_player%") ||
+				placeholder.equals("%cb_uuid%") || placeholder.equals("%cb_server%");
+	}
+
+	private void addPlayerPlaceholders(StringParser parser, Player player) {
+		logger.debug("Adding placeholders for player: {}", player.getUsername());
+		parser.add("%cb_player%", player.getUsername());
+		parser.add("%cb_uuid%", player.getUniqueId().toString());
+		parser.add("%cb_server%", player.getCurrentServer()
+				.map(srv -> srv.getServerInfo().getName())
+				.orElse("defaultServerName"));
+	}
+
+	private void scheduleCommand(ScriptManager.Command cmd, String command,
+			String[] args, Player player, int retryCount) {
+		logger.debug("Scheduling command '{}' with delay: {} seconds", cmd.getCommand(), cmd.getDelay());
+		proxy.getScheduler()
+				.buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount))
+				.delay(cmd.getDelay(), TimeUnit.SECONDS)
+				.schedule();
+	}
+
+	private void sendCommand(ScriptManager.Command cmd, String command,
+			String[] args, Player player, int retryCount) {
+		logger.debug("Executing command: {} with retryCount: {}", cmd.getCommand(), retryCount);
+
+		if (retryCount >= 30) {
+			logger.warn("Max retries reached for command: {}", cmd.getCommand());
+			if (player != null) {
+				player.sendMessage(Component.text("Max retries reached", NamedTextColor.YELLOW));
+			}
+			return;
+		}
+
+		boolean shouldGateOnPlayerOnline =
+				cmd.shouldWaitUntilPlayerIsOnline() &&
+						("player".equalsIgnoreCase(cmd.getTargetExecutor())
+								|| (player != null && cmd.isCheckIfExecutorIsPlayer()));
+
+		if (shouldGateOnPlayerOnline) {
+			if (player == null || !player.isActive()) {
+				logger.warn("Player is not online. Retrying command: {}", cmd.getCommand());
+				if (player != null) {
+					player.sendMessage(
+							Component.text("Player is not online. Retrying command", NamedTextColor.YELLOW));
+				}
+				proxy.getScheduler()
+						.buildTask(plugin, () -> sendCommand(cmd, command, args, player, retryCount + 1))
+						.delay(1, TimeUnit.SECONDS)
+						.schedule();
+				return;
+			}
+		}
+
+		List<String> targetClients = cmd.getTargetClientIds();
+		if (targetClients.isEmpty()) {
+			logger.warn("No target clients defined for command: {}", cmd.getCommand());
+			if (player != null) {
+				player.sendMessage(
+						Component.text("No target clients are defined for this command", NamedTextColor.RED));
+			}
+			return;
+		}
+
+		for (String clientId : targetClients) {
+			if (Runtime.getInstance().getServer().isServerConnected(clientId)) {
+				logger.info("Sending command to client '{}' as {}", clientId,
+						player == null ? "console"
+								: cmd.getTargetExecutor().equalsIgnoreCase("console") && cmd.isCheckIfExecutorIsPlayer()
+									? "console (parsed with player context)"
+									: "player");
+				Runtime.getInstance().getServer().sendCommand(
+						command, clientId, cmd.getTargetExecutor(), player);
+			} else {
+				logger.warn("Client '{}' not found", clientId);
+				if (player != null) {
+					player.sendMessage(Component.text("Client '" + clientId + "' not found", NamedTextColor.RED));
+				}
+			}
+		}
+	}
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/command/CommandRegistrar.java">
+package dev.objz.commandbridge.velocity.command;
+
+import java.util.HashMap;
 import java.util.Map;
 
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.velocitypowered.api.command.BrigadierCommand;
+import com.velocitypowered.api.command.CommandMeta;
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
 
+import dev.objz.commandbridge.velocity.command.outbound.CommandSender;
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.velocity.util.ProxyUtils;
 import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ScriptManager;
 
-public abstract class ScriptManager {
-    private final Map<String, ScriptConfig> scripts = new HashMap<>();
-    private final Yaml yaml;
+public class CommandRegistrar {
     private final Logger logger;
-    private final String scriptsDirectory;
+    private final ProxyServer proxy;
+    private final CommandSender sender;
+    private final Map<String, CommandMeta> registeredCommands = new HashMap<>();
 
-    public ScriptManager(Logger logger, String pluginName) {
+    public CommandRegistrar(Logger logger) {
         this.logger = logger;
-        this.scriptsDirectory = "plugins" + File.separator + pluginName + File.separator + "scripts";
-
-        DumperOptions options = new DumperOptions();
-        options.setIndent(2);
-        options.setPrettyFlow(true);
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        yaml = new Yaml(options);
+        this.proxy = ProxyUtils.getProxyServer();
+        this.sender = Runtime.getInstance().getSender();
     }
 
-    public void loadAllScripts() {
-        File dir = new File(scriptsDirectory);
-        if (!dir.exists() && !dir.mkdirs()) {
-            throw new RuntimeException("Failed to create scripts directory: " + scriptsDirectory);
+    public void unregisterAllCommands() {
+        for (String command : registeredCommands.keySet()) {
+            try {
+                CommandMeta commandMeta = registeredCommands.get(command);
+                proxy.getCommandManager().unregister(commandMeta);
+                logger.debug("Unregistered command: {}", command);
+            } catch (Exception e) {
+                logger.error("Failed to unregister command '{}' : {}",
+                        command,
+                        logger.getDebug() ? e : e.getMessage());
+            }
         }
+        registeredCommands.clear();
+        logger.info("All registered commands have been unregistered.");
+    }
 
+    public void registerCommand(ScriptManager.ScriptConfig script) {
+        String commandName = script.getName();
         try {
-            Files.list(dir.toPath())
-                    .filter(path -> path.toString().endsWith(".yml"))
-                    .forEach(this::loadScriptFile);
+            LiteralArgumentBuilder<CommandSource> commandBuilder = LiteralArgumentBuilder
+                    .<CommandSource>literal(commandName)
+                    .executes(context -> {
+                        logger.debug("Executing base command: {}", commandName);
+                        return sender.executeScriptCommands(context.getSource(), script, new String[0]);
+                    });
+            RequiredArgumentBuilder<CommandSource, String> argsArgument = RequiredArgumentBuilder
+                    .<CommandSource, String>argument("args", StringArgumentType.greedyString())
+                    .executes(context -> {
+                        String argsString = context.getArgument("args", String.class);
+                        logger.debug("Command '{}' called with arguments: {}", commandName, argsString);
+                        String[] args = argsString.split(" ");
+                        return sender.executeScriptCommands(context.getSource(), script, args);
+                    });
+            commandBuilder.then(argsArgument);
 
-            logger.debug("All script files have been loaded from directory: {}", scriptsDirectory);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load scripts: " + e.getMessage(), e);
+            // LiteralCommandNode<CommandSource> rootNode = commandBuilder.build();
+            BrigadierCommand brigadierCommand = new BrigadierCommand(commandBuilder.build());
+            CommandMeta commandMeta = proxy.getCommandManager().metaBuilder(commandName)
+                    .aliases(script.getAliases().toArray(new String[0])).build();
+
+            proxy.getCommandManager().register(commandMeta, brigadierCommand);
+            registeredCommands.put(commandName, commandMeta);
+        } catch (Exception e) {
+            logger.error(
+                    "Failed to register command '{}' : {}",
+                    commandName,
+                    logger.getDebug() ? e : e.getMessage());
         }
     }
 
-    public void reload() {
-        scripts.clear();
+}
+</file>
 
-        loadAllScripts();
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/core/Runtime.java">
+package dev.objz.commandbridge.velocity.core;
 
-        logger.info("All scripts have been successfully reloaded");
+import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.velocity.command.inbound.CommandHandler;
+import dev.objz.commandbridge.velocity.command.outbound.CommandSender;
+import dev.objz.commandbridge.velocity.command.CommandRegistrar;
+import dev.objz.commandbridge.velocity.util.Encoder;
+import dev.objz.commandbridge.velocity.util.GeneralUtils;
+import dev.objz.commandbridge.velocity.util.ScriptUtils;
+import dev.objz.commandbridge.velocity.websocket.HttpServer;
+import dev.objz.commandbridge.velocity.websocket.Server;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ConfigManager;
+
+public class Runtime {
+    private static Runtime instance;
+    private Logger logger;
+    private ConfigManager config;
+    private ScriptUtils scriptUtils;
+    private Server server;
+    private Startup startup;
+    private CommandSender sender;
+    private CommandRegistrar registrar;
+    private GeneralUtils generalUtils;
+    private CommandHandler handler;
+    private HttpServer httpServer;
+    private Encoder encoder;
+
+    private Runtime() {
     }
 
-    private void loadScriptFile(Path path) {
-        try (InputStream inputStream = Files.newInputStream(path)) {
-            Map<String, Object> fileData = yaml.load(inputStream);
-            if (fileData == null)
-                fileData = new HashMap<>();
-
-            ScriptConfig scriptConfig = new ScriptConfig(fileData);
-            scripts.put(path.getFileName().toString(), scriptConfig);
-
-            logger.debug("Script file loaded successfully: {}", path.getFileName().toString());
-
-            onFileProcessed(path.getFileName().toString(), scriptConfig);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load script file '" + path.getFileName() + "': " + e.getMessage(), e);
+    public static synchronized Runtime getInstance() {
+        if (instance == null) {
+            instance = new Runtime();
+            instance.getLogger().debug("Runtime singleton instance initialized.");
         }
+        return instance;
     }
 
-    public ScriptConfig getScriptConfig(String fileName) {
-        logger.debug("Retrieved config");
-        return scripts.get(fileName);
+    public synchronized Logger getLogger() {
+        if (logger == null) {
+            logger = new Logger("CommandBridge");
+            logger.debug("Logger initialized.");
+        }
+        return logger;
     }
 
-    public void copyDefaultScript(String resourceName, String targetFileName) {
-        File scriptDir = new File(scriptsDirectory);
-        if (!scriptDir.exists() && !scriptDir.mkdirs()) {
-            throw new RuntimeException("Failed to create script directory: " + scriptsDirectory);
+    public synchronized ConfigManager getConfig() {
+        if (config == null) {
+            config = new ConfigManager(getLogger(), "CommandBridge");
+            getLogger().debug("ConfigManager initialized.");
         }
-
-        File scriptFile = new File(scriptDir, targetFileName);
-
-        if (scriptFile.exists()) {
-            logger.debug("Script file '{}' already exists, skipping copy", scriptFile.getAbsolutePath());
-            return;
-        }
-
-        try (InputStream in = getClass().getResourceAsStream("/" + resourceName);
-                OutputStream out = Files.newOutputStream(scriptFile.toPath())) {
-            if (in == null) {
-                throw new RuntimeException("Resource '" + resourceName + "' not found in the plugin JAR");
-            }
-
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = in.read(buffer)) != -1) {
-                out.write(buffer, 0, len);
-            }
-            logger.info("Default script '{}' copied to: {}", resourceName, scriptFile.getAbsolutePath());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to copy default script file " + resourceName + ": " + e.getMessage(), e);
-        }
+        return config;
     }
 
-    public static class ScriptConfig {
-        private final String name;
-        private final List<String> aliases = new ArrayList<>();
-        private final boolean enabled;
-        private final boolean ignorePermissionCheck;
-        private final boolean hidePermissionWarning;
-        private final List<Command> commands;
-
-        @SuppressWarnings("unchecked")
-        public ScriptConfig(Map<String, Object> data) {
-            this.name = (String) data.getOrDefault("name", "Unnamed Command");
-
-            Object aliasesRaw = data.get("aliases");
-            if (aliasesRaw instanceof List<?> rawList) {
-                for (Object alias : rawList) {
-                    if (alias instanceof String str) {
-                        this.aliases.add(str);
-                    }
-                }
-            }
-
-            this.enabled = (boolean) data.getOrDefault("enabled", false);
-            this.ignorePermissionCheck = (boolean) data.getOrDefault("ignore-permission-check", false);
-            this.hidePermissionWarning = (boolean) data.getOrDefault("hide-permission-warning", false);
-
-            this.commands = new ArrayList<>();
-            Object commandsObject = data.get("commands");
-            if (commandsObject instanceof List<?> commandsList) {
-                for (Object commandData : commandsList) {
-                    if (commandData instanceof Map) {
-                        commands.add(new Command((Map<String, Object>) commandData));
-                    }
-                }
-            }
+    public synchronized ScriptUtils getScriptUtils() {
+        if (scriptUtils == null) {
+            scriptUtils = new ScriptUtils(getLogger(), "CommandBridge");
+            getLogger().debug("ScriptUtils initialized.");
         }
-
-        public String getName() {
-            return name;
-        }
-
-        public List<String> getAliases() {
-            return aliases;
-        }
-
-        public boolean isEnabled() {
-            return enabled;
-        }
-
-        public boolean shouldIgnorePermissionCheck() {
-            return ignorePermissionCheck;
-        }
-
-        public boolean shouldHidePermissionWarning() {
-            return hidePermissionWarning;
-        }
-
-        public List<Command> getCommands() {
-            return commands;
-        }
+        return scriptUtils;
     }
 
-    public static class Command {
-        private final String command;
-        private final int delay;
-        private final List<String> targetClientIds;
-        private final String targetExecutor;
-        private final boolean waitUntilPlayerIsOnline;
-        private final boolean checkIfExecutorIsPlayer;
-        private final boolean checkIfExecutorIsOnServer;
-
-        @SuppressWarnings("unchecked")
-        public Command(Map<String, Object> data) {
-            this.command = (String) data.get("command");
-            this.delay = (int) data.getOrDefault("delay", 0);
-            this.targetClientIds = (List<String>) data.getOrDefault("target-client-ids", new ArrayList<>());
-            this.targetExecutor = (String) data.getOrDefault("target-executor", "console");
-            this.waitUntilPlayerIsOnline = (boolean) data.getOrDefault("wait-until-player-is-online", false);
-            this.checkIfExecutorIsPlayer = (boolean) data.getOrDefault("check-if-executor-is-player", true);
-            this.checkIfExecutorIsOnServer = (boolean) data.getOrDefault("check-if-executor-is-on-server", true);
+    public synchronized Server getServer() {
+        if (server == null) {
+            server = new Server(getLogger(), getConfig().getSecret());
+            getLogger().debug("Server initialized.");
         }
-
-        public String getCommand() {
-            return command;
-        }
-
-        public int getDelay() {
-            return delay;
-        }
-
-        public List<String> getTargetClientIds() {
-            return targetClientIds;
-        }
-
-        public String getTargetExecutor() {
-            return targetExecutor;
-        }
-
-        public boolean shouldWaitUntilPlayerIsOnline() {
-            return waitUntilPlayerIsOnline;
-        }
-
-        public boolean isCheckIfExecutorIsPlayer() {
-            return checkIfExecutorIsPlayer;
-        }
-
-        public boolean isCheckIfExecutorIsOnServer() {
-            return checkIfExecutorIsOnServer;
-        }
+        return server;
     }
 
-    public abstract void onFileProcessed(String fileName, ScriptConfig scriptConfig);
+    public synchronized Startup getStartup() {
+        if (startup == null) {
+            startup = new Startup(getLogger());
+            getLogger().debug("Startup initialized.");
+        }
+        return startup;
+    }
+
+    public synchronized CommandSender getSender() {
+        if (sender == null) {
+            sender = new CommandSender(getLogger(), Main.getInstance());
+            getLogger().debug("CommandSender initialized.");
+        }
+        return sender;
+    }
+
+    public synchronized CommandRegistrar getRegistrar() {
+        if (registrar == null) {
+            registrar = new CommandRegistrar(getLogger());
+            getLogger().debug("InternalRegistrar initialized.");
+        }
+        return registrar;
+    }
+
+    public synchronized GeneralUtils getGeneralUtils() {
+        if (generalUtils == null) {
+            generalUtils = new GeneralUtils(getLogger());
+            getLogger().debug("GeneralUtils initialized.");
+        }
+        return generalUtils;
+    }
+
+    public synchronized CommandHandler getCommandHandler() {
+        if (handler == null) {
+            handler = new CommandHandler();
+            getLogger().debug("CommandHandler initialized.");
+        }
+        return handler;
+    }
+
+    public synchronized HttpServer getHttpServer() {
+        if (httpServer == null) {
+            httpServer = new HttpServer(logger);
+            getLogger().debug("HttpServer initialized.");
+        }
+        return httpServer;
+    }
+
+    public synchronized Encoder getEncoder() {
+        if (encoder == null) {
+            encoder = new Encoder();
+            getLogger().debug("Encoder initialized.");
+        }
+        return encoder;
+    }
 }
 </file>
 
@@ -5881,6 +5444,288 @@ public class Encoder {
         }
         return sb.toString();
     }
+}
+</file>
+
+<file path="velocity/src/main/java/dev/objz/commandbridge/velocity/websocket/Server.java">
+package dev.objz.commandbridge.velocity.websocket;
+
+import java.util.*;
+
+import com.velocitypowered.api.proxy.Player;
+
+import dev.objz.commandbridge.velocity.core.Runtime;
+import dev.objz.commandbridge.core.json.MessageBuilder;
+import dev.objz.commandbridge.core.json.MessageParser;
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.websocket.WebSocketServer;
+import io.netty.channel.Channel;
+
+public class Server extends WebSocketServer {
+    private final Logger logger;
+    private final Map<String, Channel> clientConnections = new HashMap<>();
+
+    public Server(Logger logger, String secret) {
+        super(logger, secret);
+        super.addHttpHandler(Runtime.getInstance().getHttpServer());
+        this.logger = logger;
+    }
+
+    @Override
+    protected void onMessage(Channel webSocket, String message) {
+        MessageParser parser = new MessageParser(message);
+        logger.debug("Received message: {}", message);
+        try {
+            String type = parser.getType();
+            switch (type) {
+                case "command" -> handleCommandRequest(webSocket, message);
+                case "system" -> handleSystemRequest(webSocket, message);
+                default -> {
+                    logger.warn("Invalid type: {}", type);
+                    sendError(webSocket, "Invalid type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing message: {}",
+                    logger.getDebug() ? e : e.getMessage());
+            sendError(webSocket, "Internal server error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onConnectionClose(Channel conn, int code, String reason) {
+        String clientAddress = conn.remoteAddress().toString();
+
+        if (getConnections().contains(conn)) {
+            String disconnectedClientName = clientConnections.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(conn))
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElse(null);
+
+            logger.info("Client '{}' disconnected", clientAddress);
+            if (disconnectedClientName != null) {
+                clientConnections.remove(disconnectedClientName);
+                logger.debug("Removed disconnected client: {}", disconnectedClientName);
+            } else {
+                logger.warn("Disconnected WebSocket client '{}' not found in client connections map.", clientAddress);
+            }
+        }
+    }
+
+    private void handleCommandRequest(Channel webSocket, String message) {
+        logger.debug("Handling command request");
+        Runtime.getInstance().getCommandHandler().dispatchCommand(message);
+    }
+
+    private void handleSystemRequest(Channel webSocket, String message) {
+        logger.debug("Handling system request");
+        MessageParser parser = new MessageParser(message);
+        String channel = parser.getBodyValueAsString("channel");
+        String name = parser.getBodyValueAsString("name");
+        String client = parser.getBodyValueAsString("client");
+        String status = parser.getStatus();
+
+        switch (channel) {
+            case "name" -> {
+                if (name != null) {
+                    clientConnections.put(name, webSocket);
+                    logger.info("Added connected client: {}", name);
+                } else {
+                    logger.warn("Client did not provide 'name' in system request");
+                }
+            }
+            case "error" -> logger.warn("Message from client '{}' : {}", client, status);
+            case "info" -> logger.info("Message from client '{}' : {}", client, status);
+            case "task" -> systemTask(parser, status, client);
+            default -> logger.warn("Invalid channel: {}", channel);
+        }
+    }
+
+    private void systemTask(MessageParser parser, String status, String client) {
+        String task = parser.getBodyValueAsString("task");
+        switch (task) {
+            case "reload" -> Runtime.getInstance().getGeneralUtils().addClientToStatus(client, parser.getStatus());
+            case "dump" -> Runtime.getInstance().getEncoder().addClient(parser.getBodyValueAsString("client"), parser.getBodyValueAsString("compressed"));
+            default -> logger.warn("Invalid task: {}", task);
+        }
+    }
+
+    public void sendError(Channel webSocket, String errorMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "error")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(errorMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendInfo(Channel webSocket, String infoMessage) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "info")
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(infoMessage);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendTask(Channel webSocket, String task, String status) {
+        MessageBuilder builder = new MessageBuilder("system");
+        builder.addToBody("channel", "task").addToBody("task", task)
+                .addToBody("server", Runtime.getInstance().getConfig().getKey("config.yml", "server-id"))
+                .withStatus(status);
+        sendMessage(builder.build(), webSocket);
+    }
+
+    public void sendCommand(String command, String client, String target, Player executor) {
+        Channel conn = clientConnections.get(client);
+        if (conn == null) {
+            logger.warn("Client '{}' is not connected, cannot send message.", client);
+            return;
+        }
+
+        MessageBuilder builder = new MessageBuilder("command");
+        builder.addToBody("command", command).addToBody("client", client).addToBody("target", target);
+
+        if (target.equals("player")) {
+            builder.addToBody("name", executor.getUsername()).addToBody("uuid", executor.getUniqueId());
+        }
+        logger.info("Sending command '{}' to client: {}", command, client);
+        logger.debug("Sending payload: {}", builder.build().toString());
+        sendMessage(builder.build(), conn);
+    }
+
+    public boolean isServerConnected(String clientName) {
+        boolean exists = clientConnections.containsKey(clientName);
+        logger.debug("Checking if client '{}' is connected: {}", clientName, exists);
+        return exists;
+    }
+
+    public Set<String> getConnectedClients() {
+        return clientConnections.keySet();
+    }
+
+    public Channel getWebSocket(String client) {
+        return clientConnections.get(client);
+    }
+
+}
+</file>
+
+<file path="velocity/src/main/resources/velocity-example.yml">
+##########################################################################
+# EXAMPLE CONFIGURATION
+# This file demonstrates how to dispatch a command to the Velocity server,
+# where the commands are executed on the Bukkit servers.
+##########################################################################
+
+# The name of the command to be dispatched.
+# This is the identifier for the command configuration.
+name: examplevelocity
+
+# Enable or disable this command.
+# Set to true to allow the command to be executed, or false to disable it.
+enabled: true
+
+# A list of aliases for the command.
+# Remove all or use [] to disable aliases.
+aliases:   
+  - examplevelocitycmd
+
+# Ignore permission checks for this command.
+# Set to true to bypass permission validation, or false to enforce it.
+ignore-permission-check: false
+
+# Hide permission warnings when the executor does not have the required permissions.
+# Set to true to suppress warnings, or false to show them.
+hide-permission-warning: false
+
+# A list of commands to execute on the target servers.
+commands:
+  # Command 1
+  - command: 'say Hello, world!'  # The command string to be executed (use single quotes).
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-client-ids:            # List of target server IDs where the command will be executed.
+      - 'lobby'
+    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
+    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
+    check-if-executor-is-player: true  # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: true # If true, ensures the executor is online on the server.
+
+  # Command 2
+  - command: 'say I love Coding!' # The command string to be executed (use single quotes).
+    delay: 0                      # Delay (in seconds) before executing the command.
+    target-client-ids:            # List of target server IDs where the command will be executed.
+      - 'lobby'
+    target-executor: 'player'     # Who executes the command: 'player' or 'console'.
+    wait-until-player-is-online: true  # If true, waits until the player is online to execute.
+    check-if-executor-is-player: false # If true, ensures the executor is a player.
+    check-if-executor-is-on-server: false # If true, ensures the executor is online on the server.
+</file>
+
+<file path="paper/src/main/java/dev/objz/commandbridge/paper/command/CommandRegistrar.java">
+package dev.objz.commandbridge.paper.command;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import dev.objz.commandbridge.core.Logger;
+import dev.objz.commandbridge.core.utils.ScriptManager;
+import dev.objz.commandbridge.paper.command.outbound.CommandSender;
+import dev.objz.commandbridge.paper.core.Runtime;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPICommand;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
+
+public class CommandRegistrar {
+	private final Logger logger;
+	private final List<String> registeredCommands = new ArrayList<>();
+	private final CommandSender bridgeSender;
+
+	public CommandRegistrar(Logger logger) {
+		this.logger = logger;
+		this.bridgeSender = Runtime.getInstance().getSender();
+	}
+
+	public void unregisterAllCommands() {
+		for (String command : registeredCommands) {
+			try {
+				CommandAPI.unregister(command);
+				logger.debug("Unregistered command: {}", command);
+			} catch (Exception e) {
+				logger.error("Failed to unregister command '{}' : {}", command,
+						logger.getDebug() ? e : e.getMessage());
+			}
+		}
+		registeredCommands.clear();
+		logger.info("All registered commands have been unregistered.");
+	}
+
+	public void registerCommand(ScriptManager.ScriptConfig script) {
+		final String commandName = script.getName();
+
+		try {
+			CommandAPICommand command = new CommandAPICommand(commandName)
+					.withOptionalArguments(new GreedyStringArgument("args"))
+					.withAliases(script.getAliases().toArray(new String[0]))
+					.executes((sender, args) -> {
+						String argsString = (String) args.get("args");
+						logger.debug("Command '{}' called with arguments: {}", commandName,
+								argsString);
+
+						String[] splitArgs = (argsString == null || argsString.isBlank())
+								? new String[0]
+								: argsString.split(" ");
+
+						return bridgeSender.executeScriptCommands(sender, script, splitArgs);
+					});
+
+			command.register();
+			registeredCommands.add(commandName);
+			logger.debug("Registered command: {}", commandName);
+		} catch (Exception e) {
+			logger.error("Failed to register command '{}' : {}", commandName,
+					logger.getDebug() ? e : e.getMessage());
+		}
+	}
 }
 </file>
 
@@ -6177,6 +6022,245 @@ public class InternalRegistrar {
 }
 </file>
 
+<file path="core/src/main/java/dev/objz/commandbridge/core/utils/ScriptManager.java">
+package dev.objz.commandbridge.core.utils;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
+
+import dev.objz.commandbridge.core.Logger;
+
+public abstract class ScriptManager {
+	private final Map<String, ScriptConfig> scripts = new HashMap<>();
+	private final Yaml yaml;
+	private final Logger logger;
+	private final String scriptsDirectory;
+
+	public ScriptManager(Logger logger, String pluginName) {
+		this.logger = logger;
+		this.scriptsDirectory = "plugins" + File.separator + pluginName + File.separator + "scripts";
+
+		DumperOptions options = new DumperOptions();
+		options.setIndent(2);
+		options.setPrettyFlow(true);
+		options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+		yaml = new Yaml(options);
+	}
+
+	public void loadAllScripts() {
+		File dir = new File(scriptsDirectory);
+		if (!dir.exists() && !dir.mkdirs()) {
+			throw new RuntimeException("Failed to create scripts directory: " + scriptsDirectory);
+		}
+
+		try {
+			Files.list(dir.toPath())
+					.filter(path -> path.toString().endsWith(".yml"))
+					.forEach(this::loadScriptFile);
+
+			logger.debug("All script files have been loaded from directory: {}", scriptsDirectory);
+		} catch (IOException e) {
+			throw new RuntimeException("Failed to load scripts: " + e.getMessage(), e);
+		}
+	}
+
+	public void reload() {
+		scripts.clear();
+
+		loadAllScripts();
+
+		logger.info("All scripts have been successfully reloaded");
+	}
+
+	private void loadScriptFile(Path path) {
+		try (InputStream inputStream = Files.newInputStream(path)) {
+			Map<String, Object> fileData = yaml.load(inputStream);
+			if (fileData == null)
+				fileData = new HashMap<>();
+
+			ScriptConfig scriptConfig = new ScriptConfig(fileData);
+			scripts.put(path.getFileName().toString(), scriptConfig);
+
+			logger.debug("Script file loaded successfully: {}", path.getFileName().toString());
+
+			onFileProcessed(path.getFileName().toString(), scriptConfig);
+		} catch (IOException e) {
+			throw new RuntimeException(
+					"Failed to load script file '" + path.getFileName() + "': " + e.getMessage(),
+					e);
+		}
+	}
+
+	public ScriptConfig getScriptConfig(String fileName) {
+		logger.debug("Retrieved config");
+		return scripts.get(fileName);
+	}
+
+	public void copyDefaultScript(String resourceName, String targetFileName) {
+		File scriptDir = new File(scriptsDirectory);
+		if (!scriptDir.exists() && !scriptDir.mkdirs()) {
+			throw new RuntimeException("Failed to create script directory: " + scriptsDirectory);
+		}
+
+		File scriptFile = new File(scriptDir, targetFileName);
+
+		if (scriptFile.exists()) {
+			logger.debug("Script file '{}' already exists, skipping copy", scriptFile.getAbsolutePath());
+			return;
+		}
+
+		try (InputStream in = getClass().getResourceAsStream("/" + resourceName);
+				OutputStream out = Files.newOutputStream(scriptFile.toPath())) {
+			if (in == null) {
+				throw new RuntimeException(
+						"Resource '" + resourceName + "' not found in the plugin JAR");
+			}
+
+			byte[] buffer = new byte[1024];
+			int len;
+			while ((len = in.read(buffer)) != -1) {
+				out.write(buffer, 0, len);
+			}
+			logger.info("Default script '{}' copied to: {}", resourceName, scriptFile.getAbsolutePath());
+		} catch (IOException e) {
+			throw new RuntimeException(
+					"Failed to copy default script file " + resourceName + ": " + e.getMessage(),
+					e);
+		}
+	}
+
+	public static class ScriptConfig {
+		private final String name;
+		private final List<String> aliases = new ArrayList<>();
+		private final boolean enabled;
+		private final boolean ignorePermissionCheck;
+		private final boolean hidePermissionWarning;
+		private final int cooldown;
+		private final List<Command> commands;
+
+		public ScriptConfig(Map<String, Object> data) {
+			this.name = (String) data.getOrDefault("name", "Unnamed Command");
+
+			Object aliasesRaw = data.get("aliases");
+			if (aliasesRaw instanceof List<?> rawList) {
+				for (Object alias : rawList) {
+					if (alias instanceof String str) {
+						this.aliases.add(str);
+					}
+				}
+			}
+
+			this.enabled = (boolean) data.getOrDefault("enabled", false);
+			this.ignorePermissionCheck = (boolean) data.getOrDefault("ignore-permission-check", false);
+			this.hidePermissionWarning = (boolean) data.getOrDefault("hide-permission-warning", false);
+			this.cooldown = (int) data.getOrDefault("cooldown", 0);
+
+			this.commands = new ArrayList<>();
+			Object commandsObject = data.get("commands");
+			if (commandsObject instanceof List<?> commandsList) {
+				for (Object commandData : commandsList) {
+					if (commandData instanceof Map) {
+						commands.add(new Command((Map<String, Object>) commandData));
+					}
+				}
+			}
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public List<String> getAliases() {
+			return aliases;
+		}
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public boolean shouldIgnorePermissionCheck() {
+			return ignorePermissionCheck;
+		}
+
+		public boolean shouldHidePermissionWarning() {
+			return hidePermissionWarning;
+		}
+
+		public int getCooldown() {
+			return cooldown;
+		}
+
+		public List<Command> getCommands() {
+			return commands;
+		}
+	}
+
+	public static class Command {
+		private final String command;
+		private final int delay;
+		private final List<String> targetClientIds;
+		private final String targetExecutor;
+		private final boolean waitUntilPlayerIsOnline;
+		private final boolean checkIfExecutorIsPlayer;
+		private final boolean checkIfExecutorIsOnServer;
+
+		@SuppressWarnings("unchecked")
+		public Command(Map<String, Object> data) {
+			this.command = (String) data.get("command");
+			this.delay = (int) data.getOrDefault("delay", 0);
+			this.targetClientIds = (List<String>) data.getOrDefault("target-client-ids", new ArrayList<>());
+			this.targetExecutor = (String) data.getOrDefault("target-executor", "console");
+			this.waitUntilPlayerIsOnline = (boolean) data.getOrDefault("wait-until-player-is-online",
+					false);
+			this.checkIfExecutorIsPlayer = (boolean) data.getOrDefault("check-if-executor-is-player", true);
+			this.checkIfExecutorIsOnServer = (boolean) data.getOrDefault("check-if-executor-is-on-server",
+					true);
+		}
+
+		public String getCommand() {
+			return command;
+		}
+
+		public int getDelay() {
+			return delay;
+		}
+
+		public List<String> getTargetClientIds() {
+			return targetClientIds;
+		}
+
+		public String getTargetExecutor() {
+			return targetExecutor;
+		}
+
+		public boolean shouldWaitUntilPlayerIsOnline() {
+			return waitUntilPlayerIsOnline;
+		}
+
+		public boolean isCheckIfExecutorIsPlayer() {
+			return checkIfExecutorIsPlayer;
+		}
+
+		public boolean isCheckIfExecutorIsOnServer() {
+			return checkIfExecutorIsOnServer;
+		}
+	}
+
+	public abstract void onFileProcessed(String fileName, ScriptConfig scriptConfig);
+}
+</file>
+
 <file path="core/build.gradle.kts">
 plugins {
     id("java")
@@ -6254,107 +6338,6 @@ Still to come:
 Licensed under GPLv3. Don’t sell it, don’t strip the license, thanks!
 </file>
 
-<file path="paper/src/main/resources/plugin.yml">
-name: CommandBridge
-version: 2.2.9
-main: dev.objz.commandbridge.paper.Main
-author: objz
-api-version: '1.20'
-folia-supported: true
-softdepend:
-- PlaceholderAPI
-</file>
-
-<file path="build.gradle.kts">
-plugins {
-    id("java")
-    id("eclipse")
-    id("com.gradleup.shadow") version "8.3.8"
-    id("maven-publish")
-    id("com.modrinth.minotaur") version "2.+"
-    id("com.github.ben-manes.versions") version "0.52.0"
-}
-
-val pversion: String by gradle.extra
-val pluginType: String by gradle.extra
-val pluginVersions: List<String> by gradle.extra
-val pluginLoaders: List<String> by gradle.extra
-
-allprojects {
-    group = "dev.consti"
-    version = pversion
-
-    repositories {
-        mavenCentral()
-    }
-
-    if (plugins.hasPlugin("java")) {
-        java {
-            toolchain {
-                languageVersion.set(JavaLanguageVersion.of(21))
-            }
-        }
-    }
-}
-
-dependencies {
-    implementation(project(":paper"))
-    implementation(project(":velocity"))
-    implementation(project(":core"))
-}
-
-tasks {
-    shadowJar {
-        dependsOn(":paper:shadowJar")
-        manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
-
-        relocate("dev.jorel.commandapi", "dev.objz.commandbridge.commandapi")
-        relocate("org.bstats", "dev.objz.commandbridge.bstats")
-
-        listOf(":paper", ":velocity", ":core").forEach { projectPath ->
-            from(
-                project(projectPath)
-                    .takeIf { it.plugins.hasPlugin("java") }
-                    ?.sourceSets?.main?.get()?.output
-                    ?: files()
-            )
-        }
-
-        configurations = listOf(project.configurations.runtimeClasspath.get())
-        mergeServiceFiles()
-    }
-
-    val copyToPaperPlugins by registering(Copy::class) {
-        dependsOn(shadowJar)
-        from(shadowJar.get().outputs.files)
-        into("/mnt/Storage/Server-TEST/CommandBridge/Paper/plugins")
-    }
-
-    val copyToVelocityPlugins by registering(Copy::class) {
-        dependsOn(shadowJar)
-        from(shadowJar.get().outputs.files)
-        into("/mnt/Storage/Server-TEST/CommandBridge/Velocity/plugins")
-    }
-
-    register("dev") { dependsOn(copyToPaperPlugins, copyToVelocityPlugins) }
-}
-
-afterEvaluate {
-    modrinth {
-        token.set(System.getenv("MODRINTH_TOKEN"))
-        projectId.set("wIuI4ru2")
-        versionName.set("CommandBridge $pversion")
-        changelog.set(rootProject.file("CHANGELOG.md").readText())
-        versionNumber.set(pversion)
-        versionType.set(pluginType)
-        uploadFile.set(tasks.shadowJar)
-        gameVersions.set(pluginVersions)
-        loaders.set(pluginLoaders)
-        debugMode.set(false)
-    }
-}
-</file>
-
 <file path="velocity/build.gradle.kts">
 import com.google.gson.JsonParser
 import java.nio.file.Files
@@ -6416,16 +6399,99 @@ tasks.named("processResources") {
 }
 </file>
 
-<file path="CHANGELOG.md">
-**[v2.2.9] - 2025-07-22**
+<file path="build.gradle.kts">
+plugins {
+    id("java")
+    id("eclipse")
+    id("com.gradleup.shadow") version "8.3.8"
+    id("maven-publish")
+    id("com.modrinth.minotaur") version "2.+"
+    id("com.github.ben-manes.versions") version "0.52.0"
+}
 
-- Added /cb dump command to dump the current configuration and scripts.
-You can view the results on the website. It will generate a link for you.
+val pversion: String by gradle.extra
+val pluginType: String by gradle.extra
+val pluginVersions: List<String> by gradle.extra
+val pluginLoaders: List<String> by gradle.extra
+
+allprojects {
+    group = "dev.consti"
+    version = pversion
+
+    repositories {
+        mavenCentral()
+    }
+
+    if (plugins.hasPlugin("java")) {
+        java {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(21))
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation(project(":paper"))
+    implementation(project(":velocity"))
+    implementation(project(":core"))
+}
+
+tasks {
+    shadowJar {
+        dependsOn(":paper:shadowJar")
+        // manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
+
+        relocate("dev.jorel.commandapi", "dev.objz.commandbridge.commandapi")
+        relocate("org.bstats", "dev.objz.commandbridge.bstats")
+
+        listOf(":paper", ":velocity", ":core").forEach { projectPath ->
+            from(
+                project(projectPath)
+                    .takeIf { it.plugins.hasPlugin("java") }
+                    ?.sourceSets?.main?.get()?.output
+                    ?: files()
+            )
+        }
+
+        configurations = listOf(project.configurations.runtimeClasspath.get())
+        mergeServiceFiles()
+    }
+
+    val copyToPaperPlugins by registering(Copy::class) {
+        dependsOn(shadowJar)
+        from(shadowJar.get().outputs.files)
+        into("/mnt/storage/Server-TEST/CB-v2/Paper/plugins")
+    }
+
+    val copyToVelocityPlugins by registering(Copy::class) {
+        dependsOn(shadowJar)
+        from(shadowJar.get().outputs.files)
+        into("/mnt/storage/Server-TEST/CB-v2/Velocity/plugins")
+    }
+
+    register("dev") { dependsOn(copyToPaperPlugins, copyToVelocityPlugins) }
+}
+
+afterEvaluate {
+    modrinth {
+        token.set(System.getenv("MODRINTH_TOKEN"))
+        projectId.set("wIuI4ru2")
+        versionName.set("CommandBridge $pversion")
+        changelog.set(rootProject.file("CHANGELOG.md").readText())
+        versionNumber.set(pversion)
+        versionType.set(pluginType)
+        uploadFile.set(tasks.shadowJar)
+        gameVersions.set(pluginVersions)
+        loaders.set(pluginLoaders)
+        debugMode.set(false)
+    }
+}
 </file>
 
 <file path="paper/src/main/resources/paper-plugin.yml">
 name: CommandBridge
-version: 2.2.9
+version: 2.3.3
 main: dev.objz.commandbridge.paper.Main
 author: objz
 api-version: '1.20'
@@ -6435,6 +6501,23 @@ dependencies:
     PlaceholderAPI:
       load: BEFORE
       required: false
+</file>
+
+<file path="paper/src/main/resources/plugin.yml">
+name: CommandBridge
+version: 2.3.3
+main: dev.objz.commandbridge.paper.Main
+author: objz
+api-version: '1.20'
+folia-supported: true
+softdepend:
+- PlaceholderAPI
+</file>
+
+<file path="CHANGELOG.md">
+**[v2.3.3] - 2025-10-10**
+
+- feat: now supports minecraft 1.21.9 and 1.21.10
 </file>
 
 <file path="paper/build.gradle.kts">
@@ -6464,12 +6547,12 @@ repositories {
 
 dependencies {
     implementation("org.json:json:20250517")
-    compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
+    // compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
+    implementation("com.cjcrafter:foliascheduler:0.7.2")
     implementation("org.ow2.asm:asm:9.8")
-    implementation("dev.jorel:commandapi-bukkit-shade:10.1.2")
-    compileOnly("dev.jorel:commandapi-annotations:10.1.2")
+    implementation("dev.jorel:commandapi-paper-shade:11.0.0")
     compileOnly("me.clip:placeholderapi:2.11.6")
-    annotationProcessor("dev.jorel:commandapi-annotations:10.1.2")
 
     implementation(project(":core"))
 }
@@ -6513,9 +6596,9 @@ tasks.named("processResources") {
 rootProject.name = "CommandBridge"
 include("paper", "velocity", "core")
 
-gradle.extra["pversion"] = "2.2.9"
+gradle.extra["pversion"] = "2.3.3"
 gradle.extra["pluginType"] = "release"
-gradle.extra["pluginVersions"] = listOf("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8")
+gradle.extra["pluginVersions"] = listOf("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10")
 gradle.extra["pluginLoaders"] = listOf("folia", "paper", "purpur", "velocity", "bukkit", "spigot", "waterfall")
 </file>
 
