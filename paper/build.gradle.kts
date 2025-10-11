@@ -25,10 +25,10 @@ repositories {
 dependencies {
     implementation("org.json:json:20250517")
     // compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
-    compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     implementation("com.cjcrafter:foliascheduler:0.7.2")
     implementation("org.ow2.asm:asm:9.8")
-    implementation("dev.jorel:commandapi-spigot-shade:11.0.0")
+    implementation("dev.jorel:commandapi-paper-shade:11.0.0")
     compileOnly("me.clip:placeholderapi:2.11.6")
 
     implementation(project(":core"))
