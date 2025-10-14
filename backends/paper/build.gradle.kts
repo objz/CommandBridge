@@ -13,5 +13,5 @@ repositories {
 dependencies {
     implementation(project(":backends"))
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-    compileOnly("dev.jorel:commandapi-bukkit-shade:10.1.2")
+    compileOnly("dev.jorel:commandapi-paper-shade:11.0.0")
 }

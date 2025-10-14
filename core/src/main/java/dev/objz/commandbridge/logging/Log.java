@@ -454,9 +454,13 @@ public final class Log {
 	private void debugI(String message, Object... args) {
 		if (DEBUG) {
 			String ext = extendedPrefix();
+			String prefix = (ansi ? CYAN + ext + RESET : ext) + " ";
 			String raw = (message != null ? message : "");
-			String fullMsg = (ansi ? CYAN + ext + RESET : ext) + " " + raw;
-			base.info("{}", fullMsg);
+			if (args == null || args.length == 0) {
+				base.info("{}{}", prefix, raw);
+			} else {
+				base.info(prefix + raw, args);
+			}
 		}
 	}
 
