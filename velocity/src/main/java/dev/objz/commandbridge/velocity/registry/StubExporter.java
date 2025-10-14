@@ -63,7 +63,8 @@ public final class StubExporter {
 				ArgMapping indexedArg = new ArgMapping(
 						indexedName,
 						arg.required(),
-						arg.type());
+						arg.type(),
+						arg.suggestions());
 
 				result.add(indexedArg);
 				currentIndices.put(originalName, currentIndex + 1);

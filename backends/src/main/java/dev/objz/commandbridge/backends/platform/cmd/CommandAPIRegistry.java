@@ -3,6 +3,7 @@ package dev.objz.commandbridge.backends.platform.cmd;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
+import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.proto.cmd.CommandStub;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
@@ -39,6 +40,11 @@ public final class CommandAPIRegistry implements CommandRegistry {
 
 				if (!argMapping.required()) {
 					argument.setOptional(true);
+				}
+
+				if (argMapping.suggestions() != null && !argMapping.suggestions().isEmpty()) {
+					argument.includeSuggestions(ArgumentSuggestions.strings(
+							argMapping.suggestions().toArray(String[]::new)));
 				}
 
 				arguments.add(argument);
