@@ -1,5 +1,7 @@
 package dev.objz.commandbridge.folia.impl;
 
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.ws.WsClient;
@@ -9,13 +11,17 @@ import dev.objz.commandbridge.logging.Log;
 
 import java.nio.file.Path;
 
+import org.bukkit.plugin.java.JavaPlugin;
+
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
 	private BackendsConfig cfg;
 	private Path dataDir;
+	private JavaPlugin plugin;
 
 	@Override
-	public void load(PlatformEnv env) throws Exception {
+	public void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
+		this.plugin = plugin;
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
@@ -27,6 +33,7 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
+		CommandAPI.onLoad(new CommandAPIPaperConfig(plugin).silentLogs(false).verboseOutput(false));
 	}
 
 	@Override
@@ -43,6 +50,8 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 		}
 
+		CommandAPI.onEnable();
+
 		this.client = new WsClient(cfg, dataDir);
 		client.start();
 	}
@@ -52,6 +61,7 @@ public final class Adapter implements PlatformAdapter {
 		try {
 			if (client != null)
 				client.close();
+			CommandAPI.onDisable();
 		} finally {
 			Log.info("Backend (Folia) stopped");
 		}

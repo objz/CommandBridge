@@ -1,5 +1,7 @@
 package dev.objz.commandbridge.bukkit.impl;
 
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPISpigotConfig;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.ws.WsClient;
@@ -7,7 +9,6 @@ import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import org.bukkit.Bukkit;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
@@ -16,9 +17,11 @@ public final class Adapter implements PlatformAdapter {
 	private WsClient client;
 	private BackendsConfig cfg;
 	private Path dataDir;
+	private JavaPlugin plugin;
 
 	@Override
-	public void load(PlatformEnv env) throws Exception {
+	public void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
+		this.plugin = plugin;
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
@@ -30,6 +33,8 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
+		CommandAPI.onLoad(new CommandAPISpigotConfig(plugin).silentLogs(false).verboseOutput(false)
+				.skipReloadDatapacks(true));
 	}
 
 	@Override
@@ -46,10 +51,11 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 		}
 
-		Plugin plugin = Bukkit.getPluginManager().getPlugin("CommandBridge");
 		Log.installThreadMarshalling(
 				() -> Bukkit.isPrimaryThread(),
 				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
+
+		CommandAPI.onEnable();
 
 		this.client = new WsClient(cfg, dataDir);
 		client.start();
@@ -60,6 +66,7 @@ public final class Adapter implements PlatformAdapter {
 		try {
 			if (client != null)
 				client.close();
+			CommandAPI.onDisable();
 		} finally {
 			Log.info("Backend (Bukkit) stopped");
 		}

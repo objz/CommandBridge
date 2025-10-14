@@ -12,6 +12,6 @@ repositories {
 }
 dependencies {
     implementation(project(":backends"))
-    compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
+    compileOnly("dev.folia:folia-api:1.21.6-R0.1-SNAPSHOT")
     compileOnly("dev.jorel:commandapi-paper-shade:11.0.0")
 }

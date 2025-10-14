@@ -13,7 +13,7 @@ public final class BukkitMain extends JavaPlugin {
 	@Override
 	public void onLoad() {
 		try {
-			org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger("CommandBridge");
+			org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger("commandbridge");
 			Log.install(logger);
 		} catch (Throwable t) {
 			Log.install(getLogger());
@@ -35,7 +35,7 @@ public final class BukkitMain extends JavaPlugin {
 				}
 			};
 			var env = new PlatformAdapter.PlatformEnv(getDataFolder().toPath());
-			adapter.load(env);
+			adapter.load(env, this);
 		} catch (Exception e) {
 			Log.error(e, "Adapter load failed during onLoad");
 		}

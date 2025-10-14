@@ -27,7 +27,8 @@ dependencies {
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.2")
 
-    implementation("dev.jorel:commandapi-bukkit-shade:10.1.2")
+    implementation("dev.jorel:commandapi-paper-shade:11.0.0")
+    implementation("dev.jorel:commandapi-spigot-shade:11.0.0")
 }
 
 tasks {
@@ -40,7 +41,7 @@ tasks {
         // manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
 
 
-        relocate("dev.jorel.commandapi", "dev.objz.libs.commandapi.spigotapi")
+        relocate("dev.jorel.commandapi", "dev.objz.libs.commandapi")
         relocate("com.fasterxml.jackson", "dev.objz.libs.jackson")
         relocate("io.undertow", "dev.objz.libs.undertow")
         relocate("org.xnio", "dev.objz.libs.xnio")
