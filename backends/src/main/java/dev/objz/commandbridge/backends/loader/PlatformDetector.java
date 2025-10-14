@@ -20,11 +20,11 @@ public final class PlatformDetector {
 		if (classExists("io.papermc.paper.threadedregions.RegionizedServer")) {
 			p = Platform.FOLIA;
 		} else if (classExists("com.destroystokyo.paper.PaperConfig")
-				|| classExists("io.papermc.paper.PaperConfig")) {
+				|| classExists("io.papermc.paper.configuration.Configuration")) {
 			p = Platform.PAPER;
-		} else if (classExists("org.bukkit.plugin.java.JavaPlugin")) {
+		} else if (classExists("org.bukkit.Bukkit")) {
 			p = Platform.BUKKIT;
-		} else if (classExists("net.minecraftforge.fml.ModList")) {
+		} else if (classExists("net.minecraftforge.fml.common.Mod")) {
 			p = Platform.FORGE;
 		} else if (classExists("net.fabricmc.loader.api.FabricLoader")) {
 			p = Platform.FABRIC;

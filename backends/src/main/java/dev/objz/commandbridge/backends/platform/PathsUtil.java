@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.backends.loader;
+package dev.objz.commandbridge.backends.platform;
 
 import java.nio.file.Path;
 import java.util.Locale;
@@ -12,7 +12,7 @@ public final class PathsUtil {
 			return null;
 		Path parent = p.getParent();
 		if (parent == null)
-			return p; 
+			return p;
 		String lower = p.getFileName().toString().toLowerCase(Locale.ROOT);
 		return parent.resolve(lower);
 	}
