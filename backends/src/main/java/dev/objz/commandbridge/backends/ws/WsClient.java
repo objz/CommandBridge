@@ -142,8 +142,7 @@ public final class WsClient extends WebSocketListener implements AutoCloseable {
 		http.connectionPool().evictAll();
 	}
 
-	// ---- public API used by handlers
-	// -------------------------------------------------
+	// ---- public API
 
 	public void send(String json) {
 		WebSocket s = socket;
@@ -194,16 +193,12 @@ public final class WsClient extends WebSocketListener implements AutoCloseable {
 		}
 	}
 
-	// ---- okhttp callbacks
-	// ------------------------------------------------------------
-
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
 		this.socket = webSocket;
 		this.lastHandshake = response.handshake();
 		state = requireAuth ? ClientState.AUTHENTICATING : ClientState.AUTHENTICATED;
 
-		// kick off AUTH if required
 		if (requireAuth) {
 			this.clientNonce = java.util.UUID.randomUUID().toString().replace("-", "");
 			var payload = new com.fasterxml.jackson.databind.node.ObjectNode(mapper.getNodeFactory())
@@ -237,9 +232,6 @@ public final class WsClient extends WebSocketListener implements AutoCloseable {
 		else
 			Log.error(t, "WS failure");
 	}
-
-	// ---- helpers
-	// --------------------------------------------------------------------
 
 	private String loadTofuPinIfAny() {
 		try {
