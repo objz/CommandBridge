@@ -1,20 +1,14 @@
 package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.proto.Envelope;
-import dev.objz.commandbridge.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.TlsResolver;
 import okhttp3.*;
-
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509TrustManager;
-import java.io.Closeable;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -24,21 +18,15 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
-import java.util.function.Supplier;
 
-public final class WsClient extends WebSocketListener implements Closeable {
+public final class WsClient extends WebSocketListener implements AutoCloseable {
 	private final BackendsConfig cfg;
+	private final Path dataDir;
+
 	private final BackendsConfig.Security sec;
 	private final TlsMode mode;
 	private final String host;
 	private final int port;
-	private final URI serverUri;
-
-	private final OkHttpClient http;
-	private final ObjectMapper mapper = new ObjectMapper();
-	private final MessageRouter router;
-	private final Supplier<PlatformRegistry> platform;
-	private final Path dataDir;
 
 	private final boolean requireAuth;
 
@@ -50,9 +38,13 @@ public final class WsClient extends WebSocketListener implements Closeable {
 
 	private volatile Handshake lastHandshake;
 
-	public WsClient(BackendsConfig cfg, Supplier<PlatformRegistry> platform, Path dataDir) {
+	private final OkHttpClient http;
+	private final URI serverUri;
+	private final ObjectMapper mapper = new ObjectMapper();
+	private final MessageRouter router;
+
+	public WsClient(BackendsConfig cfg, Path dataDir) {
 		this.cfg = cfg;
-		this.platform = platform;
 		this.dataDir = dataDir;
 
 		this.requireAuth = Boolean.TRUE.equals(cfg.security().requireAuth());
@@ -101,7 +93,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		}
 
 		this.http = b.build();
-		this.router = new MessageRouter(this, mapper, platform, cfg);
+		this.router = new MessageRouter(this, mapper, cfg);
 	}
 
 	public String clientId() {
@@ -150,24 +142,21 @@ public final class WsClient extends WebSocketListener implements Closeable {
 		http.connectionPool().evictAll();
 	}
 
-	public void send(Envelope env) {
+	// ---- public API used by handlers
+	// -------------------------------------------------
+
+	public void send(String json) {
 		WebSocket s = socket;
-		if (s == null)
-			return;
-		try {
-			s.send(mapper.writeValueAsString(env));
-		} catch (Exception e) {
-			Log.error(e, "WS send failed");
-		}
+		if (s != null)
+			s.send(json);
 	}
 
-	private void sendAuth() {
-		this.clientNonce = java.util.UUID.randomUUID().toString().replace("-", "");
-		ObjectNode payload = mapper.createObjectNode();
-		payload.put("clientId", cfg.clientId());
-		payload.put("nonce", clientNonce);
-		payload.put("hmac", auth.sign(cfg.clientId(), clientNonce));
-		send(Envelope.make(MessageType.AUTH, cfg.clientId(), null, payload));
+	public void send(dev.objz.commandbridge.proto.Envelope env) {
+		try {
+			send(mapper.writeValueAsString(env));
+		} catch (Exception e) {
+			Log.error(e, "Failed to serialize envelope");
+		}
 	}
 
 	public void markAuthenticated() {
@@ -175,43 +164,7 @@ public final class WsClient extends WebSocketListener implements Closeable {
 	}
 
 	public void markNotAuthenticated() {
-		state = ClientState.DISCONNECTED;
-		close();
-	}
-
-	@Override
-	public void onOpen(WebSocket webSocket, Response response) {
 		state = ClientState.AUTHENTICATING;
-		lastHandshake = response != null ? response.handshake() : null;
-		Log.success("Connected (HTTP {})", response != null ? response.code() : 101);
-		sendAuth();
-	}
-
-	@Override
-	public void onMessage(WebSocket webSocket, String text) {
-		router.dispatch(text);
-	}
-
-	@Override
-	public void onClosing(WebSocket webSocket, int code, String reason) {
-		webSocket.close(code, reason);
-	}
-
-	@Override
-	public void onClosed(WebSocket webSocket, int code, String reason) {
-		state = ClientState.DISCONNECTED;
-		Log.info("Disconnected ({} {})", code, reason);
-	}
-
-	@Override
-	public void onFailure(WebSocket webSocket, Throwable t, Response r) {
-		state = ClientState.DISCONNECTED;
-		if (t instanceof java.io.EOFException)
-			Log.warn("Server closed the connection (EOF)");
-		else if (t instanceof java.net.ConnectException)
-			Log.warn("Cannot connect (connection refused)");
-		else
-			Log.error(t, "WS failure");
 	}
 
 	public void persistTlsPinIfNeeded() {
@@ -233,13 +186,60 @@ public final class WsClient extends WebSocketListener implements Closeable {
 
 			String pin = spkiPin((X509Certificate) chain.get(0));
 			Files.createDirectories(dataDir);
-			Files.writeString(pinFile, pin + System.lineSeparator(), StandardCharsets.UTF_8,
-					StandardOpenOption.CREATE_NEW);
+			Files.writeString(pinFile, pin + System.lineSeparator(),
+					StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
 			Log.success(true, "Pinned TLS (TOFU) for {} -> '{}'", host, pin);
 		} catch (Exception e) {
 			Log.warn("Could not persist TLS TOFU pin: {}", e.toString());
 		}
 	}
+
+	// ---- okhttp callbacks
+	// ------------------------------------------------------------
+
+	@Override
+	public void onOpen(WebSocket webSocket, Response response) {
+		this.socket = webSocket;
+		this.lastHandshake = response.handshake();
+		state = requireAuth ? ClientState.AUTHENTICATING : ClientState.AUTHENTICATED;
+
+		// kick off AUTH if required
+		if (requireAuth) {
+			this.clientNonce = java.util.UUID.randomUUID().toString().replace("-", "");
+			var payload = new com.fasterxml.jackson.databind.node.ObjectNode(mapper.getNodeFactory())
+					.put("clientId", clientId())
+					.put("nonce", clientNonce)
+					.put("hmac", auth.sign(clientId(), clientNonce));
+			send(dev.objz.commandbridge.proto.Envelope.make(
+					dev.objz.commandbridge.proto.MessageType.AUTH, null, null, payload));
+		}
+		Log.success("Connected");
+	}
+
+	@Override
+	public void onMessage(WebSocket webSocket, String text) {
+		router.dispatch(text);
+	}
+
+	@Override
+	public void onClosed(WebSocket webSocket, int code, String reason) {
+		state = ClientState.DISCONNECTED;
+		Log.warn("Disconnected: {} ({})", reason, code);
+	}
+
+	@Override
+	public void onFailure(WebSocket webSocket, Throwable t, Response r) {
+		state = ClientState.DISCONNECTED;
+		if (t instanceof java.io.EOFException)
+			Log.warn("Server closed the connection (EOF)");
+		else if (t instanceof java.net.ConnectException)
+			Log.warn("Cannot connect (connection refused)");
+		else
+			Log.error(t, "WS failure");
+	}
+
+	// ---- helpers
+	// --------------------------------------------------------------------
 
 	private String loadTofuPinIfAny() {
 		try {
