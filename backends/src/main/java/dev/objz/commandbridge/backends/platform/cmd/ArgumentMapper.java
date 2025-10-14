@@ -20,39 +20,30 @@ public final class ArgumentMapper {
 			case STRING -> new StringArgument(argName);
 			case INTEGER -> new IntegerArgument(argName);
 			case BOOLEAN -> new BooleanArgument(argName);
+			case DOUBLE -> new DoubleArgument(argName);
+			case TEXT -> new TextArgument(argName);
 
-			// Add more mappings as you extend ArgType
-			// Examples based on the CommandAPI argument list you provided:
+			case RANGE -> new DoubleRangeArgument(argName);
 
-			// case FLOAT -> new FloatArgument(argName);
-			// case DOUBLE -> new DoubleArgument(argName);
-			// case LONG -> new LongArgument(argName);
+			case PLAYERS -> new EntitySelectorArgument.ManyPlayers(argName);
+			case ENTITIES -> new EntitySelectorArgument.ManyEntities(argName);
+			case ENTITY_TYPE -> new EntityTypeArgument(argName);
 
-			// case GREEDY_STRING -> new GreedyStringArgument(argName);
-			// case TEXT -> new TextArgument(argName);
+			case WORLD -> new WorldArgument(argName);
+			case LOCATION -> new LocationArgument(argName);
+			case LOCATION_2D -> new Location2DArgument(argName);
+			case ANGLE -> new AngleArgument(argName);
+			case ROTATION -> new RotationArgument(argName);
 
-			// case PLAYER -> new PlayerArgument(argName);
-			// case ENTITY -> new EntitySelectorArgument.OneEntity(argName);
-			// case ENTITY_TYPE -> new EntityTypeArgument(argName);
+			case ITEM_STACK -> new ItemStackArgument(argName);
+			case ENCHANTMENT -> new EnchantmentArgument(argName);
+			case POTION_EFFECT -> new PotionEffectArgument(argName);
 
-			// case WORLD -> new WorldArgument(argName);
-			// case LOCATION -> new LocationArgument(argName);
-			// case LOCATION_2D -> new Location2DArgument(argName);
+			case SOUND -> new SoundArgument(argName);
+			case BIOME -> new BiomeArgument(argName);
 
-			// case ITEM_STACK -> new ItemStackArgument(argName);
-			// case ENCHANTMENT -> new EnchantmentArgument(argName);
-			// case POTION_EFFECT -> new PotionEffectArgument(argName);
-
-			// case SOUND -> new SoundArgument(argName);
-			// case BIOME -> new BiomeArgument(argName);
-
-			// case ANGLE -> new AngleArgument(argName);
-			// case ROTATION -> new RotationArgument(argName);
-
-			// case UUID_ARG -> new UUIDArgument(argName);
-			// case TIME -> new TimeArgument(argName);
-
-			// Add more as needed...
+			case UUID -> new UUIDArgument(argName);
+			case TIME -> new TimeArgument(argName);
 
 			default -> throw new UnsupportedOperationException(
 					"ArgType." + type + " is not yet mapped to a CommandAPI argument. " +

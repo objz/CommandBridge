@@ -7,11 +7,13 @@ import dev.objz.commandbridge.scripting.anno.Required;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
 import dev.objz.commandbridge.scripting.validation.PostProcessor;
 import dev.objz.commandbridge.scripting.validation.ProblemSink;
+import dev.objz.commandbridge.scripting.validation.processor.ArgumentOrderProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.DefaultProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.MaxProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.MergeProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.MinProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.PatternProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.PlatformProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.RequiredProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.ResolvableProcessor;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
@@ -47,7 +49,9 @@ public final class RecordBinder {
 				new MinProcessor(),
 				new MaxProcessor(),
 				new ResolvableProcessor(),
-				new MergeProcessor()
+				new MergeProcessor(),
+				new PlatformProcessor(),
+				new ArgumentOrderProcessor()
 
 		);
 	}
