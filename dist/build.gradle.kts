@@ -37,7 +37,7 @@ tasks {
         archiveBaseName.set("CommandBridge")
         archiveClassifier.set("all") // produce CommandBridge-<version>.jar
 
-        manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
+        // manifest { attributes["paperweight-mappings-namespace"] = "spigot" }
 
 
         relocate("dev.jorel.commandapi", "dev.objz.libs.commandapi.spigotapi")
