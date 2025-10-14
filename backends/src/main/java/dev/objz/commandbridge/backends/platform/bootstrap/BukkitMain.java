@@ -1,8 +1,8 @@
-package dev.objz.commandbridge.backends.bootstrap;
+package dev.objz.commandbridge.backends.platform.bootstrap;
 
-import dev.objz.commandbridge.backends.loader.PlatformDetector;
-import dev.objz.commandbridge.backends.loader.PlatformDetector.Platform;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.backends.platform.PlatformDetector;
+import dev.objz.commandbridge.backends.platform.PlatformDetector.Platform;
 import dev.objz.commandbridge.logging.Log;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -29,7 +29,7 @@ public final class BukkitMain extends JavaPlugin {
 				case PAPER -> loadAdapter("dev.objz.commandbridge.paper.impl.Adapter");
 				case BUKKIT -> loadAdapter("dev.objz.commandbridge.bukkit.impl.Adapter");
 				default -> {
-					Log.warn("Unknown platform detected ({}). Falling back to Bukkit adapter.",
+					Log.warn("Unknown platform detected ({}). Falling back to Bukkit adapter",
 							platform);
 					yield loadAdapter("dev.objz.commandbridge.bukkit.impl.Adapter");
 				}

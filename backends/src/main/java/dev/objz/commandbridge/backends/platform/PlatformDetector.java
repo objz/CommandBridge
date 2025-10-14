@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.backends.loader;
+package dev.objz.commandbridge.backends.platform;
 
 public final class PlatformDetector {
 
