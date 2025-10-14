@@ -1,11 +1,9 @@
 package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.backends.PlatformRegistry;
 import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
-import dev.objz.commandbridge.backends.ws.handlers.RegisterCommandsHandler;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.proto.Envelope;
@@ -16,7 +14,6 @@ import dev.objz.commandbridge.util.RateLimiter;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
 public final class MessageRouter {
 	private final Map<MessageType, InboundHandler> byType = new EnumMap<>(MessageType.class);
@@ -28,17 +25,16 @@ public final class MessageRouter {
 		void handle(Envelope env) throws Exception;
 	}
 
-	public MessageRouter(WsClient ws, ObjectMapper mapper, Supplier<PlatformRegistry> platform, BackendsConfig config) {
+	public MessageRouter(WsClient ws, ObjectMapper mapper, BackendsConfig config) {
 		this.ws = ws;
 		this.mapper = mapper;
 		this.limiter = new RateLimiter<>(config.limits().inboundMessagesSec());
-		byType.put(MessageType.AUTH_OK,
-				new AuthHandler(ws, AuthStatus.AUTHENTICATED, config));
-		byType.put(MessageType.AUTH_FAIL,
-				new AuthHandler(ws, AuthStatus.NOT_AUTHENTICATED, config));
+		byType.put(MessageType.AUTH_OK, new AuthHandler(ws, AuthStatus.AUTHENTICATED, config));
+		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthStatus.NOT_AUTHENTICATED, config));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
-		byType.put(MessageType.REGISTER_COMMANDS, new RegisterCommandsHandler(ws, mapper, platform));
+
+
 	}
 
 	public void dispatch(String json) {

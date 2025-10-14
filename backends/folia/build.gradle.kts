@@ -10,9 +10,7 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
 }
-
 dependencies {
-    implementation(project(":core"))
-    api("com.squareup.okhttp3:okhttp:4.12.0")
-    compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
+    implementation(project(":backends"))
+    compileOnly("dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT")
 }
