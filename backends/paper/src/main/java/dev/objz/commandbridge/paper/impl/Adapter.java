@@ -14,22 +14,37 @@ import java.nio.file.Path;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
+	private BackendsConfig cfg;
+	private Path dataDir;
+
+	@Override
+	public void load(PlatformEnv env) throws Exception {
+		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
+		var cfgMgr = new ConfigManager(dataDir);
+		boolean ok = cfgMgr.load(BackendsConfig.class);
+		this.cfg = cfgMgr.current(BackendsConfig.class);
+		if (!ok)
+			Log.error("Could not load BackendsConfig");
+
+		if (cfg != null) {
+			Log.setDebug(cfg.debug());
+			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+		}
+	}
 
 	@Override
 	public void start(PlatformEnv env) throws Exception {
-		Path dataDir = PathsUtil.normalizeDataDir(env.dataDir());
-
-		var cfgMgr = new ConfigManager(dataDir);
-		boolean ok = cfgMgr.load(BackendsConfig.class);
-		BackendsConfig cfg = cfgMgr.current(BackendsConfig.class);
-		if (!ok) {
-			Log.error("Could not load BackendsConfig");
-			return;
+		if (this.dataDir == null)
+			this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
+		if (this.cfg == null) {
+			var cfgMgr = new ConfigManager(dataDir);
+			if (!cfgMgr.load(BackendsConfig.class)) {
+				Log.error("Could not load BackendsConfig");
+				return;
+			}
+			this.cfg = cfgMgr.current(BackendsConfig.class);
+			Log.setDebug(cfg.debug());
 		}
-
-		Log.setDebug(cfg.debug());
-		Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
-		Log.info("Backend running on Paper");
 
 		Plugin plugin = Bukkit.getPluginManager().getPlugin("CommandBridge");
 		Log.installThreadMarshalling(

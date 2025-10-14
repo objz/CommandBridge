@@ -6,8 +6,6 @@ import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.logging.Log;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.nio.file.Path;
-
 public final class BukkitMain extends JavaPlugin {
 
 	private PlatformAdapter adapter;
@@ -22,14 +20,10 @@ public final class BukkitMain extends JavaPlugin {
 		}
 
 		Log.info("Initializing CommandBridge (Bukkit family)");
-	}
 
-	@Override
-	public void onEnable() {
+		Platform platform = PlatformDetector.detectPlatform();
+		Log.info("Detected platform: {}", platform);
 		try {
-			Platform platform = PlatformDetector.detectPlatform();
-			Log.info("Detected platform: {}", platform);
-
 			adapter = switch (platform) {
 				case FOLIA -> loadAdapter("dev.objz.commandbridge.folia.impl.Adapter");
 				case PAPER -> loadAdapter("dev.objz.commandbridge.paper.impl.Adapter");
@@ -40,12 +34,19 @@ public final class BukkitMain extends JavaPlugin {
 					yield loadAdapter("dev.objz.commandbridge.bukkit.impl.Adapter");
 				}
 			};
+			var env = new PlatformAdapter.PlatformEnv(getDataFolder().toPath());
+			adapter.load(env);
+		} catch (Exception e) {
+			Log.error(e, "Adapter load failed during onLoad");
+		}
 
-			Path dataDir = getDataFolder().toPath();
-			PlatformAdapter.PlatformEnv env = new PlatformAdapter.PlatformEnv(dataDir);
+	}
 
+	@Override
+	public void onEnable() {
+		try {
+			var env = new PlatformAdapter.PlatformEnv(getDataFolder().toPath());
 			adapter.start(env);
-			Log.success(true, "CommandBridge backend started on {}", platform);
 		} catch (Exception ex) {
 			Log.error(ex, "Failed to enable CommandBridge");
 			getServer().getPluginManager().disablePlugin(this);
@@ -57,7 +58,6 @@ public final class BukkitMain extends JavaPlugin {
 		try {
 			if (adapter != null) {
 				adapter.stop();
-				Log.success(true, "CommandBridge backend stopped");
 			}
 		} catch (Exception ex) {
 			Log.error(ex, "Error during shutdown");
