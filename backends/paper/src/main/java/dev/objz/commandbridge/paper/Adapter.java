@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.folia.impl;
+package dev.objz.commandbridge.paper;
 
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIPaperConfig;
@@ -8,10 +8,10 @@ import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
-
-import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
@@ -50,6 +50,10 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 		}
 
+		Log.installThreadMarshalling(
+				() -> Bukkit.isPrimaryThread(),
+				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
+
 		CommandAPI.onEnable();
 
 		this.client = new WsClient(cfg, dataDir);
@@ -63,7 +67,7 @@ public final class Adapter implements PlatformAdapter {
 				client.close();
 			CommandAPI.onDisable();
 		} finally {
-			Log.info("Backend (Folia) stopped");
+			Log.info("Backend (Paper) stopped");
 		}
 	}
 }

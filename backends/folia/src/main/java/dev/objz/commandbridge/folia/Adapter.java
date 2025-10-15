@@ -1,17 +1,17 @@
-package dev.objz.commandbridge.bukkit.impl;
+package dev.objz.commandbridge.folia;
 
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPISpigotConfig;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
+
+import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
@@ -33,8 +33,7 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
-		CommandAPI.onLoad(new CommandAPISpigotConfig(plugin).silentLogs(false).verboseOutput(false)
-				.skipReloadDatapacks(true));
+		CommandAPI.onLoad(new CommandAPIPaperConfig(plugin).silentLogs(false).verboseOutput(false));
 	}
 
 	@Override
@@ -51,10 +50,6 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 		}
 
-		Log.installThreadMarshalling(
-				() -> Bukkit.isPrimaryThread(),
-				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
-
 		CommandAPI.onEnable();
 
 		this.client = new WsClient(cfg, dataDir);
@@ -68,7 +63,7 @@ public final class Adapter implements PlatformAdapter {
 				client.close();
 			CommandAPI.onDisable();
 		} finally {
-			Log.info("Backend (Bukkit) stopped");
+			Log.info("Backend (Folia) stopped");
 		}
 	}
 }
