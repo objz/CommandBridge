@@ -1,7 +1,7 @@
-package dev.objz.commandbridge.paper.impl;
+package dev.objz.commandbridge.bukkit;
 
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIPaperConfig;
+import dev.jorel.commandapi.CommandAPISpigotConfig;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.ws.WsClient;
@@ -33,7 +33,8 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
-		CommandAPI.onLoad(new CommandAPIPaperConfig(plugin).silentLogs(false).verboseOutput(false));
+		CommandAPI.onLoad(new CommandAPISpigotConfig(plugin).silentLogs(false).verboseOutput(false)
+				.skipReloadDatapacks(true));
 	}
 
 	@Override
@@ -67,7 +68,7 @@ public final class Adapter implements PlatformAdapter {
 				client.close();
 			CommandAPI.onDisable();
 		} finally {
-			Log.info("Backend (Paper) stopped");
+			Log.info("Backend (Bukkit) stopped");
 		}
 	}
 }

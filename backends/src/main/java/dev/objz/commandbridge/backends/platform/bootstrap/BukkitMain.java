@@ -25,9 +25,9 @@ public final class BukkitMain extends JavaPlugin {
 		Log.info("Detected platform: {}", platform);
 		try {
 			adapter = switch (platform) {
-				case FOLIA -> loadAdapter("dev.objz.commandbridge.folia.impl.Adapter");
-				case PAPER -> loadAdapter("dev.objz.commandbridge.paper.impl.Adapter");
-				case BUKKIT -> loadAdapter("dev.objz.commandbridge.bukkit.impl.Adapter");
+				case FOLIA -> loadAdapter("dev.objz.commandbridge.folia.Adapter");
+				case PAPER -> loadAdapter("dev.objz.commandbridge.paper.Adapter");
+				case BUKKIT -> loadAdapter("dev.objz.commandbridge.bukkit.Adapter");
 				default -> {
 					Log.warn("Unknown platform detected ({}). Falling back to Bukkit adapter",
 							platform);
