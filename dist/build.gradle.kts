@@ -27,6 +27,8 @@ dependencies {
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.2")
 
+    implementation("org.snakeyaml:snakeyaml-engine:2.7")
+
     implementation("dev.jorel:commandapi-paper-shade:11.0.0")
     implementation("dev.jorel:commandapi-spigot-shade:11.0.0")
     implementation("dev.jorel:commandapi-velocity-shade:11.0.0")

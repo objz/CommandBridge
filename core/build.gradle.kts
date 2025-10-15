@@ -10,6 +10,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/")
 }
 
 dependencies {
@@ -17,13 +18,18 @@ dependencies {
     api("com.fasterxml.jackson.core:jackson-annotations:2.17.2")
     api("com.fasterxml.jackson.core:jackson-core:2.17.2")
     compileOnly("org.spongepowered:configurate-yaml:4.2.0")
-    implementation("org.snakeyaml:snakeyaml-engine:2.7")
+    compileOnly("org.snakeyaml:snakeyaml-engine:2.7")
     api("org.slf4j:slf4j-api:2.0.13")
     api("io.undertow:undertow-core:2.3.12.Final")
     api("io.undertow:undertow-websockets-jsr:2.3.12.Final")
     
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.78.1")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+
+    compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("dev.jorel:commandapi-paper-shade:11.0.0")
+    compileOnly("dev.jorel:commandapi-spigot-shade:11.0.0")
+    compileOnly("dev.jorel:commandapi-velocity-shade:11.0.0")
 
     implementation(libs.guava)
 

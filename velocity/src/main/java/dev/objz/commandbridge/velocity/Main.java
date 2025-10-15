@@ -31,9 +31,6 @@ public final class Main {
 	private final Path dataDir;
 	private ConfigManager configManager;
 
-	private final org.spongepowered.configurate.objectmapping.ObjectMapper.Factory cfgMapperFactory = org.spongepowered.configurate.objectmapping.ObjectMapper
-			.factoryBuilder().build();
-
 	@Inject
 	public Main(ProxyServer server, Logger velocityLogger, @DataDirectory Path dataDir) {
 		this.server = server;
@@ -75,7 +72,7 @@ public final class Main {
 		OnAuthRegisterCommands.install(
 				sessions,
 				scriptManager,
-				new ObjectMapper(),
+				mapper,
 				config.serverId(),
 				config);
 
