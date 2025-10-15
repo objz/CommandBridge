@@ -22,6 +22,8 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
+import dev.objz.commandbridge.velocity.cmd.VelocityArgumentMapper;
+import dev.objz.commandbridge.velocity.cmd.VelocityCommandAPIRegistry;
 import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
 import dev.objz.commandbridge.velocity.registry.ScriptManager;
 import dev.objz.commandbridge.velocity.ws.MessageRouter;
@@ -39,6 +41,7 @@ public final class Main {
 	private final Path dataDir;
 	private ConfigManager configManager;
 	private static boolean commandAPILoaded = false;
+	private WsServer ws;
 
 	@Inject
 	public Main(ProxyServer server, Logger velocityLogger, @DataDirectory Path dataDir) {
@@ -127,7 +130,7 @@ public final class Main {
 		var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
 
 		var tls = TlsResolver.resolveServer(dataDir, config.security());
-		var ws = tls.enabled()
+		this.ws = tls.enabled()
 				? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true,
 						tls.context())
 				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);

@@ -26,23 +26,31 @@ public final class OnAuthRegisterCommands {
 			VelocityConfig config) {
 
 		sessions.onAuthed((ClientSession s) -> {
-			List<CommandStub> stubs = StubExporter.export(mgr.enabled());
+			String clientId = s.clientId();
+
+			List<CommandStub> stubs = StubExporter.exportForBackend(mgr.enabled(), clientId);
+
+			if (stubs.isEmpty()) {
+				Log.info("No commands to register for backend '{}'", clientId);
+				return;
+			}
+
 			RegisterCommandsPayload payload = new RegisterCommandsPayload(true, stubs);
 			Envelope env = Envelope.make(
 					MessageType.REGISTER_COMMANDS,
 					serverId,
-					s.clientId(),
+					clientId,
 					mapper.valueToTree(payload));
 
 			sessions.send(s.ch(), env);
-			StatusLog.registerPushed(stubs.size(), s.clientId());
+			StatusLog.registerPushed(stubs.size(), clientId);
 
 			CompletableFuture<Envelope> fut = new CompletableFuture<>();
-			sessions.expectFeedback(env.id().toString(), s.clientId(), fut);
+			sessions.expectFeedback(env.id().toString(), clientId, fut);
 			fut.orTimeout(config.timeouts().registerTimeout(), TimeUnit.SECONDS)
 					.exceptionally(ex -> {
 						Log.error("Register feedback timeout from '{}' (envelope-id={})",
-								s.clientId(), env.id());
+								clientId, env.id());
 						return null;
 					});
 		});
