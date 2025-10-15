@@ -22,10 +22,6 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
-import dev.objz.commandbridge.velocity.cmd.VelocityArgumentMapper;
-import dev.objz.commandbridge.velocity.cmd.VelocityCommandAPIRegistry;
-import dev.objz.commandbridge.velocity.registry.OnAuthRegisterCommands;
-import dev.objz.commandbridge.velocity.registry.ScriptManager;
 import dev.objz.commandbridge.velocity.ws.MessageRouter;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 import dev.objz.commandbridge.velocity.ws.WsServer;
@@ -138,13 +134,6 @@ public final class Main {
 
 		var scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
-
-		OnAuthRegisterCommands.install(
-				sessions,
-				scriptManager,
-				mapper,
-				config.serverId(),
-				config);
 
 		Log.debug("Config loaded:");
 		Log.debug("  Host: {}", config.bindHost());
