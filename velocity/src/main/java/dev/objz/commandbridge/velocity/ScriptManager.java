@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.registry;
+package dev.objz.commandbridge.velocity;
 
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.logging.StatusLog;
