@@ -3,8 +3,9 @@ package dev.objz.commandbridge.velocity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.cmd.CommandRegistry;
+import dev.objz.commandbridge.config.model.VelocityConfig;
+import dev.objz.commandbridge.logging.FeedbackLog;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.logging.StatusLog;
 import dev.objz.commandbridge.proto.Envelope;
 import dev.objz.commandbridge.proto.MessageType;
 import dev.objz.commandbridge.proto.cmd.CommandStub;
@@ -23,6 +24,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 public final class RegistrationManager {
@@ -30,15 +32,17 @@ public final class RegistrationManager {
 	private final SessionHub sessions;
 	private final ObjectMapper mapper;
 	private final CommandRegistry velocityRegistry;
+	private final int registerTimeoutSeconds;
 
 	private final Map<String, Set<Script>> backendRegistrations = new ConcurrentHashMap<>();
 	private final Set<Script> velocityRegistrations = ConcurrentHashMap.newKeySet();
 
-	public RegistrationManager(ProxyServer proxy, SessionHub sessions, ObjectMapper mapper) {
+	public RegistrationManager(ProxyServer proxy, SessionHub sessions, ObjectMapper mapper, VelocityConfig config) {
 		this.proxy = proxy;
 		this.sessions = sessions;
 		this.mapper = mapper;
 		this.velocityRegistry = new VelocityCommandAPIRegistry(new VelocityArgumentMapper(proxy));
+		this.registerTimeoutSeconds = config.timeouts().registerTimeout();
 
 		sessions.onAuthed(this::handleClientAuthenticated);
 	}
@@ -101,7 +105,7 @@ public final class RegistrationManager {
 		}
 
 		if (velocityCollector.failed() > 0) {
-			Log.error("Failed to register {} Velocity command(s)", velocityCollector.failed());
+			Log.error("Failed to register '{}' Velocity command(s)", velocityCollector.failed());
 			for (String error : velocityCollector.errors()) {
 				Log.error(error);
 			}
@@ -111,7 +115,7 @@ public final class RegistrationManager {
 			int totalBackendCommands = backendRegistrations.values().stream()
 					.mapToInt(Set::size)
 					.sum();
-			Log.info("Prepared {} backend command(s) for {} client(s)",
+			Log.success(true, "Prepared '{}' backend command(s) for '{}' client(s)",
 					totalBackendCommands, backendRegistrations.size());
 		}
 	}
@@ -152,8 +156,6 @@ public final class RegistrationManager {
 			return;
 		}
 
-		StatusLog.registerPushed(stubs.size(), clientId);
-
 		RegisterCommandsPayload payload = new RegisterCommandsPayload(false, stubs);
 
 		try {
@@ -167,31 +169,34 @@ public final class RegistrationManager {
 			sessions.expectFeedback(String.valueOf(env.id()), clientId, feedbackFuture);
 			sessions.send(session.ch(), env);
 
-			feedbackFuture.orTimeout(5, TimeUnit.SECONDS)
-					.thenAccept(fbEnv -> {
+			// Await feedback with timeout
+			feedbackFuture
+					.orTimeout(registerTimeoutSeconds, TimeUnit.SECONDS)
+					.thenAccept(feedbackEnv -> {
 						try {
-							Feedback fb = mapper.treeToValue(fbEnv.payload(),
+							Feedback feedback = mapper.treeToValue(feedbackEnv.payload(),
 									Feedback.class);
 
-							if (fb.succeeded() > 0) {
-								Log.success(true,
-										"Backend @{}: Registered '{}' command(s)",
-										clientId, fb.succeeded());
-							}
-
-							if (fb.failed() > 0) {
-								Log.error("Backend @{}: Failed to register {} command(s)",
-										clientId, fb.failed());
-								for (String error : fb.errors()) {
-									Log.error("Backend @{}: {}", clientId, error);
-								}
+							// Only log if there are errors or failures
+							if (feedback.failed() > 0 || (feedback.errors() != null
+									&& !feedback.errors().isEmpty())) {
+								FeedbackLog.details(feedback, clientId);
 							}
 						} catch (Exception e) {
-							Log.error(e, "Failed to parse feedback from '{}'", clientId);
+							Log.error(e, "Failed to process registration feedback from '{}'",
+									clientId);
 						}
 					})
-					.exceptionally(ex -> {
-						Log.warn("No feedback received from '{}' within timeout", clientId);
+					.exceptionally(throwable -> {
+						if (throwable instanceof TimeoutException ||
+								throwable.getCause() instanceof TimeoutException) {
+							Log.error("Timeout waiting for registration feedback from '{}' after {} seconds",
+									clientId, registerTimeoutSeconds);
+						} else {
+							Log.error(throwable,
+									"Failed to receive registration feedback from '{}'",
+									clientId);
+						}
 						return null;
 					});
 
