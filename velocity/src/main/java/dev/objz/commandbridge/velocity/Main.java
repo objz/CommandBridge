@@ -135,7 +135,7 @@ public final class Main {
 		var scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
 
-		var registrationManager = new RegistrationManager(server, sessions, mapper);
+		var registrationManager = new RegistrationManager(server, sessions, mapper, config);
 		registrationManager.loadScripts(scriptManager.enabled());
 
 		Log.debug("Config loaded:");
