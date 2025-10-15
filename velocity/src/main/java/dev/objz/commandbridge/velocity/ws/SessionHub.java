@@ -14,8 +14,12 @@ import java.util.function.Consumer;
 public final class SessionHub {
 	private final Map<WebSocketChannel, ClientSession> byCh = new ConcurrentHashMap<>();
 	private final Map<String, ClientSession> byId = new ConcurrentHashMap<>();
-
+	private final String serverId;
 	private final List<Consumer<ClientSession>> authedListeners = new CopyOnWriteArrayList<>();
+
+	public SessionHub(String serverId) {
+		this.serverId = serverId;
+	}
 
 	private record FbWait(String expectedFrom, CompletableFuture<Envelope> fut) {
 	}
@@ -30,6 +34,14 @@ public final class SessionHub {
 		byCh.clear();
 		byId.clear();
 		authedListeners.clear();
+	}
+
+	public String sessionId() {
+		return "proxy";
+	}
+
+	public String serverId() {
+		return serverId;
 	}
 
 	public void onAuthed(Consumer<ClientSession> listener) {

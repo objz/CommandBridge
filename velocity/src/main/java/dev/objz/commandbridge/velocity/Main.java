@@ -121,7 +121,7 @@ public final class Main {
 		var auth = new AuthService(secret);
 		var mapper = new ObjectMapper();
 
-		var sessions = new SessionHub();
+		var sessions = new SessionHub(config.serverId()); 
 		boolean requireAuth = config.security().requireAuth();
 		var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
 
@@ -135,14 +135,13 @@ public final class Main {
 		var scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
 
+		var registrationManager = new RegistrationManager(server, sessions, mapper);
+		registrationManager.loadScripts(scriptManager.enabled());
+
 		Log.debug("Config loaded:");
 		Log.debug("  Host: {}", config.bindHost());
 		Log.debug("  Port: {}", config.bindPort());
 		Log.debug("  Server ID: {}", config.serverId());
-		Log.debug("  Heartbeat: {}s ping, {}s stale timeout",
-				config.heartbeat().appPingSeconds(),
-				config.heartbeat().staleAfterSeconds());
-		Log.debug("  RequireAuth: {}", config.security().requireAuth());
 	}
 
 	@Subscribe
