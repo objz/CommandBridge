@@ -2,7 +2,7 @@ package dev.objz.commandbridge.backends.ws.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.backends.platform.cmd.BackendArgumentMapper;
-import dev.objz.commandbridge.backends.platform.cmd.CommandRegistryFactory;
+import dev.objz.commandbridge.backends.platform.cmd.BackendCommandAPIRegistry;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
 import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.cmd.CommandRegistry;
@@ -12,7 +12,6 @@ import dev.objz.commandbridge.proto.MessageType;
 import dev.objz.commandbridge.proto.cmd.RegisterCommandsPayload;
 import dev.objz.commandbridge.proto.feedback.Feedback;
 import dev.objz.commandbridge.proto.feedback.FeedbackCollector;
-import dev.objz.commandbridge.scripting.model.enums.Location;
 
 public final class RegisterCommandsHandler implements InboundHandler {
 	private final ObjectMapper mapper;
@@ -22,11 +21,7 @@ public final class RegisterCommandsHandler implements InboundHandler {
 	public RegisterCommandsHandler(ObjectMapper mapper, WsClient ws) {
 		this.mapper = mapper;
 		this.ws = ws;
-		this.registry = CommandRegistryFactory.create(
-				new BackendArgumentMapper(),
-				Location.BACKEND,
-				(cmd, sender) -> Log.info("Command '{}' executed by {}", cmd,
-						sender != null ? sender.toString() : "unknown"));
+		this.registry = new BackendCommandAPIRegistry(new BackendArgumentMapper());
 	}
 
 	@Override

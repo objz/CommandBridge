@@ -2,7 +2,9 @@ package dev.objz.commandbridge.velocity.registry;
 
 import dev.objz.commandbridge.proto.cmd.CommandStub;
 import dev.objz.commandbridge.scripting.model.Script;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
+import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,57 +22,52 @@ public final class StubExporter {
 
 		for (Script s : scripts) {
 			List<ArgMapping> usedArgs = s.usedArguments();
-			List<ArgMapping> deduplicatedArgs = deduplicateArguments(usedArgs);
 
 			out.add(new CommandStub(
 					s.name(),
 					s.aliases(),
 					s.description(),
-					deduplicatedArgs));
+					usedArgs));
 		}
 		return out;
 	}
 
-	private static List<ArgMapping> deduplicateArguments(List<ArgMapping> args) {
-		if (args == null || args.isEmpty()) {
-			return List.of();
+	public static List<CommandStub> exportForBackend(List<Script> scripts, String clientId) {
+		List<CommandStub> out = new ArrayList<>();
+		if (scripts == null || scripts.isEmpty() || clientId == null || clientId.isBlank()) {
+			return out;
 		}
 
-		Map<String, Integer> nameCounts = new HashMap<>();
-		for (ArgMapping arg : args) {
-			if (arg != null && arg.name() != null) {
-				nameCounts.put(arg.name(), nameCounts.getOrDefault(arg.name(), 0) + 1);
-			}
-		}
-
-		Map<String, Integer> currentIndices = new HashMap<>();
-		List<ArgMapping> result = new ArrayList<>();
-
-		for (ArgMapping arg : args) {
-			if (arg == null || arg.name() == null) {
+		for (Script s : scripts) {
+			if (!shouldRegisterOnBackend(s, clientId)) {
 				continue;
 			}
 
-			String originalName = arg.name();
-			int totalCount = nameCounts.get(originalName);
+			List<ArgMapping> usedArgs = s.usedArguments();
 
-			if (totalCount == 1) {
-				result.add(arg);
-			} else {
-				int currentIndex = currentIndices.getOrDefault(originalName, 0);
-				String indexedName = originalName + "[" + currentIndex + "]";
+			out.add(new CommandStub(
+					s.name(),
+					s.aliases(),
+					s.description(),
+					usedArgs));
+		}
+		return out;
+	}
 
-				ArgMapping indexedArg = new ArgMapping(
-						indexedName,
-						arg.required(),
-						arg.type(),
-						arg.suggestions());
+	private static boolean shouldRegisterOnBackend(Script script, String clientId) {
+		if (script.register() == null || script.register().isEmpty()) {
+			return false;
+		}
 
-				result.add(indexedArg);
-				currentIndices.put(originalName, currentIndex + 1);
+		for (IdMapping mapping : script.register()) {
+			if (mapping != null
+					&& mapping.location() == Location.BACKEND
+					&& clientId.equals(mapping.id())) {
+				return true;
 			}
 		}
 
-		return List.copyOf(result);
+		return false;
 	}
+
 }
