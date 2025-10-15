@@ -26,7 +26,6 @@ dependencies {
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.78.1")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.78.1")
 
-    compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
     compileOnly("dev.jorel:commandapi-paper-shade:11.0.0")
     compileOnly("dev.jorel:commandapi-spigot-shade:11.0.0")
     compileOnly("dev.jorel:commandapi-velocity-shade:11.0.0")
