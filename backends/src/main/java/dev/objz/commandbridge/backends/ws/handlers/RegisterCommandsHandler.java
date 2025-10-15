@@ -56,7 +56,7 @@ public final class RegisterCommandsHandler implements InboundHandler {
 			Feedback feedback = collector.build();
 
 			if (collector.succeeded() > 0) {
-				Log.success(true, "Registered {} command(s)", collector.succeeded());
+				Log.success(true, "Registered '{}' command(s)", collector.succeeded());
 			}
 
 			sendFeedback(env, feedback);

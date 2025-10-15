@@ -29,6 +29,7 @@ dependencies {
 
     implementation("dev.jorel:commandapi-paper-shade:11.0.0")
     implementation("dev.jorel:commandapi-spigot-shade:11.0.0")
+    implementation("dev.jorel:commandapi-velocity-shade:11.0.0")
 }
 
 tasks {
