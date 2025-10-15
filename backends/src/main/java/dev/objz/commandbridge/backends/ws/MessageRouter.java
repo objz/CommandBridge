@@ -2,7 +2,6 @@ package dev.objz.commandbridge.backends.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dev.objz.commandbridge.backends.platform.cmd.CommandAPIRegistry;
 import dev.objz.commandbridge.backends.ws.handlers.AuthHandler;
 import dev.objz.commandbridge.backends.ws.handlers.ErrorHandler;
 import dev.objz.commandbridge.backends.ws.handlers.PingHandler;
@@ -36,8 +35,7 @@ public final class MessageRouter {
 		byType.put(MessageType.AUTH_FAIL, new AuthHandler(ws, AuthStatus.NOT_AUTHENTICATED, config));
 		byType.put(MessageType.PING, new PingHandler(ws));
 		byType.put(MessageType.ERROR, new ErrorHandler(ws));
-		byType.put(MessageType.REGISTER_COMMANDS, new RegisterCommandsHandler(mapper, new CommandAPIRegistry(), ws));
-
+		byType.put(MessageType.REGISTER_COMMANDS, new RegisterCommandsHandler(mapper, ws));
 
 	}
 
