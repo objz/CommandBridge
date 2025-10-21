@@ -1,7 +1,6 @@
 package dev.objz.commandbridge.paper;
 
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIPaperConfig;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.ws.WsClient;
@@ -33,7 +32,6 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
-		CommandAPI.onLoad(new CommandAPIPaperConfig(plugin).silentLogs(false).verboseOutput(false));
 	}
 
 	@Override
@@ -54,8 +52,6 @@ public final class Adapter implements PlatformAdapter {
 				() -> Bukkit.isPrimaryThread(),
 				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
 
-		CommandAPI.onEnable();
-
 		this.client = new WsClient(cfg, dataDir);
 		client.start();
 	}
@@ -65,7 +61,6 @@ public final class Adapter implements PlatformAdapter {
 		try {
 			if (client != null)
 				client.close();
-			CommandAPI.onDisable();
 		} finally {
 			Log.info("Backend (Paper) stopped");
 		}

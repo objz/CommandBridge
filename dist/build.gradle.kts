@@ -25,6 +25,7 @@ dependencies {
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.2")
     implementation("org.snakeyaml:snakeyaml-engine:2.7")
+    implementation("com.google.code.gson:gson:2.13.1")
 }
 
 

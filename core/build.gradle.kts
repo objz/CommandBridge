@@ -26,9 +26,9 @@ dependencies {
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.78.1")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.78.1")
 
-    compileOnly("dev.jorel:commandapi-paper-shade:11.0.0")
-    compileOnly("dev.jorel:commandapi-spigot-shade:11.0.0")
-    compileOnly("dev.jorel:commandapi-velocity-shade:11.0.0")
+    compileOnly("com.google.code.gson:gson:2.13.1")
+
+    compileOnly("dev.jorel:commandapi-spigot-core:11.0.0")
 
     implementation(libs.guava)
 
