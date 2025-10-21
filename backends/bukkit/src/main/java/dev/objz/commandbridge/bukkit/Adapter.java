@@ -33,8 +33,6 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
-		CommandAPI.onLoad(new CommandAPISpigotConfig(plugin).silentLogs(false).verboseOutput(false)
-				.skipReloadDatapacks(true));
 	}
 
 	@Override
@@ -55,8 +53,6 @@ public final class Adapter implements PlatformAdapter {
 				() -> Bukkit.isPrimaryThread(),
 				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
 
-		CommandAPI.onEnable();
-
 		this.client = new WsClient(cfg, dataDir);
 		client.start();
 	}
@@ -66,7 +62,6 @@ public final class Adapter implements PlatformAdapter {
 		try {
 			if (client != null)
 				client.close();
-			CommandAPI.onDisable();
 		} finally {
 			Log.info("Backend (Bukkit) stopped");
 		}

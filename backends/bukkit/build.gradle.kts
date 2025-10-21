@@ -15,5 +15,5 @@ repositories {
 dependencies {
     implementation(project(":backends"))         
     compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
-    compileOnly("dev.jorel:commandapi-spigot-shade:11.0.0")
+    compileOnly("dev.jorel:commandapi-spigot-core:11.0.0")
 }
