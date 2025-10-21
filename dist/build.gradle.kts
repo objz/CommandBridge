@@ -1,5 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
     id("com.gradleup.shadow") version "8.3.8"
     java
@@ -29,10 +27,6 @@ dependencies {
     implementation("org.snakeyaml:snakeyaml-engine:2.7")
 }
 
-val libsProj = project(":libs")
-val paperExtract    = libsProj.layout.buildDirectory.dir("extracted/libs/paper")
-val spigotExtract   = libsProj.layout.buildDirectory.dir("extracted/libs/spigot")
-val velocityExtract = libsProj.layout.buildDirectory.dir("extracted/libs/velocity")
 
 tasks {
     jar { enabled = false }
@@ -52,13 +46,6 @@ tasks {
         from(project(":velocity").layout.projectDirectory.dir("src/main/resources")) { include("velocity-plugin.json") }
         from(project(":backends").layout.projectDirectory.dir("src/main/resources")) { include("plugin.yml", "paper-plugin.yml") }
 
-        dependsOn(":libs:fetchAll")
-
-        from(paperExtract)    { into("libs/paper");    exclude("META-INF/**") }
-        from(spigotExtract)   { into("libs/spigot");   exclude("META-INF/**") }
-        from(velocityExtract) { into("libs/velocity"); exclude("META-INF/**") }
-
-        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 
     val copyToPaperPlugins by registering(Copy::class) {
@@ -73,6 +60,6 @@ tasks {
         into("/mnt/storage/Server-TEST/CB-v2/Velocity/plugins")
     }
 
-    register("dev") { dependsOn(":libs:fetchAll", copyToVelocityPlugins, copyToPaperPlugins) }
+    register("dev") { dependsOn(copyToVelocityPlugins, copyToPaperPlugins) }
     build { dependsOn(shadowJar) }
 }
