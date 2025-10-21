@@ -15,11 +15,11 @@ public enum ArgType {
 	@Platform({ VELOCITY, BACKEND })
 	TEXT,
 
-	@Platform({ VELOCITY, BACKEND })
+	@Platform({ BACKEND })
 	RANGE,
 	// good idea: maybe add script ref to reference to other scripts?
 
-	@Platform({ VELOCITY, BACKEND })
+	@Platform({ BACKEND })
 	PLAYERS,
 	@Platform({ BACKEND })
 	ENTITIES,
@@ -51,9 +51,7 @@ public enum ArgType {
 	@Platform({ BACKEND })
 	BIOME,
 
-	@Platform({ VELOCITY, BACKEND })
-	UUID,
-	@Platform({ VELOCITY, BACKEND })
+	@Platform({ BACKEND })
 	TIME,
 
 }

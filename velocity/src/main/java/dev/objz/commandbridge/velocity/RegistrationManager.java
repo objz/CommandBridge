@@ -2,7 +2,7 @@ package dev.objz.commandbridge.velocity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.objz.commandbridge.cmd.CommandRegistry;
+
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.FeedbackLog;
 import dev.objz.commandbridge.logging.Log;
@@ -15,8 +15,8 @@ import dev.objz.commandbridge.proto.feedback.FeedbackCollector;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
-import dev.objz.commandbridge.velocity.cmd.VelocityArgumentMapper;
-import dev.objz.commandbridge.velocity.cmd.VelocityCommandAPIRegistry;
+import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
+import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
 import dev.objz.commandbridge.velocity.ws.ClientSession;
 import dev.objz.commandbridge.velocity.ws.SessionHub;
 
@@ -31,7 +31,7 @@ public final class RegistrationManager {
 	private final ProxyServer proxy;
 	private final SessionHub sessions;
 	private final ObjectMapper mapper;
-	private final CommandRegistry velocityRegistry;
+	private final CommandRegistry registry;
 	private final int registerTimeoutSeconds;
 
 	private final Map<String, Set<Script>> backendRegistrations = new ConcurrentHashMap<>();
@@ -41,7 +41,7 @@ public final class RegistrationManager {
 		this.proxy = proxy;
 		this.sessions = sessions;
 		this.mapper = mapper;
-		this.velocityRegistry = new VelocityCommandAPIRegistry(new VelocityArgumentMapper(proxy));
+		this.registry = new CommandRegistry(new ArgumentMapper(proxy));
 		this.registerTimeoutSeconds = config.timeouts().registerTimeout();
 
 		sessions.onAuthed(this::handleClientAuthenticated);
@@ -76,7 +76,7 @@ public final class RegistrationManager {
 				velocityRegistrations.add(script);
 				try {
 					CommandStub stub = StubExporter.export(script);
-					velocityRegistry.register(stub);
+					registry.register(stub);
 					velocityCollector.success();
 				} catch (Throwable e) {
 					Log.error(e, "Failed to register Velocity command '{}'", script.name());
@@ -122,7 +122,7 @@ public final class RegistrationManager {
 
 	public void reload(List<Script> scripts) {
 		try {
-			velocityRegistry.unregisterAll();
+			registry.unregisterAll();
 		} catch (Exception e) {
 			Log.error(e, "Failed to unregister Velocity commands during reload");
 		}
@@ -177,7 +177,6 @@ public final class RegistrationManager {
 							Feedback feedback = mapper.treeToValue(feedbackEnv.payload(),
 									Feedback.class);
 
-							// Only log if there are errors or failures
 							if (feedback.failed() > 0 || (feedback.errors() != null
 									&& !feedback.errors().isEmpty())) {
 								FeedbackLog.details(feedback, clientId);
@@ -207,7 +206,7 @@ public final class RegistrationManager {
 
 	public void shutdown() {
 		try {
-			velocityRegistry.unregisterAll();
+			registry.unregisterAll();
 		} catch (Exception e) {
 			Log.error(e, "Failed to unregister Velocity commands during shutdown");
 		}
