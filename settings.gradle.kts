@@ -8,7 +8,6 @@ include("core")
 include("velocity")
 
 include("dist")
-include("libs")
 
 include("backends")                
 include("backends:bukkit")    
