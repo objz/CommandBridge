@@ -1,15 +1,18 @@
-package dev.objz.commandbridge.backends.platform.cmd;
+package dev.objz.commandbridge.velocity.cmd;
+
+import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.jorel.commandapi.arguments.*;
-import dev.objz.commandbridge.cmd.ArgumentMapper;
+import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 
-/**
- * Maps ArgType enum values to CommandAPI Argument instances for
- * Bukkit/Paper/Folia backends
- */
-public final class BackendArgumentMapper implements ArgumentMapper {
+public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>> {
+	private final ProxyServer proxy;
+
+	public ArgumentMapper(ProxyServer proxy) {
+		this.proxy = proxy;
+	}
 
 	@Override
 	public Argument<?> map(ArgMapping argMapping) {
@@ -30,27 +33,11 @@ public final class BackendArgumentMapper implements ArgumentMapper {
 			case DOUBLE -> new DoubleArgument(argName);
 			case TEXT -> new TextArgument(argName);
 
-			case RANGE -> new DoubleRangeArgument(argName);
-
-			case PLAYERS -> new EntitySelectorArgument.ManyPlayers(argName);
-			case ENTITIES -> new EntitySelectorArgument.ManyEntities(argName);
-			case ENTITY_TYPE -> new EntityTypeArgument(argName);
-
-			case WORLD -> new WorldArgument(argName);
-			case LOCATION -> new LocationArgument(argName);
-			case LOCATION_2D -> new Location2DArgument(argName);
-			case ANGLE -> new AngleArgument(argName);
-			case ROTATION -> new RotationArgument(argName);
-
-			case ITEM_STACK -> new ItemStackArgument(argName);
-			case ENCHANTMENT -> new EnchantmentArgument(argName);
-			case POTION_EFFECT -> new PotionEffectArgument(argName);
-
-			case SOUND -> new SoundArgument(argName);
-			case BIOME -> new BiomeArgument(argName);
-
-			case UUID -> new UUIDArgument(argName);
-			case TIME -> new TimeArgument(argName);
+			case SERVER -> new StringArgument(argName).includeSuggestions(
+					ArgumentSuggestions.strings(
+							proxy.getAllServers().stream()
+									.map(server -> server.getServerInfo().getName())
+									.toArray(String[]::new)));
 
 			default -> throw new UnsupportedOperationException(
 					"ArgType." + type + " is not supported on backends. " +

@@ -3,8 +3,8 @@ package dev.objz.commandbridge.backends.platform.cmd;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
-import dev.objz.commandbridge.cmd.ArgumentMapper;
-import dev.objz.commandbridge.cmd.CommandRegistry;
+import dev.objz.commandbridge.cmd.ArgumentMapperInterface; // <- fixed import
+import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.proto.cmd.CommandStub;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
@@ -13,12 +13,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public final class BackendCommandAPIRegistry implements CommandRegistry {
+public final class CommandRegistry implements CommandRegistryInterface {
 
 	private final List<String> registeredCommands = new CopyOnWriteArrayList<>();
-	private final ArgumentMapper argumentMapper;
+	private final ArgumentMapperInterface<Argument<?>> argumentMapper; // <- typed
 
-	public BackendCommandAPIRegistry(ArgumentMapper mapper) {
+	public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper) { // <- typed
 		this.argumentMapper = mapper;
 	}
 
@@ -34,7 +34,7 @@ public final class BackendCommandAPIRegistry implements CommandRegistry {
 		}
 
 		if (stub.aliases() != null && !stub.aliases().isEmpty()) {
-			cmd.withAliases(stub.aliases().toArray(new String[0]));
+			cmd.withAliases(stub.aliases().toArray(String[]::new));
 		}
 
 		if (stub.args() != null && !stub.args().isEmpty()) {

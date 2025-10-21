@@ -1,11 +1,10 @@
 package dev.objz.commandbridge.backends.ws.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.objz.commandbridge.backends.platform.cmd.BackendArgumentMapper;
-import dev.objz.commandbridge.backends.platform.cmd.BackendCommandAPIRegistry;
 import dev.objz.commandbridge.backends.ws.MessageRouter.InboundHandler;
+import dev.objz.commandbridge.backends.platform.cmd.ArgumentMapper;
+import dev.objz.commandbridge.backends.platform.cmd.CommandRegistry;
 import dev.objz.commandbridge.backends.ws.WsClient;
-import dev.objz.commandbridge.cmd.CommandRegistry;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.proto.Envelope;
 import dev.objz.commandbridge.proto.MessageType;
@@ -21,7 +20,7 @@ public final class RegisterCommandsHandler implements InboundHandler {
 	public RegisterCommandsHandler(ObjectMapper mapper, WsClient ws) {
 		this.mapper = mapper;
 		this.ws = ws;
-		this.registry = new BackendCommandAPIRegistry(new BackendArgumentMapper());
+		this.registry = new CommandRegistry(new ArgumentMapper());
 	}
 
 	@Override
