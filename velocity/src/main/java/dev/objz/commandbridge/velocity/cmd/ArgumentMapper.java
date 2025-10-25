@@ -33,6 +33,8 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
 			case DOUBLE -> new DoubleArgument(argName);
 			case TEXT -> new TextArgument(argName);
 
+			case TIME -> new TimeArgument(argName);
+
 			case SERVER -> new StringArgument(argName).includeSuggestions(
 					ArgumentSuggestions.strings(
 							proxy.getAllServers().stream()

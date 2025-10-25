@@ -23,21 +23,6 @@ public final class StatusLog {
 		Log.info(msg);
 	}
 
-	/**
-	 * "Register stubs: pushed N command stub(s) to 'backendId'"
-	 * - label gray
-	 * - N emphasized (bold + magenta), never green (not a success yet)
-	 * - backend id gray
-	 */
-	public static void registerPushed(int count, String backendId) {
-		final String msg = String.format(
-				"%sRegister stubs:%s pushed %s%s%d%s command stub%s to %s'%s'%s",
-				Log.GRAY, Log.RESET,
-				Log.BOLD, Log.MAGENTA, count, Log.RESET, (count == 1 ? "" : "s"),
-				Log.GRAY, backendId, Log.RESET);
-		Log.info(msg);
-	}
-
 
 	private static String colorIf(boolean cond, String color) {
 		return cond ? color : ""; 

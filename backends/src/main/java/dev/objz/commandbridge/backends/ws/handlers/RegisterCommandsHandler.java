@@ -8,7 +8,7 @@ import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.proto.Envelope;
 import dev.objz.commandbridge.proto.MessageType;
-import dev.objz.commandbridge.proto.cmd.RegisterCommandsPayload;
+import dev.objz.commandbridge.proto.cmd.payloads.RegisterCommands;
 import dev.objz.commandbridge.proto.feedback.Feedback;
 import dev.objz.commandbridge.proto.feedback.FeedbackCollector;
 
@@ -26,18 +26,16 @@ public final class RegisterCommandsHandler implements InboundHandler {
 	@Override
 	public void handle(Envelope env) {
 		try {
-			RegisterCommandsPayload payload = mapper.treeToValue(env.payload(),
-					RegisterCommandsPayload.class);
+			RegisterCommands payload = mapper.treeToValue(env.payload(),
+					RegisterCommands.class);
 
 			FeedbackCollector collector = new FeedbackCollector();
 
-			if (payload.reload()) {
-				try {
-					registry.unregisterAll();
-				} catch (Exception e) {
-					Log.error(e, "Failed to unregister all commands during reload");
-					collector.warn("Failed to unregister existing commands: " + e.getMessage());
-				}
+			try {
+				registry.unregisterAll();
+			} catch (Exception e) {
+				Log.error(e, "Failed to unregister all commands");
+				collector.warn("Failed to unregister existing commands: " + e.getMessage());
 			}
 
 			if (payload.commands() == null || payload.commands().isEmpty()) {

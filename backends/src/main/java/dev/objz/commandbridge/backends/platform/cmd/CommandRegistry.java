@@ -3,7 +3,7 @@ package dev.objz.commandbridge.backends.platform.cmd;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
-import dev.objz.commandbridge.cmd.ArgumentMapperInterface; // <- fixed import
+import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.proto.cmd.CommandStub;
@@ -16,9 +16,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class CommandRegistry implements CommandRegistryInterface {
 
 	private final List<String> registeredCommands = new CopyOnWriteArrayList<>();
-	private final ArgumentMapperInterface<Argument<?>> argumentMapper; // <- typed
+	private final ArgumentMapperInterface<Argument<?>> argumentMapper;
 
-	public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper) { // <- typed
+	public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper) { 
 		this.argumentMapper = mapper;
 	}
 

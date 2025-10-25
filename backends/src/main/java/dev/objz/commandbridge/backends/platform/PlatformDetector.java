@@ -6,13 +6,7 @@ public final class PlatformDetector {
 		FOLIA, PAPER, BUKKIT, FORGE, FABRIC, UNKNOWN
 	}
 
-	private static volatile Platform platform;
-
 	private PlatformDetector() {
-	}
-
-	public static Platform getPlatform() {
-		return platform;
 	}
 
 	public static Platform detectPlatform() {
@@ -31,7 +25,6 @@ public final class PlatformDetector {
 		} else {
 			p = Platform.UNKNOWN;
 		}
-		platform = p;
 		return p;
 	}
 
