@@ -9,77 +9,107 @@ import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import org.slf4j.Logger;
-
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
-import dev.objz.commandbridge.velocity.ws.MessageRouter;
-import dev.objz.commandbridge.velocity.ws.SessionHub;
-import dev.objz.commandbridge.velocity.ws.WsServer;
+import dev.objz.commandbridge.velocity.net.WsServer;
+import dev.objz.commandbridge.velocity.net.route.InboundRouter;
+import dev.objz.commandbridge.velocity.net.route.OutboundRouter;
+import dev.objz.commandbridge.velocity.net.route.in.AuthHandler;
+import dev.objz.commandbridge.velocity.net.route.out.RegistrationRequest;
+import dev.objz.commandbridge.velocity.net.session.SessionHub;
+
+import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
 		"objz" }, dependencies = { @Dependency(id = "commandapi") })
 public final class Main {
-	private final ProxyServer server;
+
+	private final ProxyServer proxy;
 	private final Path dataDir;
+
 	private ConfigManager configManager;
 	private WsServer ws;
+	private RegistrationManager registrations;
+	private InboundRouter inRouter;
+	private OutboundRouter outRouter;
+	private VelocityConfig cfg;
+	private SessionHub sessions;
+	private ObjectMapper mapper;
+	private AuthHandler authHandler;
 
 	@Inject
-	public Main(ProxyServer server, Logger velocityLogger, @DataDirectory Path dataDir) {
-		this.server = server;
+	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
+		this.proxy = proxy;
 		this.dataDir = dataDir;
 		Log.install(velocityLogger);
 	}
 
 	@Subscribe
-	public void onProxyInitialization(ProxyInitializeEvent event) {
+	public void onProxyInitialization(ProxyInitializeEvent e) {
 		Log.info("Initializing CommandBridge...");
 
-		this.configManager = new ConfigManager(dataDir);
+		configManager = new ConfigManager(dataDir);
 		boolean ok = configManager.load(VelocityConfig.class);
-		VelocityConfig config = configManager.current(VelocityConfig.class);
-		if (!ok || config == null) {
+		this.cfg = configManager.current(VelocityConfig.class);
+		if (!ok || cfg == null) {
 			Log.error("Failed to load velocity config; aborting enable.");
 			return;
 		}
-		Log.setDebug(config.debug());
+		Log.setDebug(cfg.debug());
 
-		var secret = new SecretLoader(dataDir).loadOrCreate();
-		var auth = new AuthService(secret);
-		var mapper = new ObjectMapper();
+		this.mapper = new ObjectMapper();
 
-		var sessions = new SessionHub(config.serverId());
-		boolean requireAuth = config.security().requireAuth();
-		var router = new MessageRouter(mapper, sessions, auth, config.serverId(), requireAuth, config);
+		this.sessions = new SessionHub();
+		this.inRouter = new InboundRouter(mapper);
+		this.outRouter = new OutboundRouter();
 
-		var tls = TlsResolver.resolveServer(dataDir, config.security());
-		this.ws = tls.enabled()
-				? new WsServer(config.bindHost(), config.bindPort(), router, sessions, true,
-						tls.context())
-				: new WsServer(config.bindHost(), config.bindPort(), router, sessions);
+		var tls = TlsResolver.resolveServer(dataDir, cfg.security());
+		ws = tls.enabled()
+				? new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inRouter,
+						true, tls.context())
+				: new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inRouter);
 		ws.start();
 
 		var scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
 
-		var registrationManager = new RegistrationManager(server, sessions, mapper, config);
-		registrationManager.loadScripts(scriptManager.enabled());
+		registrations = new RegistrationManager(proxy, sessions, cfg, outRouter);
+		registrations.load(scriptManager.enabled());
+		// install routes after initalizing but before registering any listeners
+		installRoutes();
+
+		authHandler.onAuthenticated(registrations::onClientAuthenticated);
 
 		Log.debug("Config loaded:");
-		Log.debug("  Host: {}", config.bindHost());
-		Log.debug("  Port: {}", config.bindPort());
-		Log.debug("  Server ID: {}", config.serverId());
+		Log.debug("  Host: {}", cfg.bindHost());
+		Log.debug("  Port: {}", cfg.bindPort());
+		Log.debug("  Server ID: {}", cfg.serverId());
 	}
 
 	@Subscribe
-	public void onProxyShutdown(ProxyShutdownEvent event) {
+	public void onProxyShutdown(ProxyShutdownEvent e) {
 		Log.info("Stopping CommandBridge...");
+		if (registrations != null) {
+			registrations.shutdown();
+		}
+		if (ws != null) {
+			ws.stop();
+		}
+	}
+
+	private void installRoutes() {
+		var secret = new SecretLoader(dataDir).loadOrCreate();
+		var auth = new AuthService(secret);
+		this.authHandler = new AuthHandler(cfg.serverId(), auth, sessions, mapper);
+		inRouter.register(MessageType.AUTH, authHandler);
+
+		outRouter.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest(cfg.serverId(), mapper, ws));
 	}
 }
