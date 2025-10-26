@@ -39,7 +39,7 @@ public final class StrictKeystore {
 			try {
 				String spki = firstSpki(ks);
 				if (spki != null)
-					Log.info("Velocity TLS SPKI pin: {}", spki);
+					Log.success("TLS SPKI pin: {}", spki);
 			} catch (Exception ignored) {
 				/* not fatal */ }
 

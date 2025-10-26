@@ -6,7 +6,7 @@ import dev.jorel.commandapi.arguments.Argument;
 import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.proto.cmd.CommandStub;
+import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 
 import java.util.ArrayList;

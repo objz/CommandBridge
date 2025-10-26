@@ -18,7 +18,6 @@ public final class RateLimiter<K> {
 		this.maxPerSec = maxPerSec;
 	}
 
-	/** @return true if allowed, false if throttled */
 	public boolean allow(K key) {
 		long now = Instant.now().getEpochSecond();
 		Window w = windows.computeIfAbsent(key, k -> new Window());

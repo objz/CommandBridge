@@ -1,6 +1,5 @@
 package dev.objz.commandbridge.velocity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -12,15 +11,15 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.proto.MessageType;
+import dev.objz.commandbridge.net.InboundRouter;
+import dev.objz.commandbridge.net.OutboundRouter;
+import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.net.WsServer;
-import dev.objz.commandbridge.velocity.net.route.InboundRouter;
-import dev.objz.commandbridge.velocity.net.route.OutboundRouter;
-import dev.objz.commandbridge.velocity.net.route.in.AuthHandler;
-import dev.objz.commandbridge.velocity.net.route.out.RegistrationRequest;
+import dev.objz.commandbridge.velocity.net.in.AuthHandler;
+import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
 import org.slf4j.Logger;
@@ -41,7 +40,6 @@ public final class Main {
 	private OutboundRouter outRouter;
 	private VelocityConfig cfg;
 	private SessionHub sessions;
-	private ObjectMapper mapper;
 	private AuthHandler authHandler;
 
 	@Inject
@@ -53,7 +51,7 @@ public final class Main {
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent e) {
-		Log.info("Initializing CommandBridge...");
+		Log.info("Initializing CommandBridge");
 
 		configManager = new ConfigManager(dataDir);
 		boolean ok = configManager.load(VelocityConfig.class);
@@ -64,10 +62,8 @@ public final class Main {
 		}
 		Log.setDebug(cfg.debug());
 
-		this.mapper = new ObjectMapper();
-
 		this.sessions = new SessionHub();
-		this.inRouter = new InboundRouter(mapper);
+		this.inRouter = new InboundRouter();
 		this.outRouter = new OutboundRouter();
 
 		var tls = TlsResolver.resolveServer(dataDir, cfg.security());
@@ -95,7 +91,7 @@ public final class Main {
 
 	@Subscribe
 	public void onProxyShutdown(ProxyShutdownEvent e) {
-		Log.info("Stopping CommandBridge...");
+		Log.info("Stopping CommandBridge");
 		if (registrations != null) {
 			registrations.shutdown();
 		}
@@ -107,9 +103,9 @@ public final class Main {
 	private void installRoutes() {
 		var secret = new SecretLoader(dataDir).loadOrCreate();
 		var auth = new AuthService(secret);
-		this.authHandler = new AuthHandler(cfg.serverId(), auth, sessions, mapper);
-		inRouter.register(MessageType.AUTH, authHandler);
+		this.authHandler = new AuthHandler(auth, sessions, ws);
+		inRouter.register(MessageType.AUTH_REQUEST, authHandler);
 
-		outRouter.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest(cfg.serverId(), mapper, ws));
+		outRouter.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest(cfg.serverId(), ws));
 	}
 }

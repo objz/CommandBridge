@@ -1,12 +1,9 @@
 package dev.objz.commandbridge.util;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;

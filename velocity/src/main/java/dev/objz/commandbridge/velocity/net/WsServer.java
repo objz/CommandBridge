@@ -1,33 +1,34 @@
 package dev.objz.commandbridge.velocity.net;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.proto.Envelope;
-import dev.objz.commandbridge.velocity.net.await.ResponseAwaiter;
-import dev.objz.commandbridge.velocity.net.await.SendOperation;
-import dev.objz.commandbridge.velocity.net.route.InboundRouter;
+import dev.objz.commandbridge.net.ResponseAwaiter;
+import dev.objz.commandbridge.net.SendOperation;
+import dev.objz.commandbridge.net.proto.Envelope;
+import dev.objz.commandbridge.net.InboundRouter;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.websockets.WebSocketConnectionCallback;
 import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedTextMessage;
+import io.undertow.websockets.core.CloseMessage;
+import io.undertow.websockets.core.WebSocketCallback;
 import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
 
 import javax.net.ssl.SSLContext;
+
 import java.net.BindException;
 
 public final class WsServer {
-
-	private static final ObjectMapper M = new ObjectMapper();
 
 	private final String host;
 	private final int port;
 	private final boolean tlsEnabled;
 	private final SSLContext sslContext;
 	private final SessionHub sessions;
-	private final InboundRouter router;
+	private final InboundRouter inRouter;
 
 	private final ResponseAwaiter responses = new ResponseAwaiter();
 	private Undertow server;
@@ -41,11 +42,11 @@ public final class WsServer {
 		this.host = host;
 		this.port = port;
 		this.sessions = sessions;
-		this.router = router;
+		this.inRouter = router;
 		this.tlsEnabled = tlsEnabled;
 		this.sslContext = sslContext;
 
-		this.router.setInboundTap(this::signalInbound);
+		this.inRouter.setInboundTap(this::signalInbound);
 	}
 
 	public void start() {
@@ -53,7 +54,7 @@ public final class WsServer {
 			ch.getReceiveSetter().set(new AbstractReceiveListener() {
 				@Override
 				protected void onFullTextMessage(WebSocketChannel c, BufferedTextMessage msg) {
-					router.onText(c, msg.getData());
+					inRouter.onText(c, msg.getData());
 				}
 			});
 
@@ -107,7 +108,56 @@ public final class WsServer {
 	}
 
 	public SendOperation send(WebSocketChannel ch, Envelope request) {
-		return new SendOperation(ch, request, responses, M);
+		return new SendOperation(ch, request, responses);
+	}
+
+	// always safe close
+	public void close(WebSocketChannel ch) {
+		if (ch == null)
+			return;
+
+		if (!ch.isOpen() || ch.isCloseFrameSent() || ch.isCloseFrameReceived()) {
+			try {
+				org.xnio.IoUtils.safeClose(ch);
+			} finally {
+				sessions.remove(ch);
+			}
+			return;
+		}
+
+		try {
+			ch.suspendReceives();
+		} catch (Throwable ignore) {
+		}
+
+		ch.addCloseTask(c -> {
+			sessions.remove(c);
+			org.xnio.IoUtils.safeClose(c);
+		});
+
+		WebSockets.sendClose(
+				CloseMessage.GOING_AWAY,
+				"server closing",
+				ch,
+				new WebSocketCallback<Void>() {
+					@Override
+					public void complete(WebSocketChannel channel, Void context) {
+						try {
+							org.xnio.IoUtils.safeClose(channel);
+						} finally {
+							sessions.remove(channel);
+						}
+					}
+
+					@Override
+					public void onError(WebSocketChannel channel, Void context, Throwable cause) {
+						try {
+							org.xnio.IoUtils.safeClose(channel);
+						} finally {
+							sessions.remove(channel);
+						}
+					}
+				});
 	}
 
 	private boolean signalInbound(Envelope env) {

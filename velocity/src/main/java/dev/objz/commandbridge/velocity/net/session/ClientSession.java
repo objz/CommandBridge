@@ -6,7 +6,7 @@ import io.undertow.websockets.core.WebSocketChannel;
 public final class ClientSession {
 	private final WebSocketChannel ch;
 	private volatile String id = "unknown";
-	private volatile AuthStatus status = AuthStatus.NOT_AUTHENTICATED;
+	private volatile AuthStatus status = AuthStatus.AUTH_OK;
 
 	public ClientSession(WebSocketChannel ch, String clientId) {
 		this.ch = ch;
