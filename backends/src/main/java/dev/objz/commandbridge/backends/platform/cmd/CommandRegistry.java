@@ -54,7 +54,7 @@ public final class CommandRegistry implements CommandRegistryInterface {
 		}
 
 		cmd.executes((sender, args) -> {
-			Log.info("Command '{}' executed by {}", cmdName, sender.toString());
+			Log.debug("Command '{}' executed by {}", cmdName, sender.toString());
 
 			if (stub.args() != null && !stub.args().isEmpty()) {
 				StringBuilder argLog = new StringBuilder("Arguments: ");
@@ -69,7 +69,7 @@ public final class CommandRegistry implements CommandRegistryInterface {
 							.append(value != null ? value.toString() : "<not provided>");
 				}
 
-				Log.info(argLog.toString());
+				Log.debug(argLog.toString());
 			}
 		});
 

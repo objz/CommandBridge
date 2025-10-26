@@ -32,6 +32,12 @@ public final class Log {
 		this.ansi = ansi;
 	}
 
+	public static String plural(long n, String singular, String plural) {
+		if (n == 1)
+			return singular;
+		return (plural == null || plural.isBlank()) ? singular + "s" : plural;
+	}
+
 	public static void install(Logger slf4JLogger) {
 		Objects.requireNonNull(slf4JLogger, "injectedVelocityLogger");
 		Log instance = new Log(

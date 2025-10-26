@@ -98,19 +98,23 @@ public final class RegistrationManager {
 		}
 
 		backendStaging.forEach((backendId, list) -> backendByClient.put(backendId, new HashSet<>(list)));
-
-		if (velocityCollector.ok > 0) {
-			Log.success(true, "Registered '{}' Velocity command(s)", velocityCollector.ok);
+		int ok = velocityCollector.ok;
+		if (ok > 0) {
+			Log.success(true, "Registered '{}' " + Log.plural(ok, "Velocity command", "Velocity commands"),
+					ok);
 		}
 		if (!velocityCollector.errors.isEmpty()) {
-			Log.error("Failed to register '{}' Velocity command(s)", velocityCollector.errors.size());
-			velocityCollector.errors.forEach(Log::error);
+			Log.error("Failed to register '{}' " + Log.plural(velocityCollector.errors.size(),
+					"Velocity command", "Velocity commands"),
+					velocityCollector.errors.size());
 		}
 
 		if (!backendByClient.isEmpty()) {
 			int total = backendByClient.values().stream().mapToInt(Set::size).sum();
-			Log.success(true, "Prepared '{}' backend command(s) for '{}' client(s)", total,
-					backendByClient.size());
+			int clients = backendByClient.size();
+			Log.success(true, "Prepared '{}' " + Log.plural(total, "backend command", "backend commands")
+					+ " for '{}' " + Log.plural(clients, "client", "clients"),
+					total, clients);
 		}
 	}
 
