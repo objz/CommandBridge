@@ -28,15 +28,15 @@ public record Script(
 
 		List<String> aliases,
 
-		Permissions permissions,
+		@Required Permissions permissions,
 
-		List<IdMapping> register,
+		@Required List<IdMapping> register,
 
-		Defaults defaults,
+		@Required Defaults defaults,
 
-		List<ArgMapping> args,
+		@Required List<ArgMapping> args,
 
-		List<CmdMapping> commands
+		@Required List<CmdMapping> commands
 
 ) {
 
