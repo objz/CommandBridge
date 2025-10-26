@@ -11,6 +11,7 @@ import dev.jorel.commandapi.arguments.CommandAPIArgumentType;
 import dev.jorel.commandapi.executors.CommandArguments;
 
 //TODO: modify outgoing package to use minecraft:time instead of brigadier:string
+//TODO: also implement other types for velocity that are originally missing in brigadier
 public final class TimeArgument extends Argument<Integer> {
 
 	public TimeArgument(String nodeName) {

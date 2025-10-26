@@ -5,19 +5,24 @@ import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.InboundRouter;
+import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.websockets.WebSocketConnectionCallback;
 import io.undertow.websockets.core.AbstractReceiveListener;
+import io.undertow.websockets.core.BufferedBinaryMessage;
 import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.CloseMessage;
+import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketCallback;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSockets;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
 
 import javax.net.ssl.SSLContext;
+
+import org.xnio.IoUtils;
 
 import java.net.BindException;
 
@@ -51,10 +56,32 @@ public final class WsServer {
 
 	public void start() {
 		WebSocketConnectionCallback cb = (WebSocketHttpExchange ex, WebSocketChannel ch) -> {
+
 			ch.getReceiveSetter().set(new AbstractReceiveListener() {
 				@Override
 				protected void onFullTextMessage(WebSocketChannel c, BufferedTextMessage msg) {
 					inRouter.onText(c, msg.getData());
+				}
+
+				@Override
+				protected void onFullCloseMessage(WebSocketChannel channel,
+						BufferedBinaryMessage message) {
+					try {
+						Log.warn("WebSocket closed by client: {}",
+								channel.getSourceAddress());
+						IoUtils.safeClose(channel);
+					} catch (Throwable ignore) {
+					}
+				}
+
+				@Override
+				protected void onClose(WebSocketChannel channel,
+						StreamSourceFrameChannel frameChannel) {
+					try {
+						Log.warn("WebSocket closed: {}", channel.getSourceAddress());
+						IoUtils.safeClose(channel);
+					} catch (Throwable ignore) {
+					}
 				}
 			});
 
@@ -77,7 +104,7 @@ public final class WsServer {
 			}
 			server = builder.build();
 			server.start();
-			Log.success(true, "WebSocket {} listening on {}:{}",
+			Log.success(true, "WebSocket {} listening on '{}:{}'",
 					tlsEnabled ? "TLS" : "HTTP", host, port);
 		} catch (Exception e) {
 			try {
@@ -100,7 +127,10 @@ public final class WsServer {
 	public void stop() {
 		try {
 			if (server != null)
-				server.stop();
+				for (ClientSession s : sessions) {
+					close(s.ch());
+				}
+			server.stop();
 		} catch (Exception ignore) {
 		}
 		sessions.clear();

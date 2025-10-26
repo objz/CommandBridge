@@ -1,0 +1,45 @@
+version: 2  
+
+name: testcmd
+description: Simple demo script 
+enabled: true  
+aliases: [tc]  
+
+permissions:
+  enabled: true  
+  silent: false  
+
+register:
+  - id: "survival-1"
+    location: BACKEND  
+
+defaults:
+  run-as: CONSOLE  
+  execute:
+    - id: "client-1"
+      location: BACKEND  
+  server:
+    target-required: true  
+    schedule-online: true  
+    timeout: 1s  
+    frequency: 2s  
+  delay: 0s  
+  cooldown: 0s  
+
+
+args:
+  - name: player
+    required: true
+    type: PLAYERS  
+
+  - name: amount
+    required: true
+    type: RANGE  
+
+commands:
+  - command: "eco give ${player} ${amount}"
+    run-as: CONSOLE
+    server:
+      target-required: false  
+      schedule-online: false  
+    delay: 2s  

@@ -18,8 +18,10 @@ import io.undertow.connector.ByteBufferPool;
 import io.undertow.server.DefaultByteBufferPool;
 import io.undertow.websockets.client.WebSocketClient;
 import io.undertow.websockets.core.AbstractReceiveListener;
+import io.undertow.websockets.core.BufferedBinaryMessage;
 import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.CloseMessage;
+import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketCallback;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSockets;
@@ -148,7 +150,26 @@ public final class WsClient implements AutoCloseable {
 					Log.error(t, "Inbound message handling failed");
 				}
 			}
+
+			@Override
+			protected void onFullCloseMessage(WebSocketChannel channel, BufferedBinaryMessage message) {
+				try {
+					Log.warn("WebSocket closed by server");
+					IoUtils.safeClose(channel);
+				} catch (Throwable ignore) {
+				}
+			}
+
+			@Override
+			protected void onClose(WebSocketChannel channel, StreamSourceFrameChannel frameChannel) {
+				try {
+					Log.warn("WebSocket closed");
+					IoUtils.safeClose(channel);
+				} catch (Throwable ignore) {
+				}
+			}
 		});
+
 		ch.resumeReceives();
 
 		outRouter.register(MessageType.AUTH_REQUEST, new AuthRequest(clientId, auth, this));
