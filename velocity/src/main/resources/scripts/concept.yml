@@ -89,3 +89,107 @@ commands:
       target-required: false  # Override defaults: do not abort if the target player is offline.
       schedule-online: false  # Do not schedule; run immediately if possible.
     delay: 2s  # Wait two seconds before sending the command to the backend.
+=======
+version: 2  # The configuration version
+name: eco-give  # The general name of the script and command. With this name the command will be registered on the target server.
+description: Simple demo script that proxies /eco to a backend server  # The description of the command that will be registered. When a user runs /help they will see this help message.
+enabled: true  # Whether the command in general is enabled and will be registered.
+aliases: [eco]  # Aliases for the command; this must be a list.
+
+permissions:
+  enabled: true  # If true, checks whether the user or executor has the right permission. The permission will always be: commandbridge.command.<command_name>. In this case commandbridge.command.eco-give.
+  silent: false   # Silence the failure message if the user has no permission; abort silently.
+
+defaults:
+  target:
+    run-as: CONSOLE  # Options are CONSOLE, PLAYER or OP-PLAYER. Determines the executor context on the target server.
+    id: "client-1" # This is the default id where the target command will be executed. The client id comes from the clients config and the proxy knows about it.
+                    # Always check if the client is connected before doing other things; otherwise abort.
+    kind: 
+      register: VELOCITY # Options are VELOCITY or BACKEND. Specifies where the command will be registered.
+      execute: BACKEND # Same options here. Specifies where the command will be executed.
+      # This defines where the command will be registered and where it will be executed. Both support the same types; for example a BACKEND command can also be executed on backends.
+      # You can override these defaults further down in the individual commands.
+    
+    server:
+      target-required: true # If set to true, check if the target player is online on the target server. If not, abort. This does not affect CONSOLE executors.
+      schedule-online: true # If this is set to true the proxy will schedule a job that will execute the target command after the player joins the target server.
+      timeout: 1s # The same syntax as delay and cooldown. This tells after what time the scheduled job will abort.
+      frequency: 2s # Specifies how often the proxy checks whether the player is online for the schedule.
+
+  delay: 0s  # Specify a delay before the command gets executed.
+  cooldown: 0s  # Add a cooldown for the command so the user can't spam it.
+  # Both delay and cooldown can be set to just a number (for example 1); numbers are interpreted as seconds. You can also use 1m for one minute, 1h for one hour or 1d for one day.
+
+
+# Here I specify arguments that I want to implement or modify.
+# For example, a player argument that I call 'player' and is of type PLAYER.
+# I want to specify it because by default all arguments are not required, so I override it here by setting required: true.
+# Then in the command below I refer to it by its name, for example: ${player}. Each argument has default values, so you are not required to change anything; for example if I use just WORLD I could do ${args.WORLD}. This will directly refer to the enum and the default value of it.
+# Some arguments require overriding; for example RANGE because I do not want to specify a default range as that makes no sense. Every argument can be overridden though.
+#
+# Each argument override must specify at least these two values: name and type. 'required' is optional; it will use the default (false) otherwise.
+# This is the list of valid types:
+#   // Basics 
+#   BOOLEAN,
+#   NUMBER,      # one numeric type (int/decimal)
+#   WORD,        # single token
+#   TEXT,        # supports quotes
+#   GREEDY_TEXT, # rest of the line
+#
+#   // Players / entities
+#   PLAYER,
+#   MANY_PLAYERS,
+#   ENTITY,
+#   MANY_ENTITIES,
+#
+#   // World / position
+#   WORLD,
+#   LOCATION,
+#
+#   // Identifiers / choices
+#   UUID,
+#   LITERAL,   # exact word
+#   CHOICE,    # ["start","stop"]
+#   RANGE,     # 0.1..10 
+#
+#   ITEM_STACK,  # ItemStack
+#   TIME_TICKS,  # 20, 40, 200,
+#   ENCHANTMENT,
+#   SOUND,
+#   BIOME
+#
+# Some types do not require any override, as written next to the type. Some types require additional fields; for example CHOICE needs a list of choices and RANGE requires additional config fields to configure the range.
+# Others do not, for example UUID or BIOME.
+# In the code I want every argument to have its own struct or something like that where I can specify it there with fields to configure it, mark it as required, or add special fields or error handling when optional fields were not provided or had invalid configs.
+# You can define more overrides of the same type; for example the first RANGE has a different range than the second one. This will work fine but it is required to name them differently.
+# Also the user should be warned if they specified an override but have overwritten the defaults with the same default values so nothing changes and it can be removed.
+# There should be an error if one argument comes twice, so has the same name regardless of type. Also warn if the user has two different args with different names but they do exactly the same.
+
+
+args:
+  - name: player
+    required: true
+    type: PLAYER
+
+  - name: amount
+    required: true
+    type: RANGE
+    min: 1
+    max: 1000
+
+
+commands:
+  # This will be a list of commands. I can specify as many as I want. CommandBridge will go from top to bottom like normal.
+  - command: "eco give ${player} ${amount}"
+    # In the code later I will parse it, so you can put a command with a leading / or not; both should work. The arguments will be parsed like described above, and an argument can be used multiple times.
+
+    # Here I could override all defaults again.
+    # This step is optional as all values are provided in the defaults section. The defaults section is required.
+    target:
+      run-as: CONSOLE
+      target-required: false  # Overwritten so we don't check if the target player is online.
+      schedule-online: false
+      # Here I could also override the kind where to register and where to execute and so on. I could override every config value in the defaults section.
+    delay: 2s
+>>>>>>> 2a5d26b85032a70e27364fcc523a41d0007a1501
