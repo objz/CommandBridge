@@ -16,8 +16,9 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.proto.MessageType;
-import dev.objz.commandbridge.proto.cmd.CommandStub;
+import dev.objz.commandbridge.net.OutboundRouter;
+import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
+import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
@@ -25,8 +26,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
-import dev.objz.commandbridge.velocity.net.route.OutboundRouter;
-import dev.objz.commandbridge.velocity.net.route.out.RegistrationRequest;
+import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
@@ -131,7 +131,7 @@ public final class RegistrationManager {
 	// velocity
 	public void reload() {
 		for (var s : sessions) {
-			if (s.status() == AuthStatus.AUTHENTICATED) {
+			if (s.status() == AuthStatus.AUTH_FAIL) {
 				var set = backendByClient.get(s.id());
 				if (set != null && !set.isEmpty()) {
 					outRouter.send(

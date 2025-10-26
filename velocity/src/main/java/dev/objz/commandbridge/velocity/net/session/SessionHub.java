@@ -10,20 +10,6 @@ import java.util.function.BiConsumer;
 
 public final class SessionHub implements Iterable<ClientSession> {
 
-	public enum CloseReason {
-		BAD_JSON("bad_json", 1008),
-		MISSING_AUTH("missing_auth", 1008),
-		AUTH_FAILED("auth_failed", 1008);
-
-		public final String reason;
-		public final int code;
-
-		CloseReason(String reason, int code) {
-			this.reason = reason;
-			this.code = code;
-		}
-	}
-
 	private final ConcurrentHashMap<WebSocketChannel, ClientSession> clients = new ConcurrentHashMap<>();
 
 	public ClientSession add(WebSocketChannel ch, String clientId) {
@@ -31,7 +17,7 @@ public final class SessionHub implements Iterable<ClientSession> {
 		if (clientId == null || clientId.isBlank())
 			clientId = "unknown";
 		var s = new ClientSession(ch, clientId);
-		s.status(AuthStatus.NOT_AUTHENTICATED);
+		s.status(AuthStatus.AUTH_OK);
 		clients.put(ch, s);
 		ch.getCloseSetter().set(c -> remove((WebSocketChannel) c));
 		return s;

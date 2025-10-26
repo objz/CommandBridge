@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.velocity;
 
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.logging.StatusLog;
+import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.scripting.DebugPrinter;
 import dev.objz.commandbridge.scripting.ScriptLoader;
 import dev.objz.commandbridge.scripting.ScriptLoader.LoadResult;
@@ -73,7 +73,6 @@ public final class ScriptManager {
 		}
 
 		if (loaded + failed == 0) {
-			Log.warn("No script files found (looking for *.yml or *.yaml)");
 			return;
 		}
 
@@ -83,7 +82,7 @@ public final class ScriptManager {
 
 		long disabled = (loaded - enabled.size()) + failed;
 
-		StatusLog.scriptsSummary(loaded, enabled.size(), disabled, totalErrors);
+		Summary.scriptsSummary(loaded, enabled.size(), disabled, totalErrors);
 	}
 
 	public List<Script> all() {

@@ -79,7 +79,7 @@ public final class TLS {
 			try {
 				String spki = spkiPinFromKeystore(ks, password);
 				if (spki != null) {
-					Log.success(true, "Velocity TLS SPKI pin: {}", spki);
+					Log.success(true, "TLS SPKI pin: {}", spki);
 
 				}
 			} catch (Exception e) {
@@ -138,7 +138,7 @@ public final class TLS {
 			try {
 				String spki = spkiPinFromKeystore(ks, password);
 				if (spki != null) {
-					Log.success(true, "Velocity TLS SPKI pin: {}", spki);
+					Log.success(true, "TLS SPKI pin: {}", spki);
 				}
 			} catch (Exception e) {
 				Log.warn("Could not compute SPKI pin (keytool path): {}", e.toString());
@@ -182,7 +182,7 @@ public final class TLS {
 								java.security.MessageDigest.getInstance("SHA-256")
 										.digest(cert.getPublicKey()
 												.getEncoded()));
-						Log.success(true, "Velocity TLS SPKI pin: {}", spki);
+						Log.success(true, "TLS SPKI pin: {}", spki);
 						break;
 					}
 				}

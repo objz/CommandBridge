@@ -1,13 +1,14 @@
 package dev.objz.commandbridge.bukkit;
 
-import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPISpigotConfig;
+import dev.objz.commandbridge.backends.net.WsClient;
+import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
-import dev.objz.commandbridge.backends.ws.WsClient;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.proto.MessageType;
+
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -54,6 +55,7 @@ public final class Adapter implements PlatformAdapter {
 				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
 
 		this.client = new WsClient(cfg, dataDir);
+		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
 		client.start();
 	}
 
