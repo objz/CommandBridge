@@ -175,7 +175,8 @@ public final class WsClient implements AutoCloseable {
 		outRouter.register(MessageType.AUTH_REQUEST, new AuthRequest(clientId, auth, this));
 
 		if (Boolean.TRUE.equals(cfg.security().requireAuth())) {
-			var timeout = Duration.ofSeconds(10);
+			//TODO: dont hardcode timeout
+			var timeout = Duration.ofSeconds(120);
 			outRouter.send(
 					MessageType.AUTH_REQUEST,
 					new AuthRequest.Args(
