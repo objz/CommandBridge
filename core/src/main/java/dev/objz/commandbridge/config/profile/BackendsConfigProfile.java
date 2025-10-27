@@ -4,7 +4,6 @@ import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.logging.Log;
 
-
 public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig> {
 	@Override
 	public BackendsConfig defaults() {
@@ -56,22 +55,26 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 		}
 		BackendsConfig.Limits limitsOut = new BackendsConfig.Limits(inboundMessagesSec);
 
+		// timeouts
+		BackendsConfig.Timeouts timeoutsIn = in.timeouts();
+		int authTimeout = (timeoutsIn != null ? timeoutsIn.authTimeout() : d.timeouts().authTimeout());
+		if (authTimeout <= 0) {
+			Log.error("'timeouts.auth-timeout' must be > 0");
+			authTimeout = d.timeouts().authTimeout();
+			ok = false;
+		}
+		BackendsConfig.Timeouts timeoutsOut = new BackendsConfig.Timeouts(authTimeout);
+
 		// security
 		BackendsConfig.Security secIn = in.security();
-		BackendsConfig.Security secOut;
-
-		// tls-mode
 		TlsMode tlsMode = (secIn.tlsMode() != null) ? secIn.tlsMode() : d.security().tlsMode();
 		if (secIn.tlsMode() == null) {
 			Log.error("'security.tls-mode' must be set");
 			ok = false;
 		}
-
-		// tls-pin
-		String tlsPin = (secIn.tlsPin() != null && !secIn.tlsPin().isBlank()) ? secIn.tlsPin().trim()
+		String tlsPin = (secIn.tlsPin() != null && !secIn.tlsPin().isBlank())
+				? secIn.tlsPin().trim()
 				: d.security().tlsPin();
-
-		// secret
 		String secret = secIn.secret();
 		if (secret == null || secret.isBlank()) {
 			Log.error("'security.secret' must not be empty");
@@ -80,8 +83,6 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 		} else if (secret.toLowerCase().contains("change-me")) {
 			Log.warn("'security.secret' contains 'change-me'. replace with real key");
 		}
-
-		// require-auth
 		Boolean requireAuth = secIn.requireAuth();
 		if (requireAuth == null) {
 			Log.warn("'security.require-auth' must be set");
@@ -89,14 +90,19 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 		} else if (Boolean.FALSE.equals(requireAuth)) {
 			Log.warn("Authentication is disabled! This is insecure and should not be used");
 		}
-
 		if (tlsMode == TlsMode.PLAIN && Boolean.TRUE.equals(requireAuth)) {
 			Log.warn("'tls-mode=PLAIN' with 'require-auth=true' is unusual. consider TLS");
 		}
+		BackendsConfig.Security secOut = new BackendsConfig.Security(tlsMode, tlsPin, secret, requireAuth);
 
-		secOut = new BackendsConfig.Security(tlsMode, tlsPin, secret, requireAuth);
+		BackendsConfig out = new BackendsConfig(
+				host, port, clientId,
+				secOut,
+				timeoutsOut,
+				limitsOut,
+				in.debug());
 
-		BackendsConfig out = new BackendsConfig(host, port, clientId, secOut, limitsOut, in.debug());
 		return new Result<>(out, ok);
+
 	}
 }
