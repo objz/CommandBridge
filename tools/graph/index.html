@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dependency Graph Viewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/cytoscape@3.25.0/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/layout-base@1.0.2/layout-base.js"></script>
+  <script src="https://unpkg.com/avsdf-base@1.0.0/avsdf-base.js"></script>
+  <script src="https://unpkg.com/cose-base@1.0.1/cose-base.js"></script>
+  <script src="https://unpkg.com/cytoscape-cise@1.0.0/cytoscape-cise.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0e17;
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+    
+    .app-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: 100vh;
+    }
+    
+    .sidebar {
+      background: #131720;
+      border-right: 1px solid #2d3548;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 24px;
+      border-bottom: 1px solid #2d3548;
+    }
+    
+    .sidebar-title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    .sidebar-section {
+      padding: 24px;
+      border-bottom: 1px solid #2d3548;
+    }
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+    }
+    
+    .file-input {
+      width: 100%;
+      padding: 12px;
+      background: #1a1f2e;
+      border: 1px solid #2d3548;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .file-input:hover {
+      border-color: #3b82f6;
+    }
+    
+    .file-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #1a1f2e;
+      border: 1px solid #2d3548;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+    
+    .btn:hover {
+      background: #2d3548;
+      border-color: #3b82f6;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
+    
+    .btn-primary:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+    
+    .legend-list {
+      list-style: none;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    
+    .stat-item {
+      background: #1a1f2e;
+      padding: 12px;
+      border-radius: 6px;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    .graph-container {
+      position: relative;
+      background: #131720;
+    }
+    
+    #cy {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .layout-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #131720;
+      border: 1px solid #2d3548;
+      border-radius: 8px;
+      padding: 20px;
+      min-width: 320px;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+      display: none;
+    }
+    
+    .layout-panel.visible {
+      display: block;
+    }
+    
+    .layout-grid {
+      display: grid;
+      gap: 16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-label {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #94a3b8;
+    }
+    
+    .form-input,
+    .form-select {
+      padding: 8px 12px;
+      background: #1a1f2e;
+      border: 1px solid #2d3548;
+      border-radius: 4px;
+      color: #e2e8f0;
+      font-size: 14px;
+    }
+    
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 40px;
+    }
+    
+    .modal.visible {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: #131720;
+      border: 1px solid #2d3548;
+      border-radius: 12px;
+      max-width: 1400px;
+      width: 100%;
+      max-height: 95vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-header {
+      padding: 24px 28px;
+      border-bottom: 1px solid #2d3548;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    
+    .modal-title-section {
+      flex: 1;
+    }
+    
+    .modal-title {
+      font-size: 19px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    
+    .modal-subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s;
+      margin-left: 16px;
+    }
+    
+    .modal-close:hover {
+      background: #1a1f2e;
+      color: #e2e8f0;
+    }
+    
+    .modal-body {
+      padding: 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .code-container {
+      background: #1e1e1e;
+      border-radius: 0;
+      overflow: auto;
+      height: 100%;
+    }
+    
+    .code-container pre {
+      margin: 0 !important;
+      padding: 28px !important;
+      background: #1e1e1e !important;
+      font-size: 14px !important;
+      line-height: 1.6 !important;
+    }
+    
+    .code-container code {
+      background: transparent !important;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    }
+    
+    code[class*="language-"],
+    pre[class*="language-"] {
+      color: #e2e8f0 !important;
+      background: #1e1e1e !important;
+      text-shadow: none !important;
+    }
+    
+    .token.comment,
+    .token.prolog,
+    .token.doctype,
+    .token.cdata {
+      color: #6a9955 !important;
+    }
+    
+    .token.punctuation {
+      color: #d4d4d4 !important;
+    }
+    
+    .token.property,
+    .token.tag,
+    .token.boolean,
+    .token.number,
+    .token.constant,
+    .token.symbol,
+    .token.deleted {
+      color: #b5cea8 !important;
+    }
+    
+    .token.selector,
+    .token.attr-name,
+    .token.string,
+    .token.char,
+    .token.builtin,
+    .token.inserted {
+      color: #ce9178 !important;
+    }
+    
+    .token.operator,
+    .token.entity,
+    .token.url,
+    .language-css .token.string,
+    .style .token.string {
+      color: #d4d4d4 !important;
+    }
+    
+    .token.atrule,
+    .token.attr-value,
+    .token.keyword {
+      color: #569cd6 !important;
+    }
+    
+    .token.function,
+    .token.class-name {
+      color: #dcdcaa !important;
+    }
+    
+    .token.regex,
+    .token.important,
+    .token.variable {
+      color: #d16969 !important;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="sidebar-title">Dependency Graph</h1>
+      </div>
+      
+      <div class="sidebar-section">
+        <h2 class="section-title">Load Repository</h2>
+        <input type="file" id="fileInput" accept=".xml" class="file-input" />
+        <p id="fileHint" class="file-hint">Select a Repomix XML file</p>
+      </div>
+      
+      <div class="sidebar-section">
+        <h2 class="section-title">Controls</h2>
+        <button id="toggleLayout" class="btn">Layout Settings</button>
+        <button id="runLayout" class="btn btn-primary">Apply Layout</button>
+        <button id="runCise" class="btn btn-primary">Apply CiSE</button>
+      </div>
+      
+      <div id="infoPanel" class="sidebar-section hidden">
+        <h2 class="section-title">Statistics</h2>
+        <div id="statsContainer" class="stats-grid"></div>
+      </div>
+      
+      <div id="legendPanel" class="sidebar-section hidden">
+        <h2 class="section-title">Subprojects</h2>
+        <ul id="legendList" class="legend-list"></ul>
+      </div>
+    </aside>
+    
+    <main class="graph-container">
+      <div id="cy"></div>
+      
+      <div id="layoutPanel" class="layout-panel">
+        <h2 class="sidebar-title" style="margin-bottom: 20px;">Layout Configuration</h2>
+        <div class="layout-grid">
+          <div class="form-group">
+            <label class="form-label" for="nodeSeparation">Node Separation</label>
+            <input type="number" id="nodeSeparation" class="form-input" value="40" step="1" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="idealEdgeCoef">Inter-Cluster Edge Coefficient</label>
+            <input type="number" id="idealEdgeCoef" class="form-input" value="10" step="0.1" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="maxRatio">Max Ratio Inside Circle</label>
+            <input type="number" id="maxRatio" class="form-input" value="4" step="0.1" min="0" max="10" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="allowInside">Allow Nodes Inside Circle</label>
+            <select id="allowInside" class="form-select">
+              <option value="false" selected>No</option>
+              <option value="true">Yes</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="randomize">Randomize Layout</label>
+            <select id="randomize" class="form-select">
+              <option value="true">Yes</option>
+              <option value="false" selected>No</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="packComponents">Pack Components</label>
+            <select id="packComponents" class="form-select">
+              <option value="true" selected>Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <div id="codeModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title-section">
+          <h3 id="modalTitle" class="modal-title"></h3>
+          <p id="modalPath" class="modal-subtitle"></p>
+        </div>
+        <button id="modalClose" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="code-container">
+          <pre><code id="modalContent" class="language-java"></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="js/parser.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
