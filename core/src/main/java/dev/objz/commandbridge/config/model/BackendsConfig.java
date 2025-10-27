@@ -9,6 +9,7 @@ public record BackendsConfig(
 		@Setting("port") int port,
 		@Setting("client-id") String clientId,
 		@Setting("security") Security security,
+		@Setting("timeouts") Timeouts timeouts,
 		@Setting("limits") Limits limits,
 		@Setting("debug") boolean debug) {
 	@ConfigSerializable
@@ -20,8 +21,13 @@ public record BackendsConfig(
 	}
 
 	@ConfigSerializable
+	public static record Timeouts(
+			@Setting("auth-timeout") int authTimeout) {
+	}
+
+	@ConfigSerializable
 	public static record Limits(
-			@Setting("inbound-messages-per-sec") int inboundMessagesSec){
+			@Setting("inbound-messages-per-sec") int inboundMessagesSec) {
 	}
 
 	public static BackendsConfig defaults() {
@@ -30,6 +36,7 @@ public record BackendsConfig(
 				8765,
 				"survival-1",
 				new Security(TlsMode.TOFU, "", "change-me", true),
+				new Timeouts(5),
 				new Limits(60),
 				false);
 	}
