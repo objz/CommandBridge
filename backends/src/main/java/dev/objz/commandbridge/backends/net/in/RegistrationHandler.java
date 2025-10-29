@@ -18,10 +18,11 @@ import java.util.Objects;
 
 public final class RegistrationHandler implements InboundRouter.InboundHandler {
 	private final WsClient ws;
-	private final CommandRegistry registry = new CommandRegistry(new ArgumentMapper());
+	private final CommandRegistry registry;
 
 	public RegistrationHandler(WsClient ws) {
 		this.ws = Objects.requireNonNull(ws);
+		this.registry = new CommandRegistry(new ArgumentMapper(), ws.outboundRouter());
 	}
 
 	@Override
@@ -49,6 +50,7 @@ public final class RegistrationHandler implements InboundRouter.InboundHandler {
 				fc.failure("register '" + (s != null ? s.name() : "<null>") + "': " + t.getMessage());
 			}
 		}
+		ws.setServerId(env.from());
 		Feedback f = fc.build();
 		Summary.feedbackSummary("Registration", f, env.from());
 		Summary.feedbackDetails(f, env.from(), true);
