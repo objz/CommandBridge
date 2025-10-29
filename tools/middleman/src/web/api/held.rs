@@ -27,17 +27,26 @@ pub async fn send_handler(
 ) -> Json<serde_json::Value> {
     let state_ref = state.read().await;
 
-    let msg = state_ref.remove_held_message(req.index).await;
-
-    if msg.is_none() {
+    let Some(msg) = state_ref.remove_held_message(req.index).await else {
         return Json(json!({
             "status": "error",
             "message": "Message not found"
         }));
-    }
-
-    let content = req.content.unwrap_or(msg.unwrap().message);
-    state_ref.set_edit_buffer(Some(content)).await;
+    };
+    
+    // Use edited content if provided, otherwise use original
+    let content_to_send = if let Some(edited) = req.content {
+        // User edited the message, use the edited content as text
+        crate::state::MessageContent::Text(edited)
+    } else if let Some(raw_content) = msg.raw_content {
+        // Use the original raw content
+        raw_content
+    } else {
+        // Fallback: use the formatted message as text
+        crate::state::MessageContent::Text(msg.message)
+    };
+    
+    state_ref.queue_message_for_sending(content_to_send).await;
 
     Json(json!({
         "status": "ok",
@@ -49,6 +58,18 @@ pub async fn send_all(State(state): State<Arc<RwLock<AppState>>>) -> Json<serde_
     let state_ref = state.read().await;
     let messages = state_ref.get_held_messages().await;
     let count = messages.len();
+
+    // Queue all held messages for sending
+    for msg in messages {
+        if let Some(raw_content) = msg.raw_content {
+            state_ref.queue_message_for_sending(raw_content).await;
+        } else {
+            // Fallback: use the formatted message as text
+            state_ref.queue_message_for_sending(
+                crate::state::MessageContent::Text(msg.message)
+            ).await;
+        }
+    }
 
     state_ref.clear_held_messages().await;
 
