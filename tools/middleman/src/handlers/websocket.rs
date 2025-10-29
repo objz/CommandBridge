@@ -12,6 +12,34 @@ use tokio_native_tls::TlsAcceptor;
 use tokio_tungstenite::{connect_async, connect_async_tls_with_config, Connector};
 use tracing::{error, info, warn};
 
+/// Interval for checking the send queue for held messages to forward
+const SEND_QUEUE_CHECK_INTERVAL_MS: u64 = 50;
+
+async fn send_queued_messages<S>(
+    state: &Arc<RwLock<AppState>>,
+    sink: &mut S,
+) -> Result<()>
+where
+    S: SinkExt<tokio_tungstenite::tungstenite::Message> + Unpin,
+    S::Error: Into<anyhow::Error>,
+{
+    while let Some(content) = state.read().await.pop_queued_message().await {
+        let tungstenite_msg = match content {
+            crate::state::MessageContent::Text(s) => {
+                info!("[proxy] Sending queued text message ({} bytes)", s.len());
+                tokio_tungstenite::tungstenite::Message::Text(s)
+            }
+            crate::state::MessageContent::Binary(b) => {
+                info!("[proxy] Sending queued binary message ({} bytes)", b.len());
+                tokio_tungstenite::tungstenite::Message::Binary(b.to_vec())
+            }
+        };
+        
+        sink.send(tungstenite_msg).await.map_err(|e| e.into())?;
+    }
+    Ok(())
+}
+
 pub async fn handle_client(
     socket: TcpStream,
     peer: SocketAddr,
@@ -123,21 +151,37 @@ async fn handle_plain_client(
     let state2 = Arc::clone(&state);
 
     let client_to_server = tokio::spawn(async move {
-        while let Some(msg_result) = c_stream.next().await {
-            match msg_result {
-                Ok(msg) => {
-                    let msg = Message::from_tungstenite(msg);
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(SEND_QUEUE_CHECK_INTERVAL_MS));
+        loop {
+            tokio::select! {
+                msg_result = c_stream.next() => {
+                    match msg_result {
+                        Some(Ok(msg)) => {
+                            let msg = Message::from_tungstenite(msg);
 
-                    if let Err(e) =
-                        process_and_forward(&msg, "client→server", &state1, &mut s_sink).await
-                    {
-                        error!("[proxy] Error processing client message: {:?}", e);
-                        break;
+                            if let Err(e) =
+                                process_and_forward(&msg, "client→server", &state1, &mut s_sink).await
+                            {
+                                error!("[proxy] Error processing client message: {:?}", e);
+                                break;
+                            }
+                        }
+                        Some(Err(e)) => {
+                            error!("[proxy] Client message error: {:?}", e);
+                            break;
+                        }
+                        None => {
+                            // Stream closed
+                            break;
+                        }
                     }
                 }
-                Err(e) => {
-                    error!("[proxy] Client message error: {:?}", e);
-                    break;
+                _ = interval.tick() => {
+                    // Check for queued messages to send
+                    if let Err(e) = send_queued_messages(&state1, &mut s_sink).await {
+                        error!("[proxy] Error sending queued messages: {:?}", e);
+                        break;
+                    }
                 }
             }
         }
@@ -234,21 +278,37 @@ where
     let state2 = Arc::clone(&state);
 
     let client_to_server = tokio::spawn(async move {
-        while let Some(msg_result) = c_stream.next().await {
-            match msg_result {
-                Ok(msg) => {
-                    let msg = Message::from_tungstenite(msg);
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(SEND_QUEUE_CHECK_INTERVAL_MS));
+        loop {
+            tokio::select! {
+                msg_result = c_stream.next() => {
+                    match msg_result {
+                        Some(Ok(msg)) => {
+                            let msg = Message::from_tungstenite(msg);
 
-                    if let Err(e) =
-                        process_and_forward(&msg, "client→server", &state1, &mut s_sink).await
-                    {
-                        error!("[proxy] Error processing client message: {:?}", e);
-                        break;
+                            if let Err(e) =
+                                process_and_forward(&msg, "client→server", &state1, &mut s_sink).await
+                            {
+                                error!("[proxy] Error processing client message: {:?}", e);
+                                break;
+                            }
+                        }
+                        Some(Err(e)) => {
+                            error!("[proxy] Client message error: {:?}", e);
+                            break;
+                        }
+                        None => {
+                            // Stream closed
+                            break;
+                        }
                     }
                 }
-                Err(e) => {
-                    error!("[proxy] Client message error: {:?}", e);
-                    break;
+                _ = interval.tick() => {
+                    // Check for queued messages to send
+                    if let Err(e) = send_queued_messages(&state1, &mut s_sink).await {
+                        error!("[proxy] Error sending queued messages: {:?}", e);
+                        break;
+                    }
                 }
             }
         }
@@ -346,6 +406,13 @@ where
         _ => None,
     };
     
+    // Store the raw content for potential resending
+    let raw_content = match msg {
+        Message::Text(s) => Some(crate::state::MessageContent::Text(s.clone())),
+        Message::Binary(b) => Some(crate::state::MessageContent::Binary(b.clone())),
+        _ => None,
+    };
+    
     let timestamp = chrono::Local::now()
         .format("%Y-%m-%d %H:%M:%S%.3f")
         .to_string();
@@ -361,6 +428,7 @@ where
             message: formatted_msg.clone(),
             is_binary: msg.is_binary(),
             raw_bytes,
+            raw_content,
         })
         .await;
 
