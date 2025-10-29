@@ -55,7 +55,7 @@ public final class InboundRouter {
 
 		var handler = handlers.get(env.type());
 		if (handler == null) {
-			Log.debug("Unhandled message type: {}", env.type());
+			Log.error("Unhandled message type: {}", env.type());
 			return;
 		}
 
