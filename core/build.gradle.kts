@@ -17,6 +17,11 @@ dependencies {
     api("com.fasterxml.jackson.core:jackson-databind:2.17.2")
     api("com.fasterxml.jackson.core:jackson-annotations:2.17.2")
     api("com.fasterxml.jackson.core:jackson-core:2.17.2")
+
+    // used for <?> and Optional
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2")
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2")
+
     compileOnly("org.spongepowered:configurate-yaml:4.2.0")
     compileOnly("org.snakeyaml:snakeyaml-engine:2.7")
     api("org.slf4j:slf4j-api:2.0.13")

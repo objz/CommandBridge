@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.backends.net;
 
 import dev.objz.commandbridge.backends.net.out.AuthRequest;
+import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.logging.Log;
@@ -55,6 +56,17 @@ public final class WsClient implements AutoCloseable {
 	private final ResponseAwaiter awaiter = new ResponseAwaiter();
 	private volatile ClientStatus status = ClientStatus.DISCONNECTED;
 	private volatile WebSocketChannel ch;
+
+	//this will be set after register commands message from server
+	private String serverId;
+
+	public String serverId() {
+		return serverId;
+	}
+
+	public void setServerId(String serverId) {
+		this.serverId = serverId;
+	}
 
 	public InboundRouter inboundRouter() {
 		return inRouter;
@@ -179,7 +191,10 @@ public final class WsClient implements AutoCloseable {
 
 		ch.resumeReceives();
 
+		//register outbound channels
+
 		outRouter.register(MessageType.AUTH_REQUEST, new AuthRequest(clientId, auth, this));
+		outRouter.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent(clientId, this));
 
 		if (Boolean.TRUE.equals(cfg.security().requireAuth())) {
 			var timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
