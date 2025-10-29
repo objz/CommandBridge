@@ -27,16 +27,12 @@ pub async fn send_handler(
 ) -> Json<serde_json::Value> {
     let state_ref = state.read().await;
 
-    let msg = state_ref.remove_held_message(req.index).await;
-
-    if msg.is_none() {
+    let Some(msg) = state_ref.remove_held_message(req.index).await else {
         return Json(json!({
             "status": "error",
             "message": "Message not found"
         }));
-    }
-
-    let msg = msg.unwrap();
+    };
     
     // Use edited content if provided, otherwise use original
     let content_to_send = if let Some(edited) = req.content {
