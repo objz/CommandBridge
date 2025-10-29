@@ -132,13 +132,20 @@ public final class WsClient implements AutoCloseable {
 				matched = awaiter.signal(env);
 			} catch (Exception ignore) {
 			}
-			// boolean authed = (status == ClientStatus.AUTHENTICATED);
-			// block if not authenticated and not an auth message
-			// but right now remove it
-			// TODO
-			// if (!PreAuth.backendInboundAllowed(authed, env.type()))
-			// return true;
-			return matched;
+
+			final boolean authed = (status == ClientStatus.AUTH_OK);
+			if (!authed) {
+				switch (env.type()) {
+					case AUTH_OK:
+					case AUTH_FAIL:
+						return matched;
+					default:
+						Log.warn("Dropping {} while unauthenticated", env.type());
+						return true;
+				}
+			}
+
+			return matched; 
 		});
 
 		ch.getReceiveSetter().set(new AbstractReceiveListener() {
