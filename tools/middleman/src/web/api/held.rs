@@ -33,19 +33,15 @@ pub async fn send_handler(
             "message": "Message not found"
         }));
     };
-    
-    // Use edited content if provided, otherwise use original
+
     let content_to_send = if let Some(edited) = req.content {
-        // User edited the message, use the edited content as text
         crate::state::MessageContent::Text(edited)
     } else if let Some(raw_content) = msg.raw_content {
-        // Use the original raw content
         raw_content
     } else {
-        // Fallback: use the formatted message as text
         crate::state::MessageContent::Text(msg.message)
     };
-    
+
     state_ref.queue_message_for_sending(content_to_send).await;
 
     Json(json!({
@@ -59,15 +55,13 @@ pub async fn send_all(State(state): State<Arc<RwLock<AppState>>>) -> Json<serde_
     let messages = state_ref.get_held_messages().await;
     let count = messages.len();
 
-    // Queue all held messages for sending
     for msg in messages {
         if let Some(raw_content) = msg.raw_content {
             state_ref.queue_message_for_sending(raw_content).await;
         } else {
-            // Fallback: use the formatted message as text
-            state_ref.queue_message_for_sending(
-                crate::state::MessageContent::Text(msg.message)
-            ).await;
+            state_ref
+                .queue_message_for_sending(crate::state::MessageContent::Text(msg.message))
+                .await;
         }
     }
 

@@ -69,12 +69,8 @@ pub struct LogMessage {
     pub message: String,
     pub is_binary: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw_bytes: Option<String>, // Base64 encoded raw bytes for encrypted view
+    pub raw_bytes: Option<String>, 
     #[serde(skip)]
-    /// Store the original raw message content (text or binary) for resending.
-    /// This is populated when messages are logged and allows exact resending of held messages.
-    /// The `message` field contains the formatted/pretty-printed version for display,
-    /// while `raw_content` contains the exact original data.
     pub raw_content: Option<MessageContent>,
 }
 
@@ -93,7 +89,7 @@ pub struct AppState {
     pub held_messages: tokio::sync::RwLock<VecDeque<LogMessage>>,
     pub message_count: Arc<AtomicU64>,
     pub is_connected: Arc<AtomicBool>,
-    pub send_queue: tokio::sync::RwLock<VecDeque<MessageContent>>, // Queue for messages to send
+    pub send_queue: tokio::sync::RwLock<VecDeque<MessageContent>>, 
 }
 
 impl AppState {

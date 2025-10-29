@@ -9,16 +9,12 @@ use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::RwLock;
 use tokio_native_tls::TlsAcceptor;
-use tokio_tungstenite::{connect_async, connect_async_tls_with_config, Connector};
+use tokio_tungstenite::{Connector, connect_async, connect_async_tls_with_config};
 use tracing::{error, info, warn};
 
-/// Interval for checking the send queue for held messages to forward
 const SEND_QUEUE_CHECK_INTERVAL_MS: u64 = 50;
 
-async fn send_queued_messages<S>(
-    state: &Arc<RwLock<AppState>>,
-    sink: &mut S,
-) -> Result<()>
+async fn send_queued_messages<S>(state: &Arc<RwLock<AppState>>, sink: &mut S) -> Result<()>
 where
     S: SinkExt<tokio_tungstenite::tungstenite::Message> + Unpin,
     S::Error: Into<anyhow::Error>,
@@ -34,7 +30,7 @@ where
                 tokio_tungstenite::tungstenite::Message::Binary(b.to_vec())
             }
         };
-        
+
         sink.send(tungstenite_msg).await.map_err(|e| e.into())?;
     }
     Ok(())
@@ -91,51 +87,43 @@ async fn handle_plain_client(
     state: Arc<RwLock<AppState>>,
 ) -> Result<()> {
     let client_ws = tokio_tungstenite::accept_async(socket).await?;
-    
-    // Get target URL and adjust scheme based on encryption mode
+
     let (target_url, use_tls_for_target) = {
         let state_guard = state.read().await;
         let config = state_guard.connection_config.read().await;
         let encryption_mode = state_guard.current_encryption_mode();
-        
+
         let mut url = config.target_url.clone();
-        let use_tls = encryption_mode == MiddlemanMode::Encrypted && 
-                      config.keystore_path.is_some() && 
-                      config.keystore_password.is_some();
-        
-        // Replace ws:// with wss:// if TLS is enabled
+        let use_tls = encryption_mode == MiddlemanMode::Encrypted
+            && config.keystore_path.is_some()
+            && config.keystore_password.is_some();
+
         if use_tls && url.starts_with("ws://") {
             url = url.replacen("ws://", "wss://", 1);
             info!("[proxy] adjusted target URL to use TLS: {}", url);
         }
-        
+
         (url, use_tls)
     };
 
     info!("[proxy] connecting to {} (plaintext client)", target_url);
-    
+
     let server_ws = if use_tls_for_target {
-        // Connect with TLS to target
         let connector = Connector::NativeTls(
             native_tls::TlsConnector::builder()
                 .danger_accept_invalid_certs(true)
                 .build()
-                .map_err(|e| anyhow!("Failed to build TLS connector: {}", e))?
+                .map_err(|e| anyhow!("Failed to build TLS connector: {}", e))?,
         );
-        
-        let (ws, _) = connect_async_tls_with_config(
-            &target_url,
-            None,
-            false,
-            Some(connector),
-        ).await?;
+
+        let (ws, _) =
+            connect_async_tls_with_config(&target_url, None, false, Some(connector)).await?;
         ws
     } else {
-        // Plain connection to target
         let (ws, _) = connect_async(&target_url).await?;
         ws
     };
-    
+
     info!("[proxy] connected to {}", target_url);
 
     state
@@ -151,7 +139,9 @@ async fn handle_plain_client(
     let state2 = Arc::clone(&state);
 
     let client_to_server = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(SEND_QUEUE_CHECK_INTERVAL_MS));
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(
+            SEND_QUEUE_CHECK_INTERVAL_MS,
+        ));
         loop {
             tokio::select! {
                 msg_result = c_stream.next() => {
@@ -177,7 +167,6 @@ async fn handle_plain_client(
                     }
                 }
                 _ = interval.tick() => {
-                    // Check for queued messages to send
                     if let Err(e) = send_queued_messages(&state1, &mut s_sink).await {
                         error!("[proxy] Error sending queued messages: {:?}", e);
                         break;
@@ -229,40 +218,33 @@ where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     let client_ws = tokio_tungstenite::accept_async(socket).await?;
-    
-    // Get target URL and adjust scheme based on encryption mode
+
     let target_url = {
         let state_guard = state.read().await;
         let config = state_guard.connection_config.read().await;
-        
+
         let mut url = config.target_url.clone();
-        
-        // Always use wss:// for TLS clients
+
         if url.starts_with("ws://") {
             url = url.replacen("ws://", "wss://", 1);
             info!("[proxy] adjusted target URL to use TLS: {}", url);
         }
-        
+
         url
     };
 
     info!("[proxy] connecting to {} (TLS client)", target_url);
-    
-    // Create TLS connector for target server
+
     let connector = Connector::NativeTls(
         native_tls::TlsConnector::builder()
             .danger_accept_invalid_certs(true)
             .build()
-            .map_err(|e| anyhow!("Failed to build TLS connector: {}", e))?
+            .map_err(|e| anyhow!("Failed to build TLS connector: {}", e))?,
     );
-    
-    let (server_ws, _) = connect_async_tls_with_config(
-        &target_url,
-        None,
-        false,
-        Some(connector),
-    ).await?;
-    
+
+    let (server_ws, _) =
+        connect_async_tls_with_config(&target_url, None, false, Some(connector)).await?;
+
     info!("[proxy] connected to {} via TLS", target_url);
 
     state
@@ -278,7 +260,9 @@ where
     let state2 = Arc::clone(&state);
 
     let client_to_server = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(SEND_QUEUE_CHECK_INTERVAL_MS));
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(
+            SEND_QUEUE_CHECK_INTERVAL_MS,
+        ));
         loop {
             tokio::select! {
                 msg_result = c_stream.next() => {
@@ -304,7 +288,6 @@ where
                     }
                 }
                 _ = interval.tick() => {
-                    // Check for queued messages to send
                     if let Err(e) = send_queued_messages(&state1, &mut s_sink).await {
                         error!("[proxy] Error sending queued messages: {:?}", e);
                         break;
@@ -401,18 +384,24 @@ where
 
     let formatted_msg = format_message(msg);
     let raw_bytes = match msg {
-        Message::Binary(b) => Some(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, b)),
-        Message::Text(s) => Some(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, s.as_bytes())),
+        Message::Binary(b) => Some(base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            b,
+        )),
+        Message::Text(s) => Some(base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            s.as_bytes(),
+        )),
         _ => None,
     };
-    
+
     // Store the raw content for potential resending
     let raw_content = match msg {
         Message::Text(s) => Some(crate::state::MessageContent::Text(s.clone())),
         Message::Binary(b) => Some(crate::state::MessageContent::Binary(b.clone())),
         _ => None,
     };
-    
+
     let timestamp = chrono::Local::now()
         .format("%Y-%m-%d %H:%M:%S%.3f")
         .to_string();
