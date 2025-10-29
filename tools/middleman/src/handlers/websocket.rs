@@ -12,6 +12,9 @@ use tokio_native_tls::TlsAcceptor;
 use tokio_tungstenite::{connect_async, connect_async_tls_with_config, Connector};
 use tracing::{error, info, warn};
 
+/// Interval for checking the send queue for held messages to forward
+const SEND_QUEUE_CHECK_INTERVAL_MS: u64 = 50;
+
 async fn send_queued_messages<S>(
     state: &Arc<RwLock<AppState>>,
     sink: &mut S,
@@ -148,7 +151,7 @@ async fn handle_plain_client(
     let state2 = Arc::clone(&state);
 
     let client_to_server = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(50));
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(SEND_QUEUE_CHECK_INTERVAL_MS));
         loop {
             tokio::select! {
                 msg_result = c_stream.next() => {
@@ -275,7 +278,7 @@ where
     let state2 = Arc::clone(&state);
 
     let client_to_server = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(50));
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(SEND_QUEUE_CHECK_INTERVAL_MS));
         loop {
             tokio::select! {
                 msg_result = c_stream.next() => {

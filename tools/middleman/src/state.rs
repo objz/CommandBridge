@@ -71,7 +71,11 @@ pub struct LogMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_bytes: Option<String>, // Base64 encoded raw bytes for encrypted view
     #[serde(skip)]
-    pub raw_content: Option<MessageContent>, // Store the original raw message for resending
+    /// Store the original raw message content (text or binary) for resending.
+    /// This is populated when messages are logged and allows exact resending of held messages.
+    /// The `message` field contains the formatted/pretty-printed version for display,
+    /// while `raw_content` contains the exact original data.
+    pub raw_content: Option<MessageContent>,
 }
 
 #[derive(Clone, Debug)]
