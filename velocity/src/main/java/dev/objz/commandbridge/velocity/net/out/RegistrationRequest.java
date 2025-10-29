@@ -85,7 +85,7 @@ public final class RegistrationRequest implements OutboundRouter.OutboundHandler
 				.exceptionally(ex -> {
 					var cause = (ex.getCause() != null) ? ex.getCause() : ex;
 					if (cause instanceof java.util.concurrent.TimeoutException) {
-						Log.error("Timeout from '{}' after {}", clientId, a.timeout);
+						Log.error("Timeout from '{}' after {}", clientId, a.timeout.toString());
 					} else {
 						Log.error(cause, "Failed to receive feedback from '{}'", clientId);
 					}
