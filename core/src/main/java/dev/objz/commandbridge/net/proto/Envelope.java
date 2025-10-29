@@ -18,4 +18,6 @@ public record Envelope(int v, UUID id, MessageType type, String from, String to,
 		return new Envelope(req.v(), req.id(), type, from, req.from(), System.currentTimeMillis(),
 				payload != null ? payload : MAPPER.nullNode());
 	}
+
+
 }

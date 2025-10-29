@@ -37,7 +37,7 @@ public final class BukkitMain extends JavaPlugin {
 			var env = new PlatformAdapter.PlatformEnv(getDataFolder().toPath());
 			adapter.load(env, this);
 		} catch (Exception e) {
-			Log.error(e, "Adapter load failed during onLoad");
+			Log.error("Adapter load failed during onLoad: {}", e.getMessage());
 		}
 
 	}
@@ -48,7 +48,7 @@ public final class BukkitMain extends JavaPlugin {
 			var env = new PlatformAdapter.PlatformEnv(getDataFolder().toPath());
 			adapter.start(env);
 		} catch (Exception ex) {
-			Log.error(ex, "Failed to enable CommandBridge");
+			Log.error("Failed to enable CommandBridge: {}", ex.getMessage());
 			getServer().getPluginManager().disablePlugin(this);
 		}
 	}
@@ -60,7 +60,7 @@ public final class BukkitMain extends JavaPlugin {
 				adapter.stop();
 			}
 		} catch (Exception ex) {
-			Log.error(ex, "Error during shutdown");
+			Log.error("Error during shutdown: {}", ex.getMessage());
 		}
 	}
 

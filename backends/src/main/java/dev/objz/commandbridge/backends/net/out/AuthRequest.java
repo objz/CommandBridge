@@ -4,7 +4,8 @@ import dev.objz.commandbridge.backends.net.ClientStatus;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutboundRouter;
-import dev.objz.commandbridge.net.payloads.util.AuthPayload;
+import dev.objz.commandbridge.net.payloads.util.AuthRequestPayload;
+import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
@@ -51,8 +52,8 @@ public final class AuthRequest implements OutboundRouter.OutboundHandler<AuthReq
 		final String clientNonce = UUID.randomUUID().toString();
 		final String mac = auth.sign(clientId, clientNonce);
 
-		var payload = Envelope.MAPPER.valueToTree(new AuthPayload(clientId, clientNonce, mac));
-		Envelope env = Envelope.make(MessageType.AUTH_REQUEST, clientId, "velocity", payload);
+		var payload = Envelope.MAPPER.valueToTree(new AuthRequestPayload(clientNonce, mac));
+		Envelope env = Envelope.make(MessageType.AUTH_REQUEST, clientId, "proxy-auth", payload);
 
 		return ws.send(env)
 				.match(reply -> reply.id().equals(env.id())
@@ -67,16 +68,17 @@ public final class AuthRequest implements OutboundRouter.OutboundHandler<AuthReq
 						return reply;
 					}
 
-					AuthPayload sp;
+					AuthResponsePayload sp;
 					try {
-						sp = Envelope.MAPPER.treeToValue(reply.payload(), AuthPayload.class);
+						sp = Envelope.MAPPER.treeToValue(reply.payload(),
+								AuthResponsePayload.class);
 					} catch (Exception e) {
 						a.statusSink.accept(ClientStatus.AUTH_FAILED);
 						Log.error(e, "Authentication response malformed");
 						return reply;
 					}
 
-					final String serverNonce = sp.clientNonce();
+					final String serverNonce = sp.serverNonce();
 					final String serverMac = sp.hmac();
 					final boolean ok = auth.verifyServerProof(clientId, clientNonce, serverNonce,
 							serverMac);
