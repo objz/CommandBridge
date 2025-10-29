@@ -74,10 +74,25 @@ pub struct LogMessage {
     pub raw_content: Option<MessageContent>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MessageDirection {
+    ClientToServer,
+    ServerToClient,
+}
+
 #[derive(Clone, Debug)]
 pub enum MessageContent {
-    Text(String),
-    Binary(Bytes),
+    Text(String, MessageDirection),
+    Binary(Bytes, MessageDirection),
+}
+
+impl MessageContent {
+    pub fn direction(&self) -> &MessageDirection {
+        match self {
+            MessageContent::Text(_, dir) => dir,
+            MessageContent::Binary(_, dir) => dir,
+        }
+    }
 }
 
 pub struct AppState {
@@ -89,7 +104,8 @@ pub struct AppState {
     pub held_messages: tokio::sync::RwLock<VecDeque<LogMessage>>,
     pub message_count: Arc<AtomicU64>,
     pub is_connected: Arc<AtomicBool>,
-    pub send_queue: tokio::sync::RwLock<VecDeque<MessageContent>>, 
+    pub send_queue_to_server: tokio::sync::RwLock<VecDeque<MessageContent>>,
+    pub send_queue_to_client: tokio::sync::RwLock<VecDeque<MessageContent>>,
 }
 
 impl AppState {
@@ -109,7 +125,8 @@ impl AppState {
             held_messages: tokio::sync::RwLock::new(VecDeque::new()),
             message_count: Arc::new(AtomicU64::new(0)),
             is_connected: Arc::new(AtomicBool::new(false)),
-            send_queue: tokio::sync::RwLock::new(VecDeque::new()),
+            send_queue_to_server: tokio::sync::RwLock::new(VecDeque::new()),
+            send_queue_to_client: tokio::sync::RwLock::new(VecDeque::new()),
         }
     }
 
@@ -201,13 +218,27 @@ impl AppState {
     }
 
     pub async fn queue_message_for_sending(&self, content: MessageContent) {
-        let mut queue = self.send_queue.write().await;
-        queue.push_back(content);
-        tracing::info!("[state] Message queued for sending, queue length: {}", queue.len());
+        match content.direction() {
+            MessageDirection::ClientToServer => {
+                let mut queue = self.send_queue_to_server.write().await;
+                queue.push_back(content);
+                tracing::info!("[state] Message queued for sending to SERVER, queue length: {}", queue.len());
+            }
+            MessageDirection::ServerToClient => {
+                let mut queue = self.send_queue_to_client.write().await;
+                queue.push_back(content);
+                tracing::info!("[state] Message queued for sending to CLIENT, queue length: {}", queue.len());
+            }
+        }
     }
 
-    pub async fn pop_queued_message(&self) -> Option<MessageContent> {
-        let mut queue = self.send_queue.write().await;
+    pub async fn pop_queued_message_to_server(&self) -> Option<MessageContent> {
+        let mut queue = self.send_queue_to_server.write().await;
+        queue.pop_front()
+    }
+
+    pub async fn pop_queued_message_to_client(&self) -> Option<MessageContent> {
+        let mut queue = self.send_queue_to_client.write().await;
         queue.pop_front()
     }
 }

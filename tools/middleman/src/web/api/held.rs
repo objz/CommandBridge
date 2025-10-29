@@ -35,11 +35,32 @@ pub async fn send_handler(
     };
 
     let content_to_send = if let Some(edited) = req.content {
-        crate::state::MessageContent::Text(edited)
+        if let Some(raw_content) = msg.raw_content {
+            match raw_content {
+                crate::state::MessageContent::Text(_, dir) => {
+                    crate::state::MessageContent::Text(edited, dir)
+                }
+                crate::state::MessageContent::Binary(_, dir) => {
+                    crate::state::MessageContent::Text(edited, dir)
+                }
+            }
+        } else {
+            let direction = if msg.direction.contains("client") {
+                crate::state::MessageDirection::ClientToServer
+            } else {
+                crate::state::MessageDirection::ServerToClient
+            };
+            crate::state::MessageContent::Text(edited, direction)
+        }
     } else if let Some(raw_content) = msg.raw_content {
         raw_content
     } else {
-        crate::state::MessageContent::Text(msg.message)
+        let direction = if msg.direction.contains("client") {
+            crate::state::MessageDirection::ClientToServer
+        } else {
+            crate::state::MessageDirection::ServerToClient
+        };
+        crate::state::MessageContent::Text(msg.message, direction)
     };
 
     state_ref.queue_message_for_sending(content_to_send).await;
@@ -59,8 +80,13 @@ pub async fn send_all(State(state): State<Arc<RwLock<AppState>>>) -> Json<serde_
         if let Some(raw_content) = msg.raw_content {
             state_ref.queue_message_for_sending(raw_content).await;
         } else {
+            let direction = if msg.direction.contains("client") {
+                crate::state::MessageDirection::ClientToServer
+            } else {
+                crate::state::MessageDirection::ServerToClient
+            };
             state_ref
-                .queue_message_for_sending(crate::state::MessageContent::Text(msg.message))
+                .queue_message_for_sending(crate::state::MessageContent::Text(msg.message, direction))
                 .await;
         }
     }
