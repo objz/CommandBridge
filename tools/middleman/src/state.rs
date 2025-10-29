@@ -5,6 +5,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicU64},
 };
+use bytes::Bytes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -69,6 +70,14 @@ pub struct LogMessage {
     pub is_binary: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_bytes: Option<String>, // Base64 encoded raw bytes for encrypted view
+    #[serde(skip)]
+    pub raw_content: Option<MessageContent>, // Store the original raw message for resending
+}
+
+#[derive(Clone, Debug)]
+pub enum MessageContent {
+    Text(String),
+    Binary(Bytes),
 }
 
 pub struct AppState {
@@ -80,6 +89,7 @@ pub struct AppState {
     pub held_messages: tokio::sync::RwLock<VecDeque<LogMessage>>,
     pub message_count: Arc<AtomicU64>,
     pub is_connected: Arc<AtomicBool>,
+    pub send_queue: tokio::sync::RwLock<VecDeque<MessageContent>>, // Queue for messages to send
 }
 
 impl AppState {
@@ -99,6 +109,7 @@ impl AppState {
             held_messages: tokio::sync::RwLock::new(VecDeque::new()),
             message_count: Arc::new(AtomicU64::new(0)),
             is_connected: Arc::new(AtomicBool::new(false)),
+            send_queue: tokio::sync::RwLock::new(VecDeque::new()),
         }
     }
 
@@ -187,5 +198,16 @@ impl AppState {
 
     pub async fn get_edit_buffer(&self) -> Option<String> {
         self.edit_buffer.read().await.clone()
+    }
+
+    pub async fn queue_message_for_sending(&self, content: MessageContent) {
+        let mut queue = self.send_queue.write().await;
+        queue.push_back(content);
+        tracing::info!("[state] Message queued for sending, queue length: {}", queue.len());
+    }
+
+    pub async fn pop_queued_message(&self) -> Option<MessageContent> {
+        let mut queue = self.send_queue.write().await;
+        queue.pop_front()
     }
 }
