@@ -4,7 +4,7 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.proto.Envelope;
-import dev.objz.commandbridge.net.InboundRouter;
+import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.Handlers;
@@ -33,25 +33,30 @@ public final class WsServer {
 	private final boolean tlsEnabled;
 	private final SSLContext sslContext;
 	private final SessionHub sessions;
-	private final InboundRouter inRouter;
+	private final InNode inNode;
 
 	private final ResponseAwaiter responses = new ResponseAwaiter();
 	private Undertow server;
 
-	public WsServer(String host, int port, SessionHub sessions, InboundRouter router) {
-		this(host, port, sessions, router, false, null);
+	public WsServer(String host, int port, SessionHub sessions, InNode inNode) {
+		this(host, port, sessions, inNode, false, null);
 	}
 
-	public WsServer(String host, int port, SessionHub sessions, InboundRouter router,
+	public WsServer(String host, int port, SessionHub sessions, InNode inNode,
 			boolean tlsEnabled, SSLContext sslContext) {
 		this.host = host;
 		this.port = port;
 		this.sessions = sessions;
-		this.inRouter = router;
+		this.inNode = inNode;
 		this.tlsEnabled = tlsEnabled;
 		this.sslContext = sslContext;
 
-		this.inRouter.setInboundTap(this::signalInbound);
+		this.inNode.setInboundTap(this::signalInbound);
+		this.inNode.setSendOperationFactory(this::createSendOperation);
+	}
+
+	private SendOperation createSendOperation(WebSocketChannel ch, Envelope env) {
+		return new SendOperation(ch, env, responses);
 	}
 
 	public void start() {
@@ -60,7 +65,7 @@ public final class WsServer {
 			ch.getReceiveSetter().set(new AbstractReceiveListener() {
 				@Override
 				protected void onFullTextMessage(WebSocketChannel c, BufferedTextMessage msg) {
-					inRouter.onText(c, msg.getData());
+					inNode.onText(c, msg.getData());
 				}
 
 				@Override

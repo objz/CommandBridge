@@ -8,34 +8,54 @@ import io.undertow.websockets.core.WebSocketChannel;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-public final class InboundRouter {
-
-	@FunctionalInterface
-	public interface InboundHandler extends BiConsumer<WebSocketChannel, Envelope> {
-		@Override
-		void accept(WebSocketChannel ch, Envelope env);
-	}
+/**
+ * Router for inbound messages.
+ * Handlers extend InboundHandler to get access to reply() functionality.
+ */
+public class InNode {
 
 	private final Map<MessageType, InboundHandler> handlers;
-
 	private Predicate<Envelope> inboundTap;
+	private BiFunction<WebSocketChannel, Envelope, SendOperation> sendOperationFactory;
 
-	public InboundRouter() {
+	public InNode() {
 		this.handlers = new EnumMap<>(MessageType.class);
 	}
 
+	/**
+	 * Sets an inbound tap that can intercept messages before routing.
+	 * If the tap returns true, the message is considered handled and won't be routed.
+	 */
 	public void setInboundTap(Predicate<Envelope> tap) {
 		this.inboundTap = tap;
 	}
 
-	public InboundRouter register(MessageType type, InboundHandler handler) {
-		handlers.put(Objects.requireNonNull(type), Objects.requireNonNull(handler));
+	/**
+	 * Sets the factory for creating SendOperations.
+	 * This should be set by WsClient or WsServer during initialization.
+	 */
+	public InNode setSendOperationFactory(BiFunction<WebSocketChannel, Envelope, SendOperation> factory) {
+		this.sendOperationFactory = factory;
 		return this;
 	}
 
+	/**
+	 * Registers a handler for a specific message type.
+	 */
+	public InNode register(MessageType type, InboundHandler handler) {
+		Objects.requireNonNull(type);
+		Objects.requireNonNull(handler);
+		handler.setSendOperationFactory(sendOperationFactory);
+		handlers.put(type, handler);
+		return this;
+	}
+
+	/**
+	 * Processes incoming text messages, routing them to registered handlers.
+	 */
 	public void onText(WebSocketChannel ch, String text) {
 		final Envelope env;
 		try {
@@ -65,5 +85,4 @@ public final class InboundRouter {
 			Log.error(ex, "Handler failure for type {}", env.type());
 		}
 	}
-
 }
