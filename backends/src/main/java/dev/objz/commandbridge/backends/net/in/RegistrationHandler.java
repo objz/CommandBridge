@@ -5,7 +5,7 @@ import dev.objz.commandbridge.backends.platform.cmd.ArgumentMapper;
 import dev.objz.commandbridge.backends.platform.cmd.CommandRegistry;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.logging.Summary;
-import dev.objz.commandbridge.net.InboundRouter;
+import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.RegisterCommands;
 import dev.objz.commandbridge.net.payloads.feedback.Feedback;
@@ -16,7 +16,7 @@ import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Objects;
 
-public final class RegistrationHandler implements InboundRouter.InboundHandler {
+public final class RegistrationHandler extends InboundHandler {
 	private final WsClient ws;
 	private final CommandRegistry registry;
 
@@ -36,7 +36,12 @@ public final class RegistrationHandler implements InboundRouter.InboundHandler {
 		if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
 			Log.warn("Received empty REGISTER_COMMANDS");
 			Feedback f = Feedback.empty();
-			reply(ch, env, f);
+			reply(ch, env, MessageType.FEEDBACK, f)
+					.dispatch()
+					.exceptionally(ex -> {
+						Log.warn("Failed to send FEEDBACK: {}", ex.toString());
+						return null;
+					});
 			return;
 		}
 
@@ -54,22 +59,12 @@ public final class RegistrationHandler implements InboundRouter.InboundHandler {
 		Feedback f = fc.build();
 		Summary.feedbackSummary("Registration", f, env.from());
 		Summary.feedbackDetails(f, env.from(), true);
-		reply(ch, env, f);
+		
+		reply(ch, env, MessageType.FEEDBACK, f)
+				.dispatch()
+				.exceptionally(ex -> {
+					Log.warn("Failed to send FEEDBACK: {}", ex.toString());
+					return null;
+				});
 	}
-
-	private void reply(WebSocketChannel ch, Envelope req, Feedback f) {
-		var payload = Envelope.MAPPER.valueToTree(f);
-		Envelope resp = Envelope.reply(req, MessageType.FEEDBACK, req.to(), payload);
-		try {
-			ws.send(resp)
-					.dispatch()
-					.exceptionally(ex -> {
-						Log.warn("Failed to send FEEDBACK: {}", ex.toString());
-						return null;
-					});
-		} catch (Exception e) {
-			Log.warn("Failed to send FEEDBACK: {}", e.toString());
-		}
-	}
-
 }
