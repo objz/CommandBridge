@@ -3,7 +3,7 @@ package dev.objz.commandbridge.backends.platform.cmd;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
-import dev.objz.commandbridge.backends.net.out.InvokedCommandContext;
+import dev.objz.commandbridge.backends.net.out.ctx.InvokedCommandContext;
 import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.cmd.ref.EntityRef;

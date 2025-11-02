@@ -55,8 +55,10 @@ public final class Adapter implements PlatformAdapter {
 				task -> Bukkit.getScheduler().runTask((JavaPlugin) plugin, task));
 
 		this.client = new WsClient(cfg, dataDir);
-		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
+
 		client.start();
+
+		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
 	}
 
 	@Override

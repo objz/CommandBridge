@@ -11,10 +11,6 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-/**
- * Router for inbound messages.
- * Handlers extend InboundHandler to get access to reply() functionality.
- */
 public class InNode {
 
 	private final Map<MessageType, InboundHandler> handlers;
@@ -25,26 +21,15 @@ public class InNode {
 		this.handlers = new EnumMap<>(MessageType.class);
 	}
 
-	/**
-	 * Sets an inbound tap that can intercept messages before routing.
-	 * If the tap returns true, the message is considered handled and won't be routed.
-	 */
 	public void setInboundTap(Predicate<Envelope> tap) {
 		this.inboundTap = tap;
 	}
 
-	/**
-	 * Sets the factory for creating SendOperations.
-	 * This should be set by WsClient or WsServer during initialization.
-	 */
 	public InNode setSendOperationFactory(BiFunction<WebSocketChannel, Envelope, SendOperation> factory) {
 		this.sendOperationFactory = factory;
 		return this;
 	}
 
-	/**
-	 * Registers a handler for a specific message type.
-	 */
 	public InNode register(MessageType type, InboundHandler handler) {
 		Objects.requireNonNull(type);
 		Objects.requireNonNull(handler);
@@ -53,9 +38,6 @@ public class InNode {
 		return this;
 	}
 
-	/**
-	 * Processes incoming text messages, routing them to registered handlers.
-	 */
 	public void onText(WebSocketChannel ch, String text) {
 		final Envelope env;
 		try {
