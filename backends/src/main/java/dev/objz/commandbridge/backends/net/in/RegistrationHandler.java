@@ -36,7 +36,7 @@ public final class RegistrationHandler extends InboundHandler {
 		if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
 			Log.warn("Received empty REGISTER_COMMANDS");
 			Feedback f = Feedback.empty();
-			reply(ch, env, MessageType.FEEDBACK, f)
+			reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f)
 					.dispatch()
 					.exceptionally(ex -> {
 						Log.warn("Failed to send FEEDBACK: {}", ex.toString());
@@ -60,7 +60,7 @@ public final class RegistrationHandler extends InboundHandler {
 		Summary.feedbackSummary("Registration", f, env.from());
 		Summary.feedbackDetails(f, env.from(), true);
 		
-		reply(ch, env, MessageType.FEEDBACK, f)
+		reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f)
 				.dispatch()
 				.exceptionally(ex -> {
 					Log.warn("Failed to send FEEDBACK: {}", ex.toString());

@@ -11,6 +11,7 @@ import dev.objz.commandbridge.net.payloads.cmd.RegisterCommands;
 import dev.objz.commandbridge.net.payloads.feedback.Feedback;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 
 import java.util.List;
 import java.util.Objects;
@@ -45,34 +46,38 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
 		ObjectNode payloadNode = Envelope.MAPPER.valueToTree(payload);
 		final Envelope env = Envelope.make(MessageType.REGISTER_COMMANDS, serverId, clientId, payloadNode);
 
-		return send(ctx.session.ch(), env)
-				.expect(MessageType.FEEDBACK)
-				.timeout(ctx.timeout)
-				.await()
-				.exceptionally(ex -> {
-					var cause = (ex.getCause() != null) ? ex.getCause() : ex;
-					if (cause instanceof java.util.concurrent.TimeoutException) {
-						Log.error("Timeout from '{}' after {}", clientId, ctx.timeout.toString());
-					} else {
-						Log.error(cause, "Failed to receive feedback from '{}'", clientId);
-					}
-					return null;
-				})
-				.thenApply(feedbackEnv -> {
-					if (feedbackEnv != null) {
-						try {
-							Feedback feedback = Envelope.MAPPER.treeToValue(feedbackEnv.payload(),
-									Feedback.class);
+		SendOperation op = send(ctx.session.ch(), env)
+				.expect(MessageType.REGISTER_COMMANDS_RESULT)
+				.timeout(ctx.timeout);
 
-							Summary.feedbackSummary("Feedback", feedback, clientId);
-							Summary.feedbackDetails(feedback, clientId, false);
+		op.await().thenApply(feedbackEnv -> {
+			if (feedbackEnv != null) {
+				try {
+					Feedback feedback = Envelope.MAPPER.treeToValue(
+							feedbackEnv.payload(),
+							Feedback.class);
 
-						} catch (Exception e) {
-							Log.error(e, "Failed to process registration feedback from '{}'",
-									clientId);
-						}
-					}
-					return env;
-				});
+					Summary.feedbackSummary("Feedback", feedback, clientId);
+					Summary.feedbackDetails(feedback, clientId, false);
+
+				} catch (Exception e) {
+					Log.error(e, "Failed to process registration feedback from '{}'",
+							clientId);
+				}
+			}
+			return env;
+		}).exceptionally(ex -> {
+			var cause = (ex.getCause() != null) ? ex.getCause() : ex;
+			if (cause instanceof java.util.concurrent.TimeoutException) {
+				Log.error("Timeout from '{}' after {}", clientId,
+						ctx.timeout.toString());
+			} else {
+				Log.error(cause, "Failed to receive feedback from '{}'", clientId);
+			}
+			return null;
+		});
+
+		return op;
+
 	}
 }

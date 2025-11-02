@@ -26,7 +26,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
-import dev.objz.commandbridge.velocity.net.out.RegistrationRequestContext;
+import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 

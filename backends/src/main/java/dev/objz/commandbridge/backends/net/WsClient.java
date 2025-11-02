@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.backends.net;
 
 import dev.objz.commandbridge.backends.net.out.AuthRequest;
+import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
 import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
@@ -57,7 +58,7 @@ public final class WsClient implements AutoCloseable {
 	private volatile ClientStatus status = ClientStatus.DISCONNECTED;
 	private volatile WebSocketChannel ch;
 
-	//this will be set after register commands message from server
+	// this will be set after register commands message from server
 	private String serverId;
 
 	public String serverId() {
@@ -80,8 +81,7 @@ public final class WsClient implements AutoCloseable {
 	public WsClient(BackendsConfig cfg, Path dataDir) {
 		this.cfg = Objects.requireNonNull(cfg);
 		this.dataDir = Objects.requireNonNull(dataDir);
-		
-		// Configure client ID for outbound node
+
 		outNode.setClientId(cfg.clientId());
 	}
 
@@ -142,10 +142,7 @@ public final class WsClient implements AutoCloseable {
 		this.ch = f.get();
 		status = ClientStatus.CONNECTED;
 
-		// Configure InNode to create SendOperations
 		inNode.setSendOperationFactory((channel, envelope) -> new SendOperation(channel, envelope, awaiter));
-
-		// Configure OutNode to create SendOperations
 		outNode.setSendOperationFactory(envelope -> new SendOperation(ch, envelope, awaiter));
 
 		inNode.setInboundTap(env -> {
@@ -167,7 +164,7 @@ public final class WsClient implements AutoCloseable {
 				}
 			}
 
-			return matched; 
+			return matched;
 		});
 
 		ch.getReceiveSetter().set(new AbstractReceiveListener() {
@@ -201,7 +198,6 @@ public final class WsClient implements AutoCloseable {
 
 		ch.resumeReceives();
 
-		//register outbound handlers
 		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(auth));
 		outNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent());
 

@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.backends.net.out;
 
+import dev.objz.commandbridge.backends.net.out.ctx.InvokedCommandContext;
 import dev.objz.commandbridge.net.OutboundHandler;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
@@ -11,8 +12,10 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
 	@Override
 	public SendOperation accept(InvokedCommandContext ctx) {
 		var payload = Envelope.MAPPER.valueToTree(
-			new InvokedCommand(ctx.commandName, ctx.arguments, ctx.sender));
+				new InvokedCommand(ctx.commandName, ctx.arguments, ctx.sender));
 		Envelope env = Envelope.make(MessageType.INVOKED_COMMAND, clientId, serverId, payload);
-		return send(env).dispatch();
+		SendOperation op = send(env);
+		op.dispatch();
+		return op;
 	}
 }

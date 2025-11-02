@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.backends.net.out;
 
 import dev.objz.commandbridge.backends.net.ClientStatus;
+import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutboundHandler;
 import dev.objz.commandbridge.net.SendOperation;
@@ -29,43 +30,43 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
 		var payload = Envelope.MAPPER.valueToTree(new AuthRequestPayload(clientNonce, mac));
 		Envelope env = Envelope.make(MessageType.AUTH_REQUEST, clientId, "proxy-auth", payload);
 
-		return send(env)
+		SendOperation op = send(env)
 				.match(reply -> reply.id().equals(env.id())
 						&& (reply.type() == MessageType.AUTH_OK
 								|| reply.type() == MessageType.AUTH_FAIL))
-				.timeout(ctx.timeout)
-				.await()
-				.thenApply(reply -> {
-					if (reply.type() == MessageType.AUTH_FAIL) {
-						ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
-						Log.error("Authentication rejected by server");
-						return reply;
-					}
+				.timeout(ctx.timeout);
 
-					AuthResponsePayload sp;
-					try {
-						sp = Envelope.MAPPER.treeToValue(reply.payload(),
-								AuthResponsePayload.class);
-					} catch (Exception e) {
-						ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
-						Log.error(e, "Authentication response malformed");
-						return reply;
-					}
+		op.await().thenApply(reply -> {
+			if (reply.type() == MessageType.AUTH_FAIL) {
+				ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+				Log.error("Authentication rejected by server");
+				return reply;
+			}
 
-					final String serverNonce = sp.serverNonce();
-					final String serverMac = sp.hmac();
-					final boolean ok = auth.verifyServerProof(clientId, clientNonce, serverNonce,
-							serverMac);
+			AuthResponsePayload sp;
+			try {
+				sp = Envelope.MAPPER.treeToValue(reply.payload(),
+						AuthResponsePayload.class);
+			} catch (Exception e) {
+				ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+				Log.error(e, "Authentication response malformed");
+				return reply;
+			}
 
-					if (!ok) {
-						ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
-						Log.error("Authentication failed: invalid server proof");
-					} else {
-						ctx.statusSink.accept(ClientStatus.AUTH_OK);
-						Log.success("Authenticated successfully");
-					}
-					return reply;
-				})
+			final String serverNonce = sp.serverNonce();
+			final String serverMac = sp.hmac();
+			final boolean ok = auth.verifyServerProof(clientId, clientNonce, serverNonce,
+					serverMac);
+
+			if (!ok) {
+				ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+				Log.error("Authentication failed: invalid server proof");
+			} else {
+				ctx.statusSink.accept(ClientStatus.AUTH_OK);
+				Log.success("Authenticated successfully");
+			}
+			return reply;
+		})
 				.exceptionally(ex -> {
 					ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
 					var cause = (ex.getCause() != null) ? ex.getCause() : ex;
@@ -76,5 +77,7 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
 					}
 					return null;
 				});
+
+		return op;
 	}
 }

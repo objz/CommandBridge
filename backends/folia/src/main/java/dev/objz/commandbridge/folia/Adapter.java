@@ -50,8 +50,10 @@ public final class Adapter implements PlatformAdapter {
 		}
 
 		this.client = new WsClient(cfg, dataDir);
-		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
+		
 		client.start();
+		
+		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
 	}
 
 	@Override

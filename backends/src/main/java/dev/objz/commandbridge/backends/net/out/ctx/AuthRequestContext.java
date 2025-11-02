@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.backends.net.out;
+package dev.objz.commandbridge.backends.net.out.ctx;
 
 import io.undertow.websockets.core.WebSocketChannel;
 
@@ -8,9 +8,6 @@ import java.util.function.Consumer;
 
 import dev.objz.commandbridge.backends.net.ClientStatus;
 
-/**
- * Context for authentication requests.
- */
 public final class AuthRequestContext {
 	public final WebSocketChannel ch;
 	public final Duration timeout;
