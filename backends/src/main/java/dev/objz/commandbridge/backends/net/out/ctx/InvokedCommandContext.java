@@ -1,21 +1,27 @@
 package dev.objz.commandbridge.backends.net.out.ctx;
 
-import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
-import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
+import dev.jorel.commandapi.executors.CommandArguments;
+import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 
-import java.util.List;
 import java.util.Objects;
 
-public final class InvokedCommandContext {
-	public final String commandName;
-	public final List<InvokedCommand.TypedArgument> arguments;
-	public final SenderContext sender;
+import org.bukkit.command.CommandSender;
 
-	public InvokedCommandContext(String commandName,
-			List<InvokedCommand.TypedArgument> arguments,
-			SenderContext sender) {
-		this.commandName = Objects.requireNonNull(commandName);
-		this.arguments = Objects.requireNonNullElseGet(arguments, List::of);
-		this.sender = Objects.requireNonNull(sender);
+public final class InvokedCommandContext {
+
+	public final String commandName;
+	public final CommandSender sender;
+	public final CommandArguments args;
+	public final CommandStub stub;
+
+	public InvokedCommandContext(
+			String commandName,
+			CommandSender sender,
+			CommandArguments args,
+			CommandStub stub) {
+		this.commandName = Objects.requireNonNull(commandName, "commandName");
+		this.sender = Objects.requireNonNull(sender, "sender");
+		this.args = Objects.requireNonNull(args, "args");
+		this.stub = Objects.requireNonNull(stub, "stub");
 	}
 }
