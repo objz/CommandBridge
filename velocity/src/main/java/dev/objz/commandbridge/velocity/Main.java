@@ -11,8 +11,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.net.InboundRouter;
-import dev.objz.commandbridge.net.OutboundRouter;
+import dev.objz.commandbridge.net.InNode;
+import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
@@ -36,8 +36,8 @@ public final class Main {
 	private ConfigManager configManager;
 	private WsServer ws;
 	private RegistrationManager registrations;
-	private InboundRouter inRouter;
-	private OutboundRouter outRouter;
+	private InNode inNode;
+	private OutNode<Object> outNode;
 	private VelocityConfig cfg;
 	private SessionHub sessions;
 	private AuthHandler authHandler;
@@ -63,20 +63,21 @@ public final class Main {
 		Log.setDebug(cfg.debug());
 
 		this.sessions = new SessionHub();
-		this.inRouter = new InboundRouter();
-		this.outRouter = new OutboundRouter();
+		this.inNode = new InNode();
+		this.outNode = new OutNode<>();
+		outNode.setServerId(cfg.serverId());
 
 		var tls = TlsResolver.resolveServer(dataDir, cfg.security());
 		ws = tls.enabled()
-				? new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inRouter,
+				? new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inNode,
 						true, tls.context())
-				: new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inRouter);
+				: new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inNode);
 		ws.start();
 
 		var scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
 
-		registrations = new RegistrationManager(proxy, sessions, cfg, outRouter);
+		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
 		registrations.load(scriptManager.enabled());
 		// install routes after initalizing but before registering any listeners
 		installRoutes();
@@ -104,8 +105,9 @@ public final class Main {
 		var secret = new SecretLoader(dataDir).loadOrCreate();
 		var auth = new AuthService(secret);
 		this.authHandler = new AuthHandler(auth, sessions, ws);
-		inRouter.register(MessageType.AUTH_REQUEST, authHandler);
+		authHandler.register(inNode);
 
-		outRouter.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest(cfg.serverId(), ws));
+		outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
+		outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
 	}
 }

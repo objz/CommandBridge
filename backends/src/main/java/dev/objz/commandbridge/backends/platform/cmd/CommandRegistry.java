@@ -3,14 +3,14 @@ package dev.objz.commandbridge.backends.platform.cmd;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
-import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
+import dev.objz.commandbridge.backends.net.out.InvokedCommandContext;
 import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.cmd.ref.EntityRef;
 import dev.objz.commandbridge.cmd.ref.Location2D;
 import dev.objz.commandbridge.cmd.ref.Location3D;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.net.OutboundRouter;
+import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
@@ -26,11 +26,11 @@ public final class CommandRegistry implements CommandRegistryInterface {
 
 	private final List<String> registeredCommands = new CopyOnWriteArrayList<>();
 	private final ArgumentMapperInterface<Argument<?>> argumentMapper;
-	private final OutboundRouter outRouter;
+	private final OutNode<Object> outNode;
 
-	public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper, OutboundRouter outRouter) {
+	public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper, OutNode<Object> outNode) {
 		this.argumentMapper = mapper;
-		this.outRouter = outRouter;
+		this.outNode = outNode;
 	}
 
 	@Override
@@ -136,9 +136,9 @@ public final class CommandRegistry implements CommandRegistryInterface {
 			}
 
 			// send over 
-			outRouter.send(
+			outNode.send(
 					MessageType.INVOKED_COMMAND,
-					new InvokedCommandEvent.Args(cmdName, typedArgs, senderCtx));
+					new InvokedCommandContext(cmdName, typedArgs, senderCtx));
 
 			// logging
 			if (stub.args() != null && !stub.args().isEmpty()) {

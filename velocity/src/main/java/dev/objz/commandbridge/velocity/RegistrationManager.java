@@ -16,7 +16,7 @@ import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.net.OutboundRouter;
+import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.Script;
@@ -26,7 +26,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
-import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
+import dev.objz.commandbridge.velocity.net.out.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
@@ -34,7 +34,7 @@ public final class RegistrationManager {
 
 	private final SessionHub sessions;
 	private final CommandRegistry registry;
-	private final OutboundRouter outRouter;
+	private final OutNode<Object> outNode;
 	private final Duration registerTimeout;
 
 	private final Map<String, Set<Script>> backendByClient = new ConcurrentHashMap<>();
@@ -43,10 +43,10 @@ public final class RegistrationManager {
 	public RegistrationManager(ProxyServer proxy,
 			SessionHub sessions,
 			VelocityConfig config,
-			OutboundRouter outRouter) {
+			OutNode<Object> outNode) {
 		this.sessions = Objects.requireNonNull(sessions);
 		this.registry = new CommandRegistry(new ArgumentMapper(proxy));
-		this.outRouter = Objects.requireNonNull(outRouter);
+		this.outNode = Objects.requireNonNull(outNode);
 		this.registerTimeout = Duration.ofSeconds(
 				Objects.requireNonNull(config).timeouts().registerTimeout());
 	}
@@ -126,9 +126,9 @@ public final class RegistrationManager {
 			return;
 		}
 
-		outRouter.send(
+		outNode.send(
 				MessageType.REGISTER_COMMANDS,
-				new RegistrationRequest.Args(session, scripts, registerTimeout));
+				new RegistrationRequestContext(session, scripts, registerTimeout));
 	}
 
 	// TODO: reload, but also make sure to reload all scripts and commands on
@@ -138,9 +138,9 @@ public final class RegistrationManager {
 			if (s.status() == AuthStatus.AUTH_FAIL) {
 				var set = backendByClient.get(s.id());
 				if (set != null && !set.isEmpty()) {
-					outRouter.send(
+					outNode.send(
 							MessageType.REGISTER_COMMANDS,
-							new RegistrationRequest.Args(s, set, registerTimeout));
+							new RegistrationRequestContext(s, set, registerTimeout));
 				}
 			}
 		}

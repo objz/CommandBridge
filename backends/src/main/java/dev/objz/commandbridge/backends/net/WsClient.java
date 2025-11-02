@@ -5,8 +5,8 @@ import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.net.InboundRouter;
-import dev.objz.commandbridge.net.OutboundRouter;
+import dev.objz.commandbridge.net.InNode;
+import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.proto.Envelope;
@@ -51,8 +51,8 @@ public final class WsClient implements AutoCloseable {
 	private ByteBufferPool pool;
 	private XnioSsl ssl;
 
-	private final InboundRouter inRouter = new InboundRouter();
-	private final OutboundRouter outRouter = new OutboundRouter();
+	private final InNode inNode = new InNode();
+	private final OutNode<Object> outNode = new OutNode<>();
 	private final ResponseAwaiter awaiter = new ResponseAwaiter();
 	private volatile ClientStatus status = ClientStatus.DISCONNECTED;
 	private volatile WebSocketChannel ch;
@@ -66,19 +66,23 @@ public final class WsClient implements AutoCloseable {
 
 	public void setServerId(String serverId) {
 		this.serverId = serverId;
+		outNode.setServerId(serverId);
 	}
 
-	public InboundRouter inboundRouter() {
-		return inRouter;
+	public InNode inboundRouter() {
+		return inNode;
 	}
 
-	public OutboundRouter outboundRouter() {
-		return outRouter;
+	public OutNode<Object> outboundRouter() {
+		return outNode;
 	}
 
 	public WsClient(BackendsConfig cfg, Path dataDir) {
 		this.cfg = Objects.requireNonNull(cfg);
 		this.dataDir = Objects.requireNonNull(dataDir);
+		
+		// Configure client ID for outbound node
+		outNode.setClientId(cfg.clientId());
 	}
 
 	public synchronized void start() throws Exception {
@@ -138,7 +142,13 @@ public final class WsClient implements AutoCloseable {
 		this.ch = f.get();
 		status = ClientStatus.CONNECTED;
 
-		inRouter.setInboundTap(env -> {
+		// Configure InNode to create SendOperations
+		inNode.setSendOperationFactory((channel, envelope) -> new SendOperation(channel, envelope, awaiter));
+
+		// Configure OutNode to create SendOperations
+		outNode.setSendOperationFactory(envelope -> new SendOperation(ch, envelope, awaiter));
+
+		inNode.setInboundTap(env -> {
 			boolean matched = false;
 			try {
 				matched = awaiter.signal(env);
@@ -164,7 +174,7 @@ public final class WsClient implements AutoCloseable {
 			@Override
 			protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message) {
 				try {
-					inRouter.onText(channel, message.getData());
+					inNode.onText(channel, message.getData());
 				} catch (Throwable t) {
 					Log.error(t, "Inbound message handling failed");
 				}
@@ -191,19 +201,15 @@ public final class WsClient implements AutoCloseable {
 
 		ch.resumeReceives();
 
-		//register outbound channels
-
-		outRouter.register(MessageType.AUTH_REQUEST, new AuthRequest(clientId, auth, this));
-		outRouter.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent(clientId, this));
+		//register outbound handlers
+		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(auth));
+		outNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent());
 
 		if (Boolean.TRUE.equals(cfg.security().requireAuth())) {
 			var timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
-			outRouter.send(
+			outNode.send(
 					MessageType.AUTH_REQUEST,
-					new AuthRequest.Args(
-							ch,
-							timeout,
-							s -> this.status = s));
+					new AuthRequestContext(ch, timeout, s -> this.status = s));
 		} else {
 			Log.warn("Auth disabled by config; continuing unauthenticated");
 		}
@@ -262,8 +268,8 @@ public final class WsClient implements AutoCloseable {
 				ch = null;
 			}
 
-			if (inRouter != null)
-				inRouter.setInboundTap(null);
+			if (inNode != null)
+				inNode.setInboundTap(null);
 		} finally {
 			status = ClientStatus.DISCONNECTED;
 

@@ -3,7 +3,8 @@ package dev.objz.commandbridge.velocity.net.in;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.AuthStatus;
-import dev.objz.commandbridge.net.InboundRouter;
+import dev.objz.commandbridge.net.InboundHandler;
+import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.payloads.util.AuthRequestPayload;
 import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
@@ -17,7 +18,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public final class AuthHandler implements InboundRouter.InboundHandler {
+public final class AuthHandler extends InboundHandler {
 
 	private final AuthService auth;
 	private final SessionHub sessions;
@@ -31,7 +32,7 @@ public final class AuthHandler implements InboundRouter.InboundHandler {
 		this.ws = Objects.requireNonNull(ws);
 	}
 
-	public void register(InboundRouter router) {
+	public void register(InNode router) {
 		router.register(MessageType.AUTH_REQUEST, this);
 	}
 
@@ -51,21 +52,35 @@ public final class AuthHandler implements InboundRouter.InboundHandler {
 			ap = Envelope.MAPPER.treeToValue(env.payload(), AuthRequestPayload.class);
 		} catch (Exception e) {
 			Log.error(e, "Failed to handle AUTH_REQUEST from {}", env.from());
-			reply(ch, env, null, MessageType.AUTH_FAIL);
+			reply(ch, env, MessageType.AUTH_FAIL, null)
+					.dispatch()
+					.exceptionally(ex -> {
+						Log.warn("Failed to send auth response: {}", ex.toString());
+						return null;
+					});
 			ws.close(ch);
 			return;
 		}
 
 		if (ap == null || env.from() == null || ap.clientNonce() == null || ap.hmac() == null) {
-			reply(ch, env, null, MessageType.AUTH_FAIL);
+			reply(ch, env, MessageType.AUTH_FAIL, null)
+					.dispatch()
+					.exceptionally(ex -> {
+						Log.warn("Failed to send auth response: {}", ex.toString());
+						return null;
+					});
 			ws.close(ch);
 			Log.error("Authentication failed (malformed payload) from '{}'", ch.getSourceAddress());
 			return;
 		}
 
 		if (!auth.verify(env.from(), ap.clientNonce(), ap.hmac())) { // HMAC(clientId:clientNonce)
-
-			reply(ch, env, null, MessageType.AUTH_FAIL);
+			reply(ch, env, MessageType.AUTH_FAIL, null)
+					.dispatch()
+					.exceptionally(ex -> {
+						Log.warn("Failed to send auth response: {}", ex.toString());
+						return null;
+					});
 			ws.close(ch);
 			Log.error("Authentication failed for '{}' from '{}'", env.from(), ch.getSourceAddress());
 			return;
@@ -77,7 +92,12 @@ public final class AuthHandler implements InboundRouter.InboundHandler {
 		ClientSession s = sessions.add(ch, env.from());
 		s.status(AuthStatus.AUTH_FAIL);
 
-		reply(ch, env, new AuthResponsePayload(serverNonce, serverMac), MessageType.AUTH_OK);
+		reply(ch, env, MessageType.AUTH_OK, new AuthResponsePayload(serverNonce, serverMac))
+				.dispatch()
+				.exceptionally(ex -> {
+					Log.warn("Failed to send auth response: {}", ex.toString());
+					return null;
+				});
 		s.status(AuthStatus.AUTH_OK);
 		Log.success(true, "Authentication succeeded for '{}' from '{}'", env.from(), ch.getSourceAddress());
 
@@ -88,19 +108,6 @@ public final class AuthHandler implements InboundRouter.InboundHandler {
 			} catch (Exception e) {
 				Log.error("Authentication listener failed: {}", e.toString());
 			}
-		}
-	}
-
-	private void reply(WebSocketChannel ch, Envelope req, Object body, MessageType type) {
-		var payload = Envelope.MAPPER.valueToTree(body);
-		Envelope resp = Envelope.reply(req, type, "proxy-auth", payload);
-		try {
-			ws.send(ch, resp).dispatch().exceptionally(ex -> { 
-				Log.warn("Failed to send auth response: {}", ex.toString());
-				return null;
-			});
-		} catch (Exception e) {
-			Log.warn("Failed to send auth response: {}", e.toString());
 		}
 	}
 }
