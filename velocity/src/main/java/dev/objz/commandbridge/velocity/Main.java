@@ -17,6 +17,7 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
+import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
@@ -41,6 +42,7 @@ public final class Main {
 	private VelocityConfig cfg;
 	private SessionHub sessions;
 	private AuthHandler authHandler;
+	private CBCommand command;
 
 	@Inject
 	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
@@ -55,16 +57,16 @@ public final class Main {
 
 		configManager = new ConfigManager(dataDir);
 		boolean ok = configManager.load(VelocityConfig.class);
-		this.cfg = configManager.current(VelocityConfig.class);
+		cfg = configManager.current(VelocityConfig.class);
 		if (!ok || cfg == null) {
 			Log.error("Failed to load velocity config; aborting enable.");
 			return;
 		}
 		Log.setDebug(cfg.debug());
 
-		this.sessions = new SessionHub();
-		this.inNode = new InNode();
-		this.outNode = new OutNode<>();
+		sessions = new SessionHub();
+		inNode = new InNode();
+		outNode = new OutNode<>();
 		outNode.setServerId(cfg.serverId());
 
 		var tls = TlsResolver.resolveServer(dataDir, cfg.security());
@@ -83,6 +85,14 @@ public final class Main {
 		installRoutes();
 
 		authHandler.onAuthenticated(registrations::onClientAuthenticated);
+
+		command = new CBCommand(
+				configManager,
+				scriptManager,
+				registrations,
+				sessions,
+				ws);
+		command.register();
 
 		Log.debug("Config loaded:");
 		Log.debug("  Host: {}", cfg.bindHost());
@@ -104,7 +114,7 @@ public final class Main {
 	private void installRoutes() {
 		var secret = new SecretLoader(dataDir).loadOrCreate();
 		var auth = new AuthService(secret);
-		this.authHandler = new AuthHandler(auth, sessions, ws);
+		authHandler = new AuthHandler(auth, sessions, ws);
 		authHandler.register(inNode);
 
 		outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
