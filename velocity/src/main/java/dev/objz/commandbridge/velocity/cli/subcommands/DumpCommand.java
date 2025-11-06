@@ -27,7 +27,7 @@ public final class DumpCommand {
 		MM.msg()
 				.header("Dump")
 				.kv("clients", String.valueOf(list.size()))
-				.line(MM.warn("// TODO: detailed registration dump"))
+				.line(MM.warn("// TODO: detailed registration . dump"))
 				.send(sender);
 	}
 }
