@@ -8,7 +8,7 @@ import dev.objz.commandbridge.velocity.util.MM;
 
 import java.util.ArrayList;
 import java.util.List;
-
+//TODO: later
 public final class DumpCommand {
 
 	private final RegistrationManager registrations;
@@ -25,9 +25,10 @@ public final class DumpCommand {
 			list.add(s);
 
 		MM.msg()
+				.space()
 				.header("Dump")
 				.kv("clients", String.valueOf(list.size()))
-				.line(MM.warn("// TODO: detailed registration . dump"))
+				.line(MM.warn("// TODO: detailed registration dump"))
 				.send(sender);
 	}
 }

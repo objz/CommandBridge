@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+//TODO
 public final class PingCommand {
 
 	private final SessionHub sessions;
@@ -32,11 +33,11 @@ public final class PingCommand {
 			list.add(s);
 
 		if (list.isEmpty()) {
-			MM.msg().line(MM.warn("No clients to ping")).send(sender);
+			MM.msg().space().line(MM.warn("[WARN] No clients to ping")).send(sender);
 			return;
 		}
 
-		MM.msg().line(MM.accent("Pinging " + list.size() + " client(s)...")).send(sender);
+		MM.msg().space().line(MM.accent("Pinging " + list.size() + " client(s)...")).send(sender);
 
 		AtomicInteger done = new AtomicInteger(0);
 		ConcurrentHashMap<String, Long> times = new ConcurrentHashMap<>();
@@ -83,7 +84,7 @@ public final class PingCommand {
 	}
 
 	private void pushResults(CommandSource sender, ConcurrentHashMap<String, Long> times, int total) {
-		var m = MM.msg();
+		var m = MM.msg().space().header("Ping Results");
 
 		int ok = 0;
 		for (var e : times.entrySet()) {
@@ -92,9 +93,9 @@ public final class PingCommand {
 			if (ms >= 0) {
 				ok++;
 				String color = (ms < 50) ? "<green>" : (ms < 150) ? "<yellow>" : "<red>";
-				m.item(color + "✓</> <white>" + id + "</white> (" + ms + "ms)");
+				m.item(color + "[OK]</> <white>" + id + "</white> (" + ms + "ms)");
 			} else {
-				m.item("<red>✗</red> <white>" + id + "</white> (timeout)");
+				m.item("<red>[TIMEOUT]</red> <white>" + id + "</white>");
 			}
 		}
 
@@ -107,10 +108,11 @@ public final class PingCommand {
 	}
 
 	private String progress(double pct) {
-		int filled = (int) Math.round(pct / 10.0);
+		int filled = (int) Math.round(pct / 10.0); // 10 slots
 		StringBuilder sb = new StringBuilder("<gray>[</gray>");
-		for (int i = 0; i < 10; i++)
-			sb.append(i < filled ? "<green>■</green>" : "<gray>□</gray>");
+		for (int i = 0; i < 10; i++) {
+			sb.append(i < filled ? "<green>#</green>" : "<gray>-</gray>");
+		}
 		sb.append("<gray>]</gray>");
 		return sb.toString();
 	}
