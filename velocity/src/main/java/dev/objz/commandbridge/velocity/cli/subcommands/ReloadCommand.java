@@ -8,6 +8,7 @@ import dev.objz.commandbridge.velocity.RegistrationManager;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.util.MM;
 
+//TODO
 public final class ReloadCommand {
 
 	private final ConfigManager configManager;
@@ -24,6 +25,13 @@ public final class ReloadCommand {
 	public void execute(CommandSource sender) {
 		long start = System.currentTimeMillis();
 
+		//reload config velocity
+		//set new debug mode based on config
+		//reload scripts velocity
+		//send reload package to backends to reload their config, and will wait for a reply and count if all succseeded
+		//send new package to backends with the new command stubs, will reply with cmd registration feedback
+		//
+
 		try {
 			boolean configOk = configManager.reload(VelocityConfig.class);
 			VelocityConfig cfg = configManager.current(VelocityConfig.class);
@@ -35,26 +43,28 @@ public final class ReloadCommand {
 			long elapsed = System.currentTimeMillis() - start;
 
 			MM.msg()
-					.line(MM.ok("Reload complete"))
-					.line(MM.sep().append(MM.kv("time", elapsed + "ms"))
+					.space()
+					.line(MM.ok("[OK] Reload complete"))
+					.line(MM.sep()
+							.append(MM.kv("time", elapsed + "ms"))
 							.append(MM.sep())
 							.append(MM.kv("enabled",
 									String.valueOf(scriptManager.enabled().size())))
 							.append(MM.sep())
-							.append(MM.kv("disabled", String.valueOf(scriptManager.all()
+							.append(MM.kv("disabled", String.valueOf(scriptManager.loaded()
 									.size() - scriptManager.enabled().size())))
 							.append(MM.sep())
 							.append(MM.kv("errors",
-									String.valueOf(scriptManager.totalErrors()))))
+									String.valueOf(scriptManager.errors()))))
 					.send(sender);
 
 			if (!configOk) {
-				MM.msg().line(MM.warn("Config reloaded with warnings")).send(sender);
+				MM.msg().space().line(MM.warn("[WARN] Config reloaded with warnings")).send(sender);
 			}
 
 		} catch (Exception e) {
 			Log.error(e, "Reload failed");
-			MM.msg().line(MM.error("Reload failed: " + e.getMessage())).send(sender);
+			MM.msg().space().line(MM.error("[ERROR] Reload failed: " + e.getMessage())).send(sender);
 		}
 	}
 }

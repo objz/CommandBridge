@@ -9,18 +9,12 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * MiniMessage helper + small builder.
- *
- * Simplified API:
- * - MM.cmd(command) -> clickable command (hover: "run <command>", click:
- * suggest command)
- * - MessageBuilder.cmdLine(command, description) -> renders: [command] |
- * [description]
- *
- * No backwards-compatibility helpers included.
- */
 public final class MM {
+
+	private static final String C_PRIMARY = "#7AA2FF";
+	private static final String C_ACCENT = "#80E9FF";
+	private static final String C_MUTED = "#94A3B8";
+	private static final String C_SEP = "#3B4453";
 
 	private static final MiniMessage MINI = MiniMessage.miniMessage();
 
@@ -28,25 +22,23 @@ public final class MM {
 	}
 
 	public static Component parse(String mm) {
-		return MINI.deserialize(mm);
+		return MINI.deserialize(mm == null ? "" : mm);
 	}
 
 	private static String safe(String s) {
 		return s == null ? "" : s;
 	}
 
-	// ---------- styles ----------
-	public static Component header(String text) {
-		// Subtle gradient for header
-		return parse("<gradient:#9AA7FF:#55CCFF><bold>" + safe(text) + "</bold></gradient>");
+	public static Component title(String text) {
+		return parse("<gradient:" + C_ACCENT + ":" + C_PRIMARY + "><bold>" + safe(text) + "</bold></gradient>");
 	}
 
-	public static Component accent(String text) {
-		return parse("<#55CCFF>" + safe(text) + "</#55CCFF>");
+	public static Component header(String text) {
+		return parse("<" + C_PRIMARY + "><bold>" + safe(text) + "</bold></" + C_PRIMARY + ">");
 	}
 
 	public static Component desc(String text) {
-		return parse("<#6FC0FF>" + safe(text) + "</#6FC0FF>");
+		return parse("<" + C_MUTED + ">" + safe(text) + "</" + C_MUTED + ">");
 	}
 
 	public static Component ok(String text) {
@@ -62,35 +54,35 @@ public final class MM {
 	}
 
 	public static Component muted(String text) {
-		return parse("<gray>" + safe(text) + "</gray>");
+		return parse("<" + C_MUTED + ">" + safe(text) + "</" + C_MUTED + ">");
+	}
+
+	public static Component accent(String text) {
+		return parse("<" + C_ACCENT + ">" + safe(text) + "</" + C_ACCENT + ">");
 	}
 
 	public static Component sep() {
-		return parse("<gray> | </gray>");
+		return parse("<" + C_SEP + "> | </" + C_SEP + ">");
 	}
 
-	public static Component bullet(String content) {
-		return parse("<gray>• </gray>" + content);
+	public static Component bullet(String mmContent) {
+		return parse("<gradient:" + C_ACCENT + ":" + C_PRIMARY + ">• </gradient>" + safe(mmContent));
 	}
 
 	public static Component kv(String key, String value) {
-		return parse("<gray>" + safe(key) + "</gray><gray>:</gray> <white>" + safe(value) + "</white>");
+		return parse("<" + C_MUTED + ">" + safe(key) + "</" + C_MUTED + "><" + C_SEP + ">:</" + C_SEP
+				+ "> <white>" + safe(value) + "</white>");
 	}
 
-	/**
-	 * Create a clickable command label.
-	 * - click: suggest the provided command (so the user can edit before sending)
-	 * - hover: shows "run <command>"
-	 * - label uses a small gradient to look nicer
-	 */
 	public static Component cmd(String command) {
-		Component base = parse("<gradient:#FFFFFF:#6FC0FF><bold>" + safe(command) + "</bold></gradient>");
+		String label = "<gradient:" + C_ACCENT + ":" + C_PRIMARY + "><bold>" + safe(command)
+				+ "</bold></gradient>";
+		Component base = parse(label);
 		String hover = "run " + safe(command);
-		return base.hoverEvent(HoverEvent.showText(parse("<gray>" + hover + "</gray>")))
+		return base.hoverEvent(HoverEvent.showText(parse("<" + C_MUTED + ">" + hover + "</" + C_MUTED + ">")))
 				.clickEvent(ClickEvent.suggestCommand(safe(command)));
 	}
 
-	// ---------- builder ----------
 	public static MessageBuilder msg() {
 		return new MessageBuilder();
 	}
@@ -98,9 +90,13 @@ public final class MM {
 	public static final class MessageBuilder {
 		private final List<Component> lines = new ArrayList<>();
 
+		public MessageBuilder superTitle(String text) {
+			lines.add(MM.title(text));
+			return this;
+		}
+
 		public MessageBuilder header(String text) {
 			lines.add(MM.header(text));
-			// subtle separator (not an extra blank line)
 			lines.add(MM.sep());
 			return this;
 		}
@@ -120,13 +116,6 @@ public final class MM {
 			return this;
 		}
 
-		/**
-		 * Simple cmdLine:
-		 * - command: clickable command (MM.cmd(command))
-		 * - description: textual description displayed after a separator
-		 *
-		 * Renders: [command clickable] [ | ] [description]
-		 */
 		public MessageBuilder cmdLine(String command, String description) {
 			lines.add(MM.cmd(command).append(MM.sep()).append(MM.desc(description)));
 			return this;
@@ -142,10 +131,6 @@ public final class MM {
 			return this;
 		}
 
-		/**
-		 * Send the accumulated components to the target.
-		 * No extra blank lines are injected automatically.
-		 */
 		public void send(CommandSource to) {
 			for (Component c : lines)
 				to.sendMessage(c);

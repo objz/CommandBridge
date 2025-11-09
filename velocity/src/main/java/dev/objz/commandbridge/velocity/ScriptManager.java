@@ -18,18 +18,19 @@ import java.util.stream.Stream;
 public final class ScriptManager {
 	private final Path scriptsDir;
 
-	private final List<Script> all = new ArrayList<>();
+	private final List<Script> loaded = new ArrayList<>();
 	private final List<Script> enabled = new ArrayList<>();
-	private long totalErrors;
+	private final List<Script> disabled = new ArrayList<>();
+	private long errors;
 
 	public ScriptManager(Path dataDir) {
 		this.scriptsDir = dataDir.resolve("scripts");
 	}
 
 	public void loadAll() {
-		all.clear();
+		loaded.clear();
 		enabled.clear();
-		totalErrors = 0;
+		errors = 0;
 
 		try {
 			Files.createDirectories(scriptsDir);
@@ -38,8 +39,6 @@ public final class ScriptManager {
 			return;
 		}
 
-		int loaded = 0, failed = 0;
-
 		try (Stream<Path> files = Files.list(scriptsDir)) {
 			for (Path p : (Iterable<Path>) files::iterator) {
 				if (!isYaml(p))
@@ -47,21 +46,19 @@ public final class ScriptManager {
 
 				try (var in = new FileInputStream(p.toFile())) {
 					LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in);
+					loaded.add(res.value);
 					if (res.ok() && res.value != null) {
-						all.add(res.value);
 						if (res.value.enabled())
 							enabled.add(res.value);
-						loaded++;
+						else
+							disabled.add(res.value);
 					} else {
-						failed++;
-						int cnt = res.problems.count();
-						totalErrors += cnt;
 						String header = "Script '" + p.getFileName() + "' invalid:";
 						Log.error(res.problems.toBulletedList(header));
+						disabled.add(res.value);
+						errors = res.problems.count();
 					}
 				} catch (Exception e) {
-					failed++;
-					totalErrors++;
 					String header = "Script '" + p.getFileName() + "' invalid:";
 					Log.error(header + System.lineSeparator() +
 							"  - script: unexpected error: " + e.getMessage());
@@ -72,29 +69,29 @@ public final class ScriptManager {
 			return;
 		}
 
-		if (loaded + failed == 0) {
-			return;
+		if (Log.isDebug() && !loaded.isEmpty()) {
+			Log.debug("\n" + DebugPrinter.printGrid(loaded));
 		}
 
-		if (Log.isDebug() && !all.isEmpty()) {
-			Log.debug("\n" + DebugPrinter.printGrid(all));
-		}
-
-		long disabled = (loaded - enabled.size()) + failed;
-
-		Summary.scriptsSummary(loaded, enabled.size(), disabled, totalErrors);
+		Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
 	}
 
-	public List<Script> all() {
-		return List.copyOf(all);
+	//TODO: implemen reload() function 
+
+	public List<Script> loaded() {
+		return loaded;
+	}
+
+	public List<Script> disabled() {
+		return disabled;
 	}
 
 	public List<Script> enabled() {
-		return List.copyOf(enabled);
+		return enabled;
 	}
 
-	public long totalErrors() {
-		return totalErrors;
+	public long errors() {
+		return errors;
 	}
 
 	private static boolean isYaml(Path p) {

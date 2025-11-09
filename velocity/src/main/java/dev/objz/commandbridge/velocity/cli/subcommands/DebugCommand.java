@@ -8,6 +8,10 @@ public final class DebugCommand {
 	public void execute(CommandSource sender) {
 		boolean newState = !Log.isDebug();
 		Log.setDebug(newState);
-		MM.msg().line(newState ? MM.ok("Debug ENABLED") : MM.warn("Debug DISABLED")).send(sender);
+		MM.msg()
+				.space()
+				.line(MM.desc("Debug is now ")
+						.append(newState ? MM.ok("ENABLED") : MM.warn("DISABLED")))
+				.send(sender);
 	}
 }

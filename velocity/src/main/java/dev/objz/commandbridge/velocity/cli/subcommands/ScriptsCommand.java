@@ -1,12 +1,9 @@
 package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
-
-import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.ScriptManager;
+import dev.objz.commandbridge.velocity.util.BarBuilder;
 import dev.objz.commandbridge.velocity.util.MM;
-
-import java.util.List;
 
 public final class ScriptsCommand {
 	private final ScriptManager scripts;
@@ -16,40 +13,38 @@ public final class ScriptsCommand {
 	}
 
 	public void execute(CommandSource sender) {
-		List<Script> all = scripts.all();
-		List<Script> enabled = scripts.enabled();
-		long errors = scripts.totalErrors();
+		int enabled = scripts.enabled().size();
+		int disabled = scripts.disabled().size();
+		int loaded = scripts.loaded().size();
+		int errors = (int) scripts.errors();
 
-		if (all.isEmpty()) {
-			MM.msg().line(MM.warn("No scripts loaded")).send(sender);
+		if (loaded == 0) {
+			MM.msg().space().line(MM.warn("No scripts loaded")).send(sender);
 			return;
 		}
 
-		var m = MM.msg()
+		double green = enabled / (double) loaded;
+		double yellow = (disabled - errors) / (double) loaded;
+		double red = Math.min(errors, loaded) / (double) loaded;
+
+		String bar = BarBuilder.create(110)
+				.add("green", green)
+				.add("yellow", yellow)
+				.add("red", red)
+				.build();
+
+		MM.msg()
+				.space()
 				.header("Scripts")
-				.kv("enabled", String.valueOf(enabled.size()))
-				.kv("disabled", String.valueOf(all.size() - enabled.size()))
-				.kv("errors", String.valueOf(errors));
-
-		if (!enabled.isEmpty()) {
-			m.header("Enabled");
-			for (var s : enabled) {
-				String desc = s.description() != null ? s.description() : "no description";
-				m.item("<green>" + s.name() + "</green> v" + s.version())
-						.line(MM.sep().append(MM.desc(desc))); // stay on separate line? If you
-											// prefer same line, replace
-											// with m.item( ... + " " + )
-			}
-		}
-
-		var disabled = all.stream().filter(s -> !s.enabled()).toList();
-		if (!disabled.isEmpty()) {
-			m.header("Disabled");
-			for (var s : disabled) {
-				m.item("<gray>" + s.name() + "</gray> v" + s.version());
-			}
-		}
-
-		m.send(sender);
+				.line(MM.parse(bar))
+				.line(MM.kv("loaded", String.valueOf(loaded))
+						.append(MM.sep())
+						.append(MM.kv("enabled", "<green>" + enabled + "</green>"))
+						.append(MM.sep())
+						.append(MM.kv("disabled", "<yellow>" + disabled + "</yellow>"))
+						.append(MM.sep())
+						.append(MM.kv("errors", "<red>" + errors + "</red>")))
+				.send(sender);
 	}
+
 }
