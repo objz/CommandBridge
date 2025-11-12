@@ -1,16 +1,16 @@
 package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
+import dev.objz.commandbridge.net.OutNode;
+import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthStatus;
+import dev.objz.commandbridge.velocity.net.out.ctx.PingRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.BarBuilder;
 import dev.objz.commandbridge.velocity.util.MM;
-import io.undertow.websockets.core.WebSocketCallback;
-import io.undertow.websockets.core.WebSocketChannel;
-import io.undertow.websockets.core.WebSockets;
 
-import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,9 +19,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class PingCommand {
 
 	private final SessionHub sessions;
+	private final OutNode<Object> outNode;
 
-	public PingCommand(SessionHub sessions) {
+	public PingCommand(SessionHub sessions, OutNode<Object> outNode) {
 		this.sessions = sessions;
+		this.outNode = outNode;
 	}
 
 	public void execute(CommandSource sender, String clientId) {
@@ -48,28 +50,17 @@ public final class PingCommand {
 
 		for (ClientSession session : activeClients) {
 			String id = session.id();
-			long startTime = System.nanoTime();
 
 			try {
-				WebSockets.sendPing(ByteBuffer.allocate(0), session.ch(), new WebSocketCallback<>() {
-					@Override
-					public void complete(WebSocketChannel channel, Void context) {
-						long latency = (System.nanoTime() - startTime) / 1_000_000;
-						results.put(id, latency);
-						if (completed.incrementAndGet() == total) {
-							displayResults(sender, results, total);
-						}
-					}
-
-					@Override
-					public void onError(WebSocketChannel channel, Void context,
-							Throwable throwable) {
-						results.put(id, -1L);
-						if (completed.incrementAndGet() == total) {
-							displayResults(sender, results, total);
-						}
-					}
-				});
+				outNode.send(
+						MessageType.PING,
+						new PingRequestContext(session, Duration.ofSeconds(5),
+								(success, latency) -> {
+									results.put(id, success ? latency : -1L);
+									if (completed.incrementAndGet() == total) {
+										displayResults(sender, results, total);
+									}
+								}));
 			} catch (Exception ex) {
 				results.put(id, -1L);
 				if (completed.incrementAndGet() == total) {
@@ -98,33 +89,31 @@ public final class PingCommand {
 		}
 
 		String ipAddress = session.ch().getSourceAddress().toString();
-		long startTime = System.nanoTime();
 
 		try {
-			WebSockets.sendPing(ByteBuffer.allocate(0), session.ch(), new WebSocketCallback<>() {
-				@Override
-				public void complete(WebSocketChannel channel, Void context) {
-					long latency = (System.nanoTime() - startTime) / 1_000_000;
-					String badge = getLatencyBadge(latency);
+			outNode.send(
+					MessageType.PING,
+					new PingRequestContext(session, Duration.ofSeconds(5), (success, latency) -> {
+						if (success && latency >= 0) {
+							String badge = getLatencyBadge(latency);
 
-					MM.msg()
-							.space()
-							.header("Ping Result")
-							.item(badge + " <white>" + clientId + "</white> "
-									+ formatLatency(latency))
-							.line(MM.muted("  Address: " + ipAddress))
-							.send(sender);
-				}
-
-				@Override
-				public void onError(WebSocketChannel channel, Void context, Throwable throwable) {
-					MM.msg()
-							.space()
-							.line(MM.error("Failed to ping '" + clientId + "'"))
-							.line(MM.muted("  " + throwable.getMessage()))
-							.send(sender);
-				}
-			});
+							MM.msg()
+									.space()
+									.header("Ping Result")
+									.item(badge + " <white>" + clientId
+											+ "</white> "
+											+ formatLatency(latency))
+									.line(MM.muted("  Address: " + ipAddress))
+									.send(sender);
+						} else {
+							MM.msg()
+									.space()
+									.line(MM.error("Failed to ping '" + clientId
+											+ "'"))
+									.line(MM.muted("  Timeout or connection error"))
+									.send(sender);
+						}
+					}));
 		} catch (Exception ex) {
 			MM.msg()
 					.space()
@@ -205,7 +194,7 @@ public final class PingCommand {
 				msg.item(getLatencyBadge(entry.latency) + " <white>" + entry.id + "</white> "
 						+ formatLatency(entry.latency));
 			} else {
-				msg.item("<red>[NO REPLY]</red> <white>" + entry.id + "</white>");
+				msg.item("<red>[FAILED]</red> <white>" + entry.id + "</white>");
 			}
 		}
 

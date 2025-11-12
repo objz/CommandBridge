@@ -11,11 +11,9 @@ import java.util.List;
 //TODO: later
 public final class DumpCommand {
 
-	private final RegistrationManager registrations;
 	private final SessionHub sessions;
 
 	public DumpCommand(RegistrationManager registrations, SessionHub sessions) {
-		this.registrations = registrations;
 		this.sessions = sessions;
 	}
 

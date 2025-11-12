@@ -10,6 +10,7 @@ import com.velocitypowered.api.command.CommandSource;
 
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.velocity.RegistrationManager;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.cli.subcommands.*;
@@ -25,17 +26,20 @@ public final class CBCommand {
 	private final ScriptManager scriptManager;
 	private final RegistrationManager registrationManager;
 	private final SessionHub sessionHub;
+	private final OutNode<Object> outNode;
 
 	public CBCommand(
 			ConfigManager configManager,
 			ScriptManager scriptManager,
 			RegistrationManager registrationManager,
-			SessionHub sessionHub) {
+			SessionHub sessionHub,
+			OutNode<Object> outNode) {
 
 		this.configManager = configManager;
 		this.scriptManager = scriptManager;
 		this.registrationManager = registrationManager;
 		this.sessionHub = sessionHub;
+		this.outNode = outNode;
 	}
 
 	public void register() {
@@ -54,7 +58,7 @@ public final class CBCommand {
 		var scripts = new ScriptsCommand(scriptManager);
 		var reload = new ReloadCommand(configManager, scriptManager, registrationManager);
 		var list = new ListCommand(sessionHub);
-		var ping = new PingCommand(sessionHub);
+		var ping = new PingCommand(sessionHub, outNode);
 		var debug = new DebugCommand();
 		var dump = new DumpCommand(registrationManager, sessionHub);
 
@@ -64,7 +68,7 @@ public final class CBCommand {
 
 				// /cb -> help
 				.executes((ResultingCommandExecutor) (sender, args) -> {
-					CommandSource src = sender; 
+					CommandSource src = sender;
 					help.execute(src);
 					return 1;
 				})

@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.backends.net;
 
+import dev.objz.commandbridge.backends.net.in.PingHandler;
 import dev.objz.commandbridge.backends.net.out.AuthRequest;
 import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
 import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
@@ -200,6 +201,8 @@ public final class WsClient implements AutoCloseable {
 
 		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(auth));
 		outNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent());
+
+		inNode.register(MessageType.PING, new PingHandler());
 
 		if (Boolean.TRUE.equals(cfg.security().requireAuth())) {
 			var timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());

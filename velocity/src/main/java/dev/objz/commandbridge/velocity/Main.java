@@ -20,6 +20,7 @@ import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
+import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
@@ -90,7 +91,8 @@ public final class Main {
 				configManager,
 				scriptManager,
 				registrations,
-				sessions);
+				sessions,
+				outNode);
 		command.register();
 
 		Log.debug("Config loaded:");
@@ -118,5 +120,6 @@ public final class Main {
 
 		outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
 		outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
+		outNode.register(MessageType.PING, new PingRequest());
 	}
 }
