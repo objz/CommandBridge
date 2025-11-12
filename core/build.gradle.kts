@@ -14,9 +14,9 @@ repositories {
 }
 
 dependencies {
-    api("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-    api("com.fasterxml.jackson.core:jackson-annotations:2.17.2")
-    api("com.fasterxml.jackson.core:jackson-core:2.17.2")
+    api("com.fasterxml.jackson.core:jackson-databind:2.20")
+    api("com.fasterxml.jackson.core:jackson-annotations:2.20")
+    api("com.fasterxml.jackson.core:jackson-core:2.20")
 
     // used for <?> and Optional
     api("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2")
