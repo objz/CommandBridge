@@ -9,6 +9,7 @@ import dev.jorel.commandapi.executors.ResultingCommandExecutor;
 import com.velocitypowered.api.command.CommandSource;
 
 import dev.objz.commandbridge.config.ConfigManager;
+import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.velocity.RegistrationManager;
@@ -27,19 +28,22 @@ public final class CBCommand {
 	private final RegistrationManager registrationManager;
 	private final SessionHub sessionHub;
 	private final OutNode<Object> outNode;
+	private final VelocityConfig config;
 
 	public CBCommand(
 			ConfigManager configManager,
 			ScriptManager scriptManager,
 			RegistrationManager registrationManager,
 			SessionHub sessionHub,
-			OutNode<Object> outNode) {
+			OutNode<Object> outNode,
+			VelocityConfig config) {
 
 		this.configManager = configManager;
 		this.scriptManager = scriptManager;
 		this.registrationManager = registrationManager;
 		this.sessionHub = sessionHub;
 		this.outNode = outNode;
+		this.config = config;
 	}
 
 	public void register() {
@@ -56,9 +60,9 @@ public final class CBCommand {
 
 		var help = new HelpCommand();
 		var scripts = new ScriptsCommand(scriptManager);
-		var reload = new ReloadCommand(configManager, scriptManager, registrationManager);
+		var reload = new ReloadCommand(configManager, scriptManager, registrationManager, sessionHub, outNode);
 		var list = new ListCommand(sessionHub);
-		var ping = new PingCommand(sessionHub, outNode);
+		var ping = new PingCommand(sessionHub, outNode, config);
 		var debug = new DebugCommand();
 		var dump = new DumpCommand(registrationManager, sessionHub);
 

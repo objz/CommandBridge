@@ -60,7 +60,6 @@ public final class Main {
 		boolean ok = configManager.load(VelocityConfig.class);
 		cfg = configManager.current(VelocityConfig.class);
 		if (!ok || cfg == null) {
-			Log.error("Failed to load velocity config; aborting enable.");
 			return;
 		}
 		Log.setDebug(cfg.debug());
@@ -92,7 +91,8 @@ public final class Main {
 				scriptManager,
 				registrations,
 				sessions,
-				outNode);
+				outNode,
+				cfg);
 		command.register();
 
 		Log.debug("Config loaded:");
@@ -105,7 +105,7 @@ public final class Main {
 	public void onProxyShutdown(ProxyShutdownEvent e) {
 		Log.info("Stopping CommandBridge");
 		if (registrations != null) {
-			registrations.shutdown();
+			registrations.clearState();
 		}
 		if (ws != null) {
 			ws.stop();

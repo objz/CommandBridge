@@ -39,6 +39,9 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
 
 		if (stubs.isEmpty()) {
 			Log.warn("No valid command stubs for '{}'", clientId);
+			if (ctx.resultCallback != null) {
+				ctx.resultCallback.accept(false);
+			}
 			throw new IllegalStateException("no stubs");
 		}
 
@@ -60,9 +63,20 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
 					Summary.feedbackSummary("Feedback", feedback, clientId);
 					Summary.feedbackDetails(feedback, clientId, false);
 
+					if (ctx.resultCallback != null) {
+						ctx.resultCallback.accept(feedback.succeeded() > 0);
+					}
+
 				} catch (Exception e) {
 					Log.error(e, "Failed to process registration feedback from '{}'",
 							clientId);
+					if (ctx.resultCallback != null) {
+						ctx.resultCallback.accept(false);
+					}
+				}
+			} else {
+				if (ctx.resultCallback != null) {
+					ctx.resultCallback.accept(false);
 				}
 			}
 			return env;
@@ -73,6 +87,9 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
 						ctx.timeout.toString());
 			} else {
 				Log.error(cause, "Failed to receive feedback from '{}'", clientId);
+			}
+			if (ctx.resultCallback != null) {
+				ctx.resultCallback.accept(false);
 			}
 			return null;
 		});

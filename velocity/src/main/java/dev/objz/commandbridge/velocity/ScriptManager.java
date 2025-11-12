@@ -76,8 +76,6 @@ public final class ScriptManager {
 		Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
 	}
 
-	//TODO: implemen reload() function 
-
 	public List<Script> loaded() {
 		return loaded;
 	}

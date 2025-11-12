@@ -118,6 +118,10 @@ public final class RegistrationManager {
 		}
 	}
 
+	public Set<Script> getScriptsForClient(String clientId) {
+		return backendByClient.get(clientId);
+	}
+
 	public void onClientAuthenticated(ClientSession session) {
 		var clientId = session.id();
 		var scripts = backendByClient.get(clientId);
@@ -131,11 +135,9 @@ public final class RegistrationManager {
 				new RegistrationRequestContext(session, scripts, registerTimeout));
 	}
 
-	// TODO: reload, but also make sure to reload all scripts and commands on
-	// velocity
 	public void reload() {
 		for (var s : sessions) {
-			if (s.status() == AuthStatus.AUTH_FAIL) {
+			if (s.status() == AuthStatus.AUTH_OK && s.ch() != null && s.ch().isOpen()) {
 				var set = backendByClient.get(s.id());
 				if (set != null && !set.isEmpty()) {
 					outNode.send(
@@ -146,16 +148,7 @@ public final class RegistrationManager {
 		}
 	}
 
-	public void shutdown() {
-		try {
-			registry.unregisterAll();
-		} catch (Exception e) {
-			Log.error(e, "Unregistering Velocity commands failed during shutdown");
-		}
-		clearState();
-	}
-
-	private void clearState() {
+	public void clearState() {
 		backendByClient.clear();
 		velocityScripts.clear();
 	}

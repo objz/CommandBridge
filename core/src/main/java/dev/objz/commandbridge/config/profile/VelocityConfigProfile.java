@@ -4,7 +4,6 @@ import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
 
-
 public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig> {
 	@Override
 	public VelocityConfig defaults() {
@@ -66,11 +65,17 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 		VelocityConfig.Timeouts to = in.timeouts();
 		int registerTimeout = to.registerTimeout();
 		if (registerTimeout <= 0) {
-			Log.error("'timeouts.register-timout' must be > 0");
+			Log.error("'timeouts.register-timeout' must be > 0");
 			registerTimeout = d.timeouts().registerTimeout();
 			ok = false;
 		}
-		to = new VelocityConfig.Timeouts(registerTimeout);
+		int pingTimeout = to.pingTimeout();
+		if (pingTimeout <= 0) {
+			Log.error("'timeouts.ping-timeout' must be > 0");
+			pingTimeout = d.timeouts().pingTimeout();
+			ok = false;
+		}
+		to = new VelocityConfig.Timeouts(registerTimeout, pingTimeout);
 
 		// limits
 		VelocityConfig.Limits limits = in.limits();

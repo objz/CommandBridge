@@ -32,7 +32,8 @@ public record VelocityConfig(
 
 	@ConfigSerializable
 	public static record Timeouts(
-			@Setting("register-timout") int registerTimeout) {
+			@Setting("register-timeout") int registerTimeout,
+			@Setting("ping-timeout") int pingTimeout) {
 	}
 
 	@ConfigSerializable
@@ -49,7 +50,7 @@ public record VelocityConfig(
 				"proxy-1",
 				new Heartbeat(10, 60),
 				new Security(true, 10, TlsMode.TOFU, "", "", "PKCS12"),
-				new Timeouts(5),
+				new Timeouts(5, 5),
 				new Limits(60, 100, 65_536),
 				false);
 	}

@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
+import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthStatus;
@@ -20,10 +21,12 @@ public final class PingCommand {
 
 	private final SessionHub sessions;
 	private final OutNode<Object> outNode;
+	private final Duration pingTimeout;
 
-	public PingCommand(SessionHub sessions, OutNode<Object> outNode) {
+	public PingCommand(SessionHub sessions, OutNode<Object> outNode, VelocityConfig config) {
 		this.sessions = sessions;
 		this.outNode = outNode;
+		this.pingTimeout = Duration.ofSeconds(config.timeouts().pingTimeout());
 	}
 
 	public void execute(CommandSource sender, String clientId) {
@@ -45,24 +48,29 @@ public final class PingCommand {
 		MM.msg().space().line(MM.accent("Pinging " + activeClients.size() + " client(s)...")).send(sender);
 
 		AtomicInteger completed = new AtomicInteger(0);
-		ConcurrentHashMap<String, Long> results = new ConcurrentHashMap<>();
+		ConcurrentHashMap<String, PingResult> results = new ConcurrentHashMap<>();
 		int total = activeClients.size();
 
 		for (ClientSession session : activeClients) {
 			String id = session.id();
+			String address = session.ch() != null && session.ch().getSourceAddress() != null
+					? session.ch().getSourceAddress().toString()
+					: "unknown";
 
 			try {
 				outNode.send(
 						MessageType.PING,
-						new PingRequestContext(session, Duration.ofSeconds(5),
+						new PingRequestContext(session, pingTimeout,
 								(success, latency) -> {
-									results.put(id, success ? latency : -1L);
+									results.put(id, new PingResult(
+											success ? latency : -1L,
+											address));
 									if (completed.incrementAndGet() == total) {
 										displayResults(sender, results, total);
 									}
 								}));
 			} catch (Exception ex) {
-				results.put(id, -1L);
+				results.put(id, new PingResult(-1L, address));
 				if (completed.incrementAndGet() == total) {
 					displayResults(sender, results, total);
 				}
@@ -93,7 +101,7 @@ public final class PingCommand {
 		try {
 			outNode.send(
 					MessageType.PING,
-					new PingRequestContext(session, Duration.ofSeconds(5), (success, latency) -> {
+					new PingRequestContext(session, pingTimeout, (success, latency) -> {
 						if (success && latency >= 0) {
 							String badge = getLatencyBadge(latency);
 
@@ -101,9 +109,9 @@ public final class PingCommand {
 									.space()
 									.header("Ping Result")
 									.item(badge + " <white>" + clientId
-											+ "</white> "
+											+ "</white> <gray>" + ipAddress
+											+ "</gray> "
 											+ formatLatency(latency))
-									.line(MM.muted("  Address: " + ipAddress))
 									.send(sender);
 						} else {
 							MM.msg()
@@ -142,7 +150,7 @@ public final class PingCommand {
 		return null;
 	}
 
-	private void displayResults(CommandSource sender, ConcurrentHashMap<String, Long> results, int total) {
+	private void displayResults(CommandSource sender, ConcurrentHashMap<String, PingResult> results, int total) {
 		int successful = 0;
 		int highLatency = 0;
 		int failed = 0;
@@ -153,8 +161,9 @@ public final class PingCommand {
 		List<PingEntry> entries = new ArrayList<>();
 
 		for (var entry : results.entrySet()) {
-			long latency = entry.getValue();
-			entries.add(new PingEntry(entry.getKey(), latency));
+			PingResult result = entry.getValue();
+			long latency = result.latency;
+			entries.add(new PingEntry(entry.getKey(), latency, result.address));
 
 			if (latency >= 0) {
 				successful++;
@@ -191,10 +200,11 @@ public final class PingCommand {
 
 		for (PingEntry entry : entries) {
 			if (entry.latency >= 0) {
-				msg.item(getLatencyBadge(entry.latency) + " <white>" + entry.id + "</white> "
-						+ formatLatency(entry.latency));
+				msg.item(getLatencyBadge(entry.latency) + " <white>" + entry.id + "</white> <gray>"
+						+ entry.address + "</gray> " + formatLatency(entry.latency));
 			} else {
-				msg.item("<red>[FAILED]</red> <white>" + entry.id + "</white>");
+				msg.item("<red>[FAILED]</red> <white>" + entry.id + "</white> <gray>"
+						+ entry.address + "</gray>");
 			}
 		}
 
@@ -232,10 +242,22 @@ public final class PingCommand {
 	private static class PingEntry {
 		final String id;
 		final long latency;
+		final String address;
 
-		PingEntry(String id, long latency) {
+		PingEntry(String id, long latency, String address) {
 			this.id = id;
 			this.latency = latency;
+			this.address = address;
+		}
+	}
+
+	private static class PingResult {
+		final long latency;
+		final String address;
+
+		PingResult(long latency, String address) {
+			this.latency = latency;
+			this.address = address;
 		}
 	}
 }

@@ -45,6 +45,13 @@ public final class RegistrationHandler extends InboundHandler {
 			return;
 		}
 
+		try {
+			registry.unregisterAll();
+			Log.info("Unregistered all previous commands before reload");
+		} catch (Exception e) {
+			Log.warn("Failed to unregister previous commands: {}", e.getMessage());
+		}
+
 		FeedbackCollector fc = new FeedbackCollector();
 		for (CommandStub s : rc.commands()) {
 			try {
@@ -59,7 +66,7 @@ public final class RegistrationHandler extends InboundHandler {
 		Feedback f = fc.build();
 		Summary.feedbackSummary("Registration", f, env.from());
 		Summary.feedbackDetails(f, env.from(), true);
-		
+
 		reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f)
 				.dispatch()
 				.exceptionally(ex -> {
