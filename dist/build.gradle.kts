@@ -19,12 +19,12 @@ dependencies {
     implementation(project(":backends:bukkit"))
     implementation(project(":backends:paper"))
     implementation(project(":backends:folia"))
-    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.82")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.82")
     implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.2")
-    implementation("org.snakeyaml:snakeyaml-engine:2.7")
+    implementation("org.snakeyaml:snakeyaml-engine:2.10")
     implementation("com.google.code.gson:gson:2.13.1")
 }
 
