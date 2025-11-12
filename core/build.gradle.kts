@@ -28,8 +28,8 @@ dependencies {
     api("io.undertow:undertow-core:2.3.12.Final")
     api("io.undertow:undertow-websockets-jsr:2.3.12.Final")
     
-    compileOnly("org.bouncycastle:bcprov-jdk18on:1.78.1")
-    compileOnly("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    compileOnly("org.bouncycastle:bcprov-jdk18on:1.82")
+    compileOnly("org.bouncycastle:bcpkix-jdk18on:1.82")
 
     compileOnly("com.google.code.gson:gson:2.13.1")
 
