@@ -90,8 +90,7 @@ public final class Main {
 				configManager,
 				scriptManager,
 				registrations,
-				sessions,
-				ws);
+				sessions);
 		command.register();
 
 		Log.debug("Config loaded:");

@@ -13,7 +13,6 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.velocity.RegistrationManager;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.cli.subcommands.*;
-import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
@@ -26,24 +25,20 @@ public final class CBCommand {
 	private final ScriptManager scriptManager;
 	private final RegistrationManager registrationManager;
 	private final SessionHub sessionHub;
-	private final WsServer wsServer;
 
 	public CBCommand(
 			ConfigManager configManager,
 			ScriptManager scriptManager,
 			RegistrationManager registrationManager,
-			SessionHub sessionHub,
-			WsServer wsServer) {
+			SessionHub sessionHub) {
 
 		this.configManager = configManager;
 		this.scriptManager = scriptManager;
 		this.registrationManager = registrationManager;
 		this.sessionHub = sessionHub;
-		this.wsServer = wsServer;
 	}
 
 	public void register() {
-		// Bind generic to CommandSource so replaceSuggestions(...) matches
 		ArgumentSuggestions<CommandSource> clientIdSuggestions = ArgumentSuggestions
 				.<CommandSource>strings(info -> {
 					List<String> ids = new ArrayList<>();
@@ -55,24 +50,21 @@ public final class CBCommand {
 					return ids.toArray(String[]::new);
 				});
 
-		// Subcommand instances
 		var help = new HelpCommand();
-		var scriptsCmd = new ScriptsCommand(scriptManager);
+		var scripts = new ScriptsCommand(scriptManager);
 		var reload = new ReloadCommand(configManager, scriptManager, registrationManager);
 		var list = new ListCommand(sessionHub);
-		var client = new InspectCommand(sessionHub);
-		var ping = new PingCommand(sessionHub, wsServer);
+		var ping = new PingCommand(sessionHub);
 		var debug = new DebugCommand();
 		var dump = new DumpCommand(registrationManager, sessionHub);
 
-		// Root command
 		new CommandAPICommand("commandbridge")
 				.withAliases("cb")
 				.withPermission("commandbridge.admin")
 
-				// /cb (default) -> help
+				// /cb -> help
 				.executes((ResultingCommandExecutor) (sender, args) -> {
-					CommandSource src = sender; // already a Velocity CommandSource
+					CommandSource src = sender; 
 					help.execute(src);
 					return 1;
 				})
@@ -88,7 +80,7 @@ public final class CBCommand {
 				.withSubcommand(new CommandAPICommand("scripts")
 						.executes((CommandExecutor) (sender, args) -> {
 							CommandSource src = sender;
-							scriptsCmd.execute(src);
+							scripts.execute(src);
 						}))
 
 				// /cb reload
@@ -105,21 +97,14 @@ public final class CBCommand {
 							list.execute(src);
 						}))
 
-				// /cb inspect <clientId>
-				.withSubcommand(new CommandAPICommand("inspect")
-						.withArguments(new StringArgument("clientId")
+				// /cb ping
+				.withSubcommand(new CommandAPICommand("ping")
+						.withOptionalArguments(new StringArgument("clientId")
 								.replaceSuggestions(clientIdSuggestions))
 						.executes((CommandExecutor) (sender, args) -> {
 							CommandSource src = sender;
 							String id = (String) args.get("clientId");
-							client.execute(src, id);
-						}))
-
-				// /cb ping
-				.withSubcommand(new CommandAPICommand("ping")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							ping.execute(src);
+							ping.execute(src, id);
 						}))
 
 				// /cb debug
@@ -138,6 +123,6 @@ public final class CBCommand {
 
 				.register();
 
-		Log.info("Registered /commandbridge (CommandAPI, MiniMessage)");
+		Log.info("Registered /commandbridge and /cb");
 	}
 }

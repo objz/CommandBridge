@@ -1,9 +1,10 @@
 package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
-import dev.objz.commandbridge.velocity.net.WsServer;
+import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.util.BarBuilder;
 import dev.objz.commandbridge.velocity.util.MM;
 import io.undertow.websockets.core.WebSocketCallback;
 import io.undertow.websockets.core.WebSocketChannel;
@@ -15,105 +16,237 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-//TODO
 public final class PingCommand {
 
 	private final SessionHub sessions;
-	@SuppressWarnings("unused")
-	private final WsServer ws;
 
-	public PingCommand(SessionHub sessions, WsServer ws) {
+	public PingCommand(SessionHub sessions) {
 		this.sessions = sessions;
-		this.ws = ws;
 	}
 
-	public void execute(CommandSource sender) {
-		List<ClientSession> list = new ArrayList<>();
-		for (ClientSession s : sessions)
-			list.add(s);
+	public void execute(CommandSource sender, String clientId) {
+		if (clientId == null) {
+			pingAll(sender);
+		} else {
+			pingSingle(sender, clientId);
+		}
+	}
 
-		if (list.isEmpty()) {
-			MM.msg().space().line(MM.warn("[WARN] No clients to ping")).send(sender);
+	private void pingAll(CommandSource sender) {
+		List<ClientSession> activeClients = getActiveClients();
+
+		if (activeClients.isEmpty()) {
+			MM.msg().space().line(MM.warn("No authenticated clients to ping")).send(sender);
 			return;
 		}
 
-		MM.msg().space().line(MM.accent("Pinging " + list.size() + " client(s)...")).send(sender);
+		MM.msg().space().line(MM.accent("Pinging " + activeClients.size() + " client(s)...")).send(sender);
 
-		AtomicInteger done = new AtomicInteger(0);
-		ConcurrentHashMap<String, Long> times = new ConcurrentHashMap<>();
-		int total = list.size();
+		AtomicInteger completed = new AtomicInteger(0);
+		ConcurrentHashMap<String, Long> results = new ConcurrentHashMap<>();
+		int total = activeClients.size();
 
-		for (ClientSession s : list) {
-			String id = s.id();
-			long start = System.nanoTime();
+		for (ClientSession session : activeClients) {
+			String id = session.id();
+			long startTime = System.nanoTime();
 
 			try {
-				var ch = s.ch();
-				if (ch != null && ch.isOpen()) {
-					WebSockets.sendPing(ByteBuffer.allocate(0), ch, new WebSocketCallback<>() {
-						@Override
-						public void complete(WebSocketChannel channel, Void context) {
-							long ms = (System.nanoTime() - start) / 1_000_000;
-							times.put(id, ms);
-							if (done.incrementAndGet() == total)
-								pushResults(sender, times, total);
+				WebSockets.sendPing(ByteBuffer.allocate(0), session.ch(), new WebSocketCallback<>() {
+					@Override
+					public void complete(WebSocketChannel channel, Void context) {
+						long latency = (System.nanoTime() - startTime) / 1_000_000;
+						results.put(id, latency);
+						if (completed.incrementAndGet() == total) {
+							displayResults(sender, results, total);
 						}
+					}
 
-						@Override
-						public void onError(WebSocketChannel channel, Void context,
-								Throwable throwable) {
-							times.put(id, -1L);
-							if (done.incrementAndGet() == total)
-								pushResults(sender, times, total);
+					@Override
+					public void onError(WebSocketChannel channel, Void context,
+							Throwable throwable) {
+						results.put(id, -1L);
+						if (completed.incrementAndGet() == total) {
+							displayResults(sender, results, total);
 						}
-					});
-				} else {
-					times.put(id, -1L);
-					if (done.incrementAndGet() == total)
-						pushResults(sender, times, total);
-				}
+					}
+				});
 			} catch (Exception ex) {
-				times.put(id, -1L);
-				if (done.incrementAndGet() == total)
-					pushResults(sender, times, total);
+				results.put(id, -1L);
+				if (completed.incrementAndGet() == total) {
+					displayResults(sender, results, total);
+				}
 			}
 		}
-
-		if (done.get() == total)
-			pushResults(sender, times, total);
 	}
 
-	private void pushResults(CommandSource sender, ConcurrentHashMap<String, Long> times, int total) {
-		var m = MM.msg().space().header("Ping Results");
+	private void pingSingle(CommandSource sender, String clientId) {
+		ClientSession session = findClient(clientId);
 
-		int ok = 0;
-		for (var e : times.entrySet()) {
-			String id = e.getKey();
-			long ms = e.getValue();
-			if (ms >= 0) {
-				ok++;
-				String color = (ms < 50) ? "<green>" : (ms < 150) ? "<yellow>" : "<red>";
-				m.item(color + "[OK]</> <white>" + id + "</white> (" + ms + "ms)");
+		if (session == null) {
+			MM.msg().space().line(MM.error("Client '" + clientId + "' not found")).send(sender);
+			return;
+		}
+
+		if (session.status() != AuthStatus.AUTH_OK) {
+			MM.msg().space().line(MM.error("Client '" + clientId + "' is not authenticated")).send(sender);
+			return;
+		}
+
+		if (session.ch() == null || !session.ch().isOpen()) {
+			MM.msg().space().line(MM.error("Client '" + clientId + "' is not connected")).send(sender);
+			return;
+		}
+
+		String ipAddress = session.ch().getSourceAddress().toString();
+		long startTime = System.nanoTime();
+
+		try {
+			WebSockets.sendPing(ByteBuffer.allocate(0), session.ch(), new WebSocketCallback<>() {
+				@Override
+				public void complete(WebSocketChannel channel, Void context) {
+					long latency = (System.nanoTime() - startTime) / 1_000_000;
+					String badge = getLatencyBadge(latency);
+
+					MM.msg()
+							.space()
+							.header("Ping Result")
+							.item(badge + " <white>" + clientId + "</white> "
+									+ formatLatency(latency))
+							.line(MM.muted("  Address: " + ipAddress))
+							.send(sender);
+				}
+
+				@Override
+				public void onError(WebSocketChannel channel, Void context, Throwable throwable) {
+					MM.msg()
+							.space()
+							.line(MM.error("Failed to ping '" + clientId + "'"))
+							.line(MM.muted("  " + throwable.getMessage()))
+							.send(sender);
+				}
+			});
+		} catch (Exception ex) {
+			MM.msg()
+					.space()
+					.line(MM.error("Failed to ping '" + clientId + "'"))
+					.line(MM.muted("  " + ex.getMessage()))
+					.send(sender);
+		}
+	}
+
+	private List<ClientSession> getActiveClients() {
+		List<ClientSession> activeClients = new ArrayList<>();
+		for (ClientSession session : sessions) {
+			if (session.status() == AuthStatus.AUTH_OK && session.ch() != null && session.ch().isOpen()) {
+				activeClients.add(session);
+			}
+		}
+		return activeClients;
+	}
+
+	private ClientSession findClient(String clientId) {
+		for (ClientSession session : sessions) {
+			if (session.id() != null && session.id().equalsIgnoreCase(clientId)) {
+				return session;
+			}
+		}
+		return null;
+	}
+
+	private void displayResults(CommandSource sender, ConcurrentHashMap<String, Long> results, int total) {
+		int successful = 0;
+		int highLatency = 0;
+		int failed = 0;
+		long minLatency = Long.MAX_VALUE;
+		long maxLatency = 0;
+		long totalLatency = 0;
+
+		List<PingEntry> entries = new ArrayList<>();
+
+		for (var entry : results.entrySet()) {
+			long latency = entry.getValue();
+			entries.add(new PingEntry(entry.getKey(), latency));
+
+			if (latency >= 0) {
+				successful++;
+				totalLatency += latency;
+				minLatency = Math.min(minLatency, latency);
+				maxLatency = Math.max(maxLatency, latency);
+				if (latency >= 150) {
+					highLatency++;
+				}
 			} else {
-				m.item("<red>[TIMEOUT]</red> <white>" + id + "</white>");
+				failed++;
 			}
 		}
 
-		double pct = total == 0 ? 0 : (ok * 100.0 / total);
-		String bar = progress(pct);
+		entries.sort((a, b) -> Long.compare(a.latency, b.latency));
 
-		m.space()
-				.kv("success", String.format("%.0f%% %s", pct, bar))
-				.send(sender);
+		String bar = BarBuilder.create(110)
+				.add("green", (successful - highLatency) / (double) total)
+				.add("yellow", highLatency / (double) total)
+				.add("red", failed / (double) total)
+				.build();
+
+		var msg = MM.msg()
+				.space()
+				.header("Ping Results")
+				.line(MM.parse(bar))
+				.line(MM.kv("replied", "<green>" + successful + "</green>")
+						.append(MM.sep())
+						.append(MM.kv("high latency", "<yellow>" + highLatency + "</yellow>"))
+						.append(MM.sep())
+						.append(MM.kv("no reply", "<red>" + failed + "</red>")))
+				.space()
+				.line(MM.accent("Clients"));
+
+		for (PingEntry entry : entries) {
+			if (entry.latency >= 0) {
+				msg.item(getLatencyBadge(entry.latency) + " <white>" + entry.id + "</white> "
+						+ formatLatency(entry.latency));
+			} else {
+				msg.item("<red>[NO REPLY]</red> <white>" + entry.id + "</white>");
+			}
+		}
+
+		if (successful > 0) {
+			long avgLatency = totalLatency / successful;
+			msg.space()
+					.line(MM.kv("min", formatLatency(minLatency))
+							.append(MM.sep())
+							.append(MM.kv("avg", formatLatency(avgLatency)))
+							.append(MM.sep())
+							.append(MM.kv("max", formatLatency(maxLatency))));
+		}
+
+		msg.send(sender);
 	}
 
-	private String progress(double pct) {
-		int filled = (int) Math.round(pct / 10.0); // 10 slots
-		StringBuilder sb = new StringBuilder("<gray>[</gray>");
-		for (int i = 0; i < 10; i++) {
-			sb.append(i < filled ? "<green>#</green>" : "<gray>-</gray>");
+	private String getLatencyBadge(long ms) {
+		if (ms < 30)
+			return "<green>[EXCELLENT]</green>";
+		if (ms < 75)
+			return "<green>[GOOD]</green>";
+		if (ms < 150)
+			return "<yellow>[FAIR]</yellow>";
+		return "<red>[POOR]</red>";
+	}
+
+	private String formatLatency(long ms) {
+		if (ms < 30 || ms < 75)
+			return "<green>" + ms + "ms</green>";
+		if (ms < 150)
+			return "<yellow>" + ms + "ms</yellow>";
+		return "<red>" + ms + "ms</red>";
+	}
+
+	private static class PingEntry {
+		final String id;
+		final long latency;
+
+		PingEntry(String id, long latency) {
+			this.id = id;
+			this.latency = latency;
 		}
-		sb.append("<gray>]</gray>");
-		return sb.toString();
 	}
 }
