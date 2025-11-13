@@ -11,7 +11,6 @@ import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CommandRegistry implements CommandRegistryInterface {
 
 	private final Set<String> registeredCommands = ConcurrentHashMap.newKeySet();
-	private final Set<String> pendingUnregister = ConcurrentHashMap.newKeySet();
 	private final ArgumentMapperInterface<Argument<?>> argumentMapper;
 	private final OutNode<Object> outNode;
 	private final Object registrationLock = new Object();
@@ -30,34 +28,16 @@ public final class CommandRegistry implements CommandRegistryInterface {
 		this.argumentMapper = mapper;
 		this.outNode = outNode;
 	}
-//TODO: fix: commands wont be re registerd when reloading
+
 	@Override
 	public void register(CommandStub stub) throws Exception {
 		String cmdName = stub.name();
 
 		synchronized (registrationLock) {
-			// If this command is pending unregistration, force complete it
-			if (pendingUnregister.contains(cmdName)) {
-				Log.debug("Waiting for command '{}' to finish unregistering", cmdName);
-				try {
-					CommandAPI.unregister(cmdName);
-				} catch (Exception ignored) {
-				}
-				pendingUnregister.remove(cmdName);
-			}
-
-			// Double-check if already registered
 			if (registeredCommands.contains(cmdName)) {
-				Log.debug("Command '{}' already registered, unregistering first", cmdName);
-				try {
-					CommandAPI.unregister(cmdName);
-				} catch (Exception e) {
-					Log.warn("Failed to unregister existing command '{}': {}", cmdName,
-							e.getMessage());
-				}
+				Log.debug("Command '{}' is already registered, it will be replaced.", cmdName);
 			}
 
-			// Now register the command
 			CommandAPICommand cmd = new CommandAPICommand(cmdName);
 
 			if (stub.description() != null && !stub.description().isBlank()) {
@@ -91,28 +71,28 @@ public final class CommandRegistry implements CommandRegistryInterface {
 
 			int argCount = stub.args() != null ? stub.args().size() : 0;
 			int aliasCount = stub.aliases() != null ? stub.aliases().size() : 0;
-			Log.debug("Registered command '{}' with {} arg(s) and {} alias(es)", cmdName, argCount,
-					aliasCount);
+			Log.debug("Registered command '{}' with {} arg(s) and {} alias(es)", cmdName,
+					argCount, aliasCount);
 		}
 	}
 
 	@Override
 	public void unregisterAll() throws Exception {
 		synchronized (registrationLock) {
+			if (registeredCommands.isEmpty()) {
+				return;
+			}
 			Set<String> toUnregister = new HashSet<>(registeredCommands);
-			pendingUnregister.addAll(toUnregister);
-
+			Log.info("Unregistering {} command(s)...", toUnregister.size());
 			for (String cmdName : toUnregister) {
 				try {
-					CommandAPI.unregister(cmdName);
+					CommandAPI.unregister(cmdName, true);
 					Log.debug("Unregistered command '{}'", cmdName);
 				} catch (Exception e) {
 					Log.warn("Failed to unregister command '{}': {}", cmdName, e.getMessage());
 				}
 			}
-
 			registeredCommands.clear();
-			pendingUnregister.clear();
 		}
 	}
 }

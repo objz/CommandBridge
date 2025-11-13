@@ -14,13 +14,14 @@ import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.BarBuilder;
 import dev.objz.commandbridge.velocity.util.MM;
-
+import dev.objz.commandbridge.velocity.util.MM.MessageBuilder;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.kyori.adventure.text.Component;
 
 public final class ReloadCommand {
 
@@ -31,7 +32,8 @@ public final class ReloadCommand {
 	private final OutNode<Object> outNode;
 
 	public ReloadCommand(ConfigManager configManager, ScriptManager scriptManager,
-			RegistrationManager registrationManager, SessionHub sessionHub, OutNode<Object> outNode) {
+			RegistrationManager registrationManager, SessionHub sessionHub,
+			OutNode<Object> outNode) {
 		this.configManager = configManager;
 		this.scriptManager = scriptManager;
 		this.registrationManager = registrationManager;
@@ -44,11 +46,8 @@ public final class ReloadCommand {
 			boolean configOk = configManager.reload(VelocityConfig.class);
 			var cfg = configManager.current(VelocityConfig.class);
 			if (!configOk || cfg == null) {
-				MM.msg()
-						.space()
-						.line(MM.error("Failed to reload config"))
-						.line(MM.muted("Check console for details"))
-						.send(sender);
+				MM.msg().space().line(MM.error("Failed to reload config"))
+						.line(MM.muted("Check console for details")).send(sender);
 				return;
 			}
 			Log.setDebug(cfg.debug());
@@ -60,104 +59,57 @@ public final class ReloadCommand {
 			int loaded = scriptManager.loaded().size();
 			int errors = (int) scriptManager.errors();
 
-			if (errors > 0) {
-				double green = enabled / (double) Math.max(loaded, 1);
-				double yellow = (disabled - errors) / (double) Math.max(loaded, 1);
-				double red = Math.min(errors, loaded) / (double) Math.max(loaded, 1);
-
-				String bar = BarBuilder.create(110)
-						.add("green", green)
-						.add("yellow", yellow)
-						.add("red", red)
-						.build();
-
-				MM.msg()
-						.space()
-						.line(MM.error("Script loading failed with " + errors + " error(s)"))
-						.space()
-						.line(MM.parse(bar))
-						.line(MM.kv("loaded", String.valueOf(loaded))
-								.append(MM.sep())
-								.append(MM.kv("enabled",
-										"<green>" + enabled + "</green>"))
-								.append(MM.sep())
-								.append(MM.kv("disabled",
-										"<yellow>" + disabled + "</yellow>"))
-								.append(MM.sep())
-								.append(MM.kv("errors", "<red>" + errors + "</red>")))
-						.space()
-						.line(MM.warn("Reload aborted due to script errors"))
-						.line(MM.muted("Check console for details"))
-						.send(sender);
-				return;
-			}
-
-			registrationManager.load(scriptManager.enabled());
-
 			double green = enabled / (double) Math.max(loaded, 1);
 			double yellow = (disabled - errors) / (double) Math.max(loaded, 1);
 			double red = Math.min(errors, loaded) / (double) Math.max(loaded, 1);
 
-			String scriptBar = BarBuilder.create(110)
-					.add("green", green)
-					.add("yellow", yellow)
-					.add("red", red)
-					.build();
+			String scriptBar = BarBuilder.create(110).add("green", green).add("yellow", yellow)
+					.add("red", red).build();
 
-			List<ClientSession> activeClients = getActiveClients();
-
-			int clientsWithScripts = 0;
-			for (ClientSession session : activeClients) {
-				String clientId = session.id();
-				Set<dev.objz.commandbridge.scripting.model.Script> scripts = registrationManager
-						.getScriptsForClient(clientId);
-
-				if (scripts != null && !scripts.isEmpty()) {
-					clientsWithScripts++;
-				}
-			}
-
-			if (clientsWithScripts == 0) {
-				MM.msg()
-						.space()
-						.line(MM.ok("Config and scripts reloaded"))
-						.space()
-						.line(MM.parse(scriptBar))
-						.line(MM.kv("loaded", String.valueOf(loaded))
-								.append(MM.sep())
-								.append(MM.kv("enabled",
-										"<green>" + enabled + "</green>"))
-								.append(MM.sep())
-								.append(MM.kv("disabled",
-										"<yellow>" + disabled + "</yellow>"))
-								.append(MM.sep())
-								.append(MM.kv("errors", "<red>" + errors + "</red>")))
-						.send(sender);
-				return;
-			}
-
-			MM.msg()
-					.space()
-					.line(MM.ok("Config and scripts reloaded"))
-					.space()
-					.line(MM.parse(scriptBar))
-					.line(MM.kv("loaded", String.valueOf(loaded))
-							.append(MM.sep())
+			var summary = MM.msg().space().line(MM.parse(scriptBar))
+					.line(MM.kv("loaded", String.valueOf(loaded)).append(MM.sep())
 							.append(MM.kv("enabled", "<green>" + enabled + "</green>"))
 							.append(MM.sep())
 							.append(MM.kv("disabled", "<yellow>" + disabled + "</yellow>"))
 							.append(MM.sep())
-							.append(MM.kv("errors", "<red>" + errors + "</red>")))
-					.space()
-					.line(MM.accent("Re-registering commands for " + clientsWithScripts
-							+ " client(s)..."))
-					.send(sender);
+							.append(MM.kv("errors", "<red>" + errors + "</red>")));
+
+			if (errors > 0) {
+				List<Component> summaryLines = summary.getLines();
+				MM.msg().space()
+						.line(MM.error("Script loading failed with " + errors + " error(s)"))
+						.line(summaryLines.get(1)).line(summaryLines.get(2)).space()
+						.line(MM.warn("Reload aborted due to script errors"))
+						.line(MM.muted("Check console for details")).send(sender);
+				return;
+			}
+
+			List<Component> summaryLines = summary.getLines();
+			MessageBuilder resultMessage = MM.msg().space().line(MM.ok("Config and scripts reloaded"))
+					.line(summaryLines.get(1)).line(summaryLines.get(2));
+
+			registrationManager.load(scriptManager.enabled());
+
+			List<ClientSession> activeClients = getActiveClients();
+			int clientsWithScripts = (int) activeClients.stream().filter(
+					s -> registrationManager.getScriptsForClient(s.id()) != null
+							&& !registrationManager
+									.getScriptsForClient(s.id()).isEmpty())
+					.count();
+
+			if (clientsWithScripts == 0) {
+				resultMessage.send(sender);
+				return;
+			}
+
+			resultMessage.space().line(MM.accent(
+					"Re-registering commands for " + clientsWithScripts + " client(s)..."));
 
 			Duration registerTimeout = Duration.ofSeconds(cfg.timeouts().registerTimeout());
-
 			AtomicInteger completed = new AtomicInteger(0);
 			ConcurrentHashMap<String, ReloadResult> results = new ConcurrentHashMap<>();
 			final int totalExpected = clientsWithScripts;
+			final var sentTo = new ConcurrentHashMap<String, Boolean>();
 
 			for (ClientSession session : activeClients) {
 				String clientId = session.id();
@@ -169,93 +121,102 @@ public final class ReloadCommand {
 						.getScriptsForClient(clientId);
 
 				if (scripts == null || scripts.isEmpty()) {
-					Log.debug("No backend commands for '{}', skipping", clientId);
 					continue;
 				}
 
+				sentTo.put(clientId, true);
 				try {
-					outNode.send(
-							MessageType.REGISTER_COMMANDS,
+					outNode.send(MessageType.REGISTER_COMMANDS,
 							new RegistrationRequestContext(session, scripts,
 									registerTimeout,
 									(success) -> {
 										ReloadStatus status = success
 												? ReloadStatus.SUCCESS
 												: ReloadStatus.FAILED;
-										results.put(clientId, new ReloadResult(
-												status, address, null));
+										results.put(clientId,
+												new ReloadResult(status,
+														address,
+														null));
 										if (completed.incrementAndGet() == totalExpected) {
 											displayResults(sender, results,
-													totalExpected);
+													totalExpected,
+													resultMessage);
 										}
 									}));
 				} catch (Exception ex) {
 					results.put(clientId, new ReloadResult(ReloadStatus.FAILED, address,
 							ex.getMessage()));
 					if (completed.incrementAndGet() == totalExpected) {
-						displayResults(sender, results, totalExpected);
+						displayResults(sender, results, totalExpected, resultMessage);
 					}
 				}
 			}
 
-			new Thread(() -> {
-				try {
-					Thread.sleep(registerTimeout.toMillis() + 1000);
-					if (completed.get() < totalExpected) {
-						for (ClientSession session : activeClients) {
-							String clientId = session.id();
-							Set<dev.objz.commandbridge.scripting.model.Script> scripts = registrationManager
-									.getScriptsForClient(clientId);
-							if ((scripts != null && !scripts.isEmpty())
-									&& !results.containsKey(clientId)) {
-								String address = session.ch() != null && session.ch()
-										.getSourceAddress() != null
-												? session.ch().getSourceAddress()
-														.toString()
-												: "unknown";
-								results.put(clientId, new ReloadResult(
-										ReloadStatus.TIMEOUT, address,
-										"Registration timeout after "
-												+ registerTimeout
-														.toSeconds()
-												+ "s"));
+			if (totalExpected > 0) {
+				new Thread(() -> {
+					try {
+						Thread.sleep(registerTimeout.toMillis() + 1000);
+						if (completed.get() < totalExpected) {
+							for (ClientSession session : activeClients) {
+								String clientId = session.id();
+								if (sentTo.containsKey(clientId)
+										&& !results.containsKey(clientId)) {
+									String address = session.ch() != null && session
+											.ch()
+											.getSourceAddress() != null
+													? session.ch().getSourceAddress()
+															.toString()
+													: "unknown";
+									results.put(clientId,
+											new ReloadResult(
+													ReloadStatus.TIMEOUT,
+													address,
+													"Registration timeout after "
+															+ registerTimeout
+																	.toSeconds()
+															+ "s"));
+								}
+							}
+							if (completed.get() < totalExpected) {
+								completed.set(totalExpected);
+								displayResults(sender, results, totalExpected,
+										resultMessage);
 							}
 						}
-						completed.set(totalExpected);
-						displayResults(sender, results, totalExpected);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
 					}
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
-			}).start();
-
+				}).start();
+			} else {
+				// if loop somehow finishes with no clients to send to, send initial message
+				resultMessage.send(sender);
+			}
 		} catch (Exception e) {
 			Log.error("Reload failed: {}", e.getMessage());
-			MM.msg()
-					.space()
-					.line(MM.error("Reload failed: " + e.getMessage()))
-					.line(MM.muted("Check console for details"))
-					.send(sender);
+			MM.msg().space().line(MM.error("Reload failed: " + e.getMessage()))
+					.line(MM.muted("Check console for details")).send(sender);
 		}
 	}
 
 	private List<ClientSession> getActiveClients() {
 		List<ClientSession> activeClients = new ArrayList<>();
 		for (ClientSession session : sessionHub) {
-			if (session.status() == AuthStatus.AUTH_OK && session.ch() != null && session.ch().isOpen()) {
+			if (session.status() == AuthStatus.AUTH_OK && session.ch() != null
+					&& session.ch().isOpen()) {
 				activeClients.add(session);
 			}
 		}
 		return activeClients;
 	}
 
-	private void displayResults(CommandSource sender, ConcurrentHashMap<String, ReloadResult> results, int total) {
+	private void displayResults(CommandSource sender,
+			ConcurrentHashMap<String, ReloadResult> results, int total,
+			MessageBuilder resultMessage) {
 		int successful = 0;
 		int failed = 0;
 		int timeout = 0;
 
 		List<ReloadEntry> entries = new ArrayList<>();
-
 		for (var entry : results.entrySet()) {
 			ReloadResult result = entry.getValue();
 			entries.add(new ReloadEntry(entry.getKey(), result.status, result.address,
@@ -276,56 +237,47 @@ public final class ReloadCommand {
 		});
 
 		String clientBar = BarBuilder.create(110)
-				.add("green", successful / (double) total)
-				.add("red", failed / (double) total)
-				.add("yellow", timeout / (double) total)
-				.build();
+				.add("green", successful / (double) Math.max(1, total))
+				.add("red", failed / (double) Math.max(1, total))
+				.add("yellow", timeout / (double) Math.max(1, total)).build();
 
-		var msg = MM.msg()
-				.space()
-				.header("Client Registration Results")
-				.line(MM.parse(clientBar))
-				.line(MM.kv("successful", "<green>" + successful + "</green>")
-						.append(MM.sep())
-						.append(MM.kv("failed", "<red>" + failed + "</red>"))
-						.append(MM.sep())
+		resultMessage.space().header("Client Registration Results").line(MM.parse(clientBar))
+				.line(MM.kv("successful", "<green>" + successful + "</green>").append(MM.sep())
+						.append(MM.kv("failed", "<red>" + failed + "</red>")).append(MM.sep())
 						.append(MM.kv("timeout", "<yellow>" + timeout + "</yellow>")))
-				.space()
-				.line(MM.accent("Clients"));
+				.space().line(MM.accent("Clients"));
 
 		for (ReloadEntry entry : entries) {
 			switch (entry.status) {
-				case SUCCESS -> msg.item("<green>[OK]</green> <white>" + entry.id + "</white> <gray>"
-						+ entry.address + "</gray>");
+				case SUCCESS -> resultMessage.item(
+						"<green>[OK]</green> <white>" + entry.id + "</white> <gray>"
+								+ entry.address + "</gray>");
 				case FAILED -> {
 					String errorDetail = entry.errorMessage != null
 							? " <gray>(" + entry.errorMessage + ")</gray>"
 							: "";
-					msg.item("<red>[FAILED]</red> <white>" + entry.id + "</white> <gray>"
+					resultMessage.item("<red>[FAILED]</red> <white>" + entry.id + "</white> <gray>"
 							+ entry.address + "</gray>" + errorDetail);
 				}
 				case TIMEOUT -> {
 					String errorDetail = entry.errorMessage != null
 							? " <gray>(" + entry.errorMessage + ")</gray>"
 							: "";
-					msg.item("<yellow>[TIMEOUT]</yellow> <white>" + entry.id + "</white> <gray>"
-							+ entry.address + "</gray>" + errorDetail);
+					resultMessage.item("<yellow>[TIMEOUT]</yellow> <white>" + entry.id
+							+ "</white> <gray>" + entry.address + "</gray>" + errorDetail);
 				}
 			}
 		}
 
 		if (failed > 0 || timeout > 0) {
-			msg.space()
-					.line(MM.muted("Check console for detailed error messages"));
+			resultMessage.space().line(MM.muted("Check console for detailed error messages"));
 		}
 
-		msg.send(sender);
+		resultMessage.send(sender);
 	}
 
 	private enum ReloadStatus {
-		SUCCESS,
-		FAILED,
-		TIMEOUT
+		SUCCESS, FAILED, TIMEOUT
 	}
 
 	private static class ReloadEntry {

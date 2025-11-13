@@ -14,6 +14,7 @@ import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import io.undertow.websockets.core.WebSocketChannel;
 
+import java.util.List;
 import java.util.Objects;
 
 public final class RegistrationHandler extends InboundHandler {
@@ -33,23 +34,24 @@ public final class RegistrationHandler extends InboundHandler {
 		} catch (Exception e) {
 			Log.error(e, "Failed to handle REGISTER_COMMANDS from {}", env.from());
 		}
-		if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
-			Log.warn("Received empty REGISTER_COMMANDS");
-			Feedback f = Feedback.empty();
-			reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f)
-					.dispatch()
-					.exceptionally(ex -> {
-						Log.warn("Failed to send FEEDBACK: {}", ex.toString());
-						return null;
-					});
-			return;
-		}
 
 		try {
 			registry.unregisterAll();
 			Log.info("Unregistered all previous commands before reload");
 		} catch (Exception e) {
 			Log.warn("Failed to unregister previous commands: {}", e.getMessage());
+		}
+
+		if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
+			Log.warn("Received empty or malformed REGISTER_COMMANDS. All commands unregistered");
+			Feedback f = new Feedback(0, 0, 0,
+					List.of("Received empty registration request"),
+					List.of());
+			reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f).dispatch().exceptionally(ex -> {
+				Log.warn("Failed to send FEEDBACK: {}", ex.toString());
+				return null;
+			});
+			return;
 		}
 
 		FeedbackCollector fc = new FeedbackCollector();
@@ -59,7 +61,8 @@ public final class RegistrationHandler extends InboundHandler {
 				fc.success();
 			} catch (Throwable t) {
 				Log.error(t, "Registration failed for '{}'", s != null ? s.name() : "<null>");
-				fc.failure("register '" + (s != null ? s.name() : "<null>") + "': " + t.getMessage());
+				fc.failure("register '" + (s != null ? s.name() : "<null>") + "': "
+						+ t.getMessage());
 			}
 		}
 		ws.setServerId(env.from());
@@ -67,11 +70,9 @@ public final class RegistrationHandler extends InboundHandler {
 		Summary.feedbackSummary("Registration", f, env.from());
 		Summary.feedbackDetails(f, env.from(), true);
 
-		reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f)
-				.dispatch()
-				.exceptionally(ex -> {
-					Log.warn("Failed to send FEEDBACK: {}", ex.toString());
-					return null;
-				});
+		reply(ch, env, MessageType.REGISTER_COMMANDS_RESULT, f).dispatch().exceptionally(ex -> {
+			Log.warn("Failed to send FEEDBACK: {}", ex.toString());
+			return null;
+		});
 	}
 }

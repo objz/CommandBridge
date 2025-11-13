@@ -1,19 +1,7 @@
 package dev.objz.commandbridge.velocity;
 
 import static java.util.stream.Collectors.toUnmodifiableSet;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.velocitypowered.api.proxy.ProxyServer;
-
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
@@ -29,6 +17,15 @@ import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class RegistrationManager {
 
@@ -40,19 +37,22 @@ public final class RegistrationManager {
 	private final Map<String, Set<Script>> backendByClient = new ConcurrentHashMap<>();
 	private final Set<Script> velocityScripts = ConcurrentHashMap.newKeySet();
 
-	public RegistrationManager(ProxyServer proxy,
-			SessionHub sessions,
-			VelocityConfig config,
+	public RegistrationManager(ProxyServer proxy, SessionHub sessions, VelocityConfig config,
 			OutNode<Object> outNode) {
 		this.sessions = Objects.requireNonNull(sessions);
 		this.registry = new CommandRegistry(new ArgumentMapper(proxy));
 		this.outNode = Objects.requireNonNull(outNode);
-		this.registerTimeout = Duration.ofSeconds(
-				Objects.requireNonNull(config).timeouts().registerTimeout());
+		this.registerTimeout = Duration.ofSeconds(Objects.requireNonNull(config).timeouts().registerTimeout());
 	}
 
 	public void load(List<Script> scripts) {
 		clearState();
+
+		try {
+			registry.unregisterAll();
+		} catch (Exception e) {
+			Log.error(e, "Failed to unregister all Velocity commands before reload");
+		}
 
 		if (scripts == null || scripts.isEmpty()) {
 			Log.warn("No scripts to register");
@@ -68,11 +68,8 @@ public final class RegistrationManager {
 				continue;
 			}
 
-			var locations = s.register().stream()
-					.filter(Objects::nonNull)
-					.map(IdMapping::location)
-					.filter(Objects::nonNull)
-					.collect(toUnmodifiableSet());
+			var locations = s.register().stream().filter(Objects::nonNull).map(IdMapping::location)
+					.filter(Objects::nonNull).collect(toUnmodifiableSet());
 
 			if (locations.contains(Location.VELOCITY)) {
 				try {
@@ -87,10 +84,8 @@ public final class RegistrationManager {
 			}
 
 			if (locations.contains(Location.BACKEND)) {
-				s.register().stream()
-						.filter(m -> m != null && m.location() == Location.BACKEND)
-						.map(IdMapping::id)
-						.filter(Objects::nonNull)
+				s.register().stream().filter(m -> m != null && m.location() == Location.BACKEND)
+						.map(IdMapping::id).filter(Objects::nonNull)
 						.forEach(backendId -> backendStaging
 								.computeIfAbsent(backendId, k -> new ArrayList<>())
 								.add(s));
@@ -98,22 +93,26 @@ public final class RegistrationManager {
 		}
 
 		backendStaging.forEach((backendId, list) -> backendByClient.put(backendId, new HashSet<>(list)));
+
 		int ok = velocityCollector.ok;
 		if (ok > 0) {
-			Log.success(true, "Registered '{}' " + Log.plural(ok, "Velocity command", "Velocity commands"),
+			Log.success(true,
+					"Registered '{}' " + Log.plural(ok, "Velocity command", "Velocity commands"),
 					ok);
 		}
 		if (!velocityCollector.errors.isEmpty()) {
-			Log.error("Failed to register '{}' " + Log.plural(velocityCollector.errors.size(),
-					"Velocity command", "Velocity commands"),
+			Log.error("Failed to register '{}' "
+					+ Log.plural(velocityCollector.errors.size(), "Velocity command",
+							"Velocity commands"),
 					velocityCollector.errors.size());
 		}
 
 		if (!backendByClient.isEmpty()) {
 			int total = backendByClient.values().stream().mapToInt(Set::size).sum();
 			int clients = backendByClient.size();
-			Log.success(true, "Prepared '{}' " + Log.plural(total, "backend command", "backend commands")
-					+ " for '{}' " + Log.plural(clients, "client", "clients"),
+			Log.success(true,
+					"Prepared '{}' " + Log.plural(total, "backend command", "backend commands")
+							+ " for '{}' " + Log.plural(clients, "client", "clients"),
 					total, clients);
 		}
 	}
@@ -130,8 +129,7 @@ public final class RegistrationManager {
 			return;
 		}
 
-		outNode.send(
-				MessageType.REGISTER_COMMANDS,
+		outNode.send(MessageType.REGISTER_COMMANDS,
 				new RegistrationRequestContext(session, scripts, registerTimeout));
 	}
 
@@ -140,8 +138,7 @@ public final class RegistrationManager {
 			if (s.status() == AuthStatus.AUTH_OK && s.ch() != null && s.ch().isOpen()) {
 				var set = backendByClient.get(s.id());
 				if (set != null && !set.isEmpty()) {
-					outNode.send(
-							MessageType.REGISTER_COMMANDS,
+					outNode.send(MessageType.REGISTER_COMMANDS,
 							new RegistrationRequestContext(s, set, registerTimeout));
 				}
 			}
