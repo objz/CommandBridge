@@ -23,7 +23,7 @@ dependencies {
     implementation("org.bouncycastle:bcpkix-jdk18on:1.82")
     implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation("org.spongepowered:configurate-core:4.2.0")
-    implementation("org.yaml:snakeyaml:2.2")
+    implementation("org.yaml:snakeyaml:2.5")
     implementation("org.snakeyaml:snakeyaml-engine:2.10")
     implementation("com.google.code.gson:gson:2.13.1")
 }
