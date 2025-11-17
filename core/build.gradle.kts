@@ -24,7 +24,7 @@ dependencies {
 
     compileOnly("org.spongepowered:configurate-yaml:4.2.0")
     compileOnly("org.snakeyaml:snakeyaml-engine:2.10")
-    api("org.slf4j:slf4j-api:2.0.13")
+    api("org.slf4j:slf4j-api:2.0.17")
     api("io.undertow:undertow-core:2.3.12.Final")
     api("io.undertow:undertow-websockets-jsr:2.3.12.Final")
     
