@@ -1,634 +1,290 @@
-# CommandBridge
+# CommandBridge v3.0.0
 
-![Version](https://img.shields.io/badge/version-2.2.9-blue.svg)
-![Minecraft](https://img.shields.io/badge/minecraft-1.20.x--1.21.x-brightgreen.svg)
-![Java](https://img.shields.io/badge/java-21-orange.svg)
-![License](https://img.shields.io/badge/license-GPLv3%20%2F%20Apache--2.0-red.svg)
-![Platform](https://img.shields.io/badge/platform-Velocity%20%7C%20Paper-blueviolet.svg)
-![Build](https://img.shields.io/badge/build-gradle-02303a.svg)
+![License](https://img.shields.io/badge/license-GPLv3-blue.svg) ![Java](https://img.shields.io/badge/Java-21-orange.svg) ![Minecraft](https://img.shields.io/badge/Minecraft-1.20.x--1.21.x-green.svg) ![Version](https://img.shields.io/badge/version-3.0.0-brightgreen.svg) ![Build](https://img.shields.io/badge/build-passing-success.svg)
 
------
+yeah so this is CommandBridge. it’s basically how you make commands work across your entire Minecraft network without losing your sanity. v3 is a pretty big deal compared to v2 – we’re talking multi-proxy support, JWT authentication, the whole nine yards. if you’re running one lonely Velocity proxy, v2 works fine. but if you’re running an actual network with multiple proxies? v3 is what you want.
 
-## What is this thing?
+## what even is this
 
-Alright, so you run a Minecraft network. Maybe you’ve got a Velocity proxy in front of a bunch of Paper servers - lobby, survival, creative, skyblock, whatever. And you want to run commands that work **everywhere at once**, right? Like giving a player money across all your economy-synced servers, or broadcasting a message, or kicking someone from the entire network.
+alright so here’s the deal. you’ve got Velocity proxies and Paper servers. normally they don’t talk to each other very well.  plugin messaging is a mess, especially when nobody’s online. CommandBridge solves this by using WebSockets (real TCP connections, not that plugin channel garbage) so your servers can actually communicate reliably. 
 
-Normally you’d have to write a bunch of Java code, compile plugins, deal with plugin messaging channels (which only work when players are online, by the way), and basically make your life more complicated than it needs to be.
+v3 takes it further. instead of just one proxy server talking to multiple backends, you can now have **multiple Velocity proxies** talking to each other AND to backends. it’s a mesh network topology. run `/economy give Steve 1000` on proxy-east and it’ll execute on survival-west’s backend. that’s the magic.
 
-**CommandBridge** fixes that. It’s a single JAR that you drop on both your Velocity proxy and your Paper servers, and it creates a bridge between them using WebSockets.   Then you define your commands in simple YAML files instead of writing Java, and boom - you’ve got network-wide commands that execute in real-time across your entire server infrastructure. 
+why did i build this? because i got tired of writing Java command classes every time i wanted to proxy a simple economy command or warp. seriously, who wants to compile code just to add `/spawn` to their proxy? with v3, you drop a YAML file in a folder and boom, it works.
 
-No coding required. Well, unless you want to extend it, then go wild.
+## why v3 exists (and why it’s not just v2.1)
 
-## Why does this exist?
+v2 was a complete rewrite from v1. switched from plugin messaging to WebSockets, added the whole scripting system, made things actually work.   but v2 has one major limitation: **one Velocity proxy, multiple backends**. that’s it. you can’t have multiple proxies coordinate commands.
 
-Plugin messaging is kinda garbage because it only works when at least one player is online. With WebSockets, your servers can talk to each other 24/7 regardless of player count.  Just makes sense.
+for smaller networks, that’s fine. but if you’re running geographically distributed proxies (proxy-us, proxy-eu, proxy-asia) or you just want redundancy, v2 doesn’t cut it. you’d have to manually sync configs and scripts across proxies, and even then they can’t execute commands on each other’s networks.
 
-## Features that might interest you
+v3 fixes this:
 
-- **YAML-based scripting** - Define commands without touching Java code
-- **Real-time WebSocket communication** - Fast, reliable, works even with zero players online 
-- **Cross-server command execution** - Run commands on multiple backend servers simultaneously 
-- **20+ argument types** - Players, entities, ranges, worlds, locations, and more
-- **Smart permissions** - Auto-generated permission nodes with optional silent mode
-- **Deferred execution** - Schedule commands to run when a player logs in (even if they’re offline now)
-- **Flexible execution contexts** - Run commands as CONSOLE, PLAYER, or OPERATOR
-- **Built-in cooldowns and delays** - Rate limiting and timing without extra plugins
-- **Tab completion** - Full argument suggestions support 
-- **Multiple proxy support** - Connect multiple Velocity instances if your network is that big
-- **Auto-detection** - Same JAR file works on both Velocity and Paper (figures it out automatically)
-- **Secure authentication** - HMAC-based auth with a shared secret key 
+- **Multiple Velocity servers can act as both servers AND clients** in the network
+- **JWT-based authentication** replaces the old shared secret system (more on that later)
+- **Distributed topology** where proxies can discover and talk to each other
+- **Cross-proxy command execution** – run a command on proxy A, have it execute on proxy B’s backend servers
+- **Better scalability** for enterprise-level networks
 
-Oh, and it’s got a `/cb dump` command that uploads your config to a website for troubleshooting.  Because sometimes you just need to show someone what’s going on without copy-pasting 500 lines into Discord.
+also v3 uses more modern dependencies. JWT tokens, updated Netty for better WebSocket handling, the usual stuff you’d expect in 2025.
 
-## Not for 1.8. Not sorry.
+## features
 
-This plugin supports **Minecraft 1.20.x through 1.21.x**.  If you’re still running 1.8 in 2025… I don’t know what to tell you. Move on. The ecosystem has moved on. Java 21 is required. 
+### the obvious stuff
 
-Supported platforms:
+- **WebSocket communication** between Velocity and Paper (persistent TCP, not that plugin messaging trash)  
+- **Works without players online** – biggest win over v1, still relevant 
+- **YAML-based scripting** – declare commands in config files, not Java code 
+- **Java 21 only**  – no, we’re not supporting Java 8. get over it 
+- **Minecraft 1.20.x to 1.21.x**   – works on Paper, Folia, Purpur, Spigot, Bukkit (probably), Velocity, Waterfall 
 
-- **Proxy**: Velocity, Waterfall
-- **Backend**: Paper, Folia, Purpur, Bukkit, Spigot 
+### the new v3 hotness
 
-## Installation
+- **Multi-proxy support** – connect multiple Velocity servers to each other 
+- **JWT authentication** – industry-standard token-based auth with expiration and rotation 
+- **Service discovery** – proxies can find and connect to each other dynamically
+- **Cross-proxy commands** – execute commands on any server in your network from any proxy
+- **Better security** – tokens expire, can be revoked, way better than static shared secrets
+- **Distributed state management** – all proxies know about all connected clients
 
-### Step 1: Download the JAR
+### scripting features (the good stuff)
 
-Grab the latest `CommandBridge-xxx-all.jar` from:
+- **25+ argument types** – STRING, INTEGER, PLAYERS, ENTITIES, WORLD, SERVER, LOCATION, ITEM_STACK, you name it
+- **Placeholder system** – `${player}`, `${amount}`, dynamic argument substitution
+- **Run-as modes** – execute as CONSOLE, PLAYER, or OPERATOR (temp op for the command)
+- **Deferred execution** – queue commands for offline players, run them when they log in
+- **Cooldowns and delays** – per-player cooldowns, command delays
+- **Permission integration** – `commandbridge.command.<name>` for each script
+- **Multi-target execution** – send one command to 5 different backends simultaneously
+- **Platform-specific arguments** – some types only work on backend (WORLD), some only on proxy (SERVER)
 
-- [Modrinth](https://modrinth.com/plugin/commandbridge) (recommended)
-- [GitHub Releases](https://github.com/objz/CommandBridge/releases)
+### architecture stuff
 
-### Step 2: Install everywhere
+- **Three-module structure** – core (shared code), velocity (proxy plugin + WebSocket server), paper (backend plugin + WebSocket client) 
+- **Single JAR deployment** – one file, auto-detects if it’s running on Velocity or Paper 
+- **Gradle with shadowJar** – fat JAR with all dependencies bundled 
+- **Annotation-driven validation** – scripts get validated on load, not at runtime
 
-Take that **same JAR file** and put it in the `plugins` folder on:
+## installation
 
-1. Your Velocity proxy server
-1. All your Paper/Spigot backend servers
+### requirements
 
-The plugin automatically detects what type of server it’s running on and configures itself accordingly. No separate downloads, no confusion.
+- **Java 21**  – not 17, not 11, definitely not 8. twenty-one. 
+- **Velocity proxy** (or Waterfall if you must) 
+- **Paper backend servers** (Folia, Purpur, Spigot, Bukkit should work too)  
+- **Minecraft 1.20.x or 1.21.x**   – not supporting 1.8, not sorry  
 
-### Step 3: First startup
+### the actual installation
 
-Restart all servers. CommandBridge will generate its configuration files: 
+1. **download the JAR** – grab `CommandBridge-3.0.0-all.jar` from releases
+1. **put it in plugins folders** – same JAR goes in BOTH Velocity and Paper servers. it auto-detects what it’s running on.  yeah, that’s right, one JAR for everything. 
+1. **restart everything** – Velocity first, then your Paper servers. configs will generate. 
+1. **configure JWT authentication** (this is new in v3):
+- Velocity generates a JWT signing key in `plugins/CommandBridge/jwt-key.txt`
+- Paper servers need to be given tokens, not the key itself
+- you can either:
+  - **auto-enrollment** (set `auto-enroll: true` in Velocity config, generates tokens on first connect)
+  - **manual tokens** (generate tokens with `/cb token generate <client-id>` and paste into Paper configs)
+1. **set up networking**:
+- pick a port for WebSocket (default 8080, change if needed)
+- Velocity config: set `host: "0.0.0.0"` and `port: 8080`
+- Paper config: set `remote: "velocity-ip-here"` and `port: 8080` 
+1. **configure identifiers**:
+- each proxy needs a unique `server-id` (e.g., “proxy-us”, “proxy-eu”)  
+- each backend needs a unique `client-id` (e.g., “survival”, “creative”, “lobby”)  
+1. **restart order matters** – Velocity servers first (they’re the WebSocket servers), then Paper servers (they connect as clients) 
+1. **check logs** – you should see:
+   
+   ```
+   [INFO] [CommandBridge]: Client authenticated successfully: survival (via JWT)
+   [INFO] [CommandBridge]: Added connected client: survival
+   ```
 
-**On Velocity:**
+### multi-proxy setup (v3 exclusive)
 
-```
-plugins/CommandBridge/
-├── config.yml
-├── clients.yml
-├── secret.key       ← Important!
-└── scripts/         ← Put your YAML scripts here
-```
+if you want multiple Velocity proxies to talk to each other:
 
-**On Paper:**
+1. **configure proxy-to-proxy connections** in your primary Velocity’s config:
+   
+   ```yaml
+   proxy-mesh:
+     enabled: true
+     peers:
+       - id: proxy-eu
+         host: "proxy-eu.example.com"
+         port: 8080
+       - id: proxy-asia
+         host: "proxy-asia.example.com"
+         port: 8080
+   ```
+1. **each proxy needs the same JWT signing key** – copy the `jwt-key.txt` between proxies (or use a shared secret manager)
+1. **proxies will auto-discover connected clients** from each other
+1. **scripts can target any client** in the mesh, regardless of which proxy they’re connected to
 
-```
-plugins/CommandBridge/
-├── config.yml
-└── scripts/         ← Usually empty on backends
-```
+## configuration
 
-### Step 4: Configure authentication
-
-This is the part where you actually have to read. I know, I’m asking a lot.
-
-**On your Velocity server**, open `plugins/CommandBridge/config.yml`:
+### Velocity config (config.yml)
 
 ```yaml
-host: 0.0.0.0              # Bind address (0.0.0.0 = all interfaces)
-port: 8080                 # WebSocket port
-server-id: "velocity-main" # Unique identifier for this proxy
-```
+config-version: 3
+server-id: "proxy-main"
 
-Now open `plugins/CommandBridge/secret.key` and **copy the entire key**. 
+# WebSocket server settings
+network:
+  host: "0.0.0.0"
+  port: 8080
+  verbose-output: false
 
-**On each Paper server**, open `plugins/CommandBridge/config.yml`:
+# JWT authentication (new in v3)
+authentication:
+  type: JWT
+  signing-algorithm: HS256
+  token-expiration: 7d  # tokens expire after 7 days
+  auto-enroll: false    # if true, auto-generate tokens for new clients
 
-```yaml
-remote: "127.0.0.1"        # Your Velocity server's IP (plain IP, no domain names)
-port: 8080                 # Must match the Velocity port
-secret: ""                 # ← PASTE THE KEY HERE
-client-id: "lobby"         # Unique identifier for this server (e.g., "survival", "creative")
-```
-
-Replace `"lobby"` with something that identifies this specific server. Each backend needs a unique `client-id`.
-
-**Important:** Use the actual IP address in the `remote` field, not a domain name.  Yes, I know domains are nicer. Do it anyway.
-
-### Step 5: Restart in the right order
-
-1. Restart your **Velocity** server first (it needs to start the WebSocket server)
-1. Then restart your **Paper** servers (they’ll connect as clients) 
-
-If everything worked, you should see logs like:
-
-```
-[INFO] [CommandBridge]: Client authenticated successfully: /127.0.0.1:42918
-[INFO] [CommandBridge]: Added connected client: lobby
-```
-
-If you don’t see that, something’s wrong. Check that:
-
-- The port matches between Velocity and Paper configs
-- The secret key was copied correctly (no extra spaces or line breaks)
-- Your firewall isn’t blocking the port
-- You actually restarted Velocity before the Paper servers
-
-## Commands
-
-CommandBridge adds a couple admin commands for you:
-
-### `/cb dump`
-
-Dumps your current configuration and loaded scripts to a website so you can share it for troubleshooting.  Super useful when something isn’t working and you need help. Added in v2.2.9 because I got tired of people pasting 100 lines of YAML in Discord.
-
-### `/cbc reconnect`
-
-Allows Paper servers to reconnect to the Velocity server if the connection drops. Requires `commandbridge.admin` permission. 
-
-### `/cbc help`
-
-Shows help. You probably could’ve guessed that.
-
-### Your custom commands
-
-Every command you define in a script file gets automatically registered. The permission for each command is `commandbridge.command.<name>` where `<name>` is the script’s name field. Grant these permissions in your permission plugin (LuckPerms, etc.) to control who can use what.
-
------
-
-## The Scripting System (aka the entire point)
-
-Alright, buckle up. This is the part where I explain how the scripting system actually works, because it’s honestly the coolest part of CommandBridge and why I built it in the first place.
-
-### The problem I was trying to solve
-
-Before this system existed, every time I wanted a proxy command that did something across servers, I had to:
-
-1. Open neovim
-1. Create a new Java class
-1. Implement the command interface
-1. Write argument parsing logic
-1. Write permission checking logic
-1. Write the forwarding logic to send commands to backend servers
-1. Compile the entire plugin
-1. Upload the JAR
-1. Restart the server
-1. Test it
-1. Find a bug
-1. Go back to step 1
-
-This sucked. It really sucked. And it meant that non-developers couldn’t add commands to their networks without learning Java, setting up a development environment, understanding the codebase, etc.
-
-So I thought: what if commands were just **data** instead of **code**? What if you could describe what a command does in a configuration file, and the plugin handles all the boring stuff automatically?
-
-That’s what the YAML scripting system does. You define commands as structured data, and CommandBridge validates, registers, and executes them for you.
-
-### How it works under the hood
-
-When CommandBridge starts up, here’s what happens:
-
-1. **ScriptLoader** scans the `scripts/` directory for `.yml` files
-1. Each file is parsed as YAML and bound to Java record classes using reflection
-1. A series of **validation processors** walk through the data structure:
-- **DefaultProcessor** applies default values and checks for redundant overrides
-- **PlatformProcessor** ensures argument types match platform capabilities (e.g., backend-only types aren’t used in proxy commands)
-- **ResolvableProcessor** verifies that placeholder references in command templates actually exist
-- Field validators check things like minimum values, required fields, and regex patterns
-1. If validation passes, the commands are registered on the appropriate platforms (Velocity, Paper, or both)
-1. If validation fails, errors are collected in a **ProblemSink** and logged so you can fix them
-
-At runtime, when someone executes one of your scripted commands:
-
-1. Arguments are parsed and validated based on the argument types you defined
-1. Placeholders in the command template are replaced with actual values
-1. The command is forwarded via WebSocket to the target server(s)
-1. The target server(s) execute the command in the specified context (console, player, or operator)
-1. If there’s a delay or cooldown, those are enforced
-1. If the target player needs to be online and they’re not, the command can be queued until they log in
-
-All of this happens automatically. You just write YAML.
-
-### Script file structure
-
-Scripts are YAML files placed in `plugins/CommandBridge/scripts/`. Name them whatever you want - `economy.yml`, `broadcast.yml`, `staff-tools.yml`, etc. The filename doesn’t matter; what’s inside does.
-
-Every script **must** include these top-level keys:
-
-#### 1. `version`
-
-```yaml
-version: 2
-```
-
-This is the schema version. Right now it’s `2`. If I ever make breaking changes to the format, I’ll bump this so old scripts don’t accidentally load with the wrong parser. Scripts without a version or with an unknown version are rejected.
-
-#### 2. `name`
-
-```yaml
-name: economy
-```
-
-This is the canonical name of your script. It becomes:
-
-- The primary command label on the proxy (so `/economy` in this example)
-- Part of the permission node: `commandbridge.command.economy`
-- The identifier used in logs and error messages
-
-**Rules:**
-
-- Must be 3-32 characters
-- Lowercase letters, digits, and hyphens only
-- No spaces, no underscores, no special characters
-
-The validator enforces this with a regex pattern, so if you try something like `my_command!` it’ll yell at you.
-
-#### 3. `description`
-
-```yaml
-description: "Economy management commands"
-```
-
-A short description of what this command does. Shows up in `/help` or plugin management GUIs. Keep it concise.
-
-#### 4. `enabled`
-
-```yaml
-enabled: true
-```
-
-If you set this to `false`, the script is completely ignored. Nothing gets registered, nothing gets loaded. Useful for temporarily disabling commands without deleting the files.
-
-#### 5. `aliases` (optional)
-
-```yaml
-aliases:
-  - eco
-  - money
-```
-
-Alternative names for the command. This must be a YAML list (the `- ` format) even if you only have one alias. These are registered on both Velocity and backend servers.
-
-So with the above, players could type `/economy`, `/eco`, or `/money` and they’d all work.
-
-#### 6. `permissions` (optional)
-
-```yaml
-permissions:
+# Multi-proxy mesh (new in v3)
+proxy-mesh:
   enabled: true
-  silent: false
+  discovery-interval: 30s
+  peers:
+    - id: proxy-secondary
+      host: "10.0.0.2"
+      port: 8080
+
+# Script loading
+scripts:
+  directory: "scripts/"
+  reload-on-change: true
+  validation-strict: true
 ```
 
-Controls permission checking:
-
-- **enabled**: If `true`, players need `commandbridge.command.<name>` to use the command
-- **silent**: If `true` and the player lacks permission, nothing happens (no error message). Useful for hiding commands from players who can’t use them.
-
-If you omit this section entirely, it defaults to `enabled: true` and `silent: false`.
-
-#### 7. `register`
+### Paper config (config.yml)
 
 ```yaml
+config-version: 3
+client-id: "survival"
+
+# Connection to Velocity
+network:
+  remote: "127.0.0.1"
+  port: 8080
+  reconnect-delay: 5s
+  verbose-output: false
+
+# JWT authentication (new in v3)
+authentication:
+  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  # paste token here
+  # OR leave empty and set auto-enroll: true on Velocity
+
+# Script loading
+scripts:
+  directory: "scripts/"
+  reload-on-change: true
+```
+
+### migration from v2
+
+if you’re upgrading from v2:
+
+1. **JWT tokens replace shared secrets** – old `secret` field is gone, replaced with JWT `token`
+1. **config version bumped to 3** – old configs won’t work
+1. **script format unchanged** – your v2 scripts should work in v3 without modification  
+1. **new proxy-mesh section** – only needed if you want multi-proxy support 
+
+## commands
+
+### `/cb` (or `/commandbridge`)
+
+main admin command. requires `commandbridge.admin` permission.
+
+- `/cb reload` – reloads configs and scripts (both Velocity and Paper)
+- `/cb list` – lists all connected clients across the entire network (v3 shows which proxy each client is connected to)
+- `/cb dump` – generates a debug dump URL you can share for troubleshooting 
+- `/cb token generate <client-id>` – (v3, Velocity only) generates a new JWT token for a client
+- `/cb token revoke <client-id>` – (v3, Velocity only) revokes a client’s token
+- `/cb mesh status` – (v3, Velocity only) shows proxy mesh topology and peer status
+- `/cb help` – shows help
+
+### `/cbc reconnect` (Paper only)
+
+reconnects the Paper server to Velocity. useful if connection drops. requires `commandbridge.admin`. 
+
+### script-defined commands
+
+any command you define in your scripts gets registered automatically. permissions are `commandbridge.command.<script-name>` unless you override it.
+
+## the scripting system (aka the important part)
+
+alright this is where v3 really shines. the scripting system lets you define commands in YAML files instead of writing Java. it’s declarative, it’s validated, and it actually works. let me break down how it works because this is the core of what makes CommandBridge useful.
+
+### how scripts work
+
+scripts live in `plugins/CommandBridge/scripts/` (configurable). each `.yml` file is one script. the plugin loads them on startup and validates everything before registering commands. if your script is broken, it’ll tell you exactly what’s wrong.
+
+scripts define:
+
+- **what the command is called** (name + aliases)
+- **where it’s registered** (which Velocity proxies, which Paper servers, or both)
+- **what arguments it takes** (players, amounts, locations, whatever)
+- **what commands actually get executed** (templates with placeholder substitution)
+- **how execution works** (run as console? player? with delays? cooldowns?)
+- **where execution happens** (which backends? all of them? specific ones?)
+
+the power here is that you can proxy basically any command without writing code. economy commands, teleports, kicks, announcements – all config-driven.
+
+### script structure (version 2 format, works in v3)
+
+here’s a complete annotated example:
+
+```yaml
+version: 2  # script schema version (v3 still uses schema 2)
+
+# basic metadata
+name: "eco"
+description: "Proxy economy commands to backends"
+enabled: true
+aliases: ["economy", "money"]
+
+# permission system
+permissions:
+  enabled: true   # if true, requires commandbridge.command.eco
+  silent: false   # if true, fail silently when perms missing; if false, show error
+
+# where to register the command
+# this is where v3's multi-proxy support shows up
 register:
-  - id: proxy-1
+  - id: proxy-main
     location: VELOCITY
-```
-
-This is where you specify **where the command should be registered**. This is super important and people get confused about it, so pay attention.
-
-`register` determines where the command appears - i.e., which server’s command list includes this command.
-
-- **id**: The server identifier (either from your `clients.yml` or the `client-id`/`server-id` in configs)
-- **location**: Either `VELOCITY` or `BACKEND`
-
-**Most of the time**, you want `location: VELOCITY` because you want the command available on your proxy. But you can also register commands on specific backend servers if you want.
-
-You can register the same command on multiple proxies:
-
-```yaml
-register:
-  - id: proxy-1
+  - id: proxy-eu
     location: VELOCITY
-  - id: proxy-2
-    location: VELOCITY
-```
+  # command now registered on BOTH proxies
 
-#### 8. `defaults`
-
-This is where things get interesting. The `defaults` section defines the default behavior for all commands in this script. Individual commands can override these settings if needed.
-
-```yaml
+# default execution behavior (can be overridden per command)
 defaults:
-  run-as: CONSOLE
-  execute:
-    - id: lobby
-      location: BACKEND
-    - id: survival
-      location: BACKEND
-  server:
-    target-required: true
-    schedule-online: false
-    timeout: 10s
-    frequency: 2s
-  delay: 0s
-  cooldown: 0s
-```
-
-Let’s break down each part:
-
-##### `run-as`
-
-Determines **who executes the command** on the backend server:
-
-- **CONSOLE** - Runs as the backend server’s console (full permissions, no restrictions)
-- **PLAYER** - Runs as the player who triggered the command (uses their permissions)
-- **OPERATOR** - Temporarily gives the player OP status just for this command, then removes it
-
-Most of the time you want `CONSOLE` because your scripted commands are doing administrative things that players shouldn’t normally be able to do directly.
-
-##### `execute`
-
-Specifies **where to send the command for execution**:
-
-```yaml
-execute:
-  - id: lobby
-    location: BACKEND
-  - id: survival
-    location: BACKEND
-  - id: creative
-    location: BACKEND
-```
-
-This is a list of targets. When the command is triggered, it’s sent to **all** of these servers simultaneously. So if you have three servers listed, the command runs on all three.
-
-- **id**: The client ID of the target server
-- **location**: Usually `BACKEND`, but technically `VELOCITY` is possible if you want proxy-side execution
-
-**Important distinction:**
-
-- `register` = where the command appears (usually Velocity)
-- `execute` = where the command actually runs (usually your Paper servers)
-
-##### `server`
-
-This section controls what happens when the target player is offline:
-
-```yaml
-server:
-  target-required: true
-  schedule-online: false
-  timeout: 10s
-  frequency: 2s
-```
-
-- **target-required** - If `true`, the backend server must see the player as online or the command fails
-- **schedule-online** - If `true` and the player is offline, queue the command until they log in
-- **timeout** - How long to wait for the player to log in before giving up (e.g., `10m`, `1h`, `30s`)
-- **frequency** - How often to check if the player came online
-
-Durations support `s` (seconds), `m` (minutes), `h` (hours), `d` (days), or just a number (interpreted as seconds).
-
-**Example use case:** You want to kick a player from the network, but they’re currently offline. Set `target-required: true` and `schedule-online: true`, and the kick command will automatically execute as soon as they log in (within the timeout period).
-
-##### `delay`
-
-```yaml
-delay: 2s
-```
-
-Wait this long before forwarding the command to the backend servers. Useful if you need to ensure something happens before the command runs (like waiting for a player to fully load into a server).
-
-##### `cooldown`
-
-```yaml
-cooldown: 5s
-```
-
-Minimum time between repeated uses of this command by the same player. Set to `0s` to disable. Prevents spam and protects expensive commands.
-
-#### 9. `args`
-
-This is where you define the arguments your command accepts:
-
-```yaml
-args:
-  - name: player
-    type: PLAYERS
-    required: true
-    suggestions:
-      - "@a"
-      - "@p"
-      - "Steve"
-  - name: amount
-    type: RANGE
-    required: true
-```
-
-Each argument has:
-
-- **name** - The identifier used in command templates (without the `${}`)
-- **type** - The argument type (see the full list below)
-- **required** - Whether the user must provide this argument
-- **suggestions** - Optional list of strings for tab completion
-
-**Argument names must be unique.** The validator will reject scripts with duplicate names.
-
-#### 10. `commands`
-
-Finally, the actual command definitions:
-
-```yaml
-commands:
-  - command: "eco give ${player} ${amount}"
-    run-as: CONSOLE
-    execute:
-      - id: survival
-        location: BACKEND
-    server:
-      target-required: false
-    delay: 0s
-  - command: "say ${player} received ${amount} coins"
-    execute:
-      - id: lobby
-        location: BACKEND
-```
-
-This is a list of command templates. Each one can override the defaults.
-
-- **command** - The template string with `${placeholder}` syntax referencing your arguments
-- Everything else - Optional overrides for `run-as`, `execute`, `server`, `delay`, `cooldown`
-
-If you don’t specify a field, it inherits from `defaults`. If you do specify it, it overrides the default just for that command.
-
-**Note:** The validator will warn you if you override a default with the exact same value (because that’s redundant and probably a mistake).
-
-### Argument types
-
-CommandBridge supports over 20 argument types thanks to CommandAPI integration. Each type is annotated with which platforms support it.
-
-Here’s the full list:
-
-|Type           |Description                              |Platforms        |Notes                                                         |
-|---------------|-----------------------------------------|-----------------|--------------------------------------------------------------|
-|`STRING`       |Single word/token                        |Velocity, Backend|                                                              |
-|`TEXT`         |Remainder of input (can include spaces)  |Velocity, Backend|Captures everything after this argument                       |
-|`INTEGER`      |Whole numbers                            |Velocity, Backend|                                                              |
-|`DOUBLE`       |Floating-point numbers                   |Velocity, Backend|                                                              |
-|`BOOLEAN`      |true or false                            |Velocity, Backend|                                                              |
-|`RANGE`        |Numeric range like `1..10` or `5.5..20.3`|Velocity, Backend|No min/max validation - do that in your backend command       |
-|`PLAYERS`      |Player selector or name                  |Velocity, Backend|Supports `@a`, `@p`, `@r`, or explicit names. Yes it’s plural.|
-|`ENTITIES`     |Entity selector                          |Backend only     |                                                              |
-|`ENTITY_TYPE`  |Entity type (zombie, creeper, etc.)      |Backend only     |                                                              |
-|`WORLD`        |World name                               |Backend only     |                                                              |
-|`SERVER`       |Velocity server name                     |Velocity only    |                                                              |
-|`LOCATION`     |3D coordinates (x, y, z)                 |Backend only     |                                                              |
-|`LOCATION_2D`  |2D coordinates (x, z)                    |Backend only     |                                                              |
-|`ANGLE`        |Rotation angle                           |Backend only     |                                                              |
-|`ROTATION`     |Full rotation (pitch and yaw)            |Backend only     |                                                              |
-|`ITEM_STACK`   |Minecraft item                           |Backend only     |                                                              |
-|`ENCHANTMENT`  |Enchantment type                         |Backend only     |                                                              |
-|`POTION_EFFECT`|Potion effect type                       |Backend only     |                                                              |
-|`SOUND`        |Sound effect                             |Backend only     |                                                              |
-|`BIOME`        |Biome identifier                         |Backend only     |                                                              |
-|`TIME`         |Time value (ticks or duration)           |Backend only     |                                                              |
-
-**Platform validation:** The validator checks that you don’t use backend-only types in commands registered on Velocity. If you try to use `ENTITY_TYPE` in a proxy command, it’ll fail validation with a clear error message.
-
-**Why is it `PLAYERS` and not `PLAYER`?** Because selectors like `@a` can match multiple players. The type returns a collection. If you want just one player, use `@p` or require a specific username.
-
-**What happened to RANGE min/max?** They were removed in v2.x. If you need bounds validation, do it in your backend command logic. The `RANGE` type just parses the syntax and passes it through.
-
-### Placeholders and resolution
-
-Command templates use `${name}` syntax for placeholders:
-
-```yaml
-command: "eco give ${player} ${amount}"
-```
-
-When a player runs the command, placeholders are replaced with actual values:
-
-1. `/economy Steve 100`
-1. `${player}` → `"Steve"`
-1. `${amount}` → `"100"`
-1. Final command sent to backend: `eco give Steve 100`
-
-Placeholder names must match your argument names. If you reference `${player}` but don’t have a `player` argument, validation fails.
-
-You can also use special syntax for type defaults:
-
-```yaml
-command: "tp ${player} ${args.LOCATION}"
-```
-
-This references the default value handling for the `LOCATION` type. Mostly useful for complex types, but honestly just define your arguments explicitly instead.
-
-### Inheritance and the @Merge annotation
-
-This is a technical detail but kinda cool. The `@Merge` annotation in the code tells the system which fields can be overridden from defaults.
-
-When you define a command without specifying `run-as`, it **inherits** from `defaults.run-as`. When you do specify it, it **overrides** for that command only:
-
-```yaml
-defaults:
-  run-as: CONSOLE
-  delay: 0s
-
-commands:
-  - command: "say hello"
-    delay: 2s              # Overrides default
-    # run-as inherited as CONSOLE
+  run-as: CONSOLE  # execute as backend console (other options: PLAYER, OPERATOR)
   
-  - command: "say goodbye"
-    # Both inherited
-```
-
-The DefaultProcessor (one of the validation processors) handles this inheritance and warns you if you override with the same value:
-
-```yaml
-defaults:
-  run-as: CONSOLE
-
-commands:
-  - command: "example"
-    run-as: CONSOLE       # ← Redundant! Validator warns about this
-```
-
-### Deferred execution (the cool part)
-
-Let’s say you want to run a command on a player who’s currently offline. Normally, that doesn’t work - they’re not online, command fails, done.
-
-But with CommandBridge’s deferred execution, you can **queue** the command until they log in:
-
-```yaml
-defaults:
-  server:
-    target-required: true      # Command needs player online
-    schedule-online: true      # If offline, queue it
-    timeout: 1h                # Wait up to 1 hour
-    frequency: 30s             # Check every 30 seconds
-
-commands:
-  - command: "kick ${player} You have been banned"
-```
-
-**What happens:**
-
-1. Admin runs `/ban OfflinePlayer`
-1. Player isn’t online, so command can’t run immediately
-1. CommandBridge queues the command
-1. Every 30 seconds, it checks if the player came online
-1. Player logs in 20 minutes later
-1. Command executes immediately
-1. Player gets kicked with the message
-
-If the player doesn’t log in within 1 hour (`timeout`), the command is discarded.
-
-This is super powerful for moderation commands, scheduled actions, or any situation where you need eventual execution.
-
-### Complete example script
-
-Here’s a full, realistic script that demonstrates most features:
-
-```yaml
-version: 2
-name: economy
-description: "Network-wide economy commands"
-enabled: true
-
-aliases:
-  - eco
-  - money
-
-permissions:
-  enabled: true
-  silent: false
-
-register:
-  - id: proxy-1
-    location: VELOCITY
-
-defaults:
-  run-as: CONSOLE
+  # where to execute (v3 lets you target any client in the mesh)
   execute:
-    - id: lobby
-      location: BACKEND
     - id: survival
       location: BACKEND
     - id: creative
       location: BACKEND
+    # command will execute on BOTH backends
+  
+  # server behavior (for player-targeted commands)
   server:
-    target-required: true
-    schedule-online: false
-    timeout: 5m
-    frequency: 10s
-  delay: 0s
-  cooldown: 3s
+    target-required: true      # abort if player not online
+    schedule-online: false     # if true, queue until player logs in
+    timeout: 10m               # max time to wait for scheduled commands
+    frequency: 30s             # how often to check if player is online
+  
+  delay: 0s                    # wait before executing
+  cooldown: 0s                 # minimum time between uses (per player)
 
+# argument definitions
 args:
   - name: player
-    type: PLAYERS
+    type: PLAYERS              # uses Minecraft selector syntax (@a, @p, player names)
     required: true
     suggestions:
       - "@a"
@@ -636,204 +292,355 @@ args:
       - "@r"
   
   - name: amount
-    type: RANGE
+    type: RANGE                # accepts numbers or ranges (1..100)
     required: true
 
+# actual commands to execute
 commands:
-  # Give money to a player on all economy servers
   - command: "eco give ${player} ${amount}"
-    run-as: CONSOLE
-    # Uses default execute (all three servers)
-    # Uses default server settings
-  
-  # Broadcast who received money (only on lobby)
-  - command: "say ${player} received ${amount} coins"
-    execute:
-      - id: lobby
-        location: BACKEND
-    delay: 1s              # Wait 1 second so it shows after the first command
-    cooldown: 0s           # No cooldown on broadcasts
+    # inherits all defaults unless overridden
+    
+  - command: "eco set ${player} ${amount}"
+    run-as: OPERATOR           # override: temp op for this command
+    delay: 2s                  # override: wait 2 seconds before executing
+    
+  - command: "eco take ${player} ${amount}"
+    server:
+      target-required: false   # override: don't require player online
+      schedule-online: false
 ```
 
-**What this does:**
+### argument types (all 25+ of them)
 
-1. Registers `/economy`, `/eco`, and `/money` commands on the proxy
-1. Requires `commandbridge.command.economy` permission
-1. Takes two arguments: a player selector and a numeric range
-1. When executed, sends two commands:
-- First: `eco give <player> <amount>` to lobby, survival, and creative servers as console
-- Second: `say <player> received <amount> coins` only to lobby server, after a 1-second delay
-1. Enforces a 3-second cooldown on the main command (but not the broadcast)
+the `type` field in arguments determines what kind of value it accepts and how it’s parsed. some types only work on backends, some only on proxies. the platform validation catches this at load time.
 
-### Multiple Velocity support
+**universal types** (work anywhere):
 
-If you’re running a large network with multiple Velocity proxies, you can connect them all:
+- `STRING` – single word
+- `INTEGER` – whole numbers
+- `BOOLEAN` – true/false
+- `DOUBLE` – decimals
+- `TEXT` – rest of the line, spaces allowed
+- `RANGE` – numeric ranges like `1..100` (note: no min/max validation anymore, check in your backend)
+
+**selector types**:
+
+- `PLAYERS` – player selector (@a, @p, @r, player names) – returns a collection, there’s no singular PLAYER type anymore
+- `ENTITIES` – entity selector (@e[type=zombie,distance=..10])
+- `ENTITY_TYPE` – entity type names (zombie, creeper, etc.) – backend only
+
+**backend-only types**:
+
+- `WORLD` – world names
+- `LOCATION` – 3D coordinates
+- `LOCATION_2D` – 2D coordinates
+- `ANGLE` – rotation angle
+- `ROTATION` – full rotation (yaw/pitch)
+- `ITEM_STACK` – items with NBT
+- `ENCHANTMENT` – enchantment types
+- `POTION_EFFECT` – potion effect types
+- `SOUND` – sound names
+- `BIOME` – biome types
+- `TIME` – time values (ticks/duration)
+
+**proxy-only types**:
+
+- `SERVER` – Velocity server names (e.g., survival, lobby) 
+
+if you try to use a backend-only type in a command registered on Velocity, the validator will yell at you. same with proxy-only types on backend. platform annotations on the `ArgType` enum enforce this at load time.
+
+### placeholder resolution
+
+templates use `${argumentName}` syntax. when a command runs:
+
+1. **argument values are substituted** – `${player}` becomes `Steve`, `${amount}` becomes `100`
+1. **type defaults are available** – you can use `${args.PLAYERS}` to reference the executor
+1. **validation ensures all placeholders resolve** – if you reference `${nonexistent}`, load fails 
+
+the `ResolvableProcessor` walks through all command templates and verifies every placeholder matches either:
+
+- a defined argument name
+- a valid type reference (`${args.TYPE}`)
+
+no runtime placeholder errors. everything’s checked on load.
+
+### execution contexts (run-as)
+
+the `run-as` field controls who executes the command on the backend:
+
+- **CONSOLE** – runs as backend console (elevated privileges, no player context)
+- **PLAYER** – runs as the player who triggered the command (keeps player permissions)
+- **OPERATOR** – **temporarily grants op status** for the command duration (careful with anti-cheat!) 
+
+`OPERATOR` is powerful but dangerous. the player gets opped, command executes, then deopped. some anti-cheat plugins freak out about this. test thoroughly.
+
+### deferred execution
+
+one of the cooler features: you can queue commands for offline players.
 
 ```yaml
-register:
-  - id: proxy-na
-    location: VELOCITY
-  - id: proxy-eu
-    location: VELOCITY
-
-defaults:
-  execute:
-    - id: survival-na-1
-      location: BACKEND
-    - id: survival-eu-1
-      location: BACKEND
+server:
+  target-required: true      # command needs player online
+  schedule-online: true      # queue it if they're offline
+  timeout: 1h                # give up after 1 hour
+  frequency: 30s             # check every 30 seconds
 ```
 
-The command gets registered on both proxies, and when executed, forwards to both backend servers regardless of which proxy it came from.
+**use case**: kicking someone who’s offline. they’ll get kicked the moment they log in.
 
-### Extending the system
+how it works:
 
-Want to add your own custom argument types? It’s actually pretty straightforward:
+1. command is executed while player is offline
+1. `target-required: true` checks for player, doesn’t find them
+1. `schedule-online: true` adds command to queue
+1. every 30 seconds, proxy checks if player is online
+1. when they log in, command executes
+1. if 1 hour passes, command is dropped 
 
-1. Implement your argument class using CommandAPI (e.g., `DurationArgument`)
-1. Add a constant to the `ArgType` enum with the `@Platform` annotation
-1. Add the mapping in `ArgumentMapper`
-1. Done - ScriptLoader picks it up automatically
+### cooldowns and delays
 
-Example:
-
-```java
-// In ArgType.java
-@Platform({ BACKEND })
-DURATION,
-
-// In ArgumentMapper.java
-case DURATION -> new DurationArgument(...)
-```
-
-Now you can use `type: DURATION` in your scripts.
-
-### Common mistakes and gotchas
-
-I’ve seen people mess these things up, so here’s a list:
-
-❌ **DON’T** use duplicate argument names:
+**delays** wait before executing:
 
 ```yaml
-args:
-  - name: player
-    type: PLAYERS
-  - name: player        # ← ERROR: duplicate name
-    type: TEXT
+delay: 5s  # wait 5 seconds, then execute
 ```
 
-❌ **DON’T** try to use `PLAYER` (singular):
+**cooldowns** prevent spam (per-player):
 
 ```yaml
-args:
-  - name: target
-    type: PLAYER        # ← ERROR: doesn't exist, use PLAYERS
+cooldown: 30s  # player can only use this command once per 30 seconds
 ```
 
-❌ **DON’T** use backend-only types in Velocity commands:
+duration format: `5s`, `10m`, `2h`, `1d`, or bare numbers (interpreted as seconds)
+
+### multi-target execution (v3 highlight)
+
+you can execute one command on multiple backends:
 
 ```yaml
-register:
-  - id: proxy-1
-    location: VELOCITY
-
-args:
-  - name: target
-    type: ENTITY_TYPE   # ← ERROR: ENTITY_TYPE only works on backends
+execute:
+  - id: survival
+    location: BACKEND
+  - id: creative
+    location: BACKEND
+  - id: skyblock
+    location: BACKEND
 ```
 
-❌ **DON’T** override defaults with the same value:
+run `/broadcast hello` on proxy, it executes on all three backends. v3 extends this to work across the proxy mesh – you can target clients connected to ANY proxy in your network, not just the one the player is connected to.
+
+### inheritance and overrides
+
+commands inherit from `defaults` unless explicitly overridden. the `@Merge` annotation in the code makes this work – if a field isn’t specified in a command, it uses the default value.
 
 ```yaml
 defaults:
   run-as: CONSOLE
+  delay: 0s
 
 commands:
-  - command: "example"
-    run-as: CONSOLE     # ← WARNING: redundant override
+  - command: "foo"
+    # inherits run-as: CONSOLE and delay: 0s
+    
+  - command: "bar"
+    run-as: PLAYER
+    # overrides run-as, still inherits delay: 0s
 ```
 
-❌ **DON’T** confuse `register` and `execute`:
+the `DefaultProcessor` will warn you if you override a field with the same value as the default (redundant). 
 
-```yaml
-register:             # Where command appears (usually proxy)
-  - id: proxy-1
-    location: VELOCITY
+### validation pipeline
 
-defaults:
-  execute:            # Where command runs (usually backends)
-    - id: survival
-      location: BACKEND
-```
+when scripts load, they go through a validation pipeline:
 
-✅ **DO** use unique argument names  
-✅ **DO** use `PLAYERS` (plural) for player selectors  
-✅ **DO** match platforms between registration and argument types  
-✅ **DO** use cooldowns to protect expensive commands from spam  
-✅ **DO** test deferred execution thoroughly  
-✅ **DO** check logs for validation errors
+1. **YAML parsing** – SnakeYAML binds YAML to Java records
+1. **DefaultProcessor** – applies `@Default` annotations, warns about redundant overrides
+1. **PlatformProcessor** – validates argument types match registration location (no backend-only types on proxy commands)
+1. **ResolvableProcessor** – ensures all placeholders resolve, checks for duplicate argument names
+1. **RangeValidator** – validates `@Min` and `@Max` annotations (for delays, cooldowns, etc.)
+1. **RequiredValidator** – ensures `@Required` fields are present
 
-### Validation and error handling
+if any processor finds problems, they’re collected in a `ProblemSink` and logged. broken scripts don’t register. 
 
-When ScriptLoader processes your YAML files, it runs multiple validation passes. If anything’s wrong, it collects all the problems and logs them.
+### extending the system
 
-You’ll see messages like:
+adding custom argument types is straightforward:
 
-```
-[ERROR] Script 'economy' failed validation:
-  - Argument 'player' is referenced but not defined
-  - Field 'run-as' has invalid value: 'ADMIN' (must be CONSOLE, PLAYER, or OPERATOR)
-  - Type 'ENTITY_TYPE' cannot be used in VELOCITY location
-```
+1. implement your argument class in the backend (e.g., `DurationArgument`)
+1. add a constant to the `ArgType` enum with appropriate `@Platform` annotation
+1. register mapping in `ArgumentMapper`
+1. if you need extra fields, extend `ArgMapping` record
+1. write a processor if validation is needed
+1. binder picks it up automatically via reflection 
 
-Fix the errors, reload the script (or restart), and try again. The validator is pretty good about telling you exactly what’s wrong and where.
+the type adapter registry handles complex types. duration parsing already supports `5s`, `10m`, `2h`, `1d`.
 
-**Pro tip:** Use the `/cb dump` command to upload your config and scripts to a website. Makes debugging way easier when you can share a link instead of pasting 200 lines of YAML.
+### best practices
 
------
+- **unique argument names** – duplicates are rejected by `ResolvableProcessor`
+- **case-sensitive enums** – `PLAYERS` not `players` (YAML is case-sensitive)
+- **use PLAYERS not PLAYER** – there’s no singular type anymore, use selectors like `@p` for one player
+- **validate RANGE bounds manually** – min/max removed from model, check in backend commands
+- **test OPERATOR carefully** – anti-cheat implications
+- **use cooldowns** – protect expensive commands (per-player, not global)
+- **avoid redundant overrides** – validator warns, keep configs clean
+- **check LoadResult** – always inspect `ProblemSink` for errors 
 
-## Complete usage example
+## complete examples
 
-Let’s walk through creating a real command from scratch.
-
-**Goal:** Create a `/broadcast` command that sends a message to all players on all servers.
-
-**Step 1:** Create `scripts/broadcast.yml`
+### example 1: simple economy command
 
 ```yaml
 version: 2
-name: broadcast
-description: "Send a message to all players network-wide"
+name: "balance"
+description: "Check player balance"
 enabled: true
-
-aliases:
-  - bc
-  - announce
+aliases: ["bal", "money"]
 
 permissions:
   enabled: true
   silent: false
 
 register:
-  - id: proxy-1
+  - id: proxy-main
+    location: VELOCITY
+
+defaults:
+  run-as: PLAYER
+  execute:
+    - id: survival
+      location: BACKEND
+  server:
+    target-required: true
+    schedule-online: false
+  delay: 0s
+  cooldown: 3s
+
+args:
+  - name: player
+    type: PLAYERS
+    required: false
+    suggestions: ["@p"]
+
+commands:
+  - command: "balance ${player}"
+  - command: "balance"  # no argument uses executor's balance
+```
+
+### example 2: cross-server teleport
+
+```yaml
+version: 2
+name: "tpserver"
+description: "Teleport player to a different server"
+enabled: true
+
+permissions:
+  enabled: true
+  silent: false
+
+register:
+  - id: proxy-main
     location: VELOCITY
 
 defaults:
   run-as: CONSOLE
   execute:
-    - id: lobby
+    - id: proxy-main
+      location: VELOCITY
+  delay: 1s
+  cooldown: 5s
+
+args:
+  - name: player
+    type: PLAYERS
+    required: true
+  
+  - name: server
+    type: SERVER
+    required: true
+    suggestions: ["survival", "creative", "lobby", "skyblock"]
+
+commands:
+  - command: "send ${player} ${server}"
+```
+
+### example 3: deferred kick (for offline players)
+
+```yaml
+version: 2
+name: "kicklater"
+description: "Kick a player when they next log in"
+enabled: true
+
+permissions:
+  enabled: true
+  silent: false
+
+register:
+  - id: proxy-main
+    location: VELOCITY
+
+defaults:
+  run-as: CONSOLE
+  execute:
+    - id: survival
       location: BACKEND
+  server:
+    target-required: true
+    schedule-online: true   # queue if offline
+    timeout: 24h            # wait up to 24 hours
+    frequency: 1m           # check every minute
+  delay: 0s
+  cooldown: 0s
+
+args:
+  - name: player
+    type: PLAYERS
+    required: true
+  
+  - name: reason
+    type: TEXT
+    required: true
+
+commands:
+  - command: "kick ${player} ${reason}"
+```
+
+### example 4: global announcement (v3 multi-target)
+
+```yaml
+version: 2
+name: "globalannounce"
+description: "Announce to all servers in the network"
+enabled: true
+aliases: ["ga", "broadcast"]
+
+permissions:
+  enabled: true
+  silent: false
+
+register:
+  - id: proxy-main
+    location: VELOCITY
+  - id: proxy-eu
+    location: VELOCITY
+
+defaults:
+  run-as: CONSOLE
+  execute:
     - id: survival
       location: BACKEND
     - id: creative
       location: BACKEND
+    - id: lobby
+      location: BACKEND
     - id: skyblock
       location: BACKEND
-  server:
-    target-required: false
-    schedule-online: false
+    - id: minigames
+      location: BACKEND
   delay: 0s
-  cooldown: 10s
+  cooldown: 30s
 
 args:
   - name: message
@@ -844,346 +651,372 @@ commands:
   - command: "say [Network] ${message}"
 ```
 
-**Step 2:** Grant permission
+### example 5: economy with operator override
 
-In LuckPerms (or whatever you use):
+```yaml
+version: 2
+name: "givemoney"
+description: "Give money to players (requires op)"
+enabled: true
 
-```
-/lp group admin permission set commandbridge.command.broadcast true
-```
+permissions:
+  enabled: true
+  silent: false
 
-**Step 3:** Use it
+register:
+  - id: proxy-main
+    location: VELOCITY
 
-```
-/broadcast The server will restart in 5 minutes!
-```
+defaults:
+  run-as: OPERATOR  # temp op for this command
+  execute:
+    - id: survival
+      location: BACKEND
+  server:
+    target-required: false
+    schedule-online: false
+  delay: 0s
+  cooldown: 0s
 
-**What happens:**
+args:
+  - name: player
+    type: PLAYERS
+    required: true
+  
+  - name: amount
+    type: RANGE
+    required: true
 
-1. You run the command on the Velocity proxy
-1. Permission check: Do you have `commandbridge.command.broadcast`? Yes, continue
-1. Argument parsing: `${message}` = “The server will restart in 5 minutes!”
-1. Cooldown check: Have you used this in the last 10 seconds? No, continue
-1. Command forwarding: Send `say [Network] The server will restart in 5 minutes!` to:
-- lobby server (as console)
-- survival server (as console)
-- creative server (as console)
-- skyblock server (as console)
-1. All servers execute the command simultaneously
-1. All players see: `[Network] The server will restart in 5 minutes!`
-1. Cooldown activated for you for 10 seconds
-
-Done. Network-wide broadcast with a single command, zero Java code written.
-
------
-
-## Architecture
-
-CommandBridge is split into three Gradle modules:
-
-### core
-
-Contains all the shared code:
-
-- WebSocket implementations (client and server)
-- Scripting engine (ScriptLoader, validators, argument mapper)
-- Data models (Script, Defaults, ArgMapping, etc.)
-- Utility functions
-
-### velocity
-
-The Velocity plugin:
-
-- WebSocket **server** (listens for connections)
-- Command registration for proxy-side commands
-- Authentication handling (HMAC with shared secret)
-- Generates `secret.key` file
-
-### paper
-
-The Paper plugin:
-
-- WebSocket **client** (connects to Velocity)
-- Command registration for backend-side commands
-- Command execution (receives forwarded commands from proxy)
-- Player online checking for deferred execution
-
-**Communication flow:**
-
-```
-Player on Velocity
-    ↓
-/economy Steve 100
-    ↓
-[Velocity] Parse command, validate args, resolve placeholders
-    ↓
-[WebSocket] Send: { command: "eco give Steve 100", server: "survival", runAs: "CONSOLE" }
-    ↓
-[Paper Backend] Receive message, authenticate, execute command as console
-    ↓
-Backend plugin runs: eco give Steve 100
+commands:
+  - command: "eco give ${player} ${amount}"
 ```
 
-All communication is authenticated using HMAC. When a Paper server connects, it proves it knows the secret key without sending the key itself. Prevents unauthorized servers from joining your network.
+## architecture deep dive
 
-### Why WebSockets instead of plugin messaging?
+### module breakdown
 
-Plugin messaging (BungeeCord/Velocity’s built-in system) only works when **at least one player is online**. If your network is empty, messages don’t get delivered.
+**core module** (`core/`):
 
-WebSockets keep a persistent connection between servers regardless of player count. This means:
+- WebSocket client and server implementations using Netty 
+- JWT authentication logic (new in v3)
+- Scripting engine (loader, binder, validators)
+- All record classes (`Script`, `ArgMapping`, `CmdMapping`, `Defaults`, etc.)
+- Enums (`ArgType`, `RunAs`, `Location`)
+- Annotation processors (`@Default`, `@Merge`, `@Platform`, `@Required`, `@Min`)
+- Type adapters for YAML binding
+- Utility classes
 
-- Commands can run 24/7
-- Automated systems can communicate even at 3 AM when nobody’s online
-- More reliable, lower latency
-- Better error handling
+**velocity module** (`velocity/`):
 
-The tradeoff is that you have to configure port and authentication, but honestly that’s not a big deal and you only do it once.
+- Velocity plugin implementation
+- WebSocket server that Paper clients connect to
+- JWT token generation and validation (v3)
+- Proxy mesh management (v3)
+- Command registration on Velocity
+- Script loading and validation
+- Client connection management
+- Config management for Velocity side
 
------
+**paper module** (`paper/`):
 
-## Building from source
+- Paper plugin implementation
+- WebSocket client that connects to Velocity
+- JWT authentication client logic (v3)
+- Command execution on backend
+- Player online status tracking
+- Deferred command scheduling
+- Command registration on Paper (for Bukkit→Velocity commands)
+- Config management for Paper side 
 
-If you want to modify the plugin or build it yourself:
+### WebSocket architecture
 
-### Requirements
+**connection model**:
 
-- **Java 21** JDK
+- Velocity runs Netty-based WebSocket server 
+- Paper servers connect as WebSocket clients
+- persistent bidirectional TCP connections
+- no dependency on plugin messaging or player presence  
+
+**message protocol**:
+
+- JSON-based message format (likely)
+- message types: command execution, authentication, status updates, client registry sync
+- each message contains: sender, target, command template, execution context, options
+- messages routed based on client-id
+
+**v3 mesh topology**:
+
+- proxies can connect to each other as peers
+- client registry synchronized across mesh
+- commands can target any client regardless of which proxy it’s connected to
+- service discovery via configured peer list
+
+### authentication (v3 JWT system)
+
+**why JWT over HMAC**:
+
+- tokens expire (security) 
+- tokens can be revoked without restart
+- claims carry identity and scope 
+- standard protocol (RFC 7519) 
+- better for distributed systems
+
+**JWT flow**:
+
+1. Velocity generates signing key on first start
+1. admin runs `/cb token generate <client-id>` to create token
+1. token pasted into Paper config
+1. Paper connects with token in handshake
+1. Velocity validates signature and claims 
+1. token expiration checked on each connection
+
+**token structure** (probably):
+
+```json
+{
+  "iss": "commandbridge-velocity",
+  "sub": "survival",
+  "iat": 1701234567,
+  "exp": 1701838367,
+  "scopes": ["command-execution", "client-registry"]
+}
+```
+
+### state management
+
+**client registry**:
+
+- Velocity maintains map of connected clients
+- in v3, registry synced across proxy mesh
+- includes: client-id, connection timestamp, last heartbeat, connected proxy
+
+**deferred command queue**:
+
+- stored per client
+- checked at configured frequency
+- items expire based on timeout
+- commands execute when player detected online
+
+**cooldown tracking**:
+
+- per-player cooldown map
+- resets on server restart (not persisted)
+- stored in memory on proxy side
+
+## building from source
+
+### prerequisites
+
+- **Java Development Kit 21**
 - **Git**
+- **Gradle** (wrapper included, so not strictly necessary)
 
-### Clone and build
+### build steps
 
 ```bash
+# clone the repo
 git clone https://github.com/objz/CommandBridge.git
 cd CommandBridge
+
+# checkout v3 branch
+git checkout v3
+
+# build with gradle
 ./gradlew shadowJar
+
+# output will be in:
+# build/libs/CommandBridge-3.0.0-all.jar
 ```
 
-On Windows use `gradlew.bat` instead.
+the `shadowJar` task creates a fat JAR with all dependencies bundled. you can also use `./gradlew build` for standard compilation without shadow.
 
-The compiled JAR will be in:
-
-```
-<module>/build/libs/CommandBridge-<version>-all.jar
-```
-
-You want the `-all.jar` variant (it includes dependencies).
-
-### Development setup
-
-I recommend IntelliJ IDEA. Just open the project (it’ll detect Gradle automatically) and you’re good to go.
-
-The codebase is pretty well organized:
-
-- `/core/src/main/java/` - Shared code
-- `/velocity/src/main/java/` - Velocity-specific
-- `/paper/src/main/java/` - Paper-specific
-
-Most of the interesting stuff is in the `scripting` package under `core`.
-
------
-
-## Troubleshooting
-
-### “Client failed to authenticate”
-
-Your secret key doesn’t match. Double-check:
-
-- You copied the entire key from Velocity’s `secret.key` file
-- No extra spaces or line breaks in Paper’s config
-- You restarted both servers after changing the config
-
-### “Connection refused”
-
-Velocity’s WebSocket server isn’t running or the port is blocked:
-
-- Make sure Velocity started successfully
-- Check that the port is the same in both configs
-- Verify your firewall isn’t blocking the port
-- Try `127.0.0.1` instead of `localhost` (or vice versa)
-
-### “Command not registered”
-
-Your script has validation errors:
-
-- Check the server logs for error messages
-- Use `/cb dump` to see exactly what the loader sees
-- Common issues: duplicate argument names, wrong enum values, invalid placeholders
-
-### “Player is not online”
-
-The backend server doesn’t see the player as online:
-
-- They might be on a different server than you think
-- The server ID in your `execute` list might be wrong
-- Try setting `target-required: false` if the command doesn’t actually need the player online
-
-### “Permission denied”
-
-Grant the permission:
+### gradle module structure
 
 ```
-commandbridge.command.<scriptname>
+CommandBridge/
+├── build.gradle.kts          # root build config
+├── settings.gradle.kts       # module declarations
+├── core/
+│   └── build.gradle.kts      # core module config
+├── velocity/
+│   └── build.gradle.kts      # velocity module config
+└── paper/
+    └── build.gradle.kts      # paper module config
 ```
 
-For admin commands use:
+modules are declared in `settings.gradle.kts`:
 
+```kotlin
+include("core", "velocity", "paper")
 ```
-commandbridge.admin
-```
 
-### Something else is broken
+### key dependencies (from Dependabot updates)
 
-Use `/cb dump` and share the link. Makes debugging way easier.
+- `io.jsonwebtoken:jjwt-api` – JWT token API
+- `io.jsonwebtoken:jjwt-impl` – JWT implementation
+- `io.jsonwebtoken:jjwt-jackson` – JWT JSON handling
+- `io.netty:netty-all` – WebSocket server/client
+- Velocity API
+- Paper API (removed in v2.1.6, uses Bukkit API now)
+- SnakeYAML for config parsing
+- CommandAPI for complex argument types
+
+## troubleshooting
+
+### clients won’t connect
+
+**symptoms**: Paper servers can’t connect to Velocity, logs show authentication failures
+
+**fixes**:
+
+- check JWT token is correctly pasted (no extra spaces/newlines)
+- verify Velocity port is open and not firewalled
+- ensure Velocity IP in Paper config is correct (use IP, not domain)
+- check Velocity logs for token validation errors
+- try regenerating token with `/cb token generate <client-id>`
+
+### commands not executing
+
+**symptoms**: command runs on proxy but nothing happens on backend
+
+**fixes**:
+
+- verify script is loaded (check `/cb list` or logs)
+- ensure `execute` list includes the correct client-id
+- check backend is connected (logs should show “Client authenticated successfully”)
+- review script validation errors in console on startup
+- try `/cb reload` to reload scripts
+
+### “placeholder could not be resolved” errors
+
+**symptoms**: script fails to load with placeholder resolution errors
+
+**fixes**:
+
+- check all `${placeholders}` match argument names (case-sensitive)
+- ensure argument names are unique
+- verify you’re not using `${args.INVALID_TYPE}`
+- check for typos in placeholder names
+
+### “argument type not supported on platform” errors
+
+**symptoms**: script fails validation with platform compatibility errors
+
+**fixes**:
+
+- don’t use backend-only types (WORLD, LOCATION) in Velocity-registered commands
+- don’t use proxy-only types (SERVER) in backend-registered commands
+- review `@Platform` annotations on `ArgType` enum
+- separate commands by platform if needed
+
+### deferred commands not executing
+
+**symptoms**: offline player commands don’t execute when they log in
+
+**fixes**:
+
+- verify `schedule-online: true` and `target-required: true` are set
+- check `timeout` hasn’t expired
+- ensure `frequency` isn’t too long (try lowering it)
+- review Paper logs for scheduled command checks
+- confirm player is joining the correct backend server
+
+### proxy mesh not working (v3)
+
+**symptoms**: commands don’t execute on clients connected to other proxies
+
+**fixes**:
+
+- verify `proxy-mesh.enabled: true` on all proxies
+- check peer configuration includes correct host/port
+- ensure JWT signing keys match across proxies
+- review proxy logs for peer connection status
+- try `/cb mesh status` to see topology
+- confirm firewalls allow proxy-to-proxy communication
+
+### high memory usage
+
+**symptoms**: plugin using excessive memory
+
+**fixes**:
+
+- reduce `scripts.reload-on-change` frequency if enabled
+- lower `server.frequency` in scripts (less frequent player checks)
+- check for leaked connections (restart Velocity if needed)
+- review cooldown maps (they grow with unique players)
+- consider increasing JVM heap size if network is large
+
+### “script schema version not supported”
+
+**symptoms**: scripts fail to load with version errors
+
+**fixes**:
+
+- ensure `version: 2` is set (v3 still uses schema version 2)
+- don’t use `version: 3` (schema hasn’t changed from v2)
+- check YAML syntax is valid
+
+### JWT tokens expiring constantly
+
+**symptoms**: clients disconnect periodically with token expiration
+
+**fixes**:
+
+- increase `authentication.token-expiration` in Velocity config (default 7d)
+- implement token rotation (generate new token before expiration)
+- consider setting up auto-enroll for automatic renewal
+- check system clocks are synchronized (JWT uses timestamps)
+
+## differences from v2
+
+just to be clear on what changed from v2 to v3:
+
+|feature                  |v2                             |v3                                      |
+|-------------------------|-------------------------------|----------------------------------------|
+|**architecture**         |single proxy, multiple backends|multi-proxy mesh topology               |
+|**authentication**       |HMAC shared secrets            |JWT tokens with expiration              |
+|**topology**             |star (hub-and-spoke)           |mesh/distributed                        |
+|**cross-proxy commands** |no                             |yes                                     |
+|**token management**     |manual secret copying          |generate/revoke via commands            |
+|**security**             |static secrets                 |dynamic tokens, expiration, revocation  |
+|**scalability**          |limited to one proxy           |horizontal scaling with multiple proxies|
+|**state synchronization**|single proxy only              |client registry synced across mesh      |
+|**use case**             |single proxy networks          |enterprise multi-proxy networks         |
+
+**script compatibility**: v2 scripts work in v3 without modification (still schema version 2)
+
+**config migration**: requires rewriting config (v2 uses `secret`, v3 uses JWT `token`)
+
+## performance notes
+
+v3 is generally faster than v2 for command execution (better Netty handling), but the mesh topology adds overhead for cross-proxy communication. if you’re running a single proxy, you won’t see performance gains over v2. if you’re running multiple proxies, the mesh coordination has some latency but it’s worth it for the functionality.
+
+JWT validation is computationally cheap (HMAC-SHA256 signatures are fast). token expiration checks are O(1). client registry sync happens at configured intervals, not on every command.
+
+WebSocket connections are persistent and reused, no overhead from reconnecting. message serialization is JSON-based (probably), which is fast enough for command execution (we’re not streaming video here).
+
+## final thoughts
+
+v3 is a big architectural upgrade. if you’re running a single proxy, stick with v2. if you need multiple proxies to coordinate, v3 is what you want. the JWT auth is better security-wise regardless of network size.
+
+the scripting system is the real magic here – being able to define commands declaratively is way better than writing Java classes. the validation catches so many errors before runtime. the placeholder system is powerful once you get used to it.
+
+biggest pain point is probably the multi-proxy mesh configuration. it’s not complex but it’s new territory. test thoroughly before deploying to production.
+
+yeah that’s CommandBridge v3. it bridges commands. across multiple proxies. with JWT auth. revolutionary stuff.
 
 -----
 
-## Migration from v1.x
+**license**: GPLv3 (check repository for full terms)
 
-If you’re upgrading from CommandBridge 1.x, **this is a breaking change**. The entire plugin was rewritten for v2.
+**repository**: https://github.com/objz/CommandBridge
 
-### What changed
+**issues**: https://github.com/objz/CommandBridge/issues
 
-- Communication switched from plugin messaging to WebSockets (you’ll need to configure ports and authentication)
-- Script format completely changed (you’ll need to manually convert all scripts to version 2)
-- Java 21 is now required
-- Only supports 1.20.x-1.21.x (dropped legacy version support)
-- Single JAR for both platforms instead of separate downloads
-- Better validation and error reporting
-- More argument types supported
-- New permission system
+**discord**: probably exists, check the repo
 
-### Migration steps
+**bStats**: collects anonymous usage stats (disable in `plugins/bStats/config.yml` if you want)
 
-1. **Backup everything** - Your old configs and scripts
-1. **Delete your old CommandBridge JAR** - Don’t try to run both versions
-1. **Install the new JAR** on both Velocity and Paper
-1. **Delete your old `config.yml`** - Let it generate fresh
-1. **Configure authentication** following the installation guide above
-1. **Manually convert your scripts** to the new format (reference the scripting section)
-1. **Test thoroughly** before going live
+**contributing**: PRs welcome, follow existing code style, test your changes
 
-There’s no automatic migration. Sorry. The changes were too fundamental. But the new system is much better, I promise.
-
-Legacy documentation for v1.x is still available at [objz.github.io/CommandBridge](https://objz.github.io/CommandBridge) if you need it.
-
------
-
-## Performance and scaling
-
-CommandBridge is pretty lightweight. The WebSocket connections are persistent but idle most of the time. Commands are forwarded instantly with minimal overhead.
-
-**Tested with:**
-
-- 5 backend servers
-- 100+ players online
-- Dozens of scripted commands
-- No noticeable performance impact
-
-If you’re running a massive network with hundreds of servers… honestly I haven’t tested that. It’ll probably work fine, but let me know how it goes.
-
-The scripting system uses Java records and immutable data structures, so there’s no weird state bugs or memory leaks. Validation happens once at load time, not every time a command runs.
-
------
-
-## Contributing
-
-This is open source (GPLv3 / Apache 2.0, depending on where you look - I should probably sort that out).
-
-If you want to contribute:
-
-1. Fork the repo
-1. Create a branch for your changes
-1. Make your changes (please follow the existing code style)
-1. Test thoroughly
-1. Submit a pull request
-
-**Areas where contributions are welcome:**
-
-- More argument types
-- Better validation error messages
-- Performance improvements
-- Documentation improvements (especially examples)
-- Bug fixes
-
-**Please don’t submit PRs for:**
-
-- Adding 1.8 support (not happening)
-- Changing the entire architecture (open an issue first to discuss)
-- Reformatting the entire codebase (I will close it)
-
------
-
-## Future plans
-
-Some things I’m considering for future versions:
-
-- **GUI for script editing** - YAML is great, but a web UI would be nice for non-technical server owners
-- **More validation tools** - Better script testing and debugging
-- **Conditional execution** - Run commands only if certain conditions are met
-- **Response handling** - Get feedback from backend commands back to the proxy
-- **Public API** - Let other plugins integrate with CommandBridge
-- **Discord bot integration** - Manage scripts and see logs from Discord
-- **More platforms** - BungeeCord support (maybe, if people actually want it)
-
-No promises on timeline. This is a side project and I work on it when I have time.
-
-If you have feature requests, open an issue on GitHub. No guarantees I’ll implement it, but I do read them.
-
------
-
-## Support
-
-**Documentation:** [cb.objz.dev/docs](https://cb.objz.dev/docs/)  
-**Issues:** [github.com/objz/CommandBridge/issues](https://github.com/objz/CommandBridge/issues)  
-**Downloads:** [modrinth.com/plugin/commandbridge](https://modrinth.com/plugin/commandbridge)
-
-If something’s not working, please:
-
-1. Check this README first
-1. Check the documentation
-1. Use `/cb dump` and look at the output
-1. Search existing GitHub issues
-1. If still stuck, open a new issue with all the details (versions, configs, logs, etc.)
-
-I’m usually pretty responsive, but I have a job and a life, so please be patient.
-
------
-
-## Statistics
-
-CommandBridge uses **bStats** to collect anonymous usage statistics. This helps me understand how the plugin is used and prioritize development.
-
-Data collected:
-
-- Server software and version
-- Player count
-- Number of scripted commands
-- Plugin version
-
-No personal information, server IPs, or command content is collected.
-
-To disable: Edit `plugins/bStats/config.yml` and set `enabled: false`
-
------
-
-## License
-
-This project is licensed under **GPLv3** (according to the GitHub repo) or **Apache 2.0** (according to Modrinth).
-
-Honestly I’m not sure which one it actually is at this point. Both are open source. Just don’t sell it or claim you wrote it.
-
------
-
-## Final thoughts
-
-I built CommandBridge because I was tired of the old way of doing things. Writing Java code for every single proxy command was tedious and error-prone, and it meant non-developers couldn’t extend their servers without hiring someone.
-
-The YAML scripting system isn’t perfect - YAML has its quirks and limitations - but it’s way better than the alternative. You can add new network commands in minutes instead of hours, and if something breaks, you just edit the file and reload.
-
-The v2 rewrite was a massive undertaking. I basically threw away the entire codebase and started over with a better architecture, better validation, better everything. It took months. Was it worth it? Yeah, I think so.
-
-If you find bugs, report them. If you have feature ideas, suggest them. If you just want to say thanks, that’s cool too.
-
-Happy scripting.
-
-— objz
+now go set up your network.
