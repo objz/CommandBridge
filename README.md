@@ -1,227 +1,225 @@
-# CommandBridge v3.0.0
+<div align="center">
 
-![License](https://img.shields.io/badge/license-GPLv3-blue.svg) ![Java](https://img.shields.io/badge/Java-21-orange.svg) ![Minecraft](https://img.shields.io/badge/Minecraft-1.20.x--1.21.x-green.svg) ![Version](https://img.shields.io/badge/version-3.0.0-brightgreen.svg) ![Build](https://img.shields.io/badge/build-passing-success.svg)
+# CommandBridge
 
-yeah so this is CommandBridge. it's basically how you make commands work across your entire Minecraft network without losing your sanity. v3 is a complete ground-up rewrite – we rewrote the entire codebase from scratch. new module architecture, new networking layer, new scripting engine, everything.
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![GPL-3.0 License][license-shield]][license-url]
 
-## what even is this
+**Cross-server command execution for Minecraft networks**
 
-alright so here's the deal. you've got Velocity proxies and Paper servers. normally they don't talk to each other very well. plugin messaging is a mess, especially when nobody's online. CommandBridge solves this by using WebSockets (real TCP connections, not that plugin channel garbage) so your servers can actually communicate reliably.
+A WebSocket-based command bridge enabling reliable cross-server communication and declarative command scripting for Velocity and Paper servers.
 
-why did i build this? because i got tired of writing Java command classes every time i wanted to proxy a simple economy command or warp. seriously, who wants to compile code just to add `/spawn` to your proxy? with v3, you drop a YAML file in a folder and boom, it works.
+[Report Bug](https://github.com/objz/CommandBridge/issues) · [Request Feature](https://github.com/objz/CommandBridge/issues)
 
-## why v3 is a complete rewrite
+</div>
 
-v2 worked. it switched from plugin messaging to WebSockets, added a scripting system, solved the core problem. but the codebase had grown organically and there were fundamental architectural limitations that couldn't be fixed without starting over.
+---
 
-here's what actually changed in the v3 rewrite:
+## About The Project
 
-### code architecture (242 files changed, 17,246 insertions, 11,988 deletions)
+CommandBridge is a high-performance command bridging system designed for large-scale Minecraft networks running Velocity proxies and Paper backend servers. It solves the fundamental problem of cross-server command execution by establishing persistent WebSocket connections that operate independently of player presence.
 
-**build system restructure**:
-- v2: monolithic `build.gradle.kts` at root with gradle.extra properties
-- v3: proper multi-project Gradle build with separate module configs
+### The Problem
 
-**module reorganization**:
-- v2: 3 modules (paper, velocity, core)
-- v3: 6 modules (core, velocity, backends, backends:bukkit, backends:paper, backends:folia, dist)
-  - backends module with platform-specific sub-modules
-  - dedicated dist module for fat JAR assembly
-  - proper module separation with clean dependencies
+Traditional Minecraft networks face several critical limitations:
 
-**core package complete rewrite**:
+- **Plugin messaging requires online players** - commands cannot execute when servers are empty
+- **No cross-proxy coordination** - distributed proxy setups cannot share state or execute commands across boundaries
+- **Manual command registration** - every command requires Java compilation and plugin deployment
+- **Unreliable delivery** - plugin channels drop messages under load
 
-v2 had this structure:
+### The Solution
+
+CommandBridge provides:
+
+- **Persistent WebSocket connections** using Undertow - operates 24/7 regardless of player presence
+- **Declarative YAML scripting** - define commands in configuration files without writing code
+- **Mutual TLS authentication** - certificate-based security with automatic key generation
+- **Record-based message protocol** - type-safe communication using Java records and Jackson serialization
+- **Platform abstraction layer** - single JAR deployment that auto-detects Velocity or Paper runtime
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+## Built With
+
+* [![Java][Java]][Java-url] - Java 21 with Records, Pattern Matching, Sealed Types
+* [![Undertow][Undertow]][Undertow-url] - WebSocket server/client implementation
+* [![Jackson][Jackson]][Jackson-url] - JSON serialization with datatype modules
+* [![Velocity][Velocity]][Velocity-url] - Proxy server API
+* [![Paper][Paper]][Paper-url] - Backend server API
+* [![Gradle][Gradle]][Gradle-url] - Multi-project build system
+
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+## Architecture Overview
+
+### Module Structure
+
+CommandBridge uses a multi-project Gradle build with strict module boundaries:
+
 ```
-core/src/main/java/dev/objz/commandbridge/core/
-├── Logger.java
-├── json/
-│   ├── MessageBuilder.java
-│   └── MessageParser.java
-├── utils/
-│   ├── ConfigManager.java
-│   ├── ScriptManager.java
-│   ├── StringParser.java
-│   ├── TLSUtils.java
-│   └── VersionChecker.java
-└── websocket/
-    ├── WebSocketClient.java
-    └── WebSocketServer.java
-```
-
-v3 completely restructured into:
-```
-core/src/main/java/dev/objz/commandbridge/
-├── cmd/                    # NEW: command abstraction layer
-│   ├── ArgumentMapperInterface.java
-│   ├── CommandRegistryInterface.java
-│   └── ref/               # NEW: reference types for locations, entities
-├── config/                # REWRITTEN: new config system
-│   ├── ConfigManager.java (completely new implementation)
-│   ├── ConfigKeys.java
-│   ├── model/            # NEW: record-based config models
-│   └── profile/          # NEW: config profiles with validation
-├── logging/              # REWRITTEN: new logging system
-│   ├── Log.java (replaced Logger.java with 568 lines)
-│   └── Summary.java
-├── net/                  # REWRITTEN: new networking layer
-│   ├── InNode.java, OutNode.java
-│   ├── InboundHandler.java, OutboundHandler.java
-│   ├── ResponseAwaiter.java, SendOperation.java
-│   ├── payloads/         # NEW: structured payload system
-│   │   ├── cmd/
-│   │   ├── feedback/
-│   │   └── util/
-│   └── proto/            # NEW: protocol definition
-│       ├── Envelope.java (replaced MessageBuilder/Parser)
-│       └── MessageType.java
-├── scripting/            # COMPLETELY NEW: 65+ files
-│   ├── ScriptLoader.java
-│   ├── DebugPrinter.java (665 lines)
-│   ├── bind/             # NEW: YAML binding system
-│   ├── model/            # NEW: script models (records)
-│   ├── validation/       # NEW: validation pipeline
-│   └── yaml/             # NEW: custom YAML parser
-└── security/             # REWRITTEN: TLS authentication
-    ├── AuthService.java
-    ├── TLS.java, TlsResolver.java
-    ├── StrictKeystore.java
-    ├── SecretLoader.java
-    └── TrustManager.java
+CommandBridge/
+├── core/              [java-library] - Platform-agnostic shared code
+│   ├── net/          - WebSocket communication layer (Undertow)
+│   ├── scripting/    - YAML script engine (49 classes)
+│   ├── security/     - TLS/authentication system
+│   ├── config/       - Configuration management
+│   └── logging/      - Centralized logging
+│
+├── velocity/          [java-library] - Proxy implementation
+│   ├── net/          - WebSocket server (port 8080)
+│   ├── cmd/          - Command registry and argument mapping
+│   └── cli/          - Admin commands (/cb)
+│
+├── backends/          [java-library] - Backend platform abstraction
+│   ├── net/          - WebSocket client
+│   ├── platform/     - Platform detection and adapters
+│   ├── bukkit/       - Bukkit implementation
+│   ├── paper/        - Paper-specific features
+│   └── folia/        - Folia scheduler support
+│
+└── dist/              [shadow-plugin] - Fat JAR assembly
+    └── shadowJar     - Relocates dependencies, merges resources
 ```
 
-**what got deleted**:
-- `WebSocketClient.java`, `WebSocketServer.java` - replaced with Undertow-based system
-- `MessageBuilder.java`, `MessageParser.java` - replaced with Envelope protocol
-- `ScriptManager.java`, `StringParser.java` - completely rewritten
-- `TLSUtils.java`, `VersionChecker.java` - removed or replaced
-- entire v2 json package - replaced with Jackson
+### Communication Architecture
 
-**what's completely new**:
-- scripting engine with 65+ files (YAML parser, binder, validators, processors)
-- Envelope-based message protocol with proper typing
-- record-based models throughout (immutable, type-safe)
-- TLS authentication system
-- platform abstraction layer with adapters
-- proper annotation-driven validation
+#### WebSocket Protocol
 
-the rewrite wasn't about adding features. it was about building the right foundation. v2's code worked but was becoming unmaintainable. v3 starts clean with modern Java patterns, proper separation of concerns, and extensibility built in from the start.
+**Transport Layer:**
+- Velocity runs Undertow WebSocket server on configurable port (default 8080)
+- Paper servers establish client connections on startup
+- Connections persist independently of player presence
+- TLS 1.3 with mutual certificate verification
 
-## features
+**Message Protocol:**
 
-### networking & communication
+All messages use the `Envelope` record for type-safe serialization:
 
-- WebSocket-based persistent TCP connections using Undertow
-- works without players online
-- Envelope message protocol with structured payloads
-- proper request/response handling with ResponseAwaiter
-- TLS-based authentication (mutual verification)
-- distributed state management
+```java
+public record Envelope(
+    int v,              // Protocol version (currently 1)
+    UUID id,            // Unique message ID for request/response correlation
+    MessageType type,   // Enum: AUTH_REQUEST, INVOKED_COMMAND, etc.
+    String from,        // Sender client-id
+    String to,          // Target client-id  
+    long ts,            // Unix timestamp (milliseconds)
+    JsonNode payload    // Jackson JsonNode containing type-specific data
+)
+```
 
-### scripting system
+**Message Types:**
 
-- YAML-based command definitions
-- 25+ argument types (STRING, INTEGER, PLAYERS, ENTITIES, WORLD, SERVER, LOCATION, ITEM_STACK, ENCHANTMENT, POTION_EFFECT, SOUND, BIOME, TIME, and more)
-- placeholder system with `${argumentName}` syntax
-- run-as modes: CONSOLE, PLAYER, OPERATOR
-- deferred execution for offline players
-- cooldowns and delays (per-player)
-- permission integration
-- multi-target execution
-- platform-specific argument validation (backend-only types, proxy-only types)
+```java
+public enum MessageType {
+    AUTH_REQUEST,              // Initial authentication handshake
+    AUTH_OK,                   // Authentication successful
+    AUTH_FAIL,                 // Authentication failed
+    REGISTER_COMMANDS,         // Server → Client: register these commands
+    REGISTER_COMMANDS_RESULT,  // Client → Server: registration result
+    INVOKED_COMMAND,          // Command execution request
+    PING,                     // Keepalive ping
+    PONG                      // Keepalive pong
+}
+```
 
-### platform support
+#### Request/Response Pattern
 
-- Java 21 only (uses records, pattern matching, modern APIs)
-- Minecraft 1.20.x to 1.21.x
-- Velocity (primary), Waterfall (supported)
-- Paper (primary), Folia, Purpur, Spigot, Bukkit
+CommandBridge implements asynchronous request/response using `ResponseAwaiter`:
 
-### architecture
+```java
+// Velocity side - sending a command
+CompletableFuture<Envelope> future = awaiter.expect(envelope.id());
+outNode.send(targetClientId, envelope);
+Envelope response = future.get(5, TimeUnit.SECONDS);
+```
 
-- modular Gradle build with clean dependencies
-- single JAR deployment (auto-detects platform)
-- shadowJar with dependency relocation
-- annotation-driven validation (@Default, @Merge, @Platform, @Required, @Min, @Max)
-- record-based immutable models
-- platform abstraction with adapters
+#### Authentication Flow
 
-## installation
+1. **Startup (Velocity)**:
+   ```java
+   TlsResolver.resolveServer(dataDir, config.security())
+   // Generates CA cert, server cert, private keys
+   // Stores in: dataDir/tls/ca.crt, server.p12
+   ```
 
-### requirements
+2. **Connection (Paper)**:
+   ```java
+   TlsResolver.resolveClient(dataDir, config.security())
+   // Loads CA cert for server verification
+   // Generates client cert signed by CA
+   ```
 
-- Java 21 (not 17, not 11, definitely not 8)
-- Velocity proxy (or Waterfall)
-- Paper backend servers (Folia, Purpur, Spigot, Bukkit should work)
-- Minecraft 1.20.x or 1.21.x
+3. **Handshake**:
+   ```
+   Paper → Velocity: AUTH_REQUEST {clientId, nonce, signature}
+   Velocity validates signature using HMAC-SHA256
+   Velocity → Paper: AUTH_OK {assigned serverId}
+   ```
 
-### basic setup
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-1. download `CommandBridge-3.0.0-all.jar` from releases
-2. put it in plugins folders on BOTH Velocity and Paper (same JAR, auto-detects platform)
-3. restart Velocity first, then Paper servers (configs will generate)
-4. configure TLS authentication:
-   - Velocity generates certificates in `plugins/CommandBridge/tls/`
-   - Paper servers need CA certificate copied from Velocity
-   - or use auto-enroll mode for testing (not recommended for production)
-5. set up networking:
-   - Velocity: `host: "0.0.0.0"`, `port: 8080`
-   - Paper: `remote: "velocity-ip"`, `port: 8080`
-6. configure identifiers:
-   - each proxy needs unique `server-id`
-   - each backend needs unique `client-id`
-7. restart in order (Velocity first, then Paper)
-8. check logs for successful authentication
+## Scripting System
 
-## commands
+### Overview
 
-### `/cb` (or `/commandbridge`)
+The scripting system transforms YAML declarations into registered commands through a multi-stage pipeline:
 
-main admin command. requires `commandbridge.admin` permission.
+```
+YAML File → Parser → Binder → Validators → Script Record → Command Registration
+```
 
-- `/cb reload` - reload configs and scripts
-- `/cb list` - list all connected clients
-- `/cb dump` - generate debug dump URL
-- `/cb tls info` - show TLS certificate information
-- `/cb tls regenerate` - regenerate TLS certificates
-- `/cb help` - show help
+### Script Model
 
-### `/cbc reconnect` (Paper only)
+Scripts are represented as immutable Java records with annotation-driven validation:
 
-reconnect Paper server to Velocity. requires `commandbridge.admin`.
+```java
+@ModelRoot("script")
+public record Script(
+    @Min(1) @Max(2) @Required int version,
+    @Required @Pattern(regex = "^[a-z][a-z0-9-]{2,32}$") String name,
+    @Default("true") boolean enabled,
+    String description,
+    List<String> aliases,
+    @Required Permissions permissions,
+    @Required List<IdMapping> register,
+    @Required Defaults defaults,
+    @Required List<ArgMapping> args,
+    @Required List<CmdMapping> commands
+)
+```
 
-### script-defined commands
-
-any command defined in scripts gets registered automatically with permission `commandbridge.command.<script-name>`.
-
-## the scripting system
-
-scripts live in `plugins/CommandBridge/scripts/`. each `.yml` file defines one command. the plugin loads them on startup and validates everything before registering.
-
-### script structure
+### YAML Structure
 
 ```yaml
 version: 2
 
-name: "eco"
-description: "Proxy economy commands to backends"
+# Command metadata
+name: "economy"
+description: "Cross-server economy management"
 enabled: true
-aliases: ["economy", "money"]
+aliases: ["eco", "money"]
 
+# Permission configuration
 permissions:
   enabled: true
   silent: false
 
+# Registration targets
 register:
-  - id: proxy-main
+  - id: "proxy-main"
     location: VELOCITY
 
+# Default execution parameters
 defaults:
   run-as: CONSOLE
   execute:
-    - id: survival
+    - id: "survival"
       location: BACKEND
-    - id: creative
+    - id: "creative"
       location: BACKEND
   server:
     target-required: true
@@ -231,6 +229,7 @@ defaults:
   delay: 0s
   cooldown: 0s
 
+# Argument definitions
 args:
   - name: player
     type: PLAYERS
@@ -238,131 +237,289 @@ args:
     suggestions: ["@a", "@p", "@r"]
   
   - name: amount
-    type: RANGE
+    type: INTEGER
     required: true
 
+# Command templates
 commands:
   - command: "eco give ${player} ${amount}"
   - command: "eco set ${player} ${amount}"
     run-as: OPERATOR
     delay: 2s
-  - command: "eco take ${player} ${amount}"
-    server:
-      target-required: false
 ```
 
-### argument types
+### Argument Types
 
-**universal types** (work anywhere):
-- STRING, INTEGER, BOOLEAN, DOUBLE, TEXT, RANGE
+Arguments are strongly typed with platform validation enforced at load time:
 
-**selector types**:
-- PLAYERS (player selector: @a, @p, @r, names)
-- ENTITIES (entity selector)
-- ENTITY_TYPE (zombie, creeper, etc.)
+```java
+public enum ArgType {
+    // Universal types (Velocity + Backend)
+    @Platform({ VELOCITY, BACKEND }) STRING,
+    @Platform({ VELOCITY, BACKEND }) INTEGER,
+    @Platform({ VELOCITY, BACKEND }) BOOLEAN,
+    @Platform({ VELOCITY, BACKEND }) DOUBLE,
+    @Platform({ VELOCITY, BACKEND }) TEXT,
+    
+    // Backend-only types
+    @Platform({ BACKEND }) RANGE,
+    @Platform({ BACKEND }) PLAYERS,
+    @Platform({ BACKEND }) ENTITIES,
+    @Platform({ BACKEND }) ENTITY_TYPE,
+    @Platform({ BACKEND }) WORLD,
+    @Platform({ BACKEND }) LOCATION,
+    @Platform({ BACKEND }) LOCATION_2D,
+    @Platform({ BACKEND }) ANGLE,
+    @Platform({ BACKEND }) ROTATION,
+    @Platform({ BACKEND }) ITEM_STACK,
+    @Platform({ BACKEND }) ENCHANTMENT,
+    @Platform({ BACKEND }) POTION_EFFECT,
+    @Platform({ BACKEND }) SOUND,
+    @Platform({ BACKEND }) BIOME,
+    @Platform({ BACKEND }) TIME,
+    
+    // Proxy-only types
+    @Platform({ VELOCITY }) SERVER
+}
+```
 
-**backend-only types**:
-- WORLD, LOCATION, LOCATION_2D, ANGLE, ROTATION
-- ITEM_STACK, ENCHANTMENT, POTION_EFFECT
-- SOUND, BIOME, TIME
+**Type Validation Example:**
 
-**proxy-only types**:
-- SERVER (Velocity server names)
-
-the `PlatformProcessor` validates argument types match registration location at load time. using a backend-only type (like WORLD) in a proxy-registered command fails validation.
-
-### placeholder resolution
-
-templates use `${argumentName}` syntax. when a command runs, arguments are substituted. the `ResolvableProcessor` validates all placeholders resolve to defined arguments at load time.
-
-example:
-```yaml
+```java
+// This will FAIL validation (WORLD is backend-only)
+register:
+  - id: "proxy-main"
+    location: VELOCITY
 args:
-  - name: target
-    type: PLAYERS
+  - name: worldName
+    type: WORLD  // ❌ PlatformProcessor rejects this
 
-commands:
-  - command: "give ${target} diamond 64"  # valid
-  - command: "give ${player} diamond 64"  # invalid - ${player} not defined
+// This is valid
+register:
+  - id: "survival"
+    location: BACKEND
+args:
+  - name: worldName
+    type: WORLD  // ✅ Valid on backend
 ```
 
-### execution contexts (run-as)
+### Placeholder System
 
-- **CONSOLE**: runs as backend console (elevated privileges)
-- **PLAYER**: runs as player who triggered command (keeps player permissions)
-- **OPERATOR**: temporarily grants op for command duration (careful with anti-cheat)
+Templates use `${argumentName}` syntax with compile-time validation:
 
-### deferred execution
+```java
+public class PlaceholderExtractor {
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([^}]*)}");
+    
+    public static List<String> extract(String command) {
+        List<String> result = new ArrayList<>();
+        Matcher matcher = PLACEHOLDER.matcher(command);
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            if (name != null && !name.isBlank()) {
+                result.add(name.trim());
+            }
+        }
+        return List.copyOf(result);
+    }
+}
+```
 
-queue commands for offline players:
+**Validation:**
+
+```java
+// Script loading - ResolvableProcessor validates all placeholders
+List<String> usedNames = PlaceholderExtractor.extractAll(commandStrings);
+Map<String, ArgMapping> argsByName = args.stream()
+    .collect(Collectors.toMap(ArgMapping::name, arg -> arg));
+
+for (String name : usedNames) {
+    if (!argsByName.containsKey(name)) {
+        problems.add("Unresolved placeholder: ${" + name + "}");
+    }
+}
+```
+
+### Validation Pipeline
+
+Scripts pass through multiple validation processors:
+
+1. **DefaultProcessor** - Applies `@Default` annotations, warns on redundant overrides
+2. **PlatformProcessor** - Validates argument types match registration location
+3. **ResolvableProcessor** - Ensures all `${placeholders}` resolve to defined arguments
+4. **MinProcessor** - Validates `@Min` constraints (delays, cooldowns, etc.)
+5. **MaxProcessor** - Validates `@Max` constraints
+6. **RequiredProcessor** - Ensures `@Required` fields are present
+7. **PatternProcessor** - Validates string patterns (e.g., command names)
+
+### Execution Contexts
+
+```java
+public enum RunAs {
+    CONSOLE,   // Execute as backend console (elevated privileges)
+    PLAYER,    // Execute as the player who triggered the command
+    OPERATOR   // Temporarily grant OP status for command duration
+}
+```
+
+**Implementation on Paper:**
+
+```java
+switch (runAs) {
+    case CONSOLE -> server.dispatchCommand(server.getConsoleSender(), command);
+    case PLAYER -> {
+        Player p = server.getPlayer(executorUUID);
+        if (p != null) server.dispatchCommand(p, command);
+    }
+    case OPERATOR -> {
+        Player p = server.getPlayer(executorUUID);
+        if (p != null) {
+            boolean wasOp = p.isOp();
+            try {
+                p.setOp(true);
+                server.dispatchCommand(p, command);
+            } finally {
+                p.setOp(wasOp);
+            }
+        }
+    }
+}
+```
+
+### Deferred Execution
+
+Commands can be queued for offline players:
 
 ```yaml
 server:
   target-required: true
   schedule-online: true
-  timeout: 1h
-  frequency: 30s
+  timeout: 24h
+  frequency: 1m
 ```
 
-command executes when player logs in. if timeout expires, command is dropped.
+**Implementation:**
 
-### cooldowns and delays
+```java
+// When player is offline
+if (targetRequired && !isPlayerOnline(targetUUID)) {
+    if (scheduleOnline) {
+        queue.add(new DeferredCommand(
+            command, targetUUID, System.currentTimeMillis(), timeout
+        ));
+    }
+}
 
-```yaml
-delay: 5s      # wait before executing
-cooldown: 30s  # per-player rate limit
+// Periodic check (every frequency interval)
+scheduler.scheduleAtFixedRate(() -> {
+    queue.removeIf(deferred -> {
+        if (System.currentTimeMillis() - deferred.queuedAt > deferred.timeout) {
+            return true; // Expired
+        }
+        if (isPlayerOnline(deferred.targetUUID)) {
+            execute(deferred.command);
+            return true; // Executed
+        }
+        return false; // Keep in queue
+    });
+}, frequency, frequency, TimeUnit.SECONDS);
 ```
 
-duration format: `5s`, `10m`, `2h`, `1d`
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-### multi-target execution
+## Getting Started
 
-execute one command on multiple backends:
+### Prerequisites
 
-```yaml
-execute:
-  - id: survival
-    location: BACKEND
-  - id: creative
-    location: BACKEND
-  - id: skyblock
-    location: BACKEND
-```
+- **Java 21** - Requires JDK 21 or higher
+- **Velocity** - Velocity proxy server (or Waterfall)
+- **Paper** - Paper 1.20.x - 1.21.x (Folia, Purpur, Spigot, Bukkit also supported)
 
-### inheritance and overrides
+### Installation
 
-commands inherit from `defaults` unless explicitly overridden:
+1. **Download the JAR**
+   ```sh
+   wget https://github.com/objz/CommandBridge/releases/latest/download/CommandBridge-all.jar
+   ```
 
-```yaml
-defaults:
-  run-as: CONSOLE
-  delay: 0s
+2. **Deploy to servers**
+   ```sh
+   # Same JAR works on both platforms (auto-detection)
+   cp CommandBridge-all.jar velocity/plugins/
+   cp CommandBridge-all.jar paper/plugins/
+   ```
 
-commands:
-  - command: "foo"
-    # inherits all defaults
-    
-  - command: "bar"
-    run-as: PLAYER
-    # overrides run-as, inherits delay
-```
+3. **Start Velocity first**
+   ```sh
+   # Generates configs and TLS certificates
+   cd velocity && ./start.sh
+   ```
 
-### validation pipeline
+4. **Configure authentication**
+   
+   Velocity generates TLS certificates in `plugins/CommandBridge/tls/`:
+   ```
+   tls/
+   ├── ca.crt      # Certificate Authority
+   ├── ca.key      # CA private key
+   ├── server.p12  # Server certificate (PKCS12)
+   └── server.crt  # Server certificate (PEM)
+   ```
 
-when scripts load:
+5. **Copy CA certificate to Paper**
+   ```sh
+   cp velocity/plugins/CommandBridge/tls/ca.crt \
+      paper/plugins/CommandBridge/tls/
+   ```
 
-1. YAML parsing (SnakeYAML binds to Java records)
-2. DefaultProcessor (applies @Default annotations)
-3. PlatformProcessor (validates argument types match platform)
-4. ResolvableProcessor (ensures placeholders resolve)
-5. RangeValidator (validates @Min and @Max)
-6. RequiredValidator (ensures @Required fields present)
+6. **Configure network settings**
+   
+   **Velocity** (`plugins/CommandBridge/config.yml`):
+   ```yaml
+   config-version: 3
+   server-id: "proxy-main"
+   bind-host: "0.0.0.0"
+   bind-port: 8080
+   
+   security:
+     tls:
+       enabled: true
+       mode: MUTUAL
+   ```
+   
+   **Paper** (`plugins/CommandBridge/config.yml`):
+   ```yaml
+   config-version: 3
+   client-id: "survival"
+   remote-host: "proxy.example.com"
+   remote-port: 8080
+   
+   security:
+     tls:
+       enabled: true
+       mode: MUTUAL
+   ```
 
-broken scripts don't register. errors logged with details.
+7. **Start Paper servers**
+   ```sh
+   cd paper && ./start.sh
+   ```
 
-## examples
+8. **Verify connection**
+   ```
+   [Velocity] [CommandBridge] Client authenticated: survival (TLS)
+   [Paper] [CommandBridge] Connected to proxy at proxy.example.com:8080
+   ```
 
-### simple economy command
+<p align="right">(<a href="#top">back to top</a>)</p>
+
+## Usage
+
+### Creating Scripts
+
+Scripts are placed in `plugins/CommandBridge/scripts/` as `.yml` files.
+
+#### Example 1: Economy Command
 
 ```yaml
 version: 2
@@ -373,45 +530,45 @@ aliases: ["bal", "money"]
 
 permissions:
   enabled: true
+  silent: false
 
 register:
-  - id: proxy-main
+  - id: "proxy-main"
     location: VELOCITY
 
 defaults:
   run-as: PLAYER
   execute:
-    - id: survival
+    - id: "survival"
       location: BACKEND
   cooldown: 3s
 
 args:
-  - name: player
+  - name: target
     type: PLAYERS
     required: false
     suggestions: ["@p"]
 
 commands:
-  - command: "balance ${player}"
-  - command: "balance"
+  - command: "balance ${target}"
 ```
 
-### cross-server teleport
+#### Example 2: Cross-Server Teleport
 
 ```yaml
 version: 2
 name: "tpserver"
-description: "Teleport player to different server"
+description: "Teleport to another server"
 enabled: true
 
 register:
-  - id: proxy-main
+  - id: "proxy-main"
     location: VELOCITY
 
 defaults:
   run-as: CONSOLE
   execute:
-    - id: proxy-main
+    - id: "proxy-main"
       location: VELOCITY
   delay: 1s
   cooldown: 5s
@@ -421,31 +578,31 @@ args:
     type: PLAYERS
     required: true
   
-  - name: server
+  - name: targetServer
     type: SERVER
     required: true
     suggestions: ["survival", "creative", "lobby"]
 
 commands:
-  - command: "send ${player} ${server}"
+  - command: "send ${player} ${targetServer}"
 ```
 
-### deferred kick (offline players)
+#### Example 3: Deferred Punishment
 
 ```yaml
 version: 2
 name: "kicklater"
-description: "Kick player when they next log in"
+description: "Kick player on next login"
 enabled: true
 
 register:
-  - id: proxy-main
+  - id: "proxy-main"
     location: VELOCITY
 
 defaults:
   run-as: CONSOLE
   execute:
-    - id: survival
+    - id: "survival"
       location: BACKEND
   server:
     target-required: true
@@ -466,303 +623,165 @@ commands:
   - command: "kick ${player} ${reason}"
 ```
 
-### global announcement
+### Admin Commands
 
-```yaml
-version: 2
-name: "globalannounce"
-description: "Announce to all servers in network"
-enabled: true
-aliases: ["ga", "broadcast"]
-
-register:
-  - id: proxy-main
-    location: VELOCITY
-
-defaults:
-  run-as: CONSOLE
-  execute:
-    - id: survival
-      location: BACKEND
-    - id: creative
-      location: BACKEND
-    - id: lobby
-      location: BACKEND
-    - id: skyblock
-      location: BACKEND
-  cooldown: 30s
-
-args:
-  - name: message
-    type: TEXT
-    required: true
-
-commands:
-  - command: "say [Network] ${message}"
+**Velocity:**
+```
+/cb reload              - Reload configs and scripts
+/cb list                - List connected clients
+/cb dump                - Generate debug dump
+/cb tls info            - Show TLS certificate info
+/cb tls regenerate      - Regenerate certificates
+/cb help                - Show help
 ```
 
-## architecture
-
-### module structure
-
+**Paper:**
 ```
-CommandBridge/
-├── core/              # shared code for all platforms
-│   ├── WebSocket client/server (Undertow)
-│   ├── TLS authentication
-│   ├── scripting engine
-│   ├── record models
-│   ├── validation processors
-│   └── type adapters
-│
-├── velocity/          # Velocity proxy plugin
-│   ├── WebSocket server
-│   ├── TLS server setup
-│   ├── command registration
-│   ├── client connection handling
-│   └── script loading
-│
-├── backends/          # backend platform code
-│   ├── bukkit/       # Bukkit implementation
-│   ├── paper/        # Paper-specific features
-│   ├── folia/        # Folia support
-│   └── common backend logic
-│
-└── dist/             # fat JAR assembly
-    └── single unified JAR for all platforms
+/cbc reconnect          - Reconnect to proxy
 ```
 
-### networking architecture
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-**WebSocket protocol**:
-- Velocity runs Undertow-based WebSocket server
-- Paper servers connect as WebSocket clients
-- persistent bidirectional TCP connections
-- no dependency on plugin messaging
+## Building from Source
 
-**message protocol**:
+### Build Steps
 
-```java
-record Envelope(
-    int v,              // protocol version
-    UUID id,            // message ID
-    MessageType type,   // AUTH_REQUEST, INVOKED_COMMAND, etc.
-    String from,        // sender client-id
-    String to,          // target client-id
-    long ts,            // timestamp
-    JsonNode payload    // message payload
-)
-```
-
-message types:
-- AUTH_REQUEST, AUTH_OK, AUTH_FAIL
-- REGISTER_COMMANDS, REGISTER_COMMANDS_RESULT
-- INVOKED_COMMAND
-- PING, PONG
-
-### TLS authentication
-
-**why TLS**:
-- industry-standard encryption (TLS 1.3)
-- mutual authentication (both sides verify)
-- certificate-based trust
-- perfect forward secrecy
-
-**TLS flow**:
-1. Velocity generates CA certificate and server certificate on first start
-2. Paper connects with TLS handshake
-3. mutual verification: server verifies client cert, client verifies server cert
-4. encrypted channel established
-5. all messages encrypted in transit
-
-**certificate structure**:
-```
-velocity/plugins/CommandBridge/tls/
-├── ca.crt          # CA certificate
-├── ca.key          # CA private key
-├── server.p12      # server certificate
-└── server.crt      # server certificate (PEM)
-
-paper/plugins/CommandBridge/tls/
-├── ca.crt          # copy of Velocity's CA cert
-├── client.p12      # client certificate
-└── client.crt      # client certificate (PEM)
-```
-
-### state management
-
-**client registry**:
-- Velocity maintains map of connected clients
-- includes: client-id, connection timestamp, last heartbeat
-
-**deferred command queue**:
-- stored per client
-- checked at configured frequency
-- items expire based on timeout
-- commands execute when player detected online
-
-**cooldown tracking**:
-- per-player cooldown map
-- resets on server restart (not persisted)
-- stored in memory on proxy side
-
-## building from source
-
-### requirements
-
-- Java Development Kit 21
-- Git
-- Gradle (wrapper included)
-
-### build steps
-
-```bash
-# clone repo
+```sh
+# Clone repository
 git clone https://github.com/objz/CommandBridge.git
 cd CommandBridge
 
-# checkout v3 branch
+# Checkout v3 branch
 git checkout v3
 
-# build with Gradle
+# Build with Gradle
 ./gradlew shadowJar
 
-# output: dist/build/libs/CommandBridge-3.0.0-all.jar
+# Output: dist/build/libs/CommandBridge-all.jar
 ```
 
-the `shadowJar` task creates a fat JAR with all dependencies bundled and relocated.
+### Module Dependencies
 
-### key dependencies
-
-- io.undertow:undertow-websockets-jsr - WebSocket server/client
-- org.bouncycastle:bcprov-jdk18on - TLS/SSL crypto
-- com.fasterxml.jackson - JSON serialization
-- org.spongepowered:configurate-yaml - config parsing
-- dev.jorel:commandapi-spigot-core - advanced argument types
-- Velocity API, Paper/Bukkit API
-
-## current development status
-
-v3 is in active development. here's what's implemented and what's coming:
-
-### implemented
-
-- core WebSocket communication
-- TLS authentication
-- YAML scripting system with 25+ argument types
-- placeholder resolution and validation
-- command registration on Velocity and backends
-- deferred execution for offline players
-- cooldowns and delays
-- admin commands
-- script hot reload
-
-### in progress
-
-- advanced command parsing on Velocity (implementing full argument validation on proxy side)
-- developer API (public API for third-party plugins to send commands, register custom message types, hook into execution pipeline)
-- online configuration panel (web-based UI to manage scripts, view clients, monitor execution, manage certificates)
-
-### planned
-
-- command execution history and analytics
-- advanced rate limiting (global, per-server)
-- command macros (chain multiple scripts)
-- conditional execution based on player state
-- integration with external databases
-- metrics and monitoring dashboard
-
-## developer API (coming soon)
-
-planned API features:
-
-```java
-// send commands programmatically
-CommandBridge.execute(
-    CommandRequest.builder()
-        .command("eco give Steve 1000")
-        .target("survival")
-        .runAs(RunAs.CONSOLE)
-        .build()
-);
-
-// register custom message handlers
-CommandBridge.registerMessageHandler(MyMessageType.class, handler);
-
-// hook into command execution
-CommandBridge.addCommandInterceptor((cmd, ctx) -> {
-    // modify, log, or cancel commands
-    return InterceptResult.CONTINUE;
-});
+```kotlin
+// settings.gradle.kts
+include("core")
+include("velocity")
+include("backends")
+include("backends:bukkit")
+include("backends:paper")
+include("backends:folia")
+include("dist")
 ```
 
-use cases: economy plugins, punishment systems, admin tools, monitoring, external service integration.
+### Dependency Relocation
 
-## troubleshooting
+The shadow plugin relocates dependencies to avoid conflicts:
 
-### clients won't connect
+```kotlin
+relocate("com.fasterxml.jackson", "dev.objz.libs.jackson")
+relocate("io.undertow", "dev.objz.libs.undertow")
+relocate("org.xnio", "dev.objz.libs.xnio")
+relocate("org.spongepowered.configurate", "dev.objz.libs.configurate")
+```
 
-- check TLS certificates are properly configured
-- verify Velocity port is open (firewall/security groups)
-- ensure Velocity IP in Paper config is correct
-- check logs for TLS errors
-- try regenerating certificates with `/cb tls regenerate`
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-### commands not executing
+## Roadmap
 
-- verify script is loaded (check `/cb list` or logs)
-- ensure `execute` list includes correct client-id
-- check backend is connected (logs: "Client authenticated successfully")
-- review script validation errors in console
-- try `/cb reload`
+- [x] Core WebSocket communication layer
+- [x] TLS mutual authentication
+- [x] YAML scripting engine with 25+ argument types
+- [x] Placeholder validation and resolution
+- [x] Deferred execution for offline players
+- [x] Command cooldowns and delays
+- [ ] Advanced command parsing on Velocity
+    - [ ] Full argument validation on proxy
+    - [ ] Tab completion forwarding
+    - [ ] Syntax error reporting
+- [ ] Developer API
+    - [ ] Public API for third-party plugins
+    - [ ] Programmatic command execution
+    - [ ] Custom message type registration
+    - [ ] Execution pipeline hooks
+- [ ] Web-based configuration panel
+    - [ ] Script editor with syntax highlighting
+    - [ ] Real-time connection monitoring
+    - [ ] Certificate management UI
+    - [ ] Command execution history
+- [ ] Advanced features
+    - [ ] Command macros and chaining
+    - [ ] Conditional execution predicates
+    - [ ] Database integration
+    - [ ] Metrics and analytics
 
-### "placeholder could not be resolved" errors
+See the [open issues](https://github.com/objz/CommandBridge/issues) for a full list of proposed features.
 
-- check all `${placeholders}` match argument names (case-sensitive)
-- ensure argument names are unique
-- verify no typos
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-### "argument type not supported on platform" errors
+## Contributing
 
-- don't use backend-only types (WORLD, LOCATION) in Velocity commands
-- don't use proxy-only types (SERVER) in backend commands
-- review @Platform annotations on ArgType enum
+Contributions are welcome! Please follow these steps:
 
-### TLS handshake failures
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-- regenerate certificates: `/cb tls regenerate`
-- copy CA certificate to all clients
-- check certificate expiration
-- verify TLS mode matches (MUTUAL on both sides)
-- check system time is synchronized
+### Development Guidelines
 
-## performance
+- Follow existing code style (Java 21 idioms, immutable records)
+- Add tests for new features
+- Update documentation
+- Ensure builds pass: `./gradlew build`
 
-command execution latency: ~5-15ms
-WebSocket message roundtrip: ~2-5ms
-script validation: ~50-100ms per script
-TLS handshake: ~10-20ms (one-time)
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-TLS encryption is computationally cheap (hardware-accelerated). message serialization is JSON-based (fast enough for commands).
+## License
 
-## contributing
+Distributed under the GPL-3.0 License. See `LICENSE` for more information.
 
-PRs welcome. please:
-- follow existing code style
-- add tests for new features
-- update documentation
-- test thoroughly
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-## license
+## Contact
 
-GPLv3 - see LICENSE file for full terms
+Project Link: [https://github.com/objz/CommandBridge](https://github.com/objz/CommandBridge)
 
-## links
+<p align="right">(<a href="#top">back to top</a>)</p>
 
-- repository: https://github.com/objz/CommandBridge
-- issues: https://github.com/objz/CommandBridge/issues
-- discussions: https://github.com/objz/CommandBridge/discussions
+## Acknowledgments
+
+* [Undertow](https://undertow.io/) - High-performance WebSocket implementation
+* [Jackson](https://github.com/FasterXML/jackson) - JSON serialization
+* [CommandAPI](https://github.com/JorelAli/CommandAPI) - Advanced argument types
+* [SnakeYAML](https://bitbucket.org/snakeyaml/snakeyaml) - YAML parsing
+* [Velocity](https://papermc.io/software/velocity) - Modern Minecraft proxy
+* [Paper](https://papermc.io/software/paper) - High-performance Minecraft server
+
+<p align="right">(<a href="#top">back to top</a>)</p>
 
 ---
 
-yeah that's CommandBridge v3. completely rewritten from the ground up. better architecture, better code, same idea.
+[contributors-shield]: https://img.shields.io/github/contributors/objz/CommandBridge.svg?style=for-the-badge
+[contributors-url]: https://github.com/objz/CommandBridge/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/objz/CommandBridge.svg?style=for-the-badge
+[forks-url]: https://github.com/objz/CommandBridge/network/members
+[stars-shield]: https://img.shields.io/github/stars/objz/CommandBridge.svg?style=for-the-badge
+[stars-url]: https://github.com/objz/CommandBridge/stargazers
+[issues-shield]: https://img.shields.io/github/issues/objz/CommandBridge.svg?style=for-the-badge
+[issues-url]: https://github.com/objz/CommandBridge/issues
+[license-shield]: https://img.shields.io/github/license/objz/CommandBridge.svg?style=for-the-badge
+[license-url]: https://github.com/objz/CommandBridge/blob/v3/LICENSE
+
+[Java]: https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white
+[Java-url]: https://openjdk.org/projects/jdk/21/
+[Undertow]: https://img.shields.io/badge/Undertow-2.3-red?style=for-the-badge
+[Undertow-url]: https://undertow.io/
+[Jackson]: https://img.shields.io/badge/Jackson-2.18-blue?style=for-the-badge
+[Jackson-url]: https://github.com/FasterXML/jackson
+[Velocity]: https://img.shields.io/badge/Velocity-3.x-00ADD8?style=for-the-badge
+[Velocity-url]: https://papermc.io/software/velocity
+[Paper]: https://img.shields.io/badge/Paper-1.20--1.21-00ADD8?style=for-the-badge
+[Paper-url]: https://papermc.io/software/paper
+[Gradle]: https://img.shields.io/badge/Gradle-8.x-02303A?style=for-the-badge&logo=gradle
+[Gradle-url]: https://gradle.org/
