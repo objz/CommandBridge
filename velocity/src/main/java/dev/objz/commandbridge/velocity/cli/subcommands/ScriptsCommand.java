@@ -1,9 +1,13 @@
 package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
+import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.util.BarBuilder;
 import dev.objz.commandbridge.velocity.util.MM;
+
+import java.util.Comparator;
+import java.util.List;
 
 public final class ScriptsCommand {
 	private final ScriptManager scripts;
@@ -33,7 +37,7 @@ public final class ScriptsCommand {
 				.add("red", red)
 				.build();
 
-		MM.msg()
+		var msg = MM.msg()
 				.space()
 				.header("Scripts")
 				.line(MM.parse(bar))
@@ -44,7 +48,31 @@ public final class ScriptsCommand {
 						.append(MM.kv("disabled", "<yellow>" + disabled + "</yellow>"))
 						.append(MM.sep())
 						.append(MM.kv("errors", "<red>" + errors + "</red>")))
-				.send(sender);
-	}
+				.space();
 
+		List<Script> sorted = scripts.loaded().stream()
+				.filter(s -> s != null)
+				.sorted(Comparator.comparing(Script::name))
+				.toList();
+
+		for (Script s : sorted) {
+			String status;
+			if (scripts.enabled().contains(s)) {
+				status = "<green>[ENABLED]</green>";
+			} else if (s.enabled()) {
+				status = "<red>[ERROR]</red>";
+			} else {
+				status = "<yellow>[DISABLED]</yellow>";
+			}
+
+			String aliases = "";
+			if (s.aliases() != null && !s.aliases().isEmpty()) {
+				aliases = " <gray>(" + String.join(", ", s.aliases()) + ")</gray>";
+			}
+
+			msg.item(status + " <white>" + s.name() + "</white>" + aliases);
+		}
+
+		msg.send(sender);
+	}
 }
