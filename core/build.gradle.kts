@@ -33,7 +33,7 @@ dependencies {
 
     compileOnly("com.google.code.gson:gson:2.13.1")
 
-    compileOnly("dev.jorel:commandapi-spigot-core:11.0.0")
+    compileOnly("dev.jorel:commandapi-spigot-core:11.1.0")
 
     implementation(libs.guava)
 
