@@ -1,6 +1,6 @@
-**[v2.3.4] - 2025-10-11**
+**[v2.3.5] - 2025-12-28**
 
-- fix: fixed command registration issue on paper 1.21.10
+- dependency: changed `commandapi` from `11.0.0` to `11.1.0`
 
 
 
