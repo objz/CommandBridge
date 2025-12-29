@@ -1,22 +1,25 @@
 package dev.objz.commandbridge.velocity.exec;
 
-public sealed interface ExecutionResult permits ExecutionResult.Next, ExecutionResult.Stop {
+public sealed interface ExecutionResult {
 
-	record Next(ExecutionContext context) implements ExecutionResult {
+	record Continue(ExecutionContext context) implements ExecutionResult {
 	}
 
-	record Stop(String reason, boolean isError) implements ExecutionResult {
+	record Stop(String reason) implements ExecutionResult {
 	}
 
-	static ExecutionResult next(ExecutionContext ctx) {
-		return new Next(ctx);
+	record Error(String message) implements ExecutionResult {
+	}
+
+	static ExecutionResult ok(ExecutionContext ctx) {
+		return new Continue(ctx);
 	}
 
 	static ExecutionResult stop(String reason) {
-		return new Stop(reason, false);
+		return new Stop(reason);
 	}
 
-	static ExecutionResult error(String reason) {
-		return new Stop(reason, true);
+	static ExecutionResult error(String message) {
+		return new Error(message);
 	}
 }

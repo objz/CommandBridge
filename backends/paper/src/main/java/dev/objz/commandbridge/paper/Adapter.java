@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.paper;
 
 import dev.objz.commandbridge.backends.net.WsClient;
+import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
@@ -59,6 +60,7 @@ public final class Adapter implements PlatformAdapter {
 		client.start();
 
 		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
+		client.inboundRouter().register(MessageType.EXECUTE_COMMAND, new ExecuteCommandHandler(plugin));
 	}
 
 	@Override

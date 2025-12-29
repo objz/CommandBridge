@@ -18,8 +18,11 @@ import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
+import dev.objz.commandbridge.velocity.exec.CommandExecutor;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
+import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
+import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -34,6 +37,7 @@ public final class Main {
 
 	private final ProxyServer proxy;
 	private final Path dataDir;
+	private final Object pluginInstance;
 
 	private ConfigManager configManager;
 	private WsServer ws;
@@ -44,11 +48,14 @@ public final class Main {
 	private SessionHub sessions;
 	private AuthHandler authHandler;
 	private CBCommand command;
+	private ScriptManager scriptManager;
+	private CommandExecutor commandExecutor;
 
 	@Inject
 	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
 		this.proxy = proxy;
 		this.dataDir = dataDir;
+		this.pluginInstance = this;
 		Log.install(velocityLogger);
 	}
 
@@ -76,13 +83,17 @@ public final class Main {
 				: new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inNode);
 		ws.start();
 
-		var scriptManager = new ScriptManager(dataDir);
+		scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
 
 		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
 		registrations.load(scriptManager.enabled());
-		// install routes after initalizing but before registering any listeners
+
 		installRoutes();
+
+		commandExecutor = new CommandExecutor(proxy, pluginInstance, scriptManager, sessions, outNode);
+
+		inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandExecutor));
 
 		authHandler.onAuthenticated(registrations::onClientAuthenticated);
 
@@ -121,5 +132,6 @@ public final class Main {
 		outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
 		outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
 		outNode.register(MessageType.PING, new PingRequest());
+		outNode.register(MessageType.EXECUTE_COMMAND, new ExecuteCommandRequest());
 	}
 }
