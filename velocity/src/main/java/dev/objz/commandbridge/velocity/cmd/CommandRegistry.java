@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CommandRegistry implements CommandRegistryInterface {
 
 	private final Set<String> registeredCommands = ConcurrentHashMap.newKeySet();
+	private final Set<String> registeredAliases = ConcurrentHashMap.newKeySet();
 	private final ArgumentMapper argumentMapper;
 	private final Object registrationLock = new Object();
 
@@ -41,6 +42,7 @@ public final class CommandRegistry implements CommandRegistryInterface {
 
 			if (stub.aliases() != null && !stub.aliases().isEmpty()) {
 				cmd.withAliases(stub.aliases().toArray(new String[0]));
+				registeredAliases.addAll(stub.aliases());
 			}
 
 			if (stub.args() != null && !stub.args().isEmpty()) {
@@ -91,6 +93,7 @@ public final class CommandRegistry implements CommandRegistryInterface {
 			}
 			Set<String> toUnregister = new HashSet<>(registeredCommands);
 			Log.info("Unregistering {} command(s)...", toUnregister.size());
+			toUnregister.addAll(registeredAliases);
 			for (String cmdName : toUnregister) {
 				try {
 					CommandAPI.unregister(cmdName, true);
