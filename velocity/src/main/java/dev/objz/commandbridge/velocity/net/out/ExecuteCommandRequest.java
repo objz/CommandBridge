@@ -15,13 +15,15 @@ public final class ExecuteCommandRequest extends OutboundHandler<ExecuteCommandC
 		ExecuteCommand payload = new ExecuteCommand(
 				ctx.command(),
 				ctx.runAs(),
-				ctx.uuid());
+				ctx.uuid(),
+				ctx.grantedPermissions());
 
-		Log.debug("Sending EXECUTE_COMMAND to '{}':  command='{}', runAs={}, uuid={}",
+		Log.debug("Sending EXECUTE_COMMAND to '{}':  command='{}', runAs={}, uuid={}, permissions={}",
 				ctx.session().id(),
 				ctx.command(),
 				ctx.runAs(),
-				ctx.uuid());
+				ctx.uuid(),
+				ctx.grantedPermissions() != null ? ctx.grantedPermissions().size() : 0);
 
 		Envelope env = Envelope.make(
 				MessageType.EXECUTE_COMMAND,

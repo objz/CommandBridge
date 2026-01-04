@@ -2,19 +2,13 @@ package dev.objz.commandbridge.backends.platform.cmd;
 
 import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommand;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Platform-specific command executor interface.
- * Each platform (Bukkit, Paper, Folia) implements this to handle command
- * execution with the appropriate scheduler and threading model.
- */
 public interface CommandExecutor {
 
 	/**
-	 * Execute a command on this backend server.
-	 *
 	 * @param command The command execution context containing command string, runAs
 	 *                mode, and optional player UUID
 	 * @return CompletableFuture that completes when execution is done (or
@@ -23,8 +17,12 @@ public interface CommandExecutor {
 	CompletableFuture<ExecutionResult> execute(ExecuteCommand command);
 
 	/**
-	 * Result of command execution
+	 * @param command            The command execution context
+	 * @param grantedPermissions Set of permissions to temporarily grant
+	 * @return CompletableFuture that completes when execution is done
 	 */
+	CompletableFuture<ExecutionResult> execute(ExecuteCommand command, Set<String> grantedPermissions);
+
 	record ExecutionResult(
 			boolean successful,
 			String message,

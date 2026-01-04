@@ -9,7 +9,9 @@ import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
+import dev.objz.commandbridge.net.payloads.feedback.Feedback;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.enums.RunAs;
@@ -26,6 +28,7 @@ import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
+import dev.objz.commandbridge.velocity.util.MM;
 
 import java.time.Duration;
 import java.util.*;
@@ -161,6 +164,7 @@ public final class CommandEntry {
 
 		if (targets.isEmpty()) {
 			Log.warn("Command '{}' has no execution targets", cmd.command());
+			notifyExecutionError(ctx.source(), cmd.command(), "No execution targets configured");
 			return;
 		}
 
@@ -192,7 +196,31 @@ public final class CommandEntry {
 	private void executeLocally(ExecutionContext ctx, CmdMapping cmd) {
 		var playerUuid = extractPlayerUuid(ctx.source());
 		var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
-		velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source());
+
+		velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source())
+				.thenAccept(success -> {
+					if (!success) {
+						Log.warn("Local Velocity command '{}' execution failed", cmd.command());
+						notifyExecutionError(ctx.source(), cmd.command(),
+								"Command execution failed");
+
+						// Log using feedback system
+						Feedback feedback = new Feedback(1, 0, 1, List.of(),
+								List.of("Local command execution failed:  "
+										+ cmd.command()));
+						Summary.feedbackSummary("Velocity Execution", feedback, "local");
+					}
+				})
+				.exceptionally(ex -> {
+					Log.error(ex, "Local Velocity command '{}' threw exception", cmd.command());
+					notifyExecutionError(ctx.source(), cmd.command(), ex.getMessage());
+
+					Feedback feedback = new Feedback(1, 0, 1, List.of(),
+							List.of("Exception:  " + ex.getMessage()));
+					Summary.feedbackSummary("Velocity Execution", feedback, "local");
+					Summary.feedbackDetails(feedback, "local", false);
+					return null;
+				});
 	}
 
 	private void dispatchToRemoteSession(ExecutionContext ctx, CmdMapping cmd, String targetId) {
@@ -200,18 +228,89 @@ public final class CommandEntry {
 				.filter(this::isSessionConnected)
 				.ifPresentOrElse(
 						session -> sendExecuteCommand(session, ctx, cmd, targetId),
-						() -> Log.warn("Target '{}' not found or not connected", targetId));
+						() -> {
+							Log.warn("Target '{}' not found or not connected", targetId);
+							notifyExecutionError(ctx.source(), cmd.command(),
+									"Backend server '" + targetId
+											+ "' is not connected");
+
+							Feedback feedback = new Feedback(1, 0, 1, List.of(),
+									List.of("Backend not connected: " + targetId));
+							Summary.feedbackSummary("Execution Failed", feedback, targetId);
+						});
 	}
 
 	private void sendExecuteCommand(ClientSession session, ExecutionContext ctx, CmdMapping cmd, String targetId) {
 		var uuid = extractPlayerUuid(ctx.source());
 		var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
 
-		Log.debug("Dispatching command to '{}':  command='{}', runAs={}, uuid={}",
-				targetId, cmd.command(), runAs, uuid);
+		Set<String> grantedPermissions = null;
+		if (runAs == RunAs.OPERATOR && ctx.script() != null) {
+			grantedPermissions = buildGrantedPermissions(ctx.script(), cmd);
+		}
+
+		Log.debug("Dispatching command to '{}': command='{}', runAs={}, uuid={}, permissions={}",
+				targetId, cmd.command(), runAs, uuid,
+				grantedPermissions != null ? grantedPermissions.size() : 0);
 
 		outNode.send(MessageType.EXECUTE_COMMAND,
-				new ExecuteCommandContext(session, cmd.command(), runAs, uuid));
+				new ExecuteCommandContext(session, cmd.command(), runAs, uuid, grantedPermissions));
+	}
+
+	private Set<String> buildGrantedPermissions(Script script, CmdMapping currentCmd) {
+		Set<String> permissions = new HashSet<>();
+
+		permissions.add("commandbridge.command." + script.name());
+
+		if (script.commands() != null) {
+			for (CmdMapping cmd : script.commands()) {
+				if (cmd.command() != null && !cmd.command().isBlank()) {
+					String baseCommand = extractBaseCommand(cmd.command());
+					if (baseCommand != null) {
+						permissions.add(baseCommand);
+						permissions.add(baseCommand + ".*");
+					}
+				}
+			}
+		}
+
+		String currentBase = extractBaseCommand(currentCmd.command());
+		if (currentBase != null) {
+			permissions.add(currentBase);
+			permissions.add(currentBase + ".*");
+		}
+
+		return permissions;
+	}
+
+	private String extractBaseCommand(String command) {
+		if (command == null || command.isBlank()) {
+			return null;
+		}
+		String trimmed = command.trim();
+		if (trimmed.startsWith("/")) {
+			trimmed = trimmed.substring(1);
+		}
+		int spaceIndex = trimmed.indexOf(' ');
+		return spaceIndex > 0 ? trimmed.substring(0, spaceIndex) : trimmed;
+	}
+
+	private void notifyExecutionError(CommandSource source, String command, String errorMessage) {
+		if (source == null) {
+			return;
+		}
+
+		source.sendMessage(MM.parse("<red>⚠</red> <gray>Command execution failed</gray>"));
+		source.sendMessage(
+				MM.parse("<dark_gray>If this persists, please contact an administrator</dark_gray>"));
+
+		if (source.hasPermission("commandbridge.admin")) {
+			source.sendMessage(MM.parse("<dark_gray>Command: </dark_gray><white>" + command + "</white>"));
+			if (errorMessage != null && !errorMessage.isBlank()) {
+				source.sendMessage(MM.parse(
+						"<dark_gray>Error: </dark_gray><red>" + errorMessage + "</red>"));
+			}
+		}
 	}
 
 	// ──────────────────────────────────────────────────────────────────────────────

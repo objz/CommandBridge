@@ -42,10 +42,12 @@ public final class VelocityExecutor {
 			}
 			case OPERATOR -> {
 				if (playerUuid != null) {
-					yield proxy.getPlayer(playerUuid).orElse(null);
+					Player player = proxy.getPlayer(playerUuid).orElse(null);
+					if (player != null) {
+						yield proxy.getConsoleCommandSource();
+					}
 				}
-				yield (fallbackSource instanceof Player) ? fallbackSource
-						: proxy.getConsoleCommandSource();
+				yield proxy.getConsoleCommandSource();
 			}
 		};
 
@@ -57,6 +59,10 @@ public final class VelocityExecutor {
 		Log.debug("Executing local Velocity command '{}' as {}", cmd,
 				sender instanceof Player p ? p.getUsername() : "CONSOLE");
 
-		return proxy.getCommandManager().executeAsync(sender, cmd);
+		return proxy.getCommandManager().executeAsync(sender, cmd)
+				.exceptionally(ex -> {
+					Log.error(ex, "Velocity command '{}' threw exception", cmd);
+					return false;
+				});
 	}
 }

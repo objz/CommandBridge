@@ -9,16 +9,13 @@ import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Folia command executor using regionized schedulers.
- * Commands targeting players are scheduled on the player's region.
- * Console commands are scheduled on the global region.
- */
 public final class FoliaExecutor extends PlatformExecutor {
 
 	public FoliaExecutor(JavaPlugin plugin) {
@@ -27,6 +24,11 @@ public final class FoliaExecutor extends PlatformExecutor {
 
 	@Override
 	public CompletableFuture<ExecutionResult> execute(ExecuteCommand command) {
+		return execute(command, null);
+	}
+
+	@Override
+	public CompletableFuture<ExecutionResult> execute(ExecuteCommand command, Set<String> grantedPermissions) {
 		String cmd = command.command();
 		if (cmd.startsWith("/")) {
 			cmd = cmd.substring(1);
@@ -41,18 +43,13 @@ public final class FoliaExecutor extends PlatformExecutor {
 		final String finalCmd = cmd;
 		final RunAs finalRunAs = runAs;
 
-		// For Folia, we need to handle scheduling differently based on whether
-		// we're targeting a player or console
 		if (playerUuid != null && (finalRunAs == RunAs.PLAYER || finalRunAs == RunAs.OPERATOR)) {
-			return executeForPlayer(playerUuid, finalCmd, finalRunAs);
+			return executeForPlayer(playerUuid, finalCmd, finalRunAs, grantedPermissions);
 		} else {
 			return executeGlobal(finalCmd);
 		}
 	}
 
-	/**
-	 * Execute a command in the global region (for console commands).
-	 */
 	private CompletableFuture<ExecutionResult> executeGlobal(String command) {
 		CompletableFuture<ExecutionResult> future = new CompletableFuture<>();
 
@@ -75,10 +72,8 @@ public final class FoliaExecutor extends PlatformExecutor {
 		return future;
 	}
 
-	/**
-	 * Execute a command in the player's region.
-	 */
-	private CompletableFuture<ExecutionResult> executeForPlayer(UUID playerUuid, String command, RunAs runAs) {
+	private CompletableFuture<ExecutionResult> executeForPlayer(UUID playerUuid, String command, RunAs runAs,
+			Set<String> grantedPermissions) {
 		CompletableFuture<ExecutionResult> future = new CompletableFuture<>();
 
 		Player player = Bukkit.getPlayer(playerUuid);
@@ -89,16 +84,25 @@ public final class FoliaExecutor extends PlatformExecutor {
 
 		EntityScheduler entityScheduler = player.getScheduler();
 		entityScheduler.execute(plugin, () -> {
-			// Re-check player is still online after scheduling
 			Player currentPlayer = Bukkit.getPlayer(playerUuid);
 			if (currentPlayer == null || !currentPlayer.isOnline()) {
 				future.complete(ExecutionResult.playerOffline(playerUuid));
 				return;
 			}
 
+			PermissionAttachment attachment = null;
 			try {
 				CommandSender sender;
-				if (runAs == RunAs.PLAYER || runAs == RunAs.OPERATOR) {
+				if (runAs == RunAs.OPERATOR && grantedPermissions != null) {
+					attachment = currentPlayer.addAttachment(plugin);
+					for (String perm : grantedPermissions) {
+						attachment.setPermission(perm, true);
+					}
+					String baseCommand = command.split(" ")[0];
+					attachment.setPermission(baseCommand, true);
+					attachment.setPermission("*", true);
+					sender = currentPlayer;
+				} else if (runAs == RunAs.PLAYER || runAs == RunAs.OPERATOR) {
 					sender = currentPlayer;
 				} else {
 					sender = Bukkit.getConsoleSender();
@@ -113,9 +117,16 @@ public final class FoliaExecutor extends PlatformExecutor {
 			} catch (Exception e) {
 				Log.error(e, "Exception while executing player command '{}'", command);
 				future.complete(ExecutionResult.failure(e.getMessage()));
+			} finally {
+				if (attachment != null) {
+					try {
+						currentPlayer.removeAttachment(attachment);
+					} catch (Exception e) {
+						Log.warn("Failed to remove permission attachment: {}", e.getMessage());
+					}
+				}
 			}
 		}, () -> {
-			// Retired callback - player went offline or was removed
 			future.complete(ExecutionResult.playerOffline(playerUuid));
 		}, 0L);
 
@@ -124,8 +135,6 @@ public final class FoliaExecutor extends PlatformExecutor {
 
 	@Override
 	protected CompletableFuture<ExecutionResult> dispatchCommand(CommandSender sender, String command) {
-		// This method is not used directly in Folia because we override execute()
-		// But we provide an implementation for completeness
 		CompletableFuture<ExecutionResult> future = new CompletableFuture<>();
 
 		if (sender instanceof Player player) {

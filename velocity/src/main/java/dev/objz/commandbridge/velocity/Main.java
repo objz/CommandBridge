@@ -21,6 +21,7 @@ import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
+import dev.objz.commandbridge.velocity.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
 import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
@@ -88,7 +89,8 @@ public final class Main {
 
 		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
 
-		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode, cfg.serverId());
+		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
+				cfg.serverId());
 
 		registrations.setCommandEntry(commandEntry);
 
@@ -131,6 +133,7 @@ public final class Main {
 		authHandler.register(inNode);
 
 		inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
+		inNode.register(MessageType.EXECUTE_COMMAND_RESULT, new ExecuteCommandHandler(proxy));
 
 		outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
 		outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());

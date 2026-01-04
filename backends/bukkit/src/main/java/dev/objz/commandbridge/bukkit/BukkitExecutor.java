@@ -8,9 +8,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Bukkit/Spigot command executor using the standard Bukkit scheduler.
- */
 public final class BukkitExecutor extends PlatformExecutor {
 
 	public BukkitExecutor(JavaPlugin plugin) {
@@ -21,7 +18,6 @@ public final class BukkitExecutor extends PlatformExecutor {
 	protected CompletableFuture<ExecutionResult> dispatchCommand(CommandSender sender, String command) {
 		CompletableFuture<ExecutionResult> future = new CompletableFuture<>();
 
-		// Always dispatch on main thread for Bukkit
 		if (Bukkit.isPrimaryThread()) {
 			executeNow(sender, command, future);
 		} else {

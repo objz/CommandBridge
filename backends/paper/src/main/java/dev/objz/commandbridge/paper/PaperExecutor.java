@@ -8,10 +8,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Paper command executor using the standard Bukkit scheduler.
- * Paper is mostly compatible with Bukkit scheduling for command execution.
- */
 public final class PaperExecutor extends PlatformExecutor {
 
 	public PaperExecutor(JavaPlugin plugin) {
@@ -22,7 +18,6 @@ public final class PaperExecutor extends PlatformExecutor {
 	protected CompletableFuture<ExecutionResult> dispatchCommand(CommandSender sender, String command) {
 		CompletableFuture<ExecutionResult> future = new CompletableFuture<>();
 
-		// Always dispatch on main thread for Paper
 		if (Bukkit.isPrimaryThread()) {
 			executeNow(sender, command, future);
 		} else {
