@@ -4,7 +4,7 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.proto.Envelope;
-import dev.objz.commandbridge.velocity.exec.CommandEntry;
+import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;

@@ -1,10 +1,10 @@
-package dev.objz.commandbridge.velocity.exec.stage;
+package dev.objz.commandbridge.velocity.dispatch.stage;
 
 import dev.objz.commandbridge.scripting.model.Permissions;
 import dev.objz.commandbridge.scripting.model.Script;
-import dev.objz.commandbridge.velocity.exec.ExecutionContext;
-import dev.objz.commandbridge.velocity.exec.ExecutionResult;
-import dev.objz.commandbridge.velocity.exec.Pipeline;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
+import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
 import dev.objz.commandbridge.velocity.util.MM;
 
 import java.util.function.Consumer;
@@ -36,7 +36,7 @@ public final class PermissionCheckStage implements Pipeline {
 
 		if (!perms.silent()) {
 			context.source().sendMessage(
-					MM.parse("<red>You do not have permission to execute this command."));
+					MM.parse("<red>You do not have permission to execute this command"));
 		}
 
 		next.accept(ExecutionResult.stop("Permission denied: " + permissionNode));

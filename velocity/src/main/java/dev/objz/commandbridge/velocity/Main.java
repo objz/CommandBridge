@@ -18,7 +18,7 @@ import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
-import dev.objz.commandbridge.velocity.exec.CommandEntry;
+import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
@@ -88,7 +88,7 @@ public final class Main {
 
 		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
 
-		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode);
+		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode, cfg.serverId());
 
 		registrations.setCommandEntry(commandEntry);
 

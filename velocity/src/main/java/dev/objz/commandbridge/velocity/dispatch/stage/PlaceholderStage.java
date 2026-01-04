@@ -1,9 +1,9 @@
-package dev.objz.commandbridge.velocity.exec.stage;
+package dev.objz.commandbridge.velocity.dispatch.stage;
 
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
-import dev.objz.commandbridge.velocity.exec.ExecutionContext;
-import dev.objz.commandbridge.velocity.exec.ExecutionResult;
-import dev.objz.commandbridge.velocity.exec.Pipeline;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
+import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
 
 import java.util.Map;
 import java.util.function.Consumer;
@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 
 public final class PlaceholderStage implements Pipeline {
 
-	private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
+	private static final Pattern PATTERN = Pattern.compile("\\$\\{([^}]+)}");
 
 	@Override
 	public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
@@ -28,27 +28,23 @@ public final class PlaceholderStage implements Pipeline {
 			return;
 		}
 
-		// Check if there are any placeholders to resolve
-		Matcher checkMatcher = PLACEHOLDER_PATTERN.matcher(rawCommand);
+		Matcher checkMatcher = PATTERN.matcher(rawCommand);
 		if (!checkMatcher.find()) {
-			// No placeholders in command, execute as-is
 			next.accept(ExecutionResult.ok(context));
 			return;
 		}
 
-		// Reset matcher for actual replacement
 		Map<String, Object> args = context.arguments();
 		if (args == null) {
 			args = Map.of();
 		}
 
-		Matcher matcher = PLACEHOLDER_PATTERN.matcher(rawCommand);
+		Matcher matcher = PATTERN.matcher(rawCommand);
 		StringBuilder sb = new StringBuilder();
 
 		while (matcher.find()) {
 			String key = matcher.group(1);
 			if (key == null || key.isBlank()) {
-				// Empty placeholder ${}, skip replacement
 				matcher.appendReplacement(sb, Matcher.quoteReplacement("${}"));
 				continue;
 			}
@@ -57,10 +53,8 @@ public final class PlaceholderStage implements Pipeline {
 			String replacement;
 
 			if (value == null) {
-				// Argument not found or null - use empty string
 				replacement = "";
 			} else {
-				// Convert value to string representation
 				replacement = convertToString(value);
 			}
 
@@ -86,12 +80,10 @@ public final class PlaceholderStage implements Pipeline {
 			return "";
 		}
 
-		// Handle collections (like List<EntityRef> from PLAYERS/ENTITIES types)
 		if (value instanceof java.util.Collection<?> collection) {
 			if (collection.isEmpty()) {
 				return "";
 			}
-			// Join collection elements with space
 			StringBuilder result = new StringBuilder();
 			boolean first = true;
 			for (Object item : collection) {
@@ -112,18 +104,14 @@ public final class PlaceholderStage implements Pipeline {
 			return "";
 		}
 
-		// Handle EntityRef specifically
 		if (item instanceof dev.objz.commandbridge.cmd.ref.EntityRef ref) {
-			// Return the entity name for command usage
 			return ref.name() != null ? ref.name() : ref.uuid();
 		}
 
-		// Handle Location3D
 		if (item instanceof dev.objz.commandbridge.cmd.ref.Location3D loc) {
 			return loc.x() + " " + loc.y() + " " + loc.z();
 		}
 
-		// Handle Location2D
 		if (item instanceof dev.objz.commandbridge.cmd.ref.Location2D loc) {
 			return loc.x() + " " + loc.y();
 		}

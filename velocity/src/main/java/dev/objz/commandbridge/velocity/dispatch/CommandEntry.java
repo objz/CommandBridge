@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.exec;
+package dev.objz.commandbridge.velocity.dispatch;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
@@ -17,7 +17,14 @@ import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.velocity.ScriptManager;
-import dev.objz.commandbridge.velocity.exec.stage.*;
+import dev.objz.commandbridge.velocity.dispatch.exec.VelocityExecutor;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
+import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
+import dev.objz.commandbridge.velocity.dispatch.stage.CooldownStage;
+import dev.objz.commandbridge.velocity.dispatch.stage.PermissionCheckStage;
+import dev.objz.commandbridge.velocity.dispatch.stage.ScriptResolutionStage;
+import dev.objz.commandbridge.velocity.dispatch.stage.*;
 import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -36,22 +43,25 @@ public final class CommandEntry {
 	private final ScriptManager scriptManager;
 	private final SessionHub sessions;
 	private final OutNode<Object> outNode;
-	private final SchedulerManager scheduler;
+	private final ScheduleManager scheduler;
 	private final CooldownManager cooldowns;
+	private final VelocityExecutor velocityExecutor;
 
 	public CommandEntry(ProxyServer proxy, Object plugin, ScriptManager scriptManager,
-			SessionHub sessions, OutNode<Object> outNode) {
+			SessionHub sessions, OutNode<Object> outNode, String localServerId) {
 		this.proxy = proxy;
 		this.scriptManager = scriptManager;
 		this.sessions = sessions;
 		this.outNode = outNode;
-		this.scheduler = new SchedulerManager(proxy, plugin);
+		this.scheduler = new ScheduleManager(proxy, plugin);
 		this.cooldowns = new CooldownManager();
+		this.velocityExecutor = new VelocityExecutor(proxy, localServerId);
 	}
 
-	/**
-	 * Execute a command from an inbound InvokedCommand message (from backend).
-	 */
+	public VelocityExecutor getVelocityExecutor() {
+		return velocityExecutor;
+	}
+
 	public void execute(InvokedCommand invoked, ClientSession originSession) {
 		CommandSource source = resolveSource(invoked.sender());
 		if (source == null) {
@@ -60,22 +70,11 @@ public final class CommandEntry {
 		}
 
 		ExecutionContext initial = new ExecutionContext(
-				invoked,
-				originSession,
-				source,
-				null,
-				Map.of(),
-				null,
-				-1);
+				invoked, originSession, source, null, Map.of(), null, -1);
 
 		runPipeline(initial);
 	}
 
-	/**
-	 * Execute a command directly from Velocity command registration.
-	 * This converts CommandAPI arguments to InvokedCommand format and runs the same
-	 * pipeline.
-	 */
 	public void executeFromVelocity(String commandName, CommandSource source, CommandArguments args,
 			CommandStub stub) {
 		Log.debug("Executing Velocity command '{}' from source {}", commandName, source);
@@ -86,13 +85,7 @@ public final class CommandEntry {
 		InvokedCommand invoked = new InvokedCommand(commandName, typedArgs, senderCtx);
 
 		ExecutionContext initial = new ExecutionContext(
-				invoked,
-				null, // No origin session for Velocity-initiated commands
-				source,
-				null,
-				Map.of(),
-				null,
-				-1);
+				invoked, null, source, null, Map.of(), null, -1);
 
 		runPipeline(initial);
 	}
@@ -112,35 +105,24 @@ public final class CommandEntry {
 		return new SenderContext.Console();
 	}
 
-	/**
-	 * Build typed arguments from all arguments defined in the stub.
-	 * All arguments are included regardless of whether they are used in command
-	 * placeholders.
-	 */
 	private List<InvokedCommand.TypedArgument> buildTypedArguments(CommandStub stub, CommandArguments args) {
 		List<InvokedCommand.TypedArgument> typedArgs = new ArrayList<>();
-
 		if (stub.args() == null || stub.args().isEmpty()) {
 			return typedArgs;
 		}
-
 		for (ArgMapping mapping : stub.args()) {
 			String name = mapping.name();
 			ArgType type = mapping.type();
 			Object raw = args.getOptional(name).orElse(null);
-
 			Object value = convertArgumentValue(type, raw);
 			typedArgs.add(new InvokedCommand.TypedArgument(type, value));
 		}
-
 		return typedArgs;
 	}
 
 	private Object convertArgumentValue(ArgType type, Object raw) {
-		if (raw == null) {
+		if (raw == null)
 			return null;
-		}
-
 		return switch (type) {
 			case STRING, TEXT -> raw.toString();
 			case INTEGER, TIME ->
@@ -159,7 +141,7 @@ public final class CommandEntry {
 			} else if (result instanceof ExecutionResult.Stop s) {
 				Log.debug("Execution stopped:  {}", s.reason());
 			} else if (result instanceof ExecutionResult.Error e) {
-				Log.warn("Execution error:  {}", e.message());
+				Log.warn("Execution error: {}", e.message());
 			}
 		});
 	}
@@ -203,66 +185,48 @@ public final class CommandEntry {
 
 		for (IdMapping target : cmd.execute()) {
 			if (target.location() == Location.VELOCITY) {
-				dispatchVelocity(ctx, cmd);
+				dispatchVelocity(ctx, cmd, target.id());
 			} else if (target.location() == Location.BACKEND) {
 				dispatchBackend(ctx, cmd, target.id());
 			}
 		}
 	}
 
-	private void dispatchVelocity(ExecutionContext ctx, CmdMapping cmd) {
-		CommandSource executor = ctx.source();
-
-		if (cmd.runAs() != null) {
-			switch (cmd.runAs()) {
-				case CONSOLE:
-					executor = proxy.getConsoleCommandSource();
-					break;
-				case PLAYER:
-					if (!(executor instanceof Player)) {
-						Log.warn("Cannot run as PLAYER when source is not a player");
-						return;
-					}
-					break;
-				case OPERATOR:
-					// Treat as player or whatever source is
-					break;
-			}
+	private void dispatchVelocity(ExecutionContext ctx, CmdMapping cmd, String targetId) {
+		if (velocityExecutor.isLocal(targetId)) {
+			// Execute locally
+			UUID playerUuid = (ctx.source() instanceof Player p) ? p.getUniqueId() : null;
+			RunAs runAs = cmd.runAs() != null ? cmd.runAs() : RunAs.CONSOLE;
+			velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source());
+		} else {
+			// Send to remote proxy (it's just another client session)
+			dispatchToRemote(ctx, cmd, targetId);
 		}
-
-		String commandLine = cmd.command();
-		if (commandLine.startsWith("/")) {
-			commandLine = commandLine.substring(1);
-		}
-
-		Log.debug("Dispatching Velocity command:   '{}'", commandLine);
-		proxy.getCommandManager().executeAsync(executor, commandLine);
 	}
 
 	private void dispatchBackend(ExecutionContext ctx, CmdMapping cmd, String targetClientId) {
-		ClientSession targetSession = findSession(targetClientId);
+		dispatchToRemote(ctx, cmd, targetClientId);
+	}
+
+	private void dispatchToRemote(ExecutionContext ctx, CmdMapping cmd, String targetId) {
+		ClientSession targetSession = findSession(targetId);
 		if (targetSession == null) {
-			Log.warn("Target client '{}' not found for command execution", targetClientId);
+			Log.warn("Target '{}' not found for command execution", targetId);
 			return;
 		}
 
 		if (targetSession.ch() == null || !targetSession.ch().isOpen()) {
-			Log.warn("Target client '{}' is not connected", targetClientId);
+			Log.warn("Target '{}' is not connected", targetId);
 			return;
 		}
 
 		UUID uuid = (ctx.source() instanceof Player p) ? p.getUniqueId() : null;
 		RunAs runAs = cmd.runAs() != null ? cmd.runAs() : RunAs.CONSOLE;
 
-		Log.debug("Dispatching backend command to '{}':   command='{}', runAs={}, uuid={}",
-				targetClientId, cmd.command(), runAs, uuid);
+		Log.debug("Dispatching command to '{}':  command='{}', runAs={}, uuid={}",
+				targetId, cmd.command(), runAs, uuid);
 
-		ExecuteCommandContext payload = new ExecuteCommandContext(
-				targetSession,
-				cmd.command(),
-				runAs,
-				uuid);
-
+		ExecuteCommandContext payload = new ExecuteCommandContext(targetSession, cmd.command(), runAs, uuid);
 		outNode.send(MessageType.EXECUTE_COMMAND, payload);
 	}
 

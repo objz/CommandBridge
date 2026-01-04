@@ -1,10 +1,10 @@
-package dev.objz.commandbridge.velocity.exec.stage;
+package dev.objz.commandbridge.velocity.dispatch.stage;
 
 import com.velocitypowered.api.proxy.Player;
 import dev.objz.commandbridge.scripting.model.Script;
-import dev.objz.commandbridge.velocity.exec.ExecutionContext;
-import dev.objz.commandbridge.velocity.exec.ExecutionResult;
-import dev.objz.commandbridge.velocity.exec.Pipeline;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
+import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
 import dev.objz.commandbridge.velocity.util.MM;
 
@@ -31,7 +31,7 @@ public class CooldownStage implements Pipeline {
 		if (cooldownManager.isOnCooldown(script.name(), player.getUniqueId())) {
 			Duration remaining = cooldownManager.getRemaining(script.name(), player.getUniqueId());
 			context.source().sendMessage(
-					MM.error("You are on cooldown. Try again in " + formatDuration(remaining)));
+					MM.error("Try again in " + formatDuration(remaining)));
 			next.accept(ExecutionResult.stop("Cooldown active"));
 			return;
 		}

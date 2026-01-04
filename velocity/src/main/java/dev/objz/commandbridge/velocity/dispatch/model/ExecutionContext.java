@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.exec;
+package dev.objz.commandbridge.velocity.dispatch.model;
 
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;

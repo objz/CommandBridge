@@ -1,10 +1,10 @@
-package dev.objz.commandbridge.velocity.exec.stage;
+package dev.objz.commandbridge.velocity.dispatch.stage;
 
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.ScriptManager;
-import dev.objz.commandbridge.velocity.exec.ExecutionContext;
-import dev.objz.commandbridge.velocity.exec.ExecutionResult;
-import dev.objz.commandbridge.velocity.exec.Pipeline;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
+import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
+import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
 
 import java.util.function.Consumer;
 

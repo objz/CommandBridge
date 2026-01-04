@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.exec;
+package dev.objz.commandbridge.velocity.dispatch.model;
 
 public sealed interface ExecutionResult {
 

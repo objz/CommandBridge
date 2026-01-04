@@ -14,7 +14,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
-import dev.objz.commandbridge.velocity.exec.CommandEntry;
+import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -51,7 +51,6 @@ public final class RegistrationManager {
 
 	public void setCommandEntry(CommandEntry commandEntry) {
 		this.commandEntry = commandEntry;
-		// Recreate registry with the command entry handler
 		this.registry = new CommandRegistry(
 				new ArgumentMapper(proxy),
 				(cmdName, source, args, stub) -> {
@@ -67,7 +66,6 @@ public final class RegistrationManager {
 		clearState();
 
 		if (registry == null) {
-			// Fallback registry without execution handler
 			registry = new CommandRegistry(new ArgumentMapper(proxy));
 		}
 
