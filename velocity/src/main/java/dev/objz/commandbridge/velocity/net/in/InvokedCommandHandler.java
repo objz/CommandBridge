@@ -4,7 +4,7 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.proto.Envelope;
-import dev.objz.commandbridge.velocity.exec.CommandExecutor;
+import dev.objz.commandbridge.velocity.exec.CommandEntry;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.websockets.core.WebSocketChannel;
@@ -14,9 +14,9 @@ import java.util.Objects;
 public final class InvokedCommandHandler extends InboundHandler {
 
 	private final SessionHub sessions;
-	private final CommandExecutor executor;
+	private final CommandEntry executor;
 
-	public InvokedCommandHandler(SessionHub sessions, CommandExecutor executor) {
+	public InvokedCommandHandler(SessionHub sessions, CommandEntry executor) {
 		this.sessions = Objects.requireNonNull(sessions);
 		this.executor = Objects.requireNonNull(executor);
 	}

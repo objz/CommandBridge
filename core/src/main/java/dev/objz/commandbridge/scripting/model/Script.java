@@ -72,4 +72,11 @@ public record Script(
 
 		return List.copyOf(result);
 	}
+
+	public List<ArgMapping> registeredArguments() {
+		if (args == null || args.isEmpty()) {
+			return List.of();
+		}
+		return List.copyOf(args);
+	}
 }

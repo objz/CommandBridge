@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.net.out;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutboundHandler;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommand;
@@ -16,6 +17,12 @@ public final class ExecuteCommandRequest extends OutboundHandler<ExecuteCommandC
 				ctx.runAs(),
 				ctx.uuid());
 
+		Log.debug("Sending EXECUTE_COMMAND to '{}':  command='{}', runAs={}, uuid={}",
+				ctx.session().id(),
+				ctx.command(),
+				ctx.runAs(),
+				ctx.uuid());
+
 		Envelope env = Envelope.make(
 				MessageType.EXECUTE_COMMAND,
 				serverId,
@@ -23,7 +30,11 @@ public final class ExecuteCommandRequest extends OutboundHandler<ExecuteCommandC
 				Envelope.MAPPER.valueToTree(payload));
 
 		SendOperation op = send(ctx.session().ch(), env);
-		op.dispatch(); // Fire and forget ;O
+		op.dispatch()
+				.exceptionally(ex -> {
+					Log.error(ex, "Failed to send EXECUTE_COMMAND to '{}'", ctx.session().id());
+					return null;
+				});
 		return op;
 	}
 }

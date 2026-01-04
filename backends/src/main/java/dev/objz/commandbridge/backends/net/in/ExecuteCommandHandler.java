@@ -1,24 +1,21 @@
 package dev.objz.commandbridge.backends.net.in;
 
+import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommand;
 import dev.objz.commandbridge.net.proto.Envelope;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
 import io.undertow.websockets.core.WebSocketChannel;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Objects;
 
 public final class ExecuteCommandHandler extends InboundHandler {
 
-	private final JavaPlugin plugin;
+	private final CommandExecutor executor;
 
-	public ExecuteCommandHandler(JavaPlugin plugin) {
-		this.plugin = Objects.requireNonNull(plugin);
+	public ExecuteCommandHandler(CommandExecutor executor) {
+		this.executor = Objects.requireNonNull(executor, "executor");
 	}
-
-	//todo implement executer
 
 	@Override
 	public void accept(WebSocketChannel ch, Envelope env) {
@@ -40,15 +37,23 @@ public final class ExecuteCommandHandler extends InboundHandler {
 			return;
 		}
 
-		String command = exec.command();
-		if (command.startsWith("/")) {
-			command = command.substring(1);
-		}
+		Log.debug("Executing command '{}' as {} (player: {})",
+				exec.command(),
+				exec.runAs(),
+				exec.uuid() != null ? exec.uuid() : "N/A");
 
-		RunAs runAs = exec.runAs();
-		if (runAs == null) {
-			runAs = RunAs.CONSOLE;
-		}
-
+		executor.execute(exec)
+				.thenAccept(result -> {
+					if (result.isSuccess()) {
+						Log.debug("Command '{}' executed successfully", exec.command());
+					} else {
+						Log.warn("Command '{}' execution failed: {}", exec.command(),
+								result.message());
+					}
+				})
+				.exceptionally(ex -> {
+					Log.error(ex, "Command '{}' execution threw exception", exec.command());
+					return null;
+				});
 	}
 }

@@ -14,6 +14,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
+import dev.objz.commandbridge.velocity.exec.CommandEntry;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -30,23 +31,45 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class RegistrationManager {
 
 	private final SessionHub sessions;
-	private final CommandRegistry registry;
+	private final ProxyServer proxy;
 	private final OutNode<Object> outNode;
 	private final Duration registerTimeout;
 
 	private final Map<String, Set<Script>> backendByClient = new ConcurrentHashMap<>();
 	private final Set<Script> velocityScripts = ConcurrentHashMap.newKeySet();
 
+	private volatile CommandRegistry registry;
+	private volatile CommandEntry commandEntry;
+
 	public RegistrationManager(ProxyServer proxy, SessionHub sessions, VelocityConfig config,
 			OutNode<Object> outNode) {
+		this.proxy = Objects.requireNonNull(proxy);
 		this.sessions = Objects.requireNonNull(sessions);
-		this.registry = new CommandRegistry(new ArgumentMapper(proxy));
 		this.outNode = Objects.requireNonNull(outNode);
 		this.registerTimeout = Duration.ofSeconds(Objects.requireNonNull(config).timeouts().registerTimeout());
 	}
 
+	public void setCommandEntry(CommandEntry commandEntry) {
+		this.commandEntry = commandEntry;
+		// Recreate registry with the command entry handler
+		this.registry = new CommandRegistry(
+				new ArgumentMapper(proxy),
+				(cmdName, source, args, stub) -> {
+					if (this.commandEntry != null) {
+						this.commandEntry.executeFromVelocity(cmdName, source, args, stub);
+					} else {
+						Log.warn("CommandEntry not set, cannot execute command '{}'", cmdName);
+					}
+				});
+	}
+
 	public void load(List<Script> scripts) {
 		clearState();
+
+		if (registry == null) {
+			// Fallback registry without execution handler
+			registry = new CommandRegistry(new ArgumentMapper(proxy));
+		}
 
 		try {
 			registry.unregisterAll();
@@ -79,7 +102,7 @@ public final class RegistrationManager {
 					velocityCollector.ok();
 				} catch (Throwable e) {
 					Log.error(e, "Velocity registration failed for '{}'", s.name());
-					velocityCollector.fail("Velocity '" + s.name() + "': " + e.getMessage());
+					velocityCollector.fail("Velocity '" + s.name() + "':  " + e.getMessage());
 				}
 			}
 
@@ -160,9 +183,9 @@ public final class RegistrationManager {
 
 		List<String> aliases = script.aliases() != null ? script.aliases() : List.of();
 		String description = script.description();
-		List<ArgMapping> usedArgs = script.usedArguments();
+		List<ArgMapping> registeredArgs = script.registeredArguments();
 
-		return new CommandStub(name, aliases, description, usedArgs);
+		return new CommandStub(name, aliases, description, registeredArgs);
 	}
 
 	private static final class Counter {

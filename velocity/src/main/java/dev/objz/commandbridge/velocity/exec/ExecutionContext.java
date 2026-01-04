@@ -21,10 +21,6 @@ public record ExecutionContext(
 		return new ExecutionContext(invoked, session, source, script, arguments, currentCommand, commandIndex);
 	}
 
-	public ExecutionContext withSource(CommandSource source) {
-		return new ExecutionContext(invoked, session, source, script, arguments, currentCommand, commandIndex);
-	}
-
 	public ExecutionContext withArguments(Map<String, Object> args) {
 		return new ExecutionContext(invoked, session, source, script, args, currentCommand, commandIndex);
 	}

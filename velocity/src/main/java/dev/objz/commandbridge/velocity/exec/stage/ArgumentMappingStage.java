@@ -18,7 +18,8 @@ public class ArgumentMappingStage implements Pipeline {
 	public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
 		Script script = context.script();
 		List<InvokedCommand.TypedArgument> invokedArgs = context.invoked().args();
-		List<ArgMapping> definedArgs = script.args();
+
+		List<ArgMapping> definedArgs = script.registeredArguments();
 
 		if (definedArgs == null || definedArgs.isEmpty()) {
 			next.accept(ExecutionResult.ok(context.withArguments(Map.of())));

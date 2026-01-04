@@ -5,20 +5,22 @@ import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
 
-import java.nio.file.Path;
-
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.nio.file.Path;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
 	private BackendsConfig cfg;
 	private Path dataDir;
 	private JavaPlugin plugin;
+	private FoliaExecutor commandExecutor;
 
 	@Override
 	public void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
@@ -34,6 +36,9 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
+
+		// Create executor early so it's available
+		this.commandExecutor = new FoliaExecutor(plugin);
 	}
 
 	@Override
@@ -50,12 +55,20 @@ public final class Adapter implements PlatformAdapter {
 			Log.setDebug(cfg.debug());
 		}
 
+		if (this.commandExecutor == null) {
+			this.commandExecutor = new FoliaExecutor(plugin);
+		}
+
+		// Folia doesn't have a traditional "primary thread" concept
+		// We don't install thread marshalling for Folia as it uses regionized threading
+
 		this.client = new WsClient(cfg, dataDir);
 
 		client.start();
 
 		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
-		client.inboundRouter().register(MessageType.EXECUTE_COMMAND, new ExecuteCommandHandler(plugin));
+		client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
+				new ExecuteCommandHandler(commandExecutor));
 	}
 
 	@Override
@@ -66,5 +79,10 @@ public final class Adapter implements PlatformAdapter {
 		} finally {
 			Log.info("Backend (Folia) stopped");
 		}
+	}
+
+	@Override
+	public CommandExecutor getCommandExecutor() {
+		return commandExecutor;
 	}
 }

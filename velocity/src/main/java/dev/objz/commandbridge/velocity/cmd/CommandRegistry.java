@@ -1,8 +1,10 @@
 package dev.objz.commandbridge.velocity.cmd;
 
+import com.velocitypowered.api.command.CommandSource;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.Argument;
+import dev.jorel.commandapi.executors.CommandArguments;
 import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
@@ -15,13 +17,24 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CommandRegistry implements CommandRegistryInterface {
 
+	@FunctionalInterface
+	public interface CommandExecutionHandler {
+		void execute(String commandName, CommandSource source, CommandArguments args, CommandStub stub);
+	}
+
 	private final Set<String> registeredCommands = ConcurrentHashMap.newKeySet();
 	private final Set<String> registeredAliases = ConcurrentHashMap.newKeySet();
 	private final ArgumentMapper argumentMapper;
 	private final Object registrationLock = new Object();
+	private final CommandExecutionHandler executionHandler;
 
 	public CommandRegistry(ArgumentMapper mapper) {
+		this(mapper, null);
+	}
+
+	public CommandRegistry(ArgumentMapper mapper, CommandExecutionHandler executionHandler) {
 		this.argumentMapper = mapper;
+		this.executionHandler = executionHandler;
 	}
 
 	@Override
@@ -58,20 +71,28 @@ public final class CommandRegistry implements CommandRegistryInterface {
 			}
 
 			cmd.executes((sender, args) -> {
-				Log.info("Command '{}' executed by {}", cmdName, sender.toString());
+				CommandSource source = (CommandSource) sender;
 
-				if (stub.args() != null && !stub.args().isEmpty()) {
-					StringBuilder argLog = new StringBuilder("Arguments: ");
-					boolean first = true;
-					for (ArgMapping argMapping : stub.args()) {
-						if (!first)
-							argLog.append(", ");
-						first = false;
-						Object value = args.getOptional(argMapping.name()).orElse(null);
-						argLog.append(argMapping.name()).append("=").append(
-								value != null ? value.toString() : "<not provided>");
+				if (executionHandler != null) {
+					executionHandler.execute(cmdName, source, args, stub);
+				} else {
+					Log.info("Command '{}' executed by {} (no handler configured)", cmdName,
+							sender.toString());
+
+					if (stub.args() != null && !stub.args().isEmpty()) {
+						StringBuilder argLog = new StringBuilder("Arguments: ");
+						boolean first = true;
+						for (ArgMapping argMapping : stub.args()) {
+							if (!first)
+								argLog.append(", ");
+							first = false;
+							Object value = args.getOptional(argMapping.name()).orElse(null);
+							argLog.append(argMapping.name()).append("=").append(
+									value != null ? value.toString()
+											: "<not provided>");
+						}
+						Log.info(argLog.toString());
 					}
-					Log.info(argLog.toString());
 				}
 			});
 

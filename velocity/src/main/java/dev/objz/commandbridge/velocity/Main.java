@@ -18,7 +18,7 @@ import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
-import dev.objz.commandbridge.velocity.exec.CommandExecutor;
+import dev.objz.commandbridge.velocity.exec.CommandEntry;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
@@ -49,7 +49,7 @@ public final class Main {
 	private AuthHandler authHandler;
 	private CBCommand command;
 	private ScriptManager scriptManager;
-	private CommandExecutor commandExecutor;
+	private CommandEntry commandEntry;
 
 	@Inject
 	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
@@ -87,13 +87,14 @@ public final class Main {
 		scriptManager.loadAll();
 
 		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
+
+		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode);
+
+		registrations.setCommandEntry(commandEntry);
+
 		registrations.load(scriptManager.enabled());
 
 		installRoutes();
-
-		commandExecutor = new CommandExecutor(proxy, pluginInstance, scriptManager, sessions, outNode);
-
-		inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandExecutor));
 
 		authHandler.onAuthenticated(registrations::onClientAuthenticated);
 
@@ -128,6 +129,8 @@ public final class Main {
 		var auth = new AuthService(secret);
 		authHandler = new AuthHandler(auth, sessions, ws);
 		authHandler.register(inNode);
+
+		inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
 
 		outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
 		outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
