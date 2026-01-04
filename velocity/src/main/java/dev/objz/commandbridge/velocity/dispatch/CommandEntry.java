@@ -10,8 +10,8 @@ import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
-import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.enums.RunAs;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
@@ -21,9 +21,6 @@ import dev.objz.commandbridge.velocity.dispatch.exec.VelocityExecutor;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
 import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
-import dev.objz.commandbridge.velocity.dispatch.stage.CooldownStage;
-import dev.objz.commandbridge.velocity.dispatch.stage.PermissionCheckStage;
-import dev.objz.commandbridge.velocity.dispatch.stage.ScriptResolutionStage;
 import dev.objz.commandbridge.velocity.dispatch.stage.*;
 import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
@@ -31,222 +28,286 @@ import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.StreamSupport;
 
 public final class CommandEntry {
 
 	private final ProxyServer proxy;
-	private final ScriptManager scriptManager;
 	private final SessionHub sessions;
 	private final OutNode<Object> outNode;
 	private final ScheduleManager scheduler;
-	private final CooldownManager cooldowns;
 	private final VelocityExecutor velocityExecutor;
+	private final List<Pipeline> pipelineStages;
 
-	public CommandEntry(ProxyServer proxy, Object plugin, ScriptManager scriptManager,
-			SessionHub sessions, OutNode<Object> outNode, String localServerId) {
-		this.proxy = proxy;
-		this.scriptManager = scriptManager;
-		this.sessions = sessions;
-		this.outNode = outNode;
-		this.scheduler = new ScheduleManager(proxy, plugin);
-		this.cooldowns = new CooldownManager();
-		this.velocityExecutor = new VelocityExecutor(proxy, localServerId);
+	public CommandEntry(
+			ProxyServer proxy,
+			Object plugin,
+			ScriptManager scriptManager,
+			SessionHub sessions,
+			OutNode<Object> outNode,
+			String localServerId) {
+
+		this.proxy = Objects.requireNonNull(proxy);
+		this.sessions = Objects.requireNonNull(sessions);
+		this.outNode = Objects.requireNonNull(outNode);
+		this.scheduler = new ScheduleManager(proxy, Objects.requireNonNull(plugin));
+		this.velocityExecutor = new VelocityExecutor(proxy,
+				Objects.requireNonNull(localServerId));
+
+		var cooldowns = new CooldownManager();
+		this.pipelineStages = List.of(
+				new ScriptResolutionStage(scriptManager),
+				new ArgumentMappingStage(),
+				new PermissionCheckStage(),
+				new CooldownStage(cooldowns));
 	}
 
 	public VelocityExecutor getVelocityExecutor() {
 		return velocityExecutor;
 	}
 
+	// ──────────────────────────────────────────────────────────────────────────────
+
 	public void execute(InvokedCommand invoked, ClientSession originSession) {
-		CommandSource source = resolveSource(invoked.sender());
-		if (source == null) {
-			Log.debug("Source resolution failed for invoked command '{}'", invoked.name());
-			return;
-		}
-
-		ExecutionContext initial = new ExecutionContext(
-				invoked, originSession, source, null, Map.of(), null, -1);
-
-		runPipeline(initial);
+		resolveSource(invoked.sender())
+				.ifPresentOrElse(
+						source -> runPipeline(
+								createInitialContext(invoked, originSession, source)),
+						() -> Log.debug("Source resolution failed for invoked command '{}'",
+								invoked.name()));
 	}
 
 	public void executeFromVelocity(String commandName, CommandSource source, CommandArguments args,
 			CommandStub stub) {
 		Log.debug("Executing Velocity command '{}' from source {}", commandName, source);
 
-		SenderContext senderCtx = buildSenderContext(source);
-		List<InvokedCommand.TypedArgument> typedArgs = buildTypedArguments(stub, args);
+		var invoked = new InvokedCommand(
+				commandName,
+				buildTypedArguments(stub, args),
+				buildSenderContext(source));
 
-		InvokedCommand invoked = new InvokedCommand(commandName, typedArgs, senderCtx);
-
-		ExecutionContext initial = new ExecutionContext(
-				invoked, null, source, null, Map.of(), null, -1);
-
-		runPipeline(initial);
+		runPipeline(createInitialContext(invoked, null, source));
 	}
 
+	// ──────────────────────────────────────────────────────────────────────────────
+
 	private void runPipeline(ExecutionContext initial) {
-		runStage(new ScriptResolutionStage(scriptManager), initial,
-				ctx1 -> runStage(new ArgumentMappingStage(), ctx1,
-						ctx2 -> runStage(new PermissionCheckStage(), ctx2,
-								ctx3 -> runStage(new CooldownStage(cooldowns), ctx3,
-										this::startCommandChain))));
+		runPipelineStages(pipelineStages.iterator(), initial, this::executeCommands);
+	}
+
+	private void runPipelineStages(Iterator<Pipeline> stages, ExecutionContext ctx,
+			Consumer<ExecutionContext> onComplete) {
+		if (!stages.hasNext()) {
+			onComplete.accept(ctx);
+			return;
+		}
+
+		stages.next().process(ctx, result -> handlePipelineResult(result, stages, onComplete));
+	}
+
+	private void handlePipelineResult(ExecutionResult result, Iterator<Pipeline> stages,
+			Consumer<ExecutionContext> onComplete) {
+		switch (result) {
+			case ExecutionResult.Continue(var ctx) -> runPipelineStages(stages, ctx, onComplete);
+			case ExecutionResult.Stop(var reason) -> Log.debug("Execution stopped: {}", reason);
+			case ExecutionResult.Error(var message) -> Log.warn("Execution error: {}", message);
+		}
+	}
+
+	// ──────────────────────────────────────────────────────────────────────────────
+
+	private void executeCommands(ExecutionContext ctx) {
+		Optional.ofNullable(ctx.script())
+				.map(Script::commands)
+				.filter(Predicate.not(List::isEmpty))
+				.ifPresent(commands -> processCommandAt(ctx, commands, 0));
+	}
+
+	private void processCommandAt(ExecutionContext ctx, List<CmdMapping> commands, int index) {
+		if (index >= commands.size())
+			return;
+
+		var cmd = commands.get(index);
+		var nextCtx = ctx.nextCommand(cmd, index);
+
+		new PlaceholderStage().process(nextCtx, result -> {
+			if (result instanceof ExecutionResult.Continue(var resolvedCtx)) {
+				scheduleAndExecute(resolvedCtx, () -> processCommandAt(ctx, commands, index + 1));
+			}
+		});
+	}
+
+	private void scheduleAndExecute(ExecutionContext ctx, Runnable continuation) {
+		var cmd = ctx.currentCommand();
+		var delay = Optional.ofNullable(cmd.delay()).filter(this::isPositiveDuration);
+
+		Runnable task = () -> {
+			dispatchCommand(ctx, cmd);
+			continuation.run();
+		};
+
+		delay.ifPresentOrElse(
+				d -> scheduler.schedule(task, d),
+				task);
+	}
+
+	// ──────────────────────────────────────────────────────────────────────────────
+
+	private void dispatchCommand(ExecutionContext ctx, CmdMapping cmd) {
+		var targets = Optional.ofNullable(cmd.execute()).orElse(List.of());
+
+		if (targets.isEmpty()) {
+			Log.warn("Command '{}' has no execution targets", cmd.command());
+			return;
+		}
+
+		targets.forEach(target -> dispatchToTarget(ctx, cmd, target));
+	}
+
+	private void dispatchToTarget(ExecutionContext ctx, CmdMapping cmd, IdMapping target) {
+		var dispatcher = switch (target.location()) {
+			case VELOCITY -> velocityDispatcher(ctx, cmd);
+			case BACKEND -> remoteDispatcher(ctx, cmd);
+		};
+		dispatcher.accept(target.id());
+	}
+
+	private Consumer<String> velocityDispatcher(ExecutionContext ctx, CmdMapping cmd) {
+		return targetId -> {
+			if (velocityExecutor.isLocal(targetId)) {
+				executeLocally(ctx, cmd);
+			} else {
+				dispatchToRemoteSession(ctx, cmd, targetId);
+			}
+		};
+	}
+
+	private Consumer<String> remoteDispatcher(ExecutionContext ctx, CmdMapping cmd) {
+		return targetId -> dispatchToRemoteSession(ctx, cmd, targetId);
+	}
+
+	private void executeLocally(ExecutionContext ctx, CmdMapping cmd) {
+		var playerUuid = extractPlayerUuid(ctx.source());
+		var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
+		velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source());
+	}
+
+	private void dispatchToRemoteSession(ExecutionContext ctx, CmdMapping cmd, String targetId) {
+		findSession(targetId)
+				.filter(this::isSessionConnected)
+				.ifPresentOrElse(
+						session -> sendExecuteCommand(session, ctx, cmd, targetId),
+						() -> Log.warn("Target '{}' not found or not connected", targetId));
+	}
+
+	private void sendExecuteCommand(ClientSession session, ExecutionContext ctx, CmdMapping cmd, String targetId) {
+		var uuid = extractPlayerUuid(ctx.source());
+		var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
+
+		Log.debug("Dispatching command to '{}':  command='{}', runAs={}, uuid={}",
+				targetId, cmd.command(), runAs, uuid);
+
+		outNode.send(MessageType.EXECUTE_COMMAND,
+				new ExecuteCommandContext(session, cmd.command(), runAs, uuid));
+	}
+
+	// ──────────────────────────────────────────────────────────────────────────────
+
+	private ExecutionContext createInitialContext(InvokedCommand invoked, ClientSession session,
+			CommandSource source) {
+		return new ExecutionContext(invoked, session, source, null, Map.of(), null, -1);
 	}
 
 	private SenderContext buildSenderContext(CommandSource source) {
-		if (source instanceof Player p) {
-			return new SenderContext.Player(p.getUsername(), p.getUniqueId().toString());
-		}
-		return new SenderContext.Console();
+		return switch (source) {
+			case Player p -> new SenderContext.Player(p.getUsername(), p.getUniqueId().toString());
+			default -> new SenderContext.Console();
+		};
 	}
 
 	private List<InvokedCommand.TypedArgument> buildTypedArguments(CommandStub stub, CommandArguments args) {
-		List<InvokedCommand.TypedArgument> typedArgs = new ArrayList<>();
-		if (stub.args() == null || stub.args().isEmpty()) {
-			return typedArgs;
-		}
-		for (ArgMapping mapping : stub.args()) {
-			String name = mapping.name();
-			ArgType type = mapping.type();
-			Object raw = args.getOptional(name).orElse(null);
-			Object value = convertArgumentValue(type, raw);
-			typedArgs.add(new InvokedCommand.TypedArgument(type, value));
-		}
-		return typedArgs;
+		return Optional.ofNullable(stub.args())
+				.orElse(List.of())
+				.stream()
+				.map(mapping -> createTypedArgument(mapping, args))
+				.toList();
+	}
+
+	private InvokedCommand.TypedArgument createTypedArgument(ArgMapping mapping, CommandArguments args) {
+		var value = args.getOptional(mapping.name())
+				.map(raw -> convertArgumentValue(mapping.type(), raw))
+				.orElse(null);
+		return new InvokedCommand.TypedArgument(mapping.type(), value);
 	}
 
 	private Object convertArgumentValue(ArgType type, Object raw) {
 		if (raw == null)
 			return null;
+
 		return switch (type) {
 			case STRING, TEXT -> raw.toString();
-			case INTEGER, TIME ->
-				(raw instanceof Number n) ? n.intValue() : Integer.parseInt(raw.toString());
-			case DOUBLE -> (raw instanceof Number n) ? n.doubleValue() : Double.parseDouble(raw.toString());
-			case BOOLEAN -> (raw instanceof Boolean b) ? b : Boolean.parseBoolean(raw.toString());
+			case INTEGER, TIME -> toInteger(raw);
+			case DOUBLE -> toDouble(raw);
+			case BOOLEAN -> toBoolean(raw);
 			case SERVER -> raw.toString();
 			default -> raw.toString();
 		};
 	}
 
-	private void runStage(Pipeline stage, ExecutionContext ctx, Consumer<ExecutionContext> onSuccess) {
-		stage.process(ctx, result -> {
-			if (result instanceof ExecutionResult.Continue c) {
-				onSuccess.accept(c.context());
-			} else if (result instanceof ExecutionResult.Stop s) {
-				Log.debug("Execution stopped:  {}", s.reason());
-			} else if (result instanceof ExecutionResult.Error e) {
-				Log.warn("Execution error: {}", e.message());
-			}
-		});
+	// ──────────────────────────────────────────────────────────────────────────────
+
+	private Optional<CommandSource> resolveSource(SenderContext sender) {
+		return switch (sender) {
+			case SenderContext.Player p -> parseUuid(p.uuid()).flatMap(this::findPlayer);
+			case SenderContext.Console() -> Optional.of(proxy.getConsoleCommandSource());
+			default -> Optional.of(proxy.getConsoleCommandSource());
+		};
 	}
 
-	private void startCommandChain(ExecutionContext ctx) {
-		if (ctx.script() == null || ctx.script().commands() == null)
-			return;
-		processCommand(ctx, 0);
+	private Optional<ClientSession> findSession(String id) {
+		return StreamSupport.stream(sessions.spliterator(), false)
+				.filter(s -> id.equals(s.id()))
+				.findFirst();
 	}
 
-	private void processCommand(ExecutionContext ctx, int index) {
-		List<CmdMapping> commands = ctx.script().commands();
-		if (index >= commands.size())
-			return;
-
-		CmdMapping cmd = commands.get(index);
-		ExecutionContext nextCtx = ctx.nextCommand(cmd, index);
-
-		runStage(new PlaceholderStage(), nextCtx, resolvedCtx -> {
-			CmdMapping resolvedCmd = resolvedCtx.currentCommand();
-
-			Runnable executionTask = () -> {
-				dispatch(resolvedCtx, resolvedCmd);
-				processCommand(resolvedCtx, index + 1);
-			};
-
-			Duration delay = resolvedCmd.delay();
-			if (delay != null && !delay.isZero() && !delay.isNegative()) {
-				scheduler.schedule(executionTask, delay);
-			} else {
-				executionTask.run();
-			}
-		});
+	private Optional<Player> findPlayer(UUID uuid) {
+		return proxy.getPlayer(uuid);
 	}
 
-	private void dispatch(ExecutionContext ctx, CmdMapping cmd) {
-		if (cmd.execute() == null || cmd.execute().isEmpty()) {
-			Log.warn("Command '{}' has no execution targets", cmd.command());
-			return;
-		}
+	// ──────────────────────────────────────────────────────────────────────────────
 
-		for (IdMapping target : cmd.execute()) {
-			if (target.location() == Location.VELOCITY) {
-				dispatchVelocity(ctx, cmd, target.id());
-			} else if (target.location() == Location.BACKEND) {
-				dispatchBackend(ctx, cmd, target.id());
-			}
+	private Optional<UUID> parseUuid(String uuid) {
+		try {
+			return Optional.of(UUID.fromString(uuid));
+		} catch (Exception e) {
+			return Optional.empty();
 		}
 	}
 
-	private void dispatchVelocity(ExecutionContext ctx, CmdMapping cmd, String targetId) {
-		if (velocityExecutor.isLocal(targetId)) {
-			// Execute locally
-			UUID playerUuid = (ctx.source() instanceof Player p) ? p.getUniqueId() : null;
-			RunAs runAs = cmd.runAs() != null ? cmd.runAs() : RunAs.CONSOLE;
-			velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source());
-		} else {
-			// Send to remote proxy (it's just another client session)
-			dispatchToRemote(ctx, cmd, targetId);
-		}
+	private UUID extractPlayerUuid(CommandSource source) {
+		return source instanceof Player p ? p.getUniqueId() : null;
 	}
 
-	private void dispatchBackend(ExecutionContext ctx, CmdMapping cmd, String targetClientId) {
-		dispatchToRemote(ctx, cmd, targetClientId);
+	private boolean isSessionConnected(ClientSession session) {
+		return session.ch() != null && session.ch().isOpen();
 	}
 
-	private void dispatchToRemote(ExecutionContext ctx, CmdMapping cmd, String targetId) {
-		ClientSession targetSession = findSession(targetId);
-		if (targetSession == null) {
-			Log.warn("Target '{}' not found for command execution", targetId);
-			return;
-		}
-
-		if (targetSession.ch() == null || !targetSession.ch().isOpen()) {
-			Log.warn("Target '{}' is not connected", targetId);
-			return;
-		}
-
-		UUID uuid = (ctx.source() instanceof Player p) ? p.getUniqueId() : null;
-		RunAs runAs = cmd.runAs() != null ? cmd.runAs() : RunAs.CONSOLE;
-
-		Log.debug("Dispatching command to '{}':  command='{}', runAs={}, uuid={}",
-				targetId, cmd.command(), runAs, uuid);
-
-		ExecuteCommandContext payload = new ExecuteCommandContext(targetSession, cmd.command(), runAs, uuid);
-		outNode.send(MessageType.EXECUTE_COMMAND, payload);
+	private boolean isPositiveDuration(Duration d) {
+		return !d.isZero() && !d.isNegative();
 	}
 
-	private CommandSource resolveSource(SenderContext sender) {
-		if (sender instanceof SenderContext.Player p) {
-			try {
-				UUID uid = UUID.fromString(p.uuid());
-				return proxy.getPlayer(uid).map(player -> (CommandSource) player).orElse(null);
-			} catch (Exception e) {
-				return null;
-			}
-		}
-		return proxy.getConsoleCommandSource();
+	private int toInteger(Object raw) {
+		return raw instanceof Number n ? n.intValue() : Integer.parseInt(raw.toString());
 	}
 
-	private ClientSession findSession(String id) {
-		for (ClientSession s : sessions) {
-			if (id.equals(s.id()))
-				return s;
-		}
-		return null;
+	private double toDouble(Object raw) {
+		return raw instanceof Number n ? n.doubleValue() : Double.parseDouble(raw.toString());
+	}
+
+	private boolean toBoolean(Object raw) {
+		return raw instanceof Boolean b ? b : Boolean.parseBoolean(raw.toString());
 	}
 }
