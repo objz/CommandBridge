@@ -31,7 +31,7 @@ dependencies {
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.82")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.82")
 
-    compileOnly("com.google.code.gson:gson:2.13.1")
+    compileOnly("com.google.code.gson:gson:2.13.2")
 
     compileOnly("dev.jorel:commandapi-spigot-core:11.1.0")
 
