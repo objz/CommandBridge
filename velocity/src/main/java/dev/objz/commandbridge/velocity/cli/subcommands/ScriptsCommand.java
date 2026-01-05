@@ -70,7 +70,12 @@ public final class ScriptsCommand {
 				aliases = " <gray>(" + String.join(", ", s.aliases()) + ")</gray>";
 			}
 
-			msg.item(status + " <white>" + s.name() + "</white>" + aliases);
+			String description = "";
+			if (s.description() != null && !s.description().isEmpty()) {
+				description = " <dark_gray>- " + s.description() + "</dark_gray>";
+			}
+
+			msg.item(status + " <white>" + s.name() + "</white>" + aliases + description);
 		}
 
 		msg.send(sender);

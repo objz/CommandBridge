@@ -12,10 +12,9 @@ public final class HelpCommand {
 				.cmdLine("/cb reload", "reload all")
 				.cmdLine("/cb scripts", "list all scripts")
 				.cmdLine("/cb list", "list connected clients")
-				.cmdLine("/cb inspect", "inspect client details")
-				.cmdLine("/cb ping", "websocket pings for all clients")
+				.cmdLine("/cb ping", "ping all clients")
 				.cmdLine("/cb debug", "toggle debug mode")
-				.cmdLine("/cb dump", "summary dump (WIP)")
+				.cmdLine("/cb dump", "dump your config and scripts")
 				.send(sender);
 	}
 }
