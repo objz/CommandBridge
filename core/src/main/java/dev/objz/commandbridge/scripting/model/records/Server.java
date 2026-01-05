@@ -11,6 +11,5 @@ import dev.objz.commandbridge.scripting.anno.YmlKey;
 public record Server(
 		@YmlKey("target-required") @Default("false") boolean targetRequired,
 		@YmlKey("schedule-online") @Default("false") boolean scheduleOnline,
-		@Min(1) @Default("5s") Duration timeout,
-		@Min(1) @Default("2s") Duration frequency) {
+		@Min(1) @Default("5s") Duration timeout) {
 }
