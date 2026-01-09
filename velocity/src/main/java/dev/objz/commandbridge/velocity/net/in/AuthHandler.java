@@ -9,6 +9,7 @@ import dev.objz.commandbridge.net.payloads.util.AuthRequestPayload;
 import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -91,6 +92,8 @@ public final class AuthHandler extends InboundHandler {
 
 		ClientSession s = sessions.add(ch, env.from());
 		s.status(AuthStatus.AUTH_FAIL);
+
+		s.location(ap.location() != null ? ap.location() : Location.BACKEND);
 
 		reply(ch, env, MessageType.AUTH_OK, new AuthResponsePayload(serverNonce, serverMac))
 				.dispatch()

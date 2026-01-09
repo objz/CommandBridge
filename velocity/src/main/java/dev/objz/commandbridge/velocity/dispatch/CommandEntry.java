@@ -14,6 +14,7 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.enums.RunAs;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
@@ -163,7 +164,7 @@ public final class CommandEntry {
 		var targets = Optional.ofNullable(cmd.execute()).orElse(List.of());
 
 		if (targets.isEmpty()) {
-			Log.warn("Command '{}' has no execution targets", cmd.command());
+			Log.warn("Command '{}' has no execution targets defined", cmd.command());
 			notifyExecutionError(ctx.source(), cmd.command(), "No execution targets configured");
 			return;
 		}
@@ -172,25 +173,22 @@ public final class CommandEntry {
 	}
 
 	private void dispatchToTarget(ExecutionContext ctx, CmdMapping cmd, IdMapping target) {
-		var dispatcher = switch (target.location()) {
-			case VELOCITY -> velocityDispatcher(ctx, cmd);
-			case BACKEND -> remoteDispatcher(ctx, cmd);
-		};
-		dispatcher.accept(target.id());
-	}
+		String targetId = target.id();
+		Location targetLoc = target.location();
 
-	private Consumer<String> velocityDispatcher(ExecutionContext ctx, CmdMapping cmd) {
-		return targetId -> {
+		if (targetLoc == Location.VELOCITY) {
 			if (velocityExecutor.isLocal(targetId)) {
 				executeLocally(ctx, cmd);
 			} else {
-				dispatchToRemoteSession(ctx, cmd, targetId);
+				dispatchToRemoteSession(ctx, cmd, targetId, Location.VELOCITY);
 			}
-		};
-	}
-
-	private Consumer<String> remoteDispatcher(ExecutionContext ctx, CmdMapping cmd) {
-		return targetId -> dispatchToRemoteSession(ctx, cmd, targetId);
+		} else if (targetLoc == Location.BACKEND) {
+			dispatchToRemoteSession(ctx, cmd, targetId, Location.BACKEND);
+		} else {
+			Log.warn("Unknown location type '{}' for target '{}'", targetLoc, targetId);
+			notifyExecutionError(ctx.source(), cmd.command(),
+					"Unknown location type: " + targetLoc);
+		}
 	}
 
 	private void executeLocally(ExecutionContext ctx, CmdMapping cmd) {
@@ -204,7 +202,6 @@ public final class CommandEntry {
 						notifyExecutionError(ctx.source(), cmd.command(),
 								"Command execution failed");
 
-						// Log using feedback system
 						Feedback feedback = new Feedback(1, 0, 1, List.of(),
 								List.of("Local command execution failed:  "
 										+ cmd.command()));
@@ -223,19 +220,23 @@ public final class CommandEntry {
 				});
 	}
 
-	private void dispatchToRemoteSession(ExecutionContext ctx, CmdMapping cmd, String targetId) {
-		findSession(targetId)
+	private void dispatchToRemoteSession(ExecutionContext ctx, CmdMapping cmd, String targetId,
+			Location requiredLocation) {
+		findSession(targetId, requiredLocation)
 				.filter(this::isSessionConnected)
 				.ifPresentOrElse(
 						session -> sendExecuteCommand(session, ctx, cmd, targetId),
 						() -> {
-							Log.warn("Target '{}' not found or not connected", targetId);
+							Log.warn("Target '{}' ({}) not found or not connected",
+									targetId,
+									requiredLocation);
 							notifyExecutionError(ctx.source(), cmd.command(),
-									"Backend server '" + targetId
+									requiredLocation + " server '" + targetId
 											+ "' is not connected");
 
 							Feedback feedback = new Feedback(1, 0, 1, List.of(),
-									List.of("Backend not connected: " + targetId));
+									List.of(requiredLocation + " not connected: "
+											+ targetId));
 							Summary.feedbackSummary("Execution Failed", feedback, targetId);
 						});
 	}
@@ -366,9 +367,9 @@ public final class CommandEntry {
 		};
 	}
 
-	private Optional<ClientSession> findSession(String id) {
+	private Optional<ClientSession> findSession(String id, Location requiredLocation) {
 		return StreamSupport.stream(sessions.spliterator(), false)
-				.filter(s -> id.equals(s.id()))
+				.filter(s -> id.equals(s.id()) && s.location() == requiredLocation)
 				.findFirst();
 	}
 
