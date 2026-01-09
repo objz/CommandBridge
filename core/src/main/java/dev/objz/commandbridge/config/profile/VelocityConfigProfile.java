@@ -146,7 +146,8 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 		VelocityConfig.Security secOut = new VelocityConfig.Security(
 				requireAuth, authTimeout, tlsMode, keystorePath, keystorePassword, keystoreType);
 
-		VelocityConfig out = new VelocityConfig(bindHost, bindPort, serverId, hb, secOut, to, limits,
+		VelocityConfig out = new VelocityConfig(in.actAsClient(), bindHost, bindPort, serverId, hb, secOut, to,
+				limits,
 				in.debug());
 		return new Result<>(out, ok);
 	}

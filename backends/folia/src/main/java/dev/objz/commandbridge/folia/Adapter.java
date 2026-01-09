@@ -23,8 +23,8 @@ public final class Adapter implements PlatformAdapter {
 	private FoliaExecutor commandExecutor;
 
 	@Override
-	public void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
-		this.plugin = plugin;
+	public void load(PlatformEnv env, Object plugin) throws Exception {
+		this.plugin = (JavaPlugin) plugin;
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
@@ -37,8 +37,7 @@ public final class Adapter implements PlatformAdapter {
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
 
-		// Create executor early so it's available
-		this.commandExecutor = new FoliaExecutor(plugin);
+		this.commandExecutor = new FoliaExecutor(this.plugin);
 	}
 
 	@Override
@@ -58,9 +57,6 @@ public final class Adapter implements PlatformAdapter {
 		if (this.commandExecutor == null) {
 			this.commandExecutor = new FoliaExecutor(plugin);
 		}
-
-		// Folia doesn't have a traditional "primary thread" concept
-		// We don't install thread marshalling for Folia as it uses regionized threading
 
 		this.client = new WsClient(cfg, dataDir);
 

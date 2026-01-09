@@ -5,6 +5,7 @@ import org.spongepowered.configurate.objectmapping.meta.Setting;
 
 @ConfigSerializable
 public record VelocityConfig(
+		@Setting("act-as-client") boolean actAsClient,
 		@Setting("bind-host") String bindHost,
 		@Setting("bind-port") int bindPort,
 		@Setting("server-id") String serverId,
@@ -45,6 +46,7 @@ public record VelocityConfig(
 
 	public static VelocityConfig defaults() {
 		return new VelocityConfig(
+				false,
 				"0.0.0.0",
 				8765,
 				"proxy-1",

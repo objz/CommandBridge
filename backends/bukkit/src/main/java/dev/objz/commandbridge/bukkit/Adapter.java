@@ -24,8 +24,8 @@ public final class Adapter implements PlatformAdapter {
 	private BukkitExecutor commandExecutor;
 
 	@Override
-	public void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
-		this.plugin = plugin;
+	public void load(PlatformEnv env, Object plugin) throws Exception {
+		this.plugin = (JavaPlugin) plugin;
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
@@ -38,8 +38,7 @@ public final class Adapter implements PlatformAdapter {
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
 
-		// Create executor early so it's available
-		this.commandExecutor = new BukkitExecutor(plugin);
+		this.commandExecutor = new BukkitExecutor(this.plugin);
 	}
 
 	@Override

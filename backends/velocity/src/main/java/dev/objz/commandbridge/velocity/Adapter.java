@@ -1,18 +1,18 @@
-package dev.objz.commandbridge.paper;
+package dev.objz.commandbridge.velocity;
 
+import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.backends.platform.bootstrap.VelocityMain;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
-
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
@@ -20,12 +20,26 @@ public final class Adapter implements PlatformAdapter {
 	private WsClient client;
 	private BackendsConfig cfg;
 	private Path dataDir;
-	private JavaPlugin plugin;
-	private PaperExecutor commandExecutor;
+	private ProxyServer proxy;
+	private Object pluginInstance;
+	private VelocityExecutor commandExecutor;
 
 	@Override
 	public void load(PlatformEnv env, Object plugin) throws Exception {
-		this.plugin = (JavaPlugin) plugin;
+		if (!(plugin instanceof VelocityMain)) {
+			throw new IllegalArgumentException("Plugin must be instance of VelocityMain");
+		}
+
+		VelocityMain bootstrap = (VelocityMain) plugin;
+		this.proxy = bootstrap.getProxy();
+		this.pluginInstance = bootstrap.getPluginInstance();
+		Logger logger = bootstrap.getLogger();
+
+		try {
+			Log.install(logger);
+		} catch (IllegalStateException ignored) {
+		}
+
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
@@ -38,13 +52,14 @@ public final class Adapter implements PlatformAdapter {
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
 		}
 
-		this.commandExecutor = new PaperExecutor(this.plugin);
+		this.commandExecutor = new VelocityExecutor(proxy, this.pluginInstance);
 	}
 
 	@Override
 	public void start(PlatformEnv env) throws Exception {
 		if (this.dataDir == null)
 			this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
+
 		if (this.cfg == null) {
 			var cfgMgr = new ConfigManager(dataDir);
 			if (!cfgMgr.load(BackendsConfig.class)) {
@@ -56,12 +71,11 @@ public final class Adapter implements PlatformAdapter {
 		}
 
 		if (this.commandExecutor == null) {
-			this.commandExecutor = new PaperExecutor(plugin);
+			if (proxy == null)
+				throw new IllegalStateException(
+						"ProxyServer not initialized (load() was not called or failed)");
+			this.commandExecutor = new VelocityExecutor(proxy, pluginInstance);
 		}
-
-		Log.installThreadMarshalling(
-				() -> Bukkit.isPrimaryThread(),
-				task -> Bukkit.getScheduler().runTask(plugin, task));
 
 		this.client = new WsClient(cfg, dataDir);
 
@@ -78,7 +92,7 @@ public final class Adapter implements PlatformAdapter {
 			if (client != null)
 				client.close();
 		} finally {
-			Log.info("Backend (Paper) stopped");
+			Log.info("Backend (Velocity) stopped");
 		}
 	}
 

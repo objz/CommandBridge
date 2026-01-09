@@ -72,6 +72,11 @@ public final class Main {
 		}
 		Log.setDebug(cfg.debug());
 
+		if (cfg.actAsClient()) {
+			Log.info("This instance is configured as a client-only. Not starting server");
+			return;
+		}
+
 		sessions = new SessionHub();
 		inNode = new InNode();
 		outNode = new OutNode<>();

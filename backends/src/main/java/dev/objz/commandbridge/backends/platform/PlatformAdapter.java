@@ -1,7 +1,6 @@
 package dev.objz.commandbridge.backends.platform;
 
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
 
@@ -9,7 +8,7 @@ public interface PlatformAdapter {
 	record PlatformEnv(Path dataDir) {
 	}
 
-	default void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
+	default void load(PlatformEnv env, Object plugin) throws Exception {
 	}
 
 	void start(PlatformEnv env) throws Exception;
