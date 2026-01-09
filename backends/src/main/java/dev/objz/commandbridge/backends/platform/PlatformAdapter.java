@@ -5,7 +5,10 @@ import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import java.nio.file.Path;
 
 public interface PlatformAdapter {
-	record PlatformEnv(Path dataDir) {
+	record PlatformEnv(Path dataDir, String configName) {
+		public PlatformEnv(Path dataDir) {
+			this(dataDir, "config.yml");
+		}
 	}
 
 	default void load(PlatformEnv env, Object plugin) throws Exception {

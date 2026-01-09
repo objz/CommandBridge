@@ -39,6 +39,7 @@ public final class Main {
 	private final ProxyServer proxy;
 	private final Path dataDir;
 	private final Object pluginInstance;
+	private final Logger velocityLogger;
 
 	private ConfigManager configManager;
 	private WsServer ws;
@@ -51,12 +52,14 @@ public final class Main {
 	private CBCommand command;
 	private ScriptManager scriptManager;
 	private CommandEntry commandEntry;
+	private Object backendBootstrap;
 
 	@Inject
 	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
 		this.proxy = proxy;
 		this.dataDir = dataDir;
 		this.pluginInstance = this;
+		this.velocityLogger = velocityLogger;
 		Log.install(velocityLogger);
 	}
 
@@ -73,7 +76,8 @@ public final class Main {
 		Log.setDebug(cfg.debug());
 
 		if (cfg.actAsClient()) {
-			Log.info("This instance is configured as a client-only. Not starting server");
+			Log.warn("This instance is configured as a client-only. Not starting server");
+			loadClientMode();
 			return;
 		}
 
@@ -123,6 +127,15 @@ public final class Main {
 	@Subscribe
 	public void onProxyShutdown(ProxyShutdownEvent e) {
 		Log.info("Stopping CommandBridge");
+
+		if (backendBootstrap != null) {
+			try {
+				backendBootstrap.getClass().getMethod("disable").invoke(backendBootstrap);
+			} catch (Exception ex) {
+				Log.error("Failed to disable backend mode: {}", ex.getMessage());
+			}
+		}
+
 		if (registrations != null) {
 			registrations.clearState();
 		}
@@ -144,5 +157,26 @@ public final class Main {
 		outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
 		outNode.register(MessageType.PING, new PingRequest());
 		outNode.register(MessageType.EXECUTE_COMMAND, new ExecuteCommandRequest());
+	}
+
+	private void loadClientMode() {
+		try {
+			String bootstrapClass = "dev.objz.commandbridge.backends.platform.bootstrap.VelocityMain";
+			Class<?> clazz = Class.forName(bootstrapClass);
+
+			var ctor = clazz.getConstructor(ProxyServer.class, Logger.class, Path.class, Object.class);
+			this.backendBootstrap = ctor.newInstance(proxy, velocityLogger, dataDir, pluginInstance);
+
+			clazz.getMethod("load").invoke(backendBootstrap);
+			clazz.getMethod("enable").invoke(backendBootstrap);
+
+			Log.success(true, "CommandBridge running in Client Mode (Backend)");
+
+		} catch (ClassNotFoundException ex) {
+			Log.error("Could not find backend bootstrap class. " +
+					"Ensure the 'backends' module is included in your build.");
+		} catch (Exception ex) {
+			Log.error(ex, "Failed to start client mode");
+		}
 	}
 }

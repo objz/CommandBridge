@@ -41,7 +41,7 @@ public final class Adapter implements PlatformAdapter {
 		}
 
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
-		var cfgMgr = new ConfigManager(dataDir);
+		var cfgMgr = new ConfigManager(dataDir, env.configName());
 		boolean ok = cfgMgr.load(BackendsConfig.class);
 		this.cfg = cfgMgr.current(BackendsConfig.class);
 		if (!ok)

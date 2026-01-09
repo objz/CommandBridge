@@ -29,6 +29,10 @@ public final class ConfigManager {
 		this.filePath = dataDir.resolve("config.yml");
 	}
 
+	public ConfigManager(Path dataDir, String name) {
+		this.filePath = dataDir.resolve(name);
+	}
+
 	private YamlConfigurationLoader loader() {
 		return YamlConfigurationLoader.builder()
 				.path(filePath)
