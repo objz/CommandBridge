@@ -13,6 +13,7 @@ import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
@@ -59,11 +60,17 @@ public final class WsClient implements AutoCloseable {
 	private volatile ClientStatus status = ClientStatus.DISCONNECTED;
 	private volatile WebSocketChannel ch;
 
+	private Location location = Location.BACKEND;
+
 	// this will be set after register commands message from server
 	private String serverId;
 
 	public String serverId() {
 		return serverId;
+	}
+
+	public void setLocation(Location location) {
+		this.location = Objects.requireNonNull(location);
 	}
 
 	public void setServerId(String serverId) {
@@ -199,7 +206,7 @@ public final class WsClient implements AutoCloseable {
 
 		ch.resumeReceives();
 
-		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(auth));
+		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(auth, location));
 		outNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent());
 
 		inNode.register(MessageType.PING, new PingHandler());

@@ -12,7 +12,7 @@ import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
-import org.slf4j.Logger;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 
 import java.nio.file.Path;
 
@@ -33,12 +33,6 @@ public final class Adapter implements PlatformAdapter {
 		VelocityMain bootstrap = (VelocityMain) plugin;
 		this.proxy = bootstrap.getProxy();
 		this.pluginInstance = bootstrap.getPluginInstance();
-		Logger logger = bootstrap.getLogger();
-
-		try {
-			Log.install(logger);
-		} catch (IllegalStateException ignored) {
-		}
 
 		this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		var cfgMgr = new ConfigManager(dataDir, env.configName());
@@ -78,6 +72,8 @@ public final class Adapter implements PlatformAdapter {
 		}
 
 		this.client = new WsClient(cfg, dataDir);
+
+		client.setLocation(Location.VELOCITY);
 
 		client.start();
 

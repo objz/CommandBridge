@@ -9,6 +9,7 @@ import dev.objz.commandbridge.net.payloads.util.AuthRequestPayload;
 import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthService;
 
 import java.util.Objects;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
 
 	private final AuthService auth;
+	private final Location location;
 
-	public AuthRequest(AuthService auth) {
+	public AuthRequest(AuthService auth, Location location) {
 		this.auth = Objects.requireNonNull(auth);
+		this.location = Objects.requireNonNull(location);
 	}
 
 	@Override
@@ -27,7 +30,7 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
 		final String clientNonce = UUID.randomUUID().toString();
 		final String mac = auth.sign(clientId, clientNonce);
 
-		var payload = Envelope.MAPPER.valueToTree(new AuthRequestPayload(clientNonce, mac));
+		var payload = Envelope.MAPPER.valueToTree(new AuthRequestPayload(location, clientNonce, mac));
 		Envelope env = Envelope.make(MessageType.AUTH_REQUEST, clientId, "proxy-auth", payload);
 
 		SendOperation op = send(env)
