@@ -19,8 +19,8 @@ dependencies {
     api("com.fasterxml.jackson.core:jackson-core:2.18.2")
 
     // used for <?> and Optional
-    api("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.18.2")
-    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.20.1")
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.20.1")
 
     compileOnly("org.spongepowered:configurate-yaml:4.2.0")
     compileOnly("org.snakeyaml:snakeyaml-engine:2.10")
