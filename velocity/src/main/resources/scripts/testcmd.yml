@@ -22,7 +22,6 @@ defaults:
     target-required: true  
     schedule-online: true  
     timeout: 1s  
-    frequency: 2s  
   delay: 0s  
   cooldown: 0s  
 

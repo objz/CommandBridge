@@ -62,15 +62,15 @@ git checkout v3
 - [x] **Declarative Scripting:** V2 YAML schema with strict validation
 - [x] **Cross-Server Pipeline:** Local and remote command dispatching
 - [ ] **Resilient Connectivity:** Auto-reconnection and health checks
+- [x] **Persistent Queues:** Database storage for offline commands
+- [x] **Multi-Proxy Support:** Proxy chaining support
+- [ ] **Performance Profiling:** Latency metrics and monitoring
+- [ ] **PlaceholderAPI Support:** Resolve PAPI on backends
 - [ ] **Custom Command Types:** String with infinite args, Time Argument
-- [ ] **Multi-Proxy Support:** Proxy chaining support
-- [ ] **Developer API:** API for custom hooks and packets
 - [ ] **Diagnostics Dump:** Debug reports via `/cb dump`
 - [ ] **Web Interface:** Dashboard for monitoring clients and logs
 - [ ] **Admin GUI:** In-game inventory menu
-- [ ] **PlaceholderAPI Support:** Resolve PAPI on backends
-- [ ] **Persistent Queues:** Database storage for offline commands
-- [ ] **Performance Profiling:** Latency metrics and monitoring
+- [ ] **Developer API:** API for custom hooks and packets
 
 See the [open issues](https://github.com/objz/CommandBridge/issues) for features and bugs.
 

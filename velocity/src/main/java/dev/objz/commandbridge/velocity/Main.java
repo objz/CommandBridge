@@ -99,7 +99,7 @@ public final class Main {
 		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
 
 		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
-				cfg.serverId());
+				cfg.serverId(), dataDir);
 
 		registrations.setCommandEntry(commandEntry);
 

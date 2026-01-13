@@ -31,7 +31,7 @@ defaults:
     #!TODO: only works if the execute only one backend client otherwise it will fail on one server always.  
     schedule-online: true  # If true, queue the command until the target comes online on the backend.
     timeout: 1s  # How long to wait before aborting a scheduled command. Use s, m, h, d as suffixes; bare numbers are seconds.
-    frequency: 2s  # How often to check whether a scheduled command can run. Same syntax as timeout.
+    # frequency: 2s  # How often to check whether a scheduled command can run. Same syntax as timeout.
   delay: 0s  # Delay before forwarding the command. Zero disables the delay.
   cooldown: 0s  # Cooldown per player between uses. Zero disables rate limiting.
 

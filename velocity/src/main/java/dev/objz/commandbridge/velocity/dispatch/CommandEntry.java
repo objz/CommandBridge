@@ -10,8 +10,10 @@ import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
 import dev.objz.commandbridge.scripting.model.Script;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
+import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.dispatch.exec.VelocityExecutor;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
@@ -22,13 +24,17 @@ import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
 
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public final class CommandEntry {
 
 	private final ProxyServer proxy;
+	private final Object plugin;
+	private final SessionHub sessions;
 	private final ScheduleManager scheduler;
 	private final VelocityExecutor velocityExecutor;
 	private final CommandDispatcher dispatcher;
@@ -40,13 +46,18 @@ public final class CommandEntry {
 			ScriptManager scriptManager,
 			SessionHub sessions,
 			OutNode<Object> outNode,
-			String localServerId) {
+			String localServerId,
+			Path dataDir) {
 
 		this.proxy = Objects.requireNonNull(proxy);
-		this.scheduler = new ScheduleManager(proxy, Objects.requireNonNull(plugin));
+		this.plugin = Objects.requireNonNull(plugin);
+		this.sessions = Objects.requireNonNull(sessions);
+
+		this.scheduler = new ScheduleManager(proxy, dataDir, scriptManager);
+		this.scheduler.setExecutionCallback(this::resumeTask);
+
 		this.velocityExecutor = new VelocityExecutor(proxy, Objects.requireNonNull(localServerId));
 
-		// Logic extracted to Dispatcher
 		this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor);
 
 		var cooldowns = new CooldownManager();
@@ -125,8 +136,24 @@ public final class CommandEntry {
 		});
 	}
 
+	private void resumeTask(ExecutionContext ctx) {
+		CmdMapping cmd = ctx.currentCommand();
+		if (cmd != null) {
+			dispatcher.dispatchCommand(ctx, cmd);
+		}
+
+		if (ctx.script() != null) {
+			processCommandAt(ctx, ctx.script().commands(), ctx.commandIndex() + 1);
+		}
+	}
+
 	private void scheduleAndExecute(ExecutionContext ctx, Runnable continuation) {
 		var cmd = ctx.currentCommand();
+
+		if (shouldSchedule(cmd)) {
+			scheduler.queueTask(ctx, cmd, ctx.commandIndex());
+			return;
+		}
 
 		Runnable task = () -> {
 			dispatcher.dispatchCommand(ctx, cmd);
@@ -134,10 +161,34 @@ public final class CommandEntry {
 		};
 
 		if (cmd.delay() != null && !cmd.delay().isZero() && !cmd.delay().isNegative()) {
-			scheduler.schedule(task, cmd.delay());
+			long delayMillis = cmd.delay().toMillis();
+			proxy.getScheduler().buildTask(plugin, task)
+					.delay(delayMillis, TimeUnit.MILLISECONDS)
+					.schedule();
 		} else {
 			task.run();
 		}
+	}
+
+	private boolean shouldSchedule(CmdMapping cmd) {
+		if (cmd.server() == null || !cmd.server().scheduleOnline()) {
+			return false;
+		}
+
+		if (cmd.execute() == null || cmd.execute().isEmpty()) {
+			return false;
+		}
+
+		for (IdMapping target : cmd.execute()) {
+			if (target.location() == Location.BACKEND) {
+				boolean online = sessions.findSession(target.id(), Location.BACKEND).isPresent();
+				if (!online) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	// ──────────────────────────────────────────────────────────────────────────────
@@ -187,5 +238,4 @@ public final class CommandEntry {
 				.orElse(null);
 		return new InvokedCommand.TypedArgument(mapping.type(), value);
 	}
-
 }
