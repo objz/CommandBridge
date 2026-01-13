@@ -27,6 +27,8 @@ dependencies {
     api("org.slf4j:slf4j-api:2.0.17")
     api("io.undertow:undertow-core:2.3.12.Final")
     api("io.undertow:undertow-websockets-jsr:2.3.12.Final")
+
+    compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
     
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.82")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.82")

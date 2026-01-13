@@ -1,6 +1,6 @@
-package dev.objz.commandbridge.velocity.util;
+package dev.objz.commandbridge.util;
 
-import com.velocitypowered.api.command.CommandSource;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -23,7 +23,11 @@ public final class MM {
 	}
 
 	public static Component parse(String mm) {
-		return MINI.deserialize(mm == null ? "" : mm);
+		try {
+			return MINI.deserialize(mm == null ? "" : mm);
+		} catch (Exception e) {
+			return Component.text(mm == null ? "" : mm);
+		}
 	}
 
 	private static String safe(String s) {
@@ -132,13 +136,16 @@ public final class MM {
 			return this;
 		}
 
-		public void send(CommandSource to) {
-			for (Component c : lines)
-				to.sendMessage(c);
-		}
-
 		public List<Component> getLines() {
 			return Collections.unmodifiableList(lines);
+		}
+
+		public void send(Audience audience) {
+			if (audience == null)
+				return;
+			for (Component line : lines) {
+				audience.sendMessage(line);
+			}
 		}
 	}
 }

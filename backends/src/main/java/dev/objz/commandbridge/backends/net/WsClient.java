@@ -93,6 +93,12 @@ public final class WsClient implements AutoCloseable {
 		outNode.setClientId(cfg.clientId());
 	}
 
+	public synchronized void reconnect() throws Exception {
+		Log.info("Reconnecting WebSocket client");
+		close();
+		start();
+	}
+
 	public synchronized void start() throws Exception {
 		if (ch != null && ch.isOpen())
 			return;

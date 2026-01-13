@@ -8,8 +8,8 @@ import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.net.out.ctx.PingRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.velocity.util.BarBuilder;
-import dev.objz.commandbridge.velocity.util.MM;
+import dev.objz.commandbridge.util.BarBuilder;
+import dev.objz.commandbridge.util.MM;
 
 import java.time.Duration;
 import java.util.ArrayList;

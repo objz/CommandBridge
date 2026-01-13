@@ -5,7 +5,7 @@ import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
 import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
-import dev.objz.commandbridge.velocity.util.MM;
+import dev.objz.commandbridge.util.MM;
 
 import java.util.function.Consumer;
 

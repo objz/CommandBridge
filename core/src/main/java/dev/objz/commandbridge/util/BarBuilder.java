@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.util;
+package dev.objz.commandbridge.util;
 
 import java.util.ArrayList;
 import java.util.Comparator;

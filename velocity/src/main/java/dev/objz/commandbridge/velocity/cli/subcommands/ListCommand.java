@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.velocity.util.MM;
+import dev.objz.commandbridge.util.MM;
 
 import java.util.ArrayList;
 import java.util.List;

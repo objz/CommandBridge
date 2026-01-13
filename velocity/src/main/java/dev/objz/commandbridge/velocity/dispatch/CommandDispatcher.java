@@ -17,7 +17,7 @@ import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.velocity.util.MM;
+import dev.objz.commandbridge.util.MM;
 
 import java.util.HashSet;
 import java.util.List;

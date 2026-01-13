@@ -27,6 +27,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.5")
     implementation("org.snakeyaml:snakeyaml-engine:2.10")
     implementation("com.google.code.gson:gson:2.13.2")
+    implementation("net.kyori:adventure-text-minimessage:4.17.0")
 }
 
 

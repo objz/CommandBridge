@@ -8,7 +8,7 @@ import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommandResult;
 import dev.objz.commandbridge.net.payloads.feedback.Feedback;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.logging.Summary;
-import dev.objz.commandbridge.velocity.util.MM;
+import dev.objz.commandbridge.util.MM;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.List;

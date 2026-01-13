@@ -3,8 +3,8 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.ScriptManager;
-import dev.objz.commandbridge.velocity.util.BarBuilder;
-import dev.objz.commandbridge.velocity.util.MM;
+import dev.objz.commandbridge.util.BarBuilder;
+import dev.objz.commandbridge.util.MM;
 
 import java.util.Comparator;
 import java.util.List;
