@@ -62,6 +62,7 @@ git checkout v3
 - [x] **Declarative Scripting:** V2 YAML schema with strict validation
 - [x] **Cross-Server Pipeline:** Local and remote command dispatching
 - [ ] **Resilient Connectivity:** Auto-reconnection and health checks
+- [ ] **Custom Command Types:** String with infinite args, Time Argument
 - [ ] **Multi-Proxy Support:** Proxy chaining support
 - [ ] **Developer API:** API for custom hooks and packets
 - [ ] **Diagnostics Dump:** Debug reports via `/cb dump`

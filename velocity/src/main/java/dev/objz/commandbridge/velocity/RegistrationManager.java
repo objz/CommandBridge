@@ -1,6 +1,5 @@
 package dev.objz.commandbridge.velocity;
 
-import static java.util.stream.Collectors.toUnmodifiableSet;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
@@ -9,34 +8,32 @@ import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.Location;
-import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
-import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class RegistrationManager {
 
-	private final SessionHub sessions;
+	private record TargetKey(String id, Location location) {
+	}
+
 	private final ProxyServer proxy;
+	private final SessionHub sessions;
 	private final OutNode<Object> outNode;
+	private final String localServerId;
 	private final Duration registerTimeout;
 
-	private final Map<String, Set<Script>> backendByClient = new ConcurrentHashMap<>();
-	private final Set<Script> velocityScripts = ConcurrentHashMap.newKeySet();
+	private final Map<TargetKey, Set<Script>> remoteScripts = new ConcurrentHashMap<>();
+
+	private final Set<Script> localScripts = ConcurrentHashMap.newKeySet();
 
 	private volatile CommandRegistry registry;
 	private volatile CommandEntry commandEntry;
@@ -46,7 +43,8 @@ public final class RegistrationManager {
 		this.proxy = Objects.requireNonNull(proxy);
 		this.sessions = Objects.requireNonNull(sessions);
 		this.outNode = Objects.requireNonNull(outNode);
-		this.registerTimeout = Duration.ofSeconds(Objects.requireNonNull(config).timeouts().registerTimeout());
+		this.localServerId = config.serverId();
+		this.registerTimeout = Duration.ofSeconds(config.timeouts().registerTimeout());
 	}
 
 	public void setCommandEntry(CommandEntry commandEntry) {
@@ -57,145 +55,122 @@ public final class RegistrationManager {
 					if (this.commandEntry != null) {
 						this.commandEntry.executeFromVelocity(cmdName, source, args, stub);
 					} else {
-						Log.warn("CommandEntry not set, cannot execute command '{}'", cmdName);
+						Log.warn("CommandEntry not set, dropping execution for '{}'", cmdName);
 					}
 				});
 	}
 
 	public void load(List<Script> scripts) {
-		clearState();
+		reset();
 
 		if (registry == null) {
 			registry = new CommandRegistry(new ArgumentMapper(proxy));
 		}
 
-		try {
-			registry.unregisterAll();
-		} catch (Exception e) {
-			Log.error(e, "Failed to unregister all Velocity commands before reload");
-		}
-
 		if (scripts == null || scripts.isEmpty()) {
-			Log.warn("No scripts to register");
 			return;
 		}
 
-		var velocityCollector = new Counter();
-		Map<String, List<Script>> backendStaging = new HashMap<>();
+		int localCount = 0;
 
-		for (Script s : scripts) {
-			if (s == null || s.register() == null || s.register().isEmpty()) {
-				Log.warn("Script '{}' has no registration targets", s != null ? s.name() : "<null>");
+		for (Script script : scripts) {
+			if (!isValid(script))
 				continue;
-			}
 
-			var locations = s.register().stream().filter(Objects::nonNull).map(IdMapping::location)
-					.filter(Objects::nonNull).collect(toUnmodifiableSet());
-
-			if (locations.contains(Location.VELOCITY)) {
-				try {
-					var stub = export(s);
-					registry.register(stub);
-					velocityScripts.add(s);
-					velocityCollector.ok();
-				} catch (Throwable e) {
-					Log.error(e, "Velocity registration failed for '{}'", s.name());
-					velocityCollector.fail("Velocity '" + s.name() + "':  " + e.getMessage());
+			for (IdMapping target : script.register()) {
+				if (isLocalTarget(target)) {
+					if (registerLocal(script)) {
+						localCount++;
+					}
+				} else {
+					bufferRemote(script, target);
 				}
 			}
-
-			if (locations.contains(Location.BACKEND)) {
-				s.register().stream().filter(m -> m != null && m.location() == Location.BACKEND)
-						.map(IdMapping::id).filter(Objects::nonNull)
-						.forEach(backendId -> backendStaging
-								.computeIfAbsent(backendId, k -> new ArrayList<>())
-								.add(s));
-			}
 		}
 
-		backendStaging.forEach((backendId, list) -> backendByClient.put(backendId, new HashSet<>(list)));
-
-		int ok = velocityCollector.ok;
-		if (ok > 0) {
-			Log.success(true,
-					"Registered '{}' " + Log.plural(ok, "Velocity command", "Velocity commands"),
-					ok);
+		Log.success(true, "Registered {} local commands", localCount);
+		if (!remoteScripts.isEmpty()) {
+			Log.success(true, "Buffered remote commands for {} targets", remoteScripts.size());
 		}
-		if (!velocityCollector.errors.isEmpty()) {
-			Log.error("Failed to register '{}' "
-					+ Log.plural(velocityCollector.errors.size(), "Velocity command",
-							"Velocity commands"),
-					velocityCollector.errors.size());
-		}
-
-		if (!backendByClient.isEmpty()) {
-			int total = backendByClient.values().stream().mapToInt(Set::size).sum();
-			int clients = backendByClient.size();
-			Log.success(true,
-					"Prepared '{}' " + Log.plural(total, "backend command", "backend commands")
-							+ " for '{}' " + Log.plural(clients, "client", "clients"),
-					total, clients);
-		}
-	}
-
-	public Set<Script> getScriptsForClient(String clientId) {
-		return backendByClient.get(clientId);
 	}
 
 	public void onClientAuthenticated(ClientSession session) {
-		var clientId = session.id();
-		var scripts = backendByClient.get(clientId);
+		TargetKey key = new TargetKey(session.id(), session.location());
+		Set<Script> scripts = remoteScripts.get(key);
+
 		if (scripts == null || scripts.isEmpty()) {
-			Log.debug("No backend commands for '{}'", clientId);
+			Log.debug("Client '{}' ({}) connected, but no scripts are targeted for it.",
+					session.id(), session.location());
 			return;
 		}
 
+		Log.info("Syncing {} commands to client '{}' ({})", scripts.size(), session.id(), session.location());
 		outNode.send(MessageType.REGISTER_COMMANDS,
 				new RegistrationRequestContext(session, scripts, registerTimeout));
 	}
 
 	public void reload() {
-		for (var s : sessions) {
-			if (s.status() == AuthStatus.AUTH_OK && s.ch() != null && s.ch().isOpen()) {
-				var set = backendByClient.get(s.id());
-				if (set != null && !set.isEmpty()) {
-					outNode.send(MessageType.REGISTER_COMMANDS,
-							new RegistrationRequestContext(s, set, registerTimeout));
-				}
+		for (ClientSession session : sessions) {
+			if (session.id() != null) {
+				onClientAuthenticated(session);
 			}
 		}
 	}
 
-	public void clearState() {
-		backendByClient.clear();
-		velocityScripts.clear();
+	public Set<Script> getScriptsForSession(ClientSession session) {
+		if (session == null)
+			return Set.of();
+		return remoteScripts.getOrDefault(new TargetKey(session.id(), session.location()), Set.of());
+	}
+
+	public void reset() {
+		remoteScripts.clear();
+		localScripts.clear();
+		try {
+			if (registry != null)
+				registry.unregisterAll();
+		} catch (Exception e) {
+			Log.error("Failed to unregister commands during reset: {}", e.getMessage());
+		}
+	}
+
+	private boolean registerLocal(Script script) {
+		if (localScripts.contains(script))
+			return false;
+
+		try {
+			CommandStub stub = export(script);
+			registry.register(stub);
+			localScripts.add(script);
+			return true;
+		} catch (Exception e) {
+			Log.error("Failed to register local command '{}': {}", script.name(), e.getMessage());
+			return false;
+		}
+	}
+
+	private void bufferRemote(Script script, IdMapping target) {
+		TargetKey key = new TargetKey(target.id(), target.location());
+		remoteScripts.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet()).add(script);
+	}
+
+	private boolean isLocalTarget(IdMapping target) {
+		return target.location() == Location.VELOCITY && target.id().equals(localServerId);
+	}
+
+	private boolean isValid(Script script) {
+		return script != null
+				&& script.name() != null
+				&& !script.name().isBlank()
+				&& script.register() != null
+				&& !script.register().isEmpty();
 	}
 
 	private static CommandStub export(Script script) {
-		if (script == null)
-			throw new IllegalArgumentException("Script cannot be null");
-
-		String name = script.name();
-		if (name == null || name.isBlank())
-			throw new IllegalArgumentException("Script name cannot be null or blank");
-
-		List<String> aliases = script.aliases() != null ? script.aliases() : List.of();
-		String description = script.description();
-		List<ArgMapping> registeredArgs = script.registeredArguments();
-
-		return new CommandStub(name, aliases, description, registeredArgs);
-	}
-
-	private static final class Counter {
-		int ok = 0;
-		final List<String> errors = new ArrayList<>();
-
-		void ok() {
-			ok++;
-		}
-
-		void fail(String msg) {
-			errors.add(msg);
-		}
+		return new CommandStub(
+				script.name(),
+				script.aliases() != null ? script.aliases() : List.of(),
+				script.description(),
+				script.registeredArguments());
 	}
 }

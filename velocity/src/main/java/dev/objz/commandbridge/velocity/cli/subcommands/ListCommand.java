@@ -9,6 +9,8 @@ import dev.objz.commandbridge.velocity.util.MM;
 import java.util.ArrayList;
 import java.util.List;
 
+//!TODO: Paginate if too many clients are connected
+//list if its a velocity or backend client
 public final class ListCommand {
 	private final SessionHub sessions;
 

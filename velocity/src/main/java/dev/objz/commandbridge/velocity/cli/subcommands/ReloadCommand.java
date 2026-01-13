@@ -92,9 +92,7 @@ public final class ReloadCommand {
 
 			List<ClientSession> activeClients = getActiveClients();
 			int clientsWithScripts = (int) activeClients.stream().filter(
-					s -> registrationManager.getScriptsForClient(s.id()) != null
-							&& !registrationManager
-									.getScriptsForClient(s.id()).isEmpty())
+					s -> !registrationManager.getScriptsForSession(s).isEmpty())
 					.count();
 
 			if (clientsWithScripts == 0) {
@@ -118,7 +116,7 @@ public final class ReloadCommand {
 						: "unknown";
 
 				Set<dev.objz.commandbridge.scripting.model.Script> scripts = registrationManager
-						.getScriptsForClient(clientId);
+						.getScriptsForSession(session);
 
 				if (scripts == null || scripts.isEmpty()) {
 					continue;
@@ -188,7 +186,6 @@ public final class ReloadCommand {
 					}
 				}).start();
 			} else {
-				// if loop somehow finishes with no clients to send to, send initial message
 				resultMessage.send(sender);
 			}
 		} catch (Exception e) {

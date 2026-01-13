@@ -137,7 +137,7 @@ public final class Main {
 		}
 
 		if (registrations != null) {
-			registrations.clearState();
+			registrations.reset();
 		}
 		if (ws != null) {
 			ws.stop();
@@ -174,7 +174,7 @@ public final class Main {
 
 		} catch (ClassNotFoundException ex) {
 			Log.error("Could not find backend bootstrap class. " +
-					"Ensure the 'backends' module is included in your build.");
+					"Ensure the 'backends' module is included in your build");
 		} catch (Exception ex) {
 			Log.error(ex, "Failed to start client mode");
 		}

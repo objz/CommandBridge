@@ -1,10 +1,12 @@
 package dev.objz.commandbridge.velocity.net.session;
 
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthStatus;
 import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
@@ -56,5 +58,21 @@ public final class SessionHub implements Iterable<ClientSession> {
 			setter.accept(s, value);
 			return s;
 		});
+	}
+
+	public Optional<ClientSession> findSession(String id, Location location) {
+		if (id == null || location == null)
+			return Optional.empty();
+
+		for (ClientSession session : clients.values()) {
+			if (id.equals(session.id())
+					&& session.location() == location
+					&& session.status() == AuthStatus.AUTH_OK
+					&& session.ch() != null
+					&& session.ch().isOpen()) {
+				return Optional.of(session);
+			}
+		}
+		return Optional.empty();
 	}
 }
