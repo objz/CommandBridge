@@ -53,7 +53,7 @@ public final class CommandEntry {
 		this.plugin = Objects.requireNonNull(plugin);
 		this.sessions = Objects.requireNonNull(sessions);
 
-		this.scheduler = new ScheduleManager(proxy, dataDir, scriptManager);
+		this.scheduler = new ScheduleManager(proxy, plugin, dataDir, scriptManager);
 		this.scheduler.setExecutionCallback(this::resumeTask);
 
 		this.velocityExecutor = new VelocityExecutor(proxy, Objects.requireNonNull(localServerId));

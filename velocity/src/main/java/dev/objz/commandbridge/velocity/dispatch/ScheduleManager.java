@@ -30,13 +30,13 @@ public final class ScheduleManager {
 
 	private Consumer<ExecutionContext> executionCallback;
 
-	public ScheduleManager(ProxyServer proxy, Path dataDir, ScriptManager scriptManager) {
+	public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir, ScriptManager scriptManager) {
 		this.scriptManager = scriptManager;
 		this.storageFile = dataDir.resolve("tasks.json").toFile();
 
 		loadTasks();
 
-		proxy.getScheduler().buildTask(proxy, this::saveTasks)
+		proxy.getScheduler().buildTask(plugin, this::saveTasks)
 				.repeat(5, TimeUnit.MINUTES)
 				.schedule();
 	}

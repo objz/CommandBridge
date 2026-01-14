@@ -5,6 +5,7 @@ import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
@@ -61,6 +62,8 @@ public final class Adapter implements PlatformAdapter {
 		this.client = new WsClient(cfg, dataDir);
 
 		client.start();
+
+		ClientCommands.register(client);
 
 		client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
 		client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
