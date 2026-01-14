@@ -22,7 +22,10 @@ public record BackendsConfig(
 
 	@ConfigSerializable
 	public static record Timeouts(
-			@Setting("auth-timeout") int authTimeout) {
+			@Setting("auth-timeout") int authTimeout,
+			@Setting("reconnect-timeout") int reconnectTimeout,
+			@Setting("reconnect-interval") int reconnectInterval
+	) {
 	}
 
 	@ConfigSerializable
@@ -36,7 +39,7 @@ public record BackendsConfig(
 				8765,
 				"survival-1",
 				new Security(TlsMode.TOFU, "", "change-me", true),
-				new Timeouts(5),
+				new Timeouts(5, 60, 5),
 				new Limits(60),
 				false);
 	}

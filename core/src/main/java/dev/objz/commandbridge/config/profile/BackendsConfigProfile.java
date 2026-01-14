@@ -58,12 +58,24 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
 		// timeouts
 		BackendsConfig.Timeouts timeoutsIn = in.timeouts();
 		int authTimeout = (timeoutsIn != null ? timeoutsIn.authTimeout() : d.timeouts().authTimeout());
+		int reconnectTimeout = (timeoutsIn != null ? timeoutsIn.reconnectTimeout() : d.timeouts().reconnectTimeout());
+		int reconnectInterval = (timeoutsIn != null ? timeoutsIn.reconnectInterval() : d.timeouts().reconnectInterval());
 		if (authTimeout <= 0) {
 			Log.error("'timeouts.auth-timeout' must be > 0");
 			authTimeout = d.timeouts().authTimeout();
 			ok = false;
 		}
-		BackendsConfig.Timeouts timeoutsOut = new BackendsConfig.Timeouts(authTimeout);
+		if (reconnectTimeout <= 0) {
+			Log.error("'timeouts.reconnect-timeout' must be > 0");
+			reconnectTimeout = d.timeouts().reconnectTimeout();
+			ok = false;
+		}
+		if (reconnectInterval <= 0) {
+			Log.error("'timeouts.reconnect-interval' must be > 0");
+			reconnectInterval = d.timeouts().reconnectInterval();
+			ok = false;
+		}
+		BackendsConfig.Timeouts timeoutsOut = new BackendsConfig.Timeouts(authTimeout, reconnectTimeout, reconnectInterval);
 
 		// security
 		BackendsConfig.Security secIn = in.security();
