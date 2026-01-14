@@ -15,6 +15,7 @@ public final class HelpCommand {
 				.cmdLine("/cb ping", "ping all clients")
 				.cmdLine("/cb debug", "toggle debug mode")
 				.cmdLine("/cb dump", "dump your config and scripts")
+				.cmdLine("/cbc reconnect", "reconnect the client")
 				.send(sender);
 	}
 }
