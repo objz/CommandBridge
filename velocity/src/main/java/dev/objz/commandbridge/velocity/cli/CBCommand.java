@@ -130,7 +130,5 @@ public final class CBCommand {
 						}))
 
 				.register();
-
-		Log.info("Registered /commandbridge and /cb");
 	}
 }

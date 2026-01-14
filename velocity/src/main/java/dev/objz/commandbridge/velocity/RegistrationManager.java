@@ -88,9 +88,10 @@ public final class RegistrationManager {
 			}
 		}
 
-		Log.success(true, "Registered {} local commands", localCount);
+		Log.success(true, "Registered '{}' local " + Log.plural(localCount, "command", "commands"), localCount);
 		if (!remoteScripts.isEmpty()) {
-			Log.success(true, "Buffered remote commands for {} targets", remoteScripts.size());
+			Log.success(true, "Buffered remote commands for '{}' " +
+					Log.plural(remoteScripts.size(), "client", "clients"), remoteScripts.size());
 		}
 	}
 
@@ -99,7 +100,7 @@ public final class RegistrationManager {
 		Set<Script> scripts = remoteScripts.get(key);
 
 		if (scripts == null || scripts.isEmpty()) {
-			Log.debug("Client '{}' ({}) connected, but no scripts are targeted for it.",
+			Log.debug("Client '{}' ({}) connected, but no scripts are targeted for it",
 					session.id(), session.location());
 			return;
 		}

@@ -145,7 +145,7 @@ public final class ScheduleManager {
 			for (ScheduledTask t : loaded) {
 				tasks.put(t.id(), t);
 			}
-			Log.info("Loaded {} pending tasks", tasks.size());
+			Log.success(true, "Loaded '{}' pending tasks", tasks.size());
 		} catch (IOException e) {
 			Log.error("Failed to load scheduled tasks: " + e.getMessage());
 		}
