@@ -4,6 +4,7 @@ import dev.objz.commandbridge.backends.net.in.PingHandler;
 import dev.objz.commandbridge.backends.net.out.AuthRequest;
 import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
 import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
+import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.logging.Log;
@@ -45,10 +46,12 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class WsClient implements AutoCloseable {
 	private final BackendsConfig cfg;
 	private final Path dataDir;
+	private final PlatformAdapter adapter;
 
 	private XnioWorker worker;
 	private ByteBufferPool pool;
@@ -61,6 +64,10 @@ public final class WsClient implements AutoCloseable {
 	private volatile WebSocketChannel ch;
 
 	private Location location = Location.BACKEND;
+
+	// reconnection state
+	private final AtomicBoolean isReconnecting = new AtomicBoolean(false);
+	private volatile Object reconnectionTask;
 
 	// this will be set after register commands message from server
 	private String serverId;
@@ -86,15 +93,16 @@ public final class WsClient implements AutoCloseable {
 		return outNode;
 	}
 
-	public WsClient(BackendsConfig cfg, Path dataDir) {
+	public WsClient(BackendsConfig cfg, Path dataDir, PlatformAdapter adapter) {
 		this.cfg = Objects.requireNonNull(cfg);
 		this.dataDir = Objects.requireNonNull(dataDir);
+		this.adapter = Objects.requireNonNull(adapter);
 
 		outNode.setClientId(cfg.clientId());
 	}
 
 	public synchronized void reconnect() throws Exception {
-		Log.info("Reconnecting WebSocket client");
+		Log.info("Manual reconnection triggered");
 		close();
 		start();
 	}
@@ -102,11 +110,9 @@ public final class WsClient implements AutoCloseable {
 	public synchronized void start() throws Exception {
 		if (ch != null && ch.isOpen())
 			return;
+		stopReconnectionTask();
 
 		String clientId = cfg.clientId();
-		String sharedSecret = resolveSecret();
-		AuthService auth = new AuthService(sharedSecret);
-
 		TlsMode mode = (cfg.security() != null && cfg.security().tlsMode() != null)
 				? cfg.security().tlsMode()
 				: TlsMode.TOFU;
@@ -153,9 +159,30 @@ public final class WsClient implements AutoCloseable {
 			}
 		}, null);
 
-		this.ch = f.get();
-		status = ClientStatus.CONNECTED;
+		try {
+			this.ch = f.get(5, TimeUnit.SECONDS);
+			status = ClientStatus.CONNECTED;
+			isReconnecting.set(false);
 
+			setupChannel(ch);
+
+			if (Boolean.TRUE.equals(cfg.security().requireAuth())) {
+				var timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
+				outNode.send(
+						MessageType.AUTH_REQUEST,
+						new AuthRequestContext(ch, timeout, s -> this.status = s));
+			} else {
+				Log.warn("Auth disabled by config; continuing unauthenticated");
+			}
+
+		} catch (Exception e) {
+			Log.warn("Connection failed: " + e.getMessage());
+			scheduleReconnection();
+			throw e;
+		}
+	}
+
+	private void setupChannel(WebSocketChannel ch) {
 		inNode.setSendOperationFactory((channel, envelope) -> new SendOperation(channel, envelope, awaiter));
 		outNode.setSendOperationFactory(envelope -> new SendOperation(ch, envelope, awaiter));
 
@@ -196,6 +223,7 @@ public final class WsClient implements AutoCloseable {
 				try {
 					Log.warn("WebSocket closed by server");
 					IoUtils.safeClose(channel);
+					scheduleReconnection();
 				} catch (Throwable ignore) {
 				}
 			}
@@ -205,6 +233,7 @@ public final class WsClient implements AutoCloseable {
 				try {
 					Log.warn("WebSocket closed");
 					IoUtils.safeClose(channel);
+					scheduleReconnection();
 				} catch (Throwable ignore) {
 				}
 			}
@@ -212,25 +241,61 @@ public final class WsClient implements AutoCloseable {
 
 		ch.resumeReceives();
 
-		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(auth, location));
+		outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(new AuthService(resolveSecret()), location));
 		outNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent());
 
 		inNode.register(MessageType.PING, new PingHandler());
-
-		if (Boolean.TRUE.equals(cfg.security().requireAuth())) {
-			var timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
-			outNode.send(
-					MessageType.AUTH_REQUEST,
-					new AuthRequestContext(ch, timeout, s -> this.status = s));
-		} else {
-			Log.warn("Auth disabled by config; continuing unauthenticated");
-		}
 	}
 
 	public SendOperation send(Envelope request) {
 		if (ch == null || !ch.isOpen())
 			throw new IllegalStateException("WebSocket not connected");
 		return new SendOperation(ch, request, awaiter);
+	}
+
+	private synchronized void scheduleReconnection() {
+		if (isReconnecting.get()) {
+			return;
+		}
+
+		if (status == ClientStatus.DISCONNECTED && reconnectionTask == null) {
+			isReconnecting.set(true);
+
+			Duration totalTimeout = Duration.ofSeconds(cfg.timeouts().reconnectTimeout());
+			Duration interval = Duration.ofSeconds(cfg.timeouts().reconnectInterval());
+
+			Log.info("Scheduling reconnection (Total Timeout: {}s, Try every: {}s)",
+					totalTimeout.getSeconds(),
+					interval.getSeconds());
+
+			Runnable task = () -> {
+				if (!isReconnecting.get()) {
+					stopReconnectionTask();
+					return;
+				}
+				try {
+					Log.info("Attempting reconnection...");
+					if (ch != null) {
+						IoUtils.safeClose(ch);
+						ch = null;
+					}
+
+					start();
+
+				} catch (Exception e) {
+					Log.error("Reconnection attempt failed: {}", e.getMessage());
+				}
+			};
+
+			this.reconnectionTask = adapter.runSchedule(task, totalTimeout, interval);
+		}
+	}
+
+	private synchronized void stopReconnectionTask() {
+		if (reconnectionTask != null) {
+			adapter.cancelSchedule(reconnectionTask);
+			reconnectionTask = null;
+		}
 	}
 
 	private String resolveSecret() {
@@ -242,6 +307,9 @@ public final class WsClient implements AutoCloseable {
 
 	// close without sending status to server if not connected/authenticated
 	public synchronized void close() throws Exception {
+		stopReconnectionTask();
+		isReconnecting.set(false);
+
 		try {
 			if (ch != null) {
 				try {
@@ -273,7 +341,6 @@ public final class WsClient implements AutoCloseable {
 						IoUtils.safeClose(ch);
 					}
 				} else {
-					// same here
 					IoUtils.safeClose(ch);
 				}
 

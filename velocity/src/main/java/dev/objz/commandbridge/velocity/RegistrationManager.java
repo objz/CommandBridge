@@ -105,7 +105,7 @@ public final class RegistrationManager {
 			return;
 		}
 
-		Log.info("Syncing {} commands to client '{}' ({})", scripts.size(), session.id(), session.location());
+		Log.info("Syncing '{}' {} to client '{}' ({})", scripts.size(), Log.plural(scripts.size(), "client", "clients"), session.id(), session.location());
 		outNode.send(MessageType.REGISTER_COMMANDS,
 				new RegistrationRequestContext(session, scripts, registerTimeout));
 	}

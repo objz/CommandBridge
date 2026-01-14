@@ -14,8 +14,10 @@ import dev.objz.commandbridge.net.proto.MessageType;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.nio.file.Path;
+import java.time.Duration;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
@@ -23,6 +25,7 @@ public final class Adapter implements PlatformAdapter {
 	private Path dataDir;
 	private JavaPlugin plugin;
 	private BukkitExecutor commandExecutor;
+	private boolean configOk = true;
 
 	@Override
 	public void load(PlatformEnv env, Object plugin) throws Exception {
@@ -31,8 +34,10 @@ public final class Adapter implements PlatformAdapter {
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
 		this.cfg = cfgMgr.current(BackendsConfig.class);
-		if (!ok)
-			Log.error("Could not load BackendsConfig");
+		if (!ok || cfg == null) {
+			configOk = false;
+			return;
+		}
 
 		if (cfg != null) {
 			Log.setDebug(cfg.debug());
@@ -44,6 +49,9 @@ public final class Adapter implements PlatformAdapter {
 
 	@Override
 	public void start(PlatformEnv env) throws Exception {
+		if (!configOk) {
+			return;
+		}
 		if (this.dataDir == null)
 			this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		if (this.cfg == null) {
@@ -64,7 +72,7 @@ public final class Adapter implements PlatformAdapter {
 				() -> Bukkit.isPrimaryThread(),
 				task -> Bukkit.getScheduler().runTask(plugin, task));
 
-		this.client = new WsClient(cfg, dataDir);
+		this.client = new WsClient(cfg, dataDir, this);
 
 		client.start();
 
@@ -88,5 +96,55 @@ public final class Adapter implements PlatformAdapter {
 	@Override
 	public CommandExecutor getCommandExecutor() {
 		return commandExecutor;
+	}
+
+	@Override
+	public Object runSchedule(Runnable task, Duration timeout, Duration interval) {
+		long intervalTicks = interval.toMillis() / 50;
+		long timeoutMillis = timeout.toMillis();
+		return new TimeoutTask(task, timeoutMillis, intervalTicks).start();
+	}
+
+	@Override
+	public void cancelSchedule(Object task) {
+		if (task instanceof TimeoutTask t) {
+			t.cancel();
+		}
+	}
+
+	private class TimeoutTask implements Runnable {
+		private final Runnable delegate;
+		private final long timeoutMillis;
+		private final long intervalTicks;
+		private final long startTime;
+		private BukkitTask bukkitTask;
+
+		public TimeoutTask(Runnable delegate, long timeoutMillis, long intervalTicks) {
+			this.delegate = delegate;
+			this.timeoutMillis = timeoutMillis;
+			this.intervalTicks = intervalTicks;
+			this.startTime = System.currentTimeMillis();
+		}
+
+		public TimeoutTask start() {
+			this.bukkitTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this, 0L,
+					intervalTicks);
+			return this;
+		}
+
+		@Override
+		public void run() {
+			if (System.currentTimeMillis() - startTime > timeoutMillis) {
+				cancel();
+				return;
+			}
+			delegate.run();
+		}
+
+		public void cancel() {
+			if (bukkitTask != null && !bukkitTask.isCancelled()) {
+				bukkitTask.cancel();
+			}
+		}
 	}
 }

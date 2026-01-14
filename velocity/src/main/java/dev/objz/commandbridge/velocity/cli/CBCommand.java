@@ -10,7 +10,6 @@ import com.velocitypowered.api.command.CommandSource;
 
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.VelocityConfig;
-import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.velocity.RegistrationManager;
 import dev.objz.commandbridge.velocity.ScriptManager;

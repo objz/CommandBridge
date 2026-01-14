@@ -1,6 +1,8 @@
 package dev.objz.commandbridge.velocity;
 
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.scheduler.ScheduledTask;
+
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
@@ -16,6 +18,7 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 
 import java.nio.file.Path;
+import java.time.Duration;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
@@ -24,6 +27,7 @@ public final class Adapter implements PlatformAdapter {
 	private ProxyServer proxy;
 	private Object pluginInstance;
 	private VelocityExecutor commandExecutor;
+	private boolean configOk = true;
 
 	@Override
 	public void load(PlatformEnv env, Object plugin) throws Exception {
@@ -39,9 +43,10 @@ public final class Adapter implements PlatformAdapter {
 		var cfgMgr = new ConfigManager(dataDir, env.configName());
 		boolean ok = cfgMgr.load(BackendsConfig.class);
 		this.cfg = cfgMgr.current(BackendsConfig.class);
-		if (!ok)
-			Log.error("Could not load BackendsConfig");
-
+		if (!ok || cfg == null) {
+			configOk = false;
+			return;
+		}
 		if (cfg != null) {
 			Log.setDebug(cfg.debug());
 			Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
@@ -52,6 +57,9 @@ public final class Adapter implements PlatformAdapter {
 
 	@Override
 	public void start(PlatformEnv env) throws Exception {
+		if (!configOk) {
+			return;
+		}
 		if (this.dataDir == null)
 			this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 
@@ -72,7 +80,7 @@ public final class Adapter implements PlatformAdapter {
 			this.commandExecutor = new VelocityExecutor(proxy, pluginInstance);
 		}
 
-		this.client = new WsClient(cfg, dataDir);
+		this.client = new WsClient(cfg, dataDir, this);
 
 		client.setLocation(Location.VELOCITY);
 
@@ -98,5 +106,56 @@ public final class Adapter implements PlatformAdapter {
 	@Override
 	public CommandExecutor getCommandExecutor() {
 		return commandExecutor;
+	}
+
+	@Override
+	public Object runSchedule(Runnable task, Duration timeout, Duration interval) {
+		return new TimeoutTask(task, timeout.toMillis(), interval).start();
+	}
+
+	@Override
+	public void cancelSchedule(Object task) {
+		if (task instanceof TimeoutTask t) {
+			t.cancel();
+		}
+	}
+
+	private class TimeoutTask implements Runnable {
+		private final Runnable delegate;
+		private final long timeoutMillis;
+		private final Duration interval;
+		private final long startTime;
+		private ScheduledTask scheduledTask;
+
+		public TimeoutTask(Runnable delegate, long timeoutMillis, Duration interval) {
+			this.delegate = delegate;
+			this.timeoutMillis = timeoutMillis;
+			this.interval = interval;
+			this.startTime = System.currentTimeMillis();
+		}
+
+		public TimeoutTask start() {
+			this.scheduledTask = proxy.getScheduler()
+					.buildTask(pluginInstance, this)
+					.delay(Duration.ZERO)
+					.repeat(interval)
+					.schedule();
+			return this;
+		}
+
+		@Override
+		public void run() {
+			if (System.currentTimeMillis() - startTime > timeoutMillis) {
+				cancel();
+				return;
+			}
+			delegate.run();
+		}
+
+		public void cancel() {
+			if (scheduledTask != null) {
+				scheduledTask.cancel();
+			}
+		}
 	}
 }

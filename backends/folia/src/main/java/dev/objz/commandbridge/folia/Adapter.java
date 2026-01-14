@@ -11,10 +11,14 @@ import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 public final class Adapter implements PlatformAdapter {
 	private WsClient client;
@@ -22,6 +26,7 @@ public final class Adapter implements PlatformAdapter {
 	private Path dataDir;
 	private JavaPlugin plugin;
 	private FoliaExecutor commandExecutor;
+	private boolean configOk = true;
 
 	@Override
 	public void load(PlatformEnv env, Object plugin) throws Exception {
@@ -30,8 +35,10 @@ public final class Adapter implements PlatformAdapter {
 		var cfgMgr = new ConfigManager(dataDir);
 		boolean ok = cfgMgr.load(BackendsConfig.class);
 		this.cfg = cfgMgr.current(BackendsConfig.class);
-		if (!ok)
-			Log.error("Could not load BackendsConfig");
+		if (!ok || cfg == null) {
+			configOk = false;
+			return;
+		}
 
 		if (cfg != null) {
 			Log.setDebug(cfg.debug());
@@ -43,6 +50,9 @@ public final class Adapter implements PlatformAdapter {
 
 	@Override
 	public void start(PlatformEnv env) throws Exception {
+		if (!configOk) {
+			return;
+		}
 		if (this.dataDir == null)
 			this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 		if (this.cfg == null) {
@@ -59,7 +69,7 @@ public final class Adapter implements PlatformAdapter {
 			this.commandExecutor = new FoliaExecutor(plugin);
 		}
 
-		this.client = new WsClient(cfg, dataDir);
+		this.client = new WsClient(cfg, dataDir, this);
 
 		client.start();
 
@@ -83,5 +93,56 @@ public final class Adapter implements PlatformAdapter {
 	@Override
 	public CommandExecutor getCommandExecutor() {
 		return commandExecutor;
+	}
+
+	@Override
+	public Object runSchedule(Runnable task, Duration timeout, Duration interval) {
+		return new TimeoutTask(task, timeout.toMillis(), interval.toMillis()).start();
+	}
+
+	@Override
+	public void cancelSchedule(Object task) {
+		if (task instanceof TimeoutTask t) {
+			t.cancel();
+		}
+	}
+
+	private class TimeoutTask {
+		private final Runnable delegate;
+		private final long timeoutMillis;
+		private final long intervalMillis;
+		private final long startTime;
+		private ScheduledTask scheduledTask;
+
+		public TimeoutTask(Runnable delegate, long timeoutMillis, long intervalMillis) {
+			this.delegate = delegate;
+			this.timeoutMillis = timeoutMillis;
+			this.intervalMillis = intervalMillis;
+			this.startTime = System.currentTimeMillis();
+		}
+
+		public TimeoutTask start() {
+			this.scheduledTask = Bukkit.getAsyncScheduler().runAtFixedRate(
+					plugin,
+					(t) -> run(),
+					0, // Initial delay
+					intervalMillis,
+					TimeUnit.MILLISECONDS);
+			return this;
+		}
+
+		private void run() {
+			if (System.currentTimeMillis() - startTime > timeoutMillis) {
+				cancel();
+				return;
+			}
+			delegate.run();
+		}
+
+		public void cancel() {
+			if (scheduledTask != null) {
+				scheduledTask.cancel();
+			}
+		}
 	}
 }
