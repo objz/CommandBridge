@@ -1,0 +1,50 @@
+name: Build CommandBridge
+
+on:
+  push:
+    branches: [ "v3", "main", "master" ]
+  pull_request:
+    branches: [ "v3", "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Get Short SHA
+        id: slug
+        run: echo "sha8=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew shadowJar --no-daemon
+
+      - name: Rename Jar
+        run: |
+          NEW_NAME="CommandBridge-3.0.0-dev-${{ steps.slug.outputs.sha8 }}.jar"
+          
+          mv dist/build/libs/CommandBridge-all.jar dist/build/libs/$NEW_NAME
+          
+          echo "ARTIFACT_PATH=dist/build/libs/$NEW_NAME" >> $GITHUB_ENV
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CommandBridge-Dev-Build
+          path: ${{ env.ARTIFACT_PATH }}
+          if-no-files-found: error

@@ -222,6 +222,7 @@ public final class WsClient implements AutoCloseable {
 			protected void onFullCloseMessage(WebSocketChannel channel, BufferedBinaryMessage message) {
 				try {
 					Log.warn("WebSocket closed by server");
+					status = ClientStatus.DISCONNECTED;
 					IoUtils.safeClose(channel);
 					scheduleReconnection();
 				} catch (Throwable ignore) {
@@ -231,7 +232,9 @@ public final class WsClient implements AutoCloseable {
 			@Override
 			protected void onClose(WebSocketChannel channel, StreamSourceFrameChannel frameChannel) {
 				try {
+					//TODO: something doenst work here only errors warn broken pipe
 					Log.warn("WebSocket closed");
+					status = ClientStatus.DISCONNECTED;
 					IoUtils.safeClose(channel);
 					scheduleReconnection();
 				} catch (Throwable ignore) {
