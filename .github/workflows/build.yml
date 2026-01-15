@@ -32,19 +32,12 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew shadowJar --no-daemon
-
-      - name: Rename Jar
-        run: |
-          NEW_NAME="CommandBridge-3.0.0-dev-${{ steps.slug.outputs.sha8 }}.jar"
-          
-          mv dist/build/libs/CommandBridge-all.jar dist/build/libs/$NEW_NAME
-          
-          echo "ARTIFACT_PATH=dist/build/libs/$NEW_NAME" >> $GITHUB_ENV
+        run: ./gradlew shadowJar -PbuildVersion="dev-${{ steps.slug.outputs.sha8 }}" --no-daemon
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: CommandBridge-Dev-Build
-          path: ${{ env.ARTIFACT_PATH }}
+          path: dist/build/libs/CommandBridge-*-all.jar
           if-no-files-found: error
+          retention-days: 7

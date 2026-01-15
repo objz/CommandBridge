@@ -35,6 +35,10 @@ tasks {
     jar { enabled = false }
 
     shadowJar {
+    	if (project.hasProperty("buildVersion")) {
+        	archiveVersion.set(project.property("buildVersion") as String)
+    	} 
+    
         archiveBaseName.set("CommandBridge")
         archiveClassifier.set("all")
 
