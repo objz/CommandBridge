@@ -40,3 +40,4 @@ jobs:
           name: CommandBridge-dev-${{ steps.slug.outputs.sha8 }}
           path: dist/build/libs/CommandBridge-*-all.jar
           if-no-files-found: error
+          retention-days: 60
