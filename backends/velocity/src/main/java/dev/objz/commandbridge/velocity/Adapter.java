@@ -84,7 +84,12 @@ public final class Adapter implements PlatformAdapter {
 
 		client.setLocation(Location.VELOCITY);
 
-		client.start();
+		try {
+			client.start();
+		} catch (Exception e) {
+			// Connection failed, schedule automatic reconnection
+			client.scheduleReconnection();
+		}
 
 		ClientCommands.register(client);
 

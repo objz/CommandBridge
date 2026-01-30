@@ -110,7 +110,10 @@ public final class WsClient implements AutoCloseable {
 	public synchronized void start() throws Exception {
 		if (ch != null && ch.isOpen())
 			return;
-		stopReconnectionTask();
+
+		if (!isReconnecting.get()) {
+			stopReconnectionTask();
+		}
 
 		String clientId = cfg.clientId();
 		TlsMode mode = (cfg.security() != null && cfg.security().tlsMode() != null)
@@ -128,7 +131,9 @@ public final class WsClient implements AutoCloseable {
 				? new JsseXnioSsl(worker.getXnio(), OptionMap.EMPTY, sslContext)
 				: null;
 
-		Log.info("Connecting to {} as '{}'", url, clientId);
+		if (!isReconnecting.get()) {
+			Log.info("Connecting to {} as '{}'", url, clientId);
+		}
 
 		this.pool = new DefaultByteBufferPool(
 				/* direct */ false,
@@ -162,7 +167,12 @@ public final class WsClient implements AutoCloseable {
 		try {
 			this.ch = f.get(5, TimeUnit.SECONDS);
 			status = ClientStatus.CONNECTED;
-			isReconnecting.set(false);
+			boolean wasReconnecting = isReconnecting.getAndSet(false);
+
+			if (wasReconnecting) {
+				stopReconnectionTask();
+				Log.success("Reconnected successfully");
+			}
 
 			setupChannel(ch);
 
@@ -176,8 +186,9 @@ public final class WsClient implements AutoCloseable {
 			}
 
 		} catch (Exception e) {
-			Log.warn("Connection failed: " + e.getMessage());
-			scheduleReconnection();
+			if (!isReconnecting.get()) {
+				Log.warn("Connection failed: {}", e.getMessage());
+			}
 			throw e;
 		}
 	}
@@ -232,7 +243,6 @@ public final class WsClient implements AutoCloseable {
 			@Override
 			protected void onClose(WebSocketChannel channel, StreamSourceFrameChannel frameChannel) {
 				try {
-					//TODO: something doenst work here only errors warn broken pipe
 					Log.warn("WebSocket closed");
 					status = ClientStatus.DISCONNECTED;
 					IoUtils.safeClose(channel);
@@ -256,7 +266,7 @@ public final class WsClient implements AutoCloseable {
 		return new SendOperation(ch, request, awaiter);
 	}
 
-	private synchronized void scheduleReconnection() {
+	public synchronized void scheduleReconnection() {
 		if (isReconnecting.get()) {
 			return;
 		}
@@ -277,7 +287,9 @@ public final class WsClient implements AutoCloseable {
 					return;
 				}
 				try {
-					Log.info("Attempting reconnection...");
+					Log.info("Attempting to reconnect");
+
+					// Close existing channel if present
 					if (ch != null) {
 						IoUtils.safeClose(ch);
 						ch = null;
@@ -286,7 +298,7 @@ public final class WsClient implements AutoCloseable {
 					start();
 
 				} catch (Exception e) {
-					Log.error("Reconnection attempt failed: {}", e.getMessage());
+					Log.warn("Reconnection failed: {}", e.getMessage());
 				}
 			};
 
@@ -391,7 +403,7 @@ public final class WsClient implements AutoCloseable {
 		SSLContext ctx = SSLContext.getInstance("TLS");
 		ctx.init(/* keyManagers */ null, new javax.net.ssl.TrustManager[] { tm }, /* random */ null);
 
-		if (mode == TlsMode.TOFU) {
+		if (!isReconnecting.get() && mode == TlsMode.TOFU) {
 			if (configuredPin != null && !configuredPin.isBlank()) {
 				Log.debug("TLS mode=TOFU with configured pin (will verify)");
 			} else {

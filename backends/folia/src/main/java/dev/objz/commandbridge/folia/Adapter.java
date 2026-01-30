@@ -71,7 +71,12 @@ public final class Adapter implements PlatformAdapter {
 
 		this.client = new WsClient(cfg, dataDir, this);
 
-		client.start();
+		try {
+			client.start();
+		} catch (Exception e) {
+			// Connection failed, schedule automatic reconnection
+			client.scheduleReconnection();
+		}
 
 		ClientCommands.register(client);
 
