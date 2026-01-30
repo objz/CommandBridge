@@ -102,7 +102,7 @@ public final class WsClient implements AutoCloseable {
 	}
 
 	public synchronized void reconnect() throws Exception {
-		Log.info("Manual reconnection triggered");
+		Log.warn("Manual reconnection initiated");
 		close();
 		start();
 	}
@@ -232,7 +232,7 @@ public final class WsClient implements AutoCloseable {
 			@Override
 			protected void onFullCloseMessage(WebSocketChannel channel, BufferedBinaryMessage message) {
 				try {
-					Log.warn("WebSocket closed by server");
+					Log.warn("Connection closed by server - attempting to reconnect");
 					status = ClientStatus.DISCONNECTED;
 					IoUtils.safeClose(channel);
 					scheduleReconnection();
@@ -243,7 +243,7 @@ public final class WsClient implements AutoCloseable {
 			@Override
 			protected void onClose(WebSocketChannel channel, StreamSourceFrameChannel frameChannel) {
 				try {
-					Log.warn("WebSocket closed");
+					Log.warn("Connection lost - attempting to reconnect");
 					status = ClientStatus.DISCONNECTED;
 					IoUtils.safeClose(channel);
 					scheduleReconnection();
@@ -277,19 +277,25 @@ public final class WsClient implements AutoCloseable {
 			Duration totalTimeout = Duration.ofSeconds(cfg.timeouts().reconnectTimeout());
 			Duration interval = Duration.ofSeconds(cfg.timeouts().reconnectInterval());
 
-			Log.info("Scheduling reconnection (Total Timeout: {}s, Try every: {}s)",
+			Log.warn("Scheduling automatic reconnection (timeout: {}s, interval: {}s)",
 					totalTimeout.getSeconds(),
 					interval.getSeconds());
+
+			long startTime = System.currentTimeMillis();
 
 			Runnable task = () -> {
 				if (!isReconnecting.get()) {
 					stopReconnectionTask();
 					return;
 				}
+
+				long elapsed = System.currentTimeMillis() - startTime;
+				boolean isLastAttempt = elapsed >= totalTimeout.toMillis();
+
 				try {
+
 					Log.info("Attempting to reconnect");
 
-					// Close existing channel if present
 					if (ch != null) {
 						IoUtils.safeClose(ch);
 						ch = null;
@@ -298,7 +304,14 @@ public final class WsClient implements AutoCloseable {
 					start();
 
 				} catch (Exception e) {
-					Log.warn("Reconnection failed: {}", e.getMessage());
+					if (isLastAttempt) {
+						Log.error("All attempts failed after {}s",
+								totalTimeout.getSeconds());
+						isReconnecting.set(false);
+						stopReconnectionTask();
+					} else {
+						Log.warn("Reconnection failed: {}", e.getMessage());
+					}
 				}
 			};
 
