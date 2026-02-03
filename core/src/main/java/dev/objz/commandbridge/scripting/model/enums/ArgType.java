@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.scripting.model.enums;
 
 import dev.objz.commandbridge.scripting.anno.Platform;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
 import static dev.objz.commandbridge.scripting.model.enums.Location.*;
 
 public enum ArgType {
@@ -51,7 +52,9 @@ public enum ArgType {
 	@Platform({ BACKEND })
 	BIOME,
 
-	@Platform({ BACKEND, VELOCITY })
+	@Platform(value = { BACKEND }, optional = {
+			@Platform.OptionalSupport(location = VELOCITY, feature = PlatformFeatureKeys.PACKET_EVENTS)
+	})
 	TIME,
 
 }

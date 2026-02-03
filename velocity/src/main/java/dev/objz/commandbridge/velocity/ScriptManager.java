@@ -6,6 +6,7 @@ import dev.objz.commandbridge.scripting.DebugPrinter;
 import dev.objz.commandbridge.scripting.ScriptLoader;
 import dev.objz.commandbridge.scripting.ScriptLoader.LoadResult;
 import dev.objz.commandbridge.scripting.model.Script;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,14 +18,18 @@ import java.util.stream.Stream;
 
 public final class ScriptManager {
 	private final Path scriptsDir;
+	private final PlatformFeatures platformFeatures;
 
 	private final List<Script> loaded = new ArrayList<>();
 	private final List<Script> enabled = new ArrayList<>();
 	private final List<Script> disabled = new ArrayList<>();
 	private long errors;
 
-	public ScriptManager(Path dataDir) {
+	public ScriptManager(Path dataDir, PlatformFeatures platformFeatures) {
 		this.scriptsDir = dataDir.resolve("scripts");
+		this.platformFeatures = platformFeatures != null
+				? platformFeatures
+				: PlatformFeatures.none();
 	}
 
 	public void loadAll() {
@@ -45,7 +50,8 @@ public final class ScriptManager {
 					continue;
 
 				try (var in = new FileInputStream(p.toFile())) {
-					LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in);
+					LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
+							platformFeatures);
 					loaded.add(res.value);
 					if (res.ok() && res.value != null) {
 						if (res.value.enabled())

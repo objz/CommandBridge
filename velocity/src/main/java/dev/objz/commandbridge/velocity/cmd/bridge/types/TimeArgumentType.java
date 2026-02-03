@@ -1,6 +1,5 @@
 package dev.objz.commandbridge.velocity.cmd.bridge.types;
 
-import com.github.retrooper.packetevents.protocol.chat.Parsers;
 import dev.jorel.commandapi.arguments.Argument;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentType;
@@ -10,7 +9,7 @@ import java.util.Optional;
 
 public final class TimeArgumentType implements CustomArgumentType<Integer> {
 	private static final PacketArgumentSpec PACKET_SPEC =
-			PacketArgumentSpec.ofParser(Parsers.TIME, List.of((Object) 0));
+			PacketArgumentSpec.ofParser("minecraft:time", List.of((Object) 0));
 
 	@Override
 	public ArgType type() {

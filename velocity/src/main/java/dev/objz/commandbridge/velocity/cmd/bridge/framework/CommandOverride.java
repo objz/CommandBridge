@@ -2,16 +2,16 @@ package dev.objz.commandbridge.velocity.cmd.bridge.framework;
 
 import java.util.Map;
 
-record CommandOverride(Map<String, PacketArgumentSpec> argumentSpecs) {
-	CommandOverride {
+public record CommandOverride(Map<String, PacketArgumentSpec> argumentSpecs) {
+	public CommandOverride {
 		argumentSpecs = Map.copyOf(argumentSpecs);
 	}
 
-	PacketArgumentSpec argumentSpec(String argumentName) {
+	public PacketArgumentSpec argumentSpec(String argumentName) {
 		return argumentSpecs.get(argumentName);
 	}
 
-	boolean isEmpty() {
+	public boolean isEmpty() {
 		return argumentSpecs.isEmpty();
 	}
 }

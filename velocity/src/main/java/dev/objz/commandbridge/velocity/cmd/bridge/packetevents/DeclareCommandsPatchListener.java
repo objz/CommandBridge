@@ -1,10 +1,15 @@
-package dev.objz.commandbridge.velocity.cmd.bridge.framework;
+package dev.objz.commandbridge.velocity.cmd.bridge.packetevents;
 
 import com.github.retrooper.packetevents.event.PacketListener;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.protocol.chat.Node;
+import com.github.retrooper.packetevents.protocol.chat.Parsers;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.resources.ResourceLocation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDeclareCommands;
+import dev.objz.commandbridge.velocity.cmd.bridge.framework.CommandOverride;
+import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentRegistry;
+import dev.objz.commandbridge.velocity.cmd.bridge.framework.PacketArgumentSpec;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
@@ -113,10 +118,14 @@ public final class DeclareCommandsPatchListener implements PacketListener {
 	}
 
 	private static void applySpec(Node node, PacketArgumentSpec spec) {
-		node.setParser(Optional.of(spec.parser()));
+		Parsers.Parser parser = Parsers.getByName(spec.parserKey());
+		if (parser == null) {
+			return;
+		}
+		node.setParser(Optional.of(parser));
 		node.setProperties(spec.properties());
-		spec.suggestionsType().ifPresent(suggestionsType -> {
-			node.setSuggestionsType(Optional.of(suggestionsType));
+		spec.suggestionsTypeKey().ifPresent(suggestionsType -> {
+			node.setSuggestionsType(Optional.of(new ResourceLocation(suggestionsType)));
 			node.setFlags((byte) (node.getFlags() | Node.FLAG_CUSTOM_SUGGESTIONS));
 		});
 	}

@@ -1,28 +1,25 @@
 package dev.objz.commandbridge.velocity.cmd.bridge.framework;
 
-import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
+import dev.objz.commandbridge.velocity.cmd.bridge.types.VelocityArgumentTypes;
 import java.util.Objects;
 
 public final class ArgumentBridge {
 	private final CustomArgumentRegistry registry;
-	private final DeclareCommandsPatchListener patchListener;
 
-	public ArgumentBridge() {
-		this(new CustomArgumentRegistry());
+	public ArgumentBridge(PlatformFeatures platformFeatures) {
+		this.registry = new CustomArgumentRegistry();
+		VelocityArgumentTypes.register(registry,
+				platformFeatures != null ? platformFeatures : PlatformFeatures.none());
 	}
 
-	public ArgumentBridge(CustomArgumentRegistry registry) {
+	public ArgumentBridge(CustomArgumentRegistry registry, PlatformFeatures platformFeatures) {
 		this.registry = Objects.requireNonNull(registry);
-		this.patchListener = new DeclareCommandsPatchListener(registry);
+		VelocityArgumentTypes.register(registry,
+				platformFeatures != null ? platformFeatures : PlatformFeatures.none());
 	}
 
 	public CustomArgumentRegistry registry() {
 		return registry;
-	}
-
-	public void install() {
-		PacketEvents.getAPI().getEventManager().registerListener(patchListener,
-				PacketListenerPriority.NORMAL);
 	}
 }

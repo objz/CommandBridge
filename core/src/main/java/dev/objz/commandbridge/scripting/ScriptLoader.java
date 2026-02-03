@@ -11,6 +11,7 @@ import dev.objz.commandbridge.scripting.bind.adapters.ListAdapter;
 import dev.objz.commandbridge.scripting.bind.adapters.PrimitivesAdapter;
 import dev.objz.commandbridge.scripting.bind.adapters.RecordAdapter;
 import dev.objz.commandbridge.scripting.bind.adapters.StringAdapter;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.scripting.validation.ProblemSink;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 import dev.objz.commandbridge.scripting.yaml.YamlParser;
@@ -42,13 +43,18 @@ public final class ScriptLoader {
 			.register(new ListAdapter())
 			.register(new RecordAdapter(BINDER));
 
-	private static BindContext newContext() {
-		return new BindContext(REGISTRY, new ProblemSink());
+	private static BindContext newContext(PlatformFeatures platformFeatures) {
+		return new BindContext(REGISTRY, new ProblemSink(), platformFeatures);
 	}
 
 	public static <T> LoadResult<T> loadResult(Class<T> modelType, InputStream in) {
+		return loadResult(modelType, in, PlatformFeatures.none());
+	}
+
+	public static <T> LoadResult<T> loadResult(Class<T> modelType, InputStream in,
+			PlatformFeatures platformFeatures) {
 		var parser = new YamlParser();
-		BindContext ctx = newContext();
+		BindContext ctx = newContext(platformFeatures);
 
 		YamlNode node;
 		try {

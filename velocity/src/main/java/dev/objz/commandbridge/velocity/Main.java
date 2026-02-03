@@ -17,9 +17,14 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
+import dev.objz.commandbridge.scripting.model.enums.Location;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatureSet;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
+import dev.objz.commandbridge.velocity.cmd.bridge.packetevents.PacketEventsArgumentBridge;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.ExecuteCommandHandler;
@@ -34,7 +39,9 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
-		"objz" }, dependencies = { @Dependency(id = "commandapi"), @Dependency(id = "papiproxybridge", optional = true), @Dependency(id = "packetevents") })
+		"objz" }, dependencies = { @Dependency(id = "commandapi"),
+			@Dependency(id = "papiproxybridge", optional = true),
+			@Dependency(id = "packetevents", optional = true) })
 public final class Main {
 
 	private final ProxyServer proxy;
@@ -55,6 +62,7 @@ public final class Main {
 	private CommandEntry commandEntry;
 	private Object backendBootstrap;
 	private ArgumentBridge argumentBridge;
+	private PlatformFeatures platformFeatures;
 
 
     public static boolean isPapiEnabled = false;
@@ -93,8 +101,19 @@ public final class Main {
 			Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
 		}
 
-		argumentBridge = new ArgumentBridge();
-		argumentBridge.install();
+		boolean hasPacketEvents = proxy.getPluginManager().getPlugin("packetevents").isPresent();
+		var featuresBuilder = PlatformFeatureSet.builder();
+		if (hasPacketEvents) {
+			featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PACKET_EVENTS);
+		} else {
+			Log.warn("PacketEvents not found. Some placeholder may not be available on velocity");
+		}
+		platformFeatures = featuresBuilder.build();
+
+		argumentBridge = new ArgumentBridge(platformFeatures);
+		if (hasPacketEvents) {
+			new PacketEventsArgumentBridge(argumentBridge.registry()).install();
+		}
 
 		sessions = new SessionHub();
 		inNode = new InNode();
@@ -108,7 +127,7 @@ public final class Main {
 				: new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inNode);
 		ws.start();
 
-		scriptManager = new ScriptManager(dataDir);
+		scriptManager = new ScriptManager(dataDir, platformFeatures);
 		scriptManager.loadAll();
 
 		registrations = new RegistrationManager(proxy, sessions, cfg, outNode,

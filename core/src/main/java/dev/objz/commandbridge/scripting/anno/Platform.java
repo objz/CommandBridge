@@ -11,4 +11,11 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface Platform {
     Location[] value();
+
+	OptionalSupport[] optional() default {};
+
+	@interface OptionalSupport {
+		Location location();
+		String feature();
+	}
 }

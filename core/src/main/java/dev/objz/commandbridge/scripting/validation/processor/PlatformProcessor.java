@@ -61,7 +61,7 @@ public final class PlatformProcessor implements PostProcessor {
 				continue;
 			}
 
-			Set<Location> supportedPlatforms = getSupportedPlatforms(arg.type());
+			Set<Location> supportedPlatforms = getSupportedPlatforms(arg.type(), ctx);
 
 			if (supportedPlatforms.isEmpty()) {
 				continue;
@@ -121,7 +121,7 @@ public final class PlatformProcessor implements PostProcessor {
 		return locations;
 	}
 
-	private Set<Location> getSupportedPlatforms(ArgType type) {
+	private Set<Location> getSupportedPlatforms(ArgType type, BindContext ctx) {
 		try {
 			Field field = ArgType.class.getField(type.name());
 			Platform annotation = field.getAnnotation(Platform.class);
@@ -129,8 +129,17 @@ public final class PlatformProcessor implements PostProcessor {
 			if (annotation == null) {
 				return Set.of();
 			}
+			Set<Location> supported = new HashSet<>(Set.of(annotation.value()));
+			Platform.OptionalSupport[] optional = annotation.optional();
+			if (optional != null && optional.length > 0) {
+				for (Platform.OptionalSupport entry : optional) {
+					if (entry != null && ctx.platformFeatures().isEnabled(entry.location(), entry.feature())) {
+						supported.add(entry.location());
+					}
+				}
+			}
 
-			return Set.of(annotation.value());
+			return supported;
 		} catch (NoSuchFieldException e) {
 			return Set.of();
 		}

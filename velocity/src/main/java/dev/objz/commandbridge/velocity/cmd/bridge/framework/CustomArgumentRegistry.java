@@ -4,7 +4,6 @@ import dev.jorel.commandapi.arguments.Argument;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
-import dev.objz.commandbridge.velocity.cmd.bridge.types.TimeArgumentType;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,10 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CustomArgumentRegistry {
 	private final Map<ArgType, CustomArgumentType<?>> customTypes = new EnumMap<>(ArgType.class);
 	private final Map<String, CommandOverride> commandOverrides = new ConcurrentHashMap<>();
-
-	public CustomArgumentRegistry() {
-		register(new TimeArgumentType());
-	}
 
 	public void register(CustomArgumentType<?> customType) {
 		if (customType == null || customType.type() == null) {
