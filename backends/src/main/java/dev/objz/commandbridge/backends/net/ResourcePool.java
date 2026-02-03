@@ -41,7 +41,7 @@ public final class ResourcePool implements AutoCloseable {
                 /* threadLocalCacheSize */ 4,
                 /* leakDetectionPercent */ 10);
 
-        Log.info("ResourcePool initialized (worker={}, bufferPool={})",
+        Log.debug("ResourcePool initialized (worker={}, bufferPool={})",
                 worker != null, bufferPool != null);
     }
 

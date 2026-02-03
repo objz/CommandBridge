@@ -85,7 +85,7 @@ public final class CommandRegistry implements CommandRegistryInterface {
 				return;
 			}
 			Set<String> toUnregister = new HashSet<>(registeredCommands);
-			Log.info("Unregistering {} command(s)...", toUnregister.size());
+			Log.info("Deregistering '{}' {}", toUnregister.size(), Log.plural(toUnregister.size(), "command", "commands"));
 			toUnregister.addAll(registeredAliases);
 			for (String cmdName : toUnregister) {
 				try {

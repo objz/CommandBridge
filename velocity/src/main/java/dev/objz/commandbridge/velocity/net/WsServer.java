@@ -24,6 +24,7 @@ import javax.net.ssl.SSLContext;
 
 import org.xnio.IoUtils;
 
+import java.io.IOException;
 import java.net.BindException;
 
 public final class WsServer {
@@ -72,16 +73,22 @@ public final class WsServer {
 				protected void onFullCloseMessage(WebSocketChannel channel,
 						BufferedBinaryMessage message) {
 					try {
-						Log.warn("WebSocket closed by client: {}",
-								channel.getSourceAddress());
-						IoUtils.safeClose(channel);
-					} catch (Throwable ignore) {
+						var data = message.getData();
+						data.close();
+					} catch (Throwable t) {
+						Log.debug("Failed to release close frame buffer: {}", t.getMessage());
 					}
 				}
 
 				@Override
 				protected void onClose(WebSocketChannel channel,
 						StreamSourceFrameChannel frameChannel) {
+					try {
+						super.onClose(channel, frameChannel);
+					} catch (IOException e) {
+						Log.debug("Failed to buffer close frame: {}", e.getMessage());
+					}
+
 					try {
 						Log.warn("WebSocket closed: {}", channel.getSourceAddress());
 						IoUtils.safeClose(channel);

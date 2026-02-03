@@ -17,6 +17,7 @@ import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketChannel;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class MessageRouter {
@@ -84,15 +85,21 @@ public final class MessageRouter {
             @Override
             protected void onFullCloseMessage(WebSocketChannel ch, BufferedBinaryMessage message) {
                 try {
-                    Log.warn("Connection closed by server - attempting to reconnect");
-                    stateRef.set(ConnectionState.RECONNECTING);
-                    reconnectCallback.run();
-                } catch (Throwable ignore) {
+                    var data = message.getData();
+                    data.close();
+                } catch (Throwable t) {
+                    Log.debug("Failed to release close frame buffer: {}", t.getMessage());
                 }
             }
 
             @Override
             protected void onClose(WebSocketChannel ch, StreamSourceFrameChannel frameChannel) {
+                try {
+                    super.onClose(ch, frameChannel);
+                } catch (IOException e) {
+                    Log.debug("Failed to buffer close frame: {}", e.getMessage());
+                }
+
                 try {
                     Log.warn("Connection lost - attempting to reconnect");
                     stateRef.set(ConnectionState.RECONNECTING);
