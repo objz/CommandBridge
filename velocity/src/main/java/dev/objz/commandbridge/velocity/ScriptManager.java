@@ -2,7 +2,6 @@ package dev.objz.commandbridge.velocity;
 
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.logging.Summary;
-import dev.objz.commandbridge.scripting.DebugPrinter;
 import dev.objz.commandbridge.scripting.ScriptLoader;
 import dev.objz.commandbridge.scripting.ScriptLoader.LoadResult;
 import dev.objz.commandbridge.scripting.model.Script;
@@ -33,6 +32,10 @@ public final class ScriptManager {
 	}
 
 	public void loadAll() {
+		loadAll(true);
+	}
+
+	public void loadAll(boolean logSummary) {
 		loaded.clear();
 		enabled.clear();
 		errors = 0;
@@ -75,11 +78,9 @@ public final class ScriptManager {
 			return;
 		}
 
-		if (Log.isDebug() && !loaded.isEmpty()) {
-			Log.debug("\n" + DebugPrinter.printGrid(loaded));
+		if (logSummary) {
+			Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
 		}
-
-		Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
 	}
 
 	public List<Script> loaded() {

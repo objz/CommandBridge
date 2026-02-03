@@ -12,18 +12,21 @@ import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.util.BarBuilder;
-import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.util.MM.MessageBuilder;
+import dev.objz.commandbridge.velocity.ui.CliOutput;
+import dev.objz.commandbridge.velocity.ui.CliTable;
+import dev.objz.commandbridge.velocity.ui.RenderContext;
+import dev.objz.commandbridge.velocity.ui.Theme;
+import net.kyori.adventure.text.Component;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.kyori.adventure.text.Component;
+import java.util.concurrent.TimeUnit;
 
-public final class ReloadCommand {
+public class ReloadCommand extends AbstractCliCommand {
 
 	private final ConfigManager configManager;
 	private final ScriptManager scriptManager;
@@ -42,51 +45,30 @@ public final class ReloadCommand {
 	}
 
 	public void execute(CommandSource sender) {
+		RenderContext ctx = new RenderContext(sender);
+		long startNs = System.nanoTime();
+
 		try {
 			boolean configOk = configManager.reload(VelocityConfig.class);
 			var cfg = configManager.current(VelocityConfig.class);
 			if (!configOk || cfg == null) {
-				MM.msg().space().line(MM.error("Failed to reload config"))
-						.line(MM.muted("Check console for details")).send(sender);
+				sendError(ctx, "Failed to reload config", "Check console for details", startNs);
 				return;
 			}
 			Log.setDebug(cfg.debug());
+			boolean debugEnabled = cfg.debug();
 
-			scriptManager.loadAll();
+			scriptManager.loadAll(false);
 
 			int enabled = scriptManager.enabled().size();
 			int disabled = scriptManager.disabled().size();
 			int loaded = scriptManager.loaded().size();
 			int errors = (int) scriptManager.errors();
 
-			double green = enabled / (double) Math.max(loaded, 1);
-			double yellow = (disabled - errors) / (double) Math.max(loaded, 1);
-			double red = Math.min(errors, loaded) / (double) Math.max(loaded, 1);
-
-			String scriptBar = BarBuilder.create(110).add("green", green).add("yellow", yellow)
-					.add("red", red).build();
-
-			var summary = MM.msg().space().line(MM.parse(scriptBar))
-					.line(MM.kv("loaded", String.valueOf(loaded)).append(MM.sep())
-							.append(MM.kv("enabled", "<green>" + enabled + "</green>"))
-							.append(MM.sep())
-							.append(MM.kv("disabled", "<yellow>" + disabled + "</yellow>"))
-							.append(MM.sep())
-							.append(MM.kv("errors", "<red>" + errors + "</red>")));
-
 			if (errors > 0) {
-				List<Component> summaryLines = summary.getLines();
-				MM.msg().space()
-						.line(MM.error("Script loading failed with " + errors + " error(s)"))
-						.line(summaryLines.get(1)).line(summaryLines.get(2)).space()
-						.line(MM.warn("Reload aborted due to script errors"))
-						.line(MM.muted("Check console for details")).send(sender);
+				sendScriptErrors(ctx, loaded, enabled, disabled, errors, debugEnabled, startNs);
 				return;
 			}
-
-			List<Component> summaryLines = summary.getLines();
-			MessageBuilder resultMessage = MM.msg().space().line(MM.ok("Config and scripts reloaded"))
-					.line(summaryLines.get(1)).line(summaryLines.get(2));
 
 			registrationManager.load(scriptManager.enabled());
 
@@ -95,15 +77,12 @@ public final class ReloadCommand {
 					s -> !registrationManager.getScriptsForSession(s).isEmpty())
 					.count();
 
+			Duration registerTimeout = Duration.ofSeconds(cfg.timeouts().registerTimeout());
+
 			if (clientsWithScripts == 0) {
-				resultMessage.send(sender);
+				sendSuccess(ctx, loaded, enabled, disabled, errors, startNs);
 				return;
 			}
-
-			resultMessage.space().line(MM.accent(
-					"Re-registering commands for " + clientsWithScripts + " client(s)..."));
-
-			Duration registerTimeout = Duration.ofSeconds(cfg.timeouts().registerTimeout());
 			AtomicInteger completed = new AtomicInteger(0);
 			ConcurrentHashMap<String, ReloadResult> results = new ConcurrentHashMap<>();
 			final int totalExpected = clientsWithScripts;
@@ -135,17 +114,17 @@ public final class ReloadCommand {
 												new ReloadResult(status,
 														address,
 														null));
-										if (completed.incrementAndGet() == totalExpected) {
-											displayResults(sender, results,
-													totalExpected,
-													resultMessage);
-										}
+								if (completed.incrementAndGet() == totalExpected) {
+									displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors,
+										startNs);
+								}
 									}));
 				} catch (Exception ex) {
 					results.put(clientId, new ReloadResult(ReloadStatus.FAILED, address,
 							ex.getMessage()));
 					if (completed.incrementAndGet() == totalExpected) {
-						displayResults(sender, results, totalExpected, resultMessage);
+						displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors,
+								startNs);
 					}
 				}
 			}
@@ -177,22 +156,88 @@ public final class ReloadCommand {
 							}
 							if (completed.get() < totalExpected) {
 								completed.set(totalExpected);
-								displayResults(sender, results, totalExpected,
-										resultMessage);
+								displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors,
+										startNs);
 							}
 						}
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 					}
 				}).start();
-			} else {
-				resultMessage.send(sender);
 			}
 		} catch (Exception e) {
 			Log.error("Reload failed: {}", e.getMessage());
-			MM.msg().space().line(MM.error("Reload failed: " + e.getMessage()))
-					.line(MM.muted("Check console for details")).send(sender);
+			sendError(ctx, "Reload failed: " + e.getMessage(), "Check console for details", startNs);
 		}
+	}
+
+	private void sendSuccess(RenderContext ctx, int loaded, int enabled, int disabled, int errors,
+			long startNs) {
+		if (ctx.isPlayer()) {
+			renderChatSuccess(ctx, loaded, enabled, disabled);
+			return;
+		}
+
+		CliOutput output = cli("Reload");
+		output.success("Config and scripts reloaded");
+		output.blankLine();
+		output.appendRaw(buildScriptsTable(output.width(), loaded, enabled, disabled, errors).render());
+		output.muted("Completed in " + elapsedMs(startNs) + "ms");
+		log(output);
+	}
+
+	private void sendScriptErrors(RenderContext ctx, int loaded, int enabled, int disabled, int errors,
+			boolean debugEnabled, long startNs) {
+		if (ctx.isPlayer()) {
+			renderChatError(ctx, "Script loading failed with " + errors + " error(s)", "Check console for details");
+			return;
+		}
+
+		CliOutput output = cli("Reload");
+		output.error("Script loading failed with " + errors + " error(s)");
+		output.blankLine();
+		output.accent("Scripts");
+		output.appendRaw(buildScriptsTable(output.width(), loaded, enabled, disabled, errors).render());
+		output.blankLine();
+		output.muted("Debug: " + (debugEnabled ? "ENABLED" : "DISABLED"));
+		output.warn("Reload aborted due to script errors");
+		output.muted("Completed in " + elapsedMs(startNs) + "ms");
+		log(output);
+	}
+
+	private void sendError(RenderContext ctx, String error, String details, long startNs) {
+		if (ctx.isPlayer()) {
+			renderChatError(ctx, error, details);
+			return;
+		}
+
+		CliOutput output = cli("Reload");
+		output.error(error);
+		output.muted(details);
+		output.muted("Completed in " + elapsedMs(startNs) + "ms");
+		log(output);
+	}
+
+	private void renderChatSuccess(RenderContext ctx, int loaded, int enabled, int disabled) {
+		Component message = Component.text()
+				.append(Component.text("Config and scripts reloaded",
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_SUCCESS)))
+				.append(Component.newline())
+				.append(Component.text("Loaded: " + loaded + " | Enabled: " + enabled + " | Disabled: " + disabled,
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
+				.build();
+		ctx.source().sendMessage(message);
+	}
+
+	private void renderChatError(RenderContext ctx, String error, String details) {
+		Component message = Component.text()
+				.append(Component.text(error,
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_ERROR)))
+				.append(Component.newline())
+				.append(Component.text(details,
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
+				.build();
+		ctx.source().sendMessage(message);
 	}
 
 	private List<ClientSession> getActiveClients() {
@@ -207,8 +252,53 @@ public final class ReloadCommand {
 	}
 
 	private void displayResults(CommandSource sender,
-			ConcurrentHashMap<String, ReloadResult> results, int total,
-			MessageBuilder resultMessage) {
+			ConcurrentHashMap<String, ReloadResult> results,
+			int expected, int loaded, int enabled, int disabled, int errors,
+			long startNs) {
+		RenderContext ctx = new RenderContext(sender);
+
+		if (ctx.isPlayer()) {
+			displayChatResults(ctx, results, loaded, enabled, disabled);
+		} else {
+			displayConsoleResults(results, expected, loaded, enabled, disabled, errors, startNs);
+		}
+	}
+
+	private void displayChatResults(RenderContext ctx,
+			ConcurrentHashMap<String, ReloadResult> results,
+			int loaded, int enabled, int disabled) {
+		int successful = 0;
+		int failed = 0;
+		int timeout = 0;
+
+		for (var entry : results.entrySet()) {
+			ReloadResult result = entry.getValue();
+			switch (result.status) {
+				case SUCCESS -> successful++;
+				case FAILED -> failed++;
+				case TIMEOUT -> timeout++;
+			}
+		}
+
+		Component message = Component.text()
+				.append(Component.text("Config and scripts reloaded",
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_SUCCESS)))
+				.append(Component.newline())
+				.append(Component.text("Loaded: " + loaded + " | Enabled: " + enabled + " | Disabled: " + disabled,
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
+				.append(Component.newline())
+				.append(Component.text("Re-registered commands for " + results.size() + " client(s)",
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
+				.append(Component.newline())
+				.append(Component.text("Success: " + successful + " | Failed: " + failed + " | Timeout: " + timeout,
+					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
+				.build();
+
+		ctx.source().sendMessage(message);
+	}
+
+	private void displayConsoleResults(ConcurrentHashMap<String, ReloadResult> results,
+			int expected, int loaded, int enabled, int disabled, int errors, long startNs) {
 		int successful = 0;
 		int failed = 0;
 		int timeout = 0;
@@ -233,44 +323,96 @@ public final class ReloadCommand {
 			return a.id.compareTo(b.id);
 		});
 
-		String clientBar = BarBuilder.create(110)
-				.add("green", successful / (double) Math.max(1, total))
-				.add("red", failed / (double) Math.max(1, total))
-				.add("yellow", timeout / (double) Math.max(1, total)).build();
-
-		resultMessage.space().header("Client Registration Results").line(MM.parse(clientBar))
-				.line(MM.kv("successful", "<green>" + successful + "</green>").append(MM.sep())
-						.append(MM.kv("failed", "<red>" + failed + "</red>")).append(MM.sep())
-						.append(MM.kv("timeout", "<yellow>" + timeout + "</yellow>")))
-				.space().line(MM.accent("Clients"));
-
-		for (ReloadEntry entry : entries) {
-			switch (entry.status) {
-				case SUCCESS -> resultMessage.item(
-						"<green>[OK]</green> <white>" + entry.id + "</white> <gray>"
-								+ entry.address + "</gray>");
-				case FAILED -> {
-					String errorDetail = entry.errorMessage != null
-							? " <gray>(" + entry.errorMessage + ")</gray>"
-							: "";
-					resultMessage.item("<red>[FAILED]</red> <white>" + entry.id + "</white> <gray>"
-							+ entry.address + "</gray>" + errorDetail);
-				}
-				case TIMEOUT -> {
-					String errorDetail = entry.errorMessage != null
-							? " <gray>(" + entry.errorMessage + ")</gray>"
-							: "";
-					resultMessage.item("<yellow>[TIMEOUT]</yellow> <white>" + entry.id
-							+ "</white> <gray>" + entry.address + "</gray>" + errorDetail);
-				}
-			}
-		}
+		CliOutput output = cli("Reload");
+		output.success("Config and scripts reloaded");
+		output.blankLine();
+		output.appendRaw(buildScriptsTable(output.width(), loaded, enabled, disabled, errors).render());
+		output.blankLine();
+		output.accent("Registration Summary");
+		output.appendRaw(buildRegistrationSummaryTable(output.width(), expected, results.size(),
+				successful, failed, timeout).render());
+		output.blankLine();
+		output.accent("Client Results");
+		output.appendRaw(buildRegistrationResultsTable(output.width(), entries).render());
 
 		if (failed > 0 || timeout > 0) {
-			resultMessage.space().line(MM.muted("Check console for detailed error messages"));
+			output.blankLine();
+			output.muted("Check console for detailed error messages");
 		}
+		output.muted("Completed in " + elapsedMs(startNs) + "ms");
 
-		resultMessage.send(sender);
+		log(output);
+	}
+
+	private CliTable buildScriptsTable(int width, int loaded, int enabled, int disabled, int errors) {
+		CliTable table = new CliTable()
+				.width(width)
+				.addColumn("Loaded", CliTable.Align.RIGHT, 1, 6)
+				.addColumn("Enabled", CliTable.Align.RIGHT, 1, 7)
+				.addColumn("Disabled", CliTable.Align.RIGHT, 1, 8)
+				.addColumn("Errors", CliTable.Align.RIGHT, 1, 6);
+		String loadedVal = Theme.ANSI_ACCENT + loaded + Theme.ANSI_RESET;
+		String enabledVal = Theme.ANSI_SUCCESS + enabled + Theme.ANSI_RESET;
+		String disabledVal = Theme.ANSI_WARN + disabled + Theme.ANSI_RESET;
+		String errorsVal = Theme.ANSI_ERROR + errors + Theme.ANSI_RESET;
+		table.addRow(loadedVal, enabledVal, disabledVal, errorsVal);
+		return table;
+	}
+
+	private CliTable buildRegistrationSummaryTable(int width, int expected, int responses,
+			int successful, int failed, int timeout) {
+		CliTable table = new CliTable()
+				.width(width)
+				.addColumn("Responses", CliTable.Align.RIGHT, 1, 9)
+				.addColumn("Successful", CliTable.Align.RIGHT, 1, 9)
+				.addColumn("Failed", CliTable.Align.RIGHT, 1, 7)
+				.addColumn("Timeout", CliTable.Align.RIGHT, 1, 8);
+		String responseVal = Theme.ANSI_ACCENT + responses + "/" + expected + Theme.ANSI_RESET;
+		String successVal = Theme.ANSI_SUCCESS + successful + Theme.ANSI_RESET;
+		String failedVal = Theme.ANSI_ERROR + failed + Theme.ANSI_RESET;
+		String timeoutVal = Theme.ANSI_WARN + timeout + Theme.ANSI_RESET;
+		table.addRow(responseVal, successVal, failedVal, timeoutVal);
+		return table;
+	}
+
+	private CliTable buildRegistrationResultsTable(int width, List<ReloadEntry> entries) {
+		CliTable table = new CliTable()
+				.width(width)
+				.addColumn("Client", CliTable.Align.LEFT, 2, 10)
+				.addColumn("Address", CliTable.Align.LEFT, 4, 18)
+				.addColumn("Status", CliTable.Align.LEFT, 1, 8)
+				.addColumn("Detail", CliTable.Align.LEFT, 5, 14);
+
+		for (ReloadEntry entry : entries) {
+			String status;
+			String color;
+			switch (entry.status) {
+				case SUCCESS -> {
+					status = "OK";
+					color = Theme.ANSI_SUCCESS;
+				}
+				case FAILED -> {
+					status = "FAILED";
+					color = Theme.ANSI_ERROR;
+				}
+				case TIMEOUT -> {
+					status = "TIMEOUT";
+					color = Theme.ANSI_WARN;
+				}
+				default -> {
+					status = "UNKNOWN";
+					color = Theme.ANSI_MUTED;
+				}
+			}
+
+			String detail = entry.errorMessage != null ? entry.errorMessage : "";
+			table.addRow(entry.id, entry.address, color + status + Theme.ANSI_RESET, detail);
+		}
+		return table;
+	}
+
+	private long elapsedMs(long startNs) {
+		return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
 	}
 
 	private enum ReloadStatus {

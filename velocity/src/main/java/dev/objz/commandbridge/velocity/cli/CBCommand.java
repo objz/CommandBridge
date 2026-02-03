@@ -2,6 +2,7 @@ package dev.objz.commandbridge.velocity.cli;
 
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
+import dev.jorel.commandapi.arguments.IntegerArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
 import dev.jorel.commandapi.executors.CommandExecutor;
 import dev.jorel.commandapi.executors.ResultingCommandExecutor;
@@ -22,112 +23,116 @@ import java.util.List;
 
 public final class CBCommand {
 
-	private final ConfigManager configManager;
-	private final ScriptManager scriptManager;
-	private final RegistrationManager registrationManager;
-	private final SessionHub sessionHub;
-	private final OutNode<Object> outNode;
-	private final VelocityConfig config;
+    private final ConfigManager configManager;
+    private final ScriptManager scriptManager;
+    private final RegistrationManager registrationManager;
+    private final SessionHub sessionHub;
+    private final OutNode<Object> outNode;
+    private final VelocityConfig config;
 
-	public CBCommand(
-			ConfigManager configManager,
-			ScriptManager scriptManager,
-			RegistrationManager registrationManager,
-			SessionHub sessionHub,
-			OutNode<Object> outNode,
-			VelocityConfig config) {
+    public CBCommand(
+            ConfigManager configManager,
+            ScriptManager scriptManager,
+            RegistrationManager registrationManager,
+            SessionHub sessionHub,
+            OutNode<Object> outNode,
+            VelocityConfig config) {
 
-		this.configManager = configManager;
-		this.scriptManager = scriptManager;
-		this.registrationManager = registrationManager;
-		this.sessionHub = sessionHub;
-		this.outNode = outNode;
-		this.config = config;
-	}
+        this.configManager = configManager;
+        this.scriptManager = scriptManager;
+        this.registrationManager = registrationManager;
+        this.sessionHub = sessionHub;
+        this.outNode = outNode;
+        this.config = config;
+    }
 
-	public void register() {
-		ArgumentSuggestions<CommandSource> clientIdSuggestions = ArgumentSuggestions
-				.<CommandSource>strings(info -> {
-					List<String> ids = new ArrayList<>();
-					for (ClientSession s : sessionHub) {
-						if (s.id() != null) {
-							ids.add(s.id());
-						}
-					}
-					return ids.toArray(String[]::new);
-				});
+    public void register() {
+        ArgumentSuggestions<CommandSource> clientIdSuggestions = ArgumentSuggestions
+                .<CommandSource>strings(info -> {
+                    List<String> ids = new ArrayList<>();
+                    for (ClientSession s : sessionHub) {
+                        if (s.id() != null) {
+                            ids.add(s.id());
+                        }
+                    }
+                    return ids.toArray(String[]::new);
+                });
 
-		var help = new HelpCommand();
-		var scripts = new ScriptsCommand(scriptManager);
-		var reload = new ReloadCommand(configManager, scriptManager, registrationManager, sessionHub, outNode);
-		var list = new ListCommand(sessionHub);
-		var ping = new PingCommand(sessionHub, outNode, config);
-		var debug = new DebugCommand();
-		var dump = new DumpCommand(registrationManager, sessionHub);
+        var help = new HelpCommand();
+        var scripts = new ScriptsCommand(scriptManager);
+        var reload = new ReloadCommand(configManager, scriptManager, registrationManager, sessionHub, outNode);
+        var list = new ListCommand(sessionHub);
+        var ping = new PingCommand(sessionHub, outNode, config);
+        var debug = new DebugCommand();
+        var dump = new DumpCommand(registrationManager, sessionHub);
+        var infoCmd = new InfoCommand();
 
-		new CommandAPICommand("commandbridge")
-				.withAliases("cb")
-				.withPermission("commandbridge.admin")
+        new CommandAPICommand("commandbridge")
+                .withAliases("cb")
+                .withPermission("commandbridge.admin")
 
-				// /cb -> help
-				.executes((ResultingCommandExecutor) (sender, args) -> {
-					CommandSource src = sender;
-					help.execute(src);
-					return 1;
-				})
+                // /cb -> help
+                .executes((ResultingCommandExecutor) (sender, args) -> {
+                    help.execute(sender);
+                    return 1;
+                })
 
-				// /cb help
-				.withSubcommand(new CommandAPICommand("help")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							help.execute(src);
-						}))
+                // /cb help
+                .withSubcommand(new CommandAPICommand("help")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            help.execute(sender);
+                        }))
 
-				// /cb scripts
-				.withSubcommand(new CommandAPICommand("scripts")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							scripts.execute(src);
-						}))
+                // /cb info
+                .withSubcommand(new CommandAPICommand("info")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            infoCmd.execute(sender);
+                        }))
 
-				// /cb reload
-				.withSubcommand(new CommandAPICommand("reload")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							reload.execute(src);
-						}))
+                // /cb scripts [page]
+                .withSubcommand(new CommandAPICommand("scripts")
+                        .withOptionalArguments(new IntegerArgument("page"))
+                        .executes((CommandExecutor) (sender, args) -> {
+                            int page = 1;
+                            if (args.get("page") != null) {
+                                page = (int) args.get("page");
+                            }
+                            scripts.execute(sender, page);
+                        }))
 
-				// /cb list
-				.withSubcommand(new CommandAPICommand("list")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							list.execute(src);
-						}))
+                // /cb reload
+                .withSubcommand(new CommandAPICommand("reload")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            reload.execute(sender);
+                        }))
 
-				// /cb ping
-				.withSubcommand(new CommandAPICommand("ping")
-						.withOptionalArguments(new StringArgument("clientId")
-								.replaceSuggestions(clientIdSuggestions))
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							String id = (String) args.get("clientId");
-							ping.execute(src, id);
-						}))
+                // /cb list
+                .withSubcommand(new CommandAPICommand("list")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            list.execute(sender);
+                        }))
 
-				// /cb debug
-				.withSubcommand(new CommandAPICommand("debug")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							debug.execute(src);
-						}))
+                // /cb ping [clientId]
+                .withSubcommand(new CommandAPICommand("ping")
+                        .withOptionalArguments(new StringArgument("clientId")
+                                .replaceSuggestions(clientIdSuggestions))
+                        .executes((CommandExecutor) (sender, args) -> {
+                            String id = (String) args.get("clientId");
+                            ping.execute(sender, id);
+                        }))
 
-				// /cb dump
-				.withSubcommand(new CommandAPICommand("dump")
-						.executes((CommandExecutor) (sender, args) -> {
-							CommandSource src = sender;
-							dump.execute(src);
-						}))
+                // /cb debug
+                .withSubcommand(new CommandAPICommand("debug")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            debug.execute(sender);
+                        }))
 
-				.register();
-	}
+                // /cb dump
+                .withSubcommand(new CommandAPICommand("dump")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            dump.execute(sender);
+                        }))
+
+                .register();
+    }
 }
