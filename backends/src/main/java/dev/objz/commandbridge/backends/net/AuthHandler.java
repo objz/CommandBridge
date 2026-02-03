@@ -1,0 +1,63 @@
+package dev.objz.commandbridge.backends.net;
+
+import dev.objz.commandbridge.config.model.BackendsConfig;
+import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.OutNode;
+import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
+import io.undertow.websockets.core.WebSocketChannel;
+
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
+public final class AuthHandler {
+    private final BackendsConfig cfg;
+    private final OutNode<Object> outNode;
+    private final AtomicReference<ConnectionState> stateRef;
+
+    public AuthHandler(BackendsConfig cfg, OutNode<Object> outNode, AtomicReference<ConnectionState> stateRef) {
+        this.cfg = cfg;
+        this.outNode = outNode;
+        this.stateRef = stateRef;
+    }
+
+    public boolean authenticate(WebSocketChannel channel) {
+        if (!Boolean.TRUE.equals(cfg.security().requireAuth())) {
+            Log.warn("Auth disabled by config; continuing unauthenticated");
+            stateRef.set(ConnectionState.AUTHENTICATED);
+            return false;
+        }
+
+        Consumer<ClientStatus> statusUpdater = status -> {
+            ConnectionState newState = ConnectionState.fromClientStatus(status);
+            stateRef.set(newState);
+
+            if (newState == ConnectionState.AUTHENTICATED) {
+                Log.debug("Authentication successful");
+            } else if (newState == ConnectionState.AUTH_FAILED) {
+                Log.error("Authentication failed");
+            }
+        };
+
+        Duration timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
+        AuthRequestContext context = new AuthRequestContext(channel, timeout, statusUpdater);
+
+        try {
+            outNode.send(MessageType.AUTH_REQUEST, context);
+            return true;
+        } catch (Exception e) {
+            Log.error(e, "Failed to send authentication request");
+            stateRef.set(ConnectionState.AUTH_FAILED);
+            return false;
+        }
+    }
+
+    public boolean isAuthenticated() {
+        return stateRef.get() == ConnectionState.AUTHENTICATED;
+    }
+
+    public ConnectionState getState() {
+        return stateRef.get();
+    }
+}
