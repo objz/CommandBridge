@@ -15,6 +15,8 @@ public enum ArgType {
 	DOUBLE,
 	@Platform({ VELOCITY, BACKEND })
 	TEXT,
+	@Platform({ VELOCITY, BACKEND })
+	GREEDY_STRING,
 
 	@Platform({ BACKEND })
 	RANGE,

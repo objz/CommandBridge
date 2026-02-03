@@ -4,6 +4,8 @@ import dev.jorel.commandapi.arguments.*;
 import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
+import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>> {
 
@@ -25,6 +27,7 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
 			case BOOLEAN -> new BooleanArgument(argName);
 			case DOUBLE -> new DoubleArgument(argName);
 			case TEXT -> new TextArgument(argName);
+			case GREEDY_STRING -> new GreedyStringArgument(argName);
 
 			case RANGE -> new DoubleRangeArgument(argName);
 
@@ -49,7 +52,7 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
 
 			default -> throw new UnsupportedOperationException(
 					"ArgType." + type + " is not supported on backends. " +
-							"Supported types: all except SERVER");
+							"Supported types: " + supportedTypeNames());
 		};
 
 		if (argMapping.suggestions() != null && !argMapping.suggestions().isEmpty()) {
@@ -58,5 +61,34 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
 		}
 
 		return argument;
+	}
+
+	private String supportedTypeNames() {
+		EnumSet<ArgType> supported = EnumSet.of(
+				ArgType.STRING,
+				ArgType.INTEGER,
+				ArgType.BOOLEAN,
+				ArgType.DOUBLE,
+				ArgType.TEXT,
+				ArgType.GREEDY_STRING,
+				ArgType.RANGE,
+				ArgType.PLAYERS,
+				ArgType.ENTITIES,
+				ArgType.ENTITY_TYPE,
+				ArgType.WORLD,
+				ArgType.LOCATION,
+				ArgType.LOCATION_2D,
+				ArgType.ANGLE,
+				ArgType.ROTATION,
+				ArgType.ITEM_STACK,
+				ArgType.ENCHANTMENT,
+				ArgType.POTION_EFFECT,
+				ArgType.SOUND,
+				ArgType.BIOME,
+				ArgType.TIME);
+		return supported.stream()
+				.map(Enum::name)
+				.sorted()
+				.collect(Collectors.joining(", "));
 	}
 }

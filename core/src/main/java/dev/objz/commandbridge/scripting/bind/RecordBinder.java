@@ -16,6 +16,7 @@ import dev.objz.commandbridge.scripting.validation.processor.PatternProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.PlatformProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.RequiredProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.ResolvableProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.TrailingArgumentProcessor;
 import dev.objz.commandbridge.scripting.yaml.YamlNode;
 
 import java.lang.reflect.Constructor;
@@ -51,7 +52,8 @@ public final class RecordBinder {
 				new ResolvableProcessor(),
 				new MergeProcessor(),
 				new PlatformProcessor(),
-				new ArgumentOrderProcessor()
+				new ArgumentOrderProcessor(),
+				new TrailingArgumentProcessor()
 
 		);
 	}

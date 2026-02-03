@@ -5,6 +5,7 @@ import dev.jorel.commandapi.arguments.Argument;
 import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.BooleanArgument;
 import dev.jorel.commandapi.arguments.DoubleArgument;
+import dev.jorel.commandapi.arguments.GreedyStringArgument;
 import dev.jorel.commandapi.arguments.IntegerArgument;
 import dev.jorel.commandapi.arguments.StringArgument;
 import dev.jorel.commandapi.arguments.TextArgument;
@@ -22,6 +23,7 @@ public final class VelocityArgumentBridge {
 			ArgType.BOOLEAN,
 			ArgType.DOUBLE,
 			ArgType.TEXT,
+			ArgType.GREEDY_STRING,
 			ArgType.SERVER);
 
 	private final ProxyServer proxy;
@@ -50,6 +52,7 @@ public final class VelocityArgumentBridge {
 					case BOOLEAN -> new BooleanArgument(argName);
 					case DOUBLE -> new DoubleArgument(argName);
 					case TEXT -> new TextArgument(argName);
+					case GREEDY_STRING -> new GreedyStringArgument(argName);
 
 					case SERVER -> new StringArgument(argName).includeSuggestions(
 								ArgumentSuggestions.strings(

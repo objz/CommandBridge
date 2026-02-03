@@ -54,7 +54,7 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
 				Object raw = args.getOptional(name).orElse(null);
 
 				Object value = switch (type) {
-					case STRING, TEXT -> (raw != null ? raw.toString() : null);
+					case STRING, TEXT, GREEDY_STRING -> (raw != null ? raw.toString() : null);
 
 					case INTEGER, TIME -> (raw != null ? ((Number) raw).intValue() : 0);
 
