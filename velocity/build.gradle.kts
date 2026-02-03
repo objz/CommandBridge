@@ -11,6 +11,8 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://repo.william278.net/releases/")
+    maven("https://repo.codemc.io/repository/maven-releases/")
+    maven("https://repo.codemc.io/repository/maven-snapshots/")
 }
 
 dependencies {
@@ -28,6 +30,8 @@ dependencies {
 
 
     compileOnly("net.william278:papiproxybridge:1.8.4")
+
+    compileOnly("com.github.retrooper:packetevents-velocity:2.11.2")
 
     testImplementation(libs.junit.jupiter)
 }

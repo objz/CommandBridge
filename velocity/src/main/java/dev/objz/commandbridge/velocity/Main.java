@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
-		"objz" }, dependencies = { @Dependency(id = "commandapi"), @Dependency(id = "papiproxybridge", optional = true) })
+		"objz" }, dependencies = { @Dependency(id = "commandapi"), @Dependency(id = "papiproxybridge", optional = true), @Dependency(id = "packetevents") })
 public final class Main {
 
 	private final ProxyServer proxy;
