@@ -27,7 +27,7 @@ public final class ResourcePool implements AutoCloseable {
 
     public synchronized void initialize() throws Exception {
         if (worker != null) {
-            Log.warn("ResourcePool already initialized, skipping");
+            Log.debug("ResourcePool already initialized, skipping");
             return;
         }
 

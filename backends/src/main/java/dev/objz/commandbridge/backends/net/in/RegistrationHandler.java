@@ -37,7 +37,6 @@ public final class RegistrationHandler extends InboundHandler {
 
 		try {
 			registry.unregisterAll();
-			Log.info("Unregistered all previous commands before reload");
 		} catch (Exception e) {
 			Log.warn("Failed to unregister previous commands: {}", e.getMessage());
 		}

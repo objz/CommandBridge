@@ -50,7 +50,6 @@ public final class ReconnectHandler {
             boolean isLastAttempt = elapsed >= totalTimeout.toMillis();
 
             try {
-                Log.info("Attempting to reconnect");
                 reconnectCallback.run();
 
             } catch (Exception e) {
