@@ -61,7 +61,7 @@ git checkout v3
 - [x] **Secure Communication:** TLS 1.3, mutual auth, and auto secrets
 - [x] **Declarative Scripting:** V2 YAML schema with strict validation
 - [x] **Cross-Server Pipeline:** Local and remote command dispatching
-- [ ] **Resilient Connectivity:** Auto-reconnection and health checks
+- [x] **Resilient Connectivity:** Auto-reconnection and failsafe WsClient
 - [x] **Persistent Queues:** Database storage for offline commands
 - [x] **Multi-Proxy Support:** Proxy chaining support
 - [x] **PlaceholderAPI Support:** Resolve PAPI on backends and velocity using papiproxybridge
