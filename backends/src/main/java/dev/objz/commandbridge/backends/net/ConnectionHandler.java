@@ -30,7 +30,6 @@ public final class ConnectionHandler {
     }
 
     public WebSocketChannel connect(boolean isReconnecting) throws Exception {
-        // Preserve classloader context for XNIO threads
         ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             Thread.currentThread().setContextClassLoader(pluginClassLoader);
@@ -151,7 +150,18 @@ public final class ConnectionHandler {
     public void forceClose() {
         WebSocketChannel ch = channelRef.getAndSet(null);
         if (ch != null) {
+            try {
+                ch.suspendReceives();
+            } catch (Throwable ignore) {
+            }
+
             IoUtils.safeClose(ch);
+
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }

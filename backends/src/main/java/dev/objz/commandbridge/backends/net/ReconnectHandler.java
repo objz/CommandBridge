@@ -50,15 +50,19 @@ public final class ReconnectHandler {
             boolean isLastAttempt = elapsed >= totalTimeout.toMillis();
 
             try {
+                Log.info("Attempting to reconnect");
                 reconnectCallback.run();
 
             } catch (Exception e) {
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                String errorMsg = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+
                 if (isLastAttempt) {
                     Log.error("All reconnection attempts failed after {}s", totalTimeout.getSeconds());
                     isReconnecting.set(false);
                     stopReconnect();
                 } else {
-                    Log.warn("Reconnection failed: {}", e.getMessage());
+                    Log.warn("Reconnection attempt failed: {}", errorMsg);
                 }
             }
         };

@@ -27,14 +27,13 @@ public final class ResourcePool implements AutoCloseable {
 
     public synchronized void initialize() throws Exception {
         if (worker != null) {
-            Log.debug("ResourcePool already initialized, skipping");
+            Log.warn("ResourcePool already initialized, skipping");
             return;
         }
 
         Xnio xnio = Xnio.getInstance("nio", classLoader);
         this.worker = xnio.createWorker(OptionMap.EMPTY);
 
-        // Buffer pool
         this.bufferPool = new DefaultByteBufferPool(
                 /* direct */ false,
                 /* bufferSize */ 16 * 1024,
@@ -42,7 +41,7 @@ public final class ResourcePool implements AutoCloseable {
                 /* threadLocalCacheSize */ 4,
                 /* leakDetectionPercent */ 10);
 
-        Log.debug("ResourcePool initialized (worker={}, bufferPool={})",
+        Log.info("ResourcePool initialized (worker={}, bufferPool={})",
                 worker != null, bufferPool != null);
     }
 

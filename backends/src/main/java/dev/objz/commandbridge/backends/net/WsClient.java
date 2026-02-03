@@ -185,10 +185,12 @@ public final class WsClient implements AutoCloseable {
                 connectionHandler.forceClose();
             }
 
+            resources.close();
+
             start();
 
         } catch (Exception e) {
-            throw new RuntimeException("Reconnection failed", e);
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
