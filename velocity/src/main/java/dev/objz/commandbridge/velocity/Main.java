@@ -19,6 +19,7 @@ import dev.objz.commandbridge.security.SecretLoader;
 import dev.objz.commandbridge.security.TlsResolver;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
+import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.ExecuteCommandHandler;
@@ -53,6 +54,7 @@ public final class Main {
 	private ScriptManager scriptManager;
 	private CommandEntry commandEntry;
 	private Object backendBootstrap;
+	private ArgumentBridge argumentBridge;
 
 
     public static boolean isPapiEnabled = false;
@@ -84,12 +86,15 @@ public final class Main {
 			return;
 		}
 
-        if (proxy.getPluginManager().getPlugin("papiproxybridge").isPresent()) {
-            Log.success("Hooked into PapiProxyBridge. PlaceholderAPI is now enabled");
-            isPapiEnabled = true;
-        } else {
-            Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
-        }
+		if (proxy.getPluginManager().getPlugin("papiproxybridge").isPresent()) {
+			Log.success("Hooked into PapiProxyBridge. PlaceholderAPI is now enabled");
+			isPapiEnabled = true;
+		} else {
+			Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
+		}
+
+		argumentBridge = new ArgumentBridge();
+		argumentBridge.install();
 
 		sessions = new SessionHub();
 		inNode = new InNode();
@@ -106,7 +111,8 @@ public final class Main {
 		scriptManager = new ScriptManager(dataDir);
 		scriptManager.loadAll();
 
-		registrations = new RegistrationManager(proxy, sessions, cfg, outNode);
+		registrations = new RegistrationManager(proxy, sessions, cfg, outNode,
+				argumentBridge.registry());
 
 		commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
 				cfg.serverId(), dataDir);

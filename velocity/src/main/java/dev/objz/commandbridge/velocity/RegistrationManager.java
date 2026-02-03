@@ -11,6 +11,7 @@ import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.velocity.cmd.ArgumentMapper;
 import dev.objz.commandbridge.velocity.cmd.CommandRegistry;
+import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentRegistry;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
@@ -30,6 +31,7 @@ public final class RegistrationManager {
 	private final OutNode<Object> outNode;
 	private final String localServerId;
 	private final Duration registerTimeout;
+	private final CustomArgumentRegistry argumentRegistry;
 
 	private final Map<TargetKey, Set<Script>> remoteScripts = new ConcurrentHashMap<>();
 
@@ -39,18 +41,20 @@ public final class RegistrationManager {
 	private volatile CommandEntry commandEntry;
 
 	public RegistrationManager(ProxyServer proxy, SessionHub sessions, VelocityConfig config,
-			OutNode<Object> outNode) {
+			OutNode<Object> outNode, CustomArgumentRegistry argumentRegistry) {
 		this.proxy = Objects.requireNonNull(proxy);
 		this.sessions = Objects.requireNonNull(sessions);
 		this.outNode = Objects.requireNonNull(outNode);
 		this.localServerId = config.serverId();
 		this.registerTimeout = Duration.ofSeconds(config.timeouts().registerTimeout());
+		this.argumentRegistry = Objects.requireNonNull(argumentRegistry);
 	}
 
 	public void setCommandEntry(CommandEntry commandEntry) {
 		this.commandEntry = commandEntry;
 		this.registry = new CommandRegistry(
-				new ArgumentMapper(proxy),
+				new ArgumentMapper(proxy, argumentRegistry),
+				argumentRegistry,
 				(cmdName, source, args, stub) -> {
 					if (this.commandEntry != null) {
 						this.commandEntry.executeFromVelocity(cmdName, source, args, stub);
@@ -64,7 +68,8 @@ public final class RegistrationManager {
 		reset();
 
 		if (registry == null) {
-			registry = new CommandRegistry(new ArgumentMapper(proxy));
+			registry = new CommandRegistry(new ArgumentMapper(proxy, argumentRegistry),
+					argumentRegistry);
 		}
 
 		if (scripts == null || scripts.isEmpty()) {

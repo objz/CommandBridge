@@ -51,7 +51,7 @@ public enum ArgType {
 	@Platform({ BACKEND })
 	BIOME,
 
-	@Platform({ BACKEND })
+	@Platform({ BACKEND, VELOCITY })
 	TIME,
 
 }

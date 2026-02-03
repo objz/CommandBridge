@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.cmd;
+package dev.objz.commandbridge.velocity.cmd.bridge.types;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -10,8 +10,6 @@ import dev.jorel.commandapi.arguments.ArgumentSuggestions;
 import dev.jorel.commandapi.arguments.CommandAPIArgumentType;
 import dev.jorel.commandapi.executors.CommandArguments;
 
-//TODO: modify outgoing package to use minecraft:time instead of brigadier:string
-//TODO: also implement other types for velocity that are originally missing in brigadier
 public final class TimeArgument extends Argument<Integer> {
 
 	public TimeArgument(String nodeName) {
@@ -54,7 +52,7 @@ public final class TimeArgument extends Argument<Integer> {
 
 	@Override
 	public CommandAPIArgumentType getArgumentType() {
-		return CommandAPIArgumentType.PRIMITIVE_STRING;
+		return CommandAPIArgumentType.TIME;
 	}
 
 	@Override

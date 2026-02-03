@@ -9,6 +9,7 @@ import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
+import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentRegistry;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,14 +28,17 @@ public final class CommandRegistry implements CommandRegistryInterface {
 	private final ArgumentMapper argumentMapper;
 	private final Object registrationLock = new Object();
 	private final CommandExecutionHandler executionHandler;
+	private final CustomArgumentRegistry argumentRegistry;
 
-	public CommandRegistry(ArgumentMapper mapper) {
-		this(mapper, null);
+	public CommandRegistry(ArgumentMapper mapper, CustomArgumentRegistry argumentRegistry) {
+		this(mapper, argumentRegistry, null);
 	}
 
-	public CommandRegistry(ArgumentMapper mapper, CommandExecutionHandler executionHandler) {
+	public CommandRegistry(ArgumentMapper mapper, CustomArgumentRegistry argumentRegistry,
+			CommandExecutionHandler executionHandler) {
 		this.argumentMapper = mapper;
 		this.executionHandler = executionHandler;
+		this.argumentRegistry = argumentRegistry;
 	}
 
 	@Override
@@ -98,6 +102,9 @@ public final class CommandRegistry implements CommandRegistryInterface {
 
 			cmd.register();
 			registeredCommands.add(cmdName);
+			if (argumentRegistry != null) {
+				argumentRegistry.registerCommand(stub);
+			}
 
 			int argCount = stub.args() != null ? stub.args().size() : 0;
 			int aliasCount = stub.aliases() != null ? stub.aliases().size() : 0;
@@ -124,6 +131,9 @@ public final class CommandRegistry implements CommandRegistryInterface {
 				}
 			}
 			registeredCommands.clear();
+			if (argumentRegistry != null) {
+				argumentRegistry.clearCommands();
+			}
 		}
 	}
 }
