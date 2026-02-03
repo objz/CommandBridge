@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
-		"objz" }, dependencies = { @Dependency(id = "commandapi") })
+		"objz" }, dependencies = { @Dependency(id = "commandapi"), @Dependency(id = "papiproxybridge", optional = true) })
 public final class Main {
 
 	private final ProxyServer proxy;
@@ -53,6 +53,9 @@ public final class Main {
 	private ScriptManager scriptManager;
 	private CommandEntry commandEntry;
 	private Object backendBootstrap;
+
+
+    public static boolean isPapiEnabled = false;
 
 	@Inject
 	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
@@ -80,6 +83,13 @@ public final class Main {
 			loadClientMode();
 			return;
 		}
+
+        if (proxy.getPluginManager().getPlugin("papiproxybridge").isPresent()) {
+            Log.success("Hooked into PapiProxyBridge. PlaceholderAPI is now enabled");
+            isPapiEnabled = true;
+        } else {
+            Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
+        }
 
 		sessions = new SessionHub();
 		inNode = new InNode();

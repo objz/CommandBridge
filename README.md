@@ -64,7 +64,7 @@ git checkout v3
 - [ ] **Resilient Connectivity:** Auto-reconnection and health checks
 - [x] **Persistent Queues:** Database storage for offline commands
 - [x] **Multi-Proxy Support:** Proxy chaining support
-- [ ] **PlaceholderAPI Support:** Resolve PAPI on backends
+- [x] **PlaceholderAPI Support:** Resolve PAPI on backends and velocity using papiproxybridge
 - [ ] **Custom Command Types:** String with infinite args, Time Argument
 - [ ] **Diagnostics Dump:** Debug reports via `/cb dump`
 - [ ] **Web Interface:** Dashboard for monitoring clients and logs
