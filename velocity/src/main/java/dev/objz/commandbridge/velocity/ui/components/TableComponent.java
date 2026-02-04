@@ -1,7 +1,9 @@
 package dev.objz.commandbridge.velocity.ui.components;
 
 import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.BoxDrawing;
+import dev.objz.commandbridge.velocity.ui.cli.BoxDrawing;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+import dev.objz.commandbridge.velocity.ui.chat.ChatTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import dev.objz.commandbridge.velocity.ui.UIComponent;
@@ -31,39 +33,17 @@ public class TableComponent implements UIComponent {
 
     @Override
     public Component renderChat(RenderContext ctx) {
-        var builder = MM.msg();
-        
-        StringBuilder headerMm = new StringBuilder();
-        for (int i = 0; i < headers.length; i++) {
-            headerMm.append("<gradient:")
-                   .append(Theme.C_PRIMARY)
-                   .append(":")
-                   .append(Theme.C_ACCENT)
-                   .append("><bold>")
-                   .append(headers[i])
-                   .append("</bold></gradient>");
-            if (i < headers.length - 1) {
-                headerMm.append(" <").append(Theme.C_SEP).append(">│</").append(Theme.C_SEP).append("> ");
-            }
+        ChatTable table = new ChatTable();
+        for (String header : headers) {
+            table.addColumn(header, ChatTable.Align.LEFT, 1, ChatLayout.spacesWidth(header.length()));
         }
-        builder.line(headerMm.toString());
-        
-        builder.line("<" + Theme.C_SEP + "><st>" + " ".repeat(50) + "</st></" + Theme.C_SEP + ">");
-
-        for (int r = 0; r < rows.size(); r++) {
-            String[] row = rows.get(r);
-            StringBuilder rowMm = new StringBuilder();
-            for (int i = 0; i < row.length; i++) {
-                rowMm.append("<white>").append(row[i]).append("</white>");
-                if (i < row.length - 1) {
-                    rowMm.append(" <").append(Theme.C_SEP).append(">│</").append(Theme.C_SEP).append("> ");
-                }
-            }
-            builder.line(rowMm.toString());
+        for (String[] row : rows) {
+            table.addRow(row);
         }
 
+        List<Component> lines = table.renderLines();
         Component result = Component.empty();
-        for (Component c : builder.getLines()) {
+        for (Component c : lines) {
             result = result.append(c).append(Component.newline());
         }
         return result;

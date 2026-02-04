@@ -1,4 +1,6 @@
-package dev.objz.commandbridge.velocity.ui;
+package dev.objz.commandbridge.velocity.ui.cli;
+
+import dev.objz.commandbridge.velocity.ui.Theme;
 
 public final class CliLayout {
 	public static final int DEFAULT_WIDTH = 70;

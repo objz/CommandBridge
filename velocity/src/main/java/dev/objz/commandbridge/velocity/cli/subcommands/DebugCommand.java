@@ -2,7 +2,10 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.velocity.ui.CliOutput;
+import dev.objz.commandbridge.util.MM;
+import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
@@ -22,13 +25,19 @@ public class DebugCommand extends AbstractCliCommand {
 	}
 	
 	private void renderChat(RenderContext ctx, boolean enabled) {
-		Component message = Component.text()
-				.append(Component.text("Debug Mode ", net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-				.append(enabled 
-						? Component.text("ENABLED", net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_SUCCESS))
-						: Component.text("DISABLED", net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_WARN)))
-				.build();
-		ctx.source().sendMessage(message);
+		String status = enabled ? "ENABLED" : "DISABLED";
+		String color = enabled ? Theme.C_SUCCESS : Theme.C_WARN;
+		Component statusComp = MM.parse("<" + Theme.C_MUTED + ">Debug Mode</" + Theme.C_MUTED + "> <" + color + "><bold>" + status + "</bold></" + color + ">");
+		Component toggle = MM.parse(" <" + Theme.C_ACCENT + "><bold>[Toggle]</bold></" + Theme.C_ACCENT + ">")
+				.clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/cb debug"))
+				.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+						MM.parse("<" + Theme.C_MUTED + ">Click to toggle debug</" + Theme.C_MUTED + ">")));
+		Component line = statusComp.append(toggle);
+		int width = Math.max(ChatLayout.titleWidth("Debug"), ChatLayout.visibleLength(line));
+		width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+		ChatFrame frame = new ChatFrame("Debug").width(width);
+		frame.line(line);
+		frame.send(ctx.source());
 	}
 	
 	private void renderConsole(boolean enabled) {

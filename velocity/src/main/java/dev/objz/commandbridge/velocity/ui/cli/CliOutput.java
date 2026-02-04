@@ -1,4 +1,6 @@
-package dev.objz.commandbridge.velocity.ui;
+package dev.objz.commandbridge.velocity.ui.cli;
+
+import dev.objz.commandbridge.velocity.ui.Theme;
 
 public final class CliOutput {
 	private final StringBuilder sb;

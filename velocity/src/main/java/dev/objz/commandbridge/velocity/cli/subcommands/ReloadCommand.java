@@ -12,8 +12,11 @@ import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.velocity.ui.CliOutput;
-import dev.objz.commandbridge.velocity.ui.CliTable;
+import dev.objz.commandbridge.util.MM;
+import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
+import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
@@ -219,25 +222,43 @@ public class ReloadCommand extends AbstractCliCommand {
 	}
 
 	private void renderChatSuccess(RenderContext ctx, int loaded, int enabled, int disabled) {
-		Component message = Component.text()
-				.append(Component.text("Config and scripts reloaded",
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_SUCCESS)))
-				.append(Component.newline())
-				.append(Component.text("Loaded: " + loaded + " | Enabled: " + enabled + " | Disabled: " + disabled,
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-				.build();
-		ctx.source().sendMessage(message);
+		List<Component> lines = new ArrayList<>();
+		Component success = MM.parse("<" + Theme.C_SUCCESS + "><bold>Config and scripts reloaded</bold></" + Theme.C_SUCCESS + ">");
+		lines.add(success);
+		lines.add(Component.empty());
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Loaded:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + loaded + "</" + Theme.C_ACCENT + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Enabled:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + enabled + "</" + Theme.C_SUCCESS + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Disabled:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + disabled + "</" + Theme.C_WARN + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">0</" + Theme.C_ERROR + ">"));
+		lines.add(Component.empty());
+		Component action = MM.parse("<" + Theme.C_ACCENT + "><bold>View scripts</bold></" + Theme.C_ACCENT + ">")
+				.clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/cb scripts"))
+				.hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
+						MM.parse("<" + Theme.C_MUTED + ">Open script list</" + Theme.C_MUTED + ">")));
+		lines.add(action);
+
+		int width = ChatLayout.titleWidth("Reload");
+		for (Component line : lines) {
+			width = Math.max(width, ChatLayout.visibleLength(line));
+		}
+		width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+		ChatFrame frame = new ChatFrame("Reload")
+				.width(width);
+		frame.lines(lines);
+		frame.send(ctx.source());
 	}
 
 	private void renderChatError(RenderContext ctx, String error, String details) {
-		Component message = Component.text()
-				.append(Component.text(error,
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_ERROR)))
-				.append(Component.newline())
-				.append(Component.text(details,
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-				.build();
-		ctx.source().sendMessage(message);
+		Component err = MM.error(error);
+		Component detail = MM.muted(details);
+		int width = Math.max(ChatLayout.titleWidth("Reload"), ChatLayout.visibleLength(err));
+		width = Math.max(width, ChatLayout.visibleLength(detail));
+		width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+		ChatFrame frame = new ChatFrame("Reload").width(width);
+		frame.line(err);
+		frame.line(detail);
+		frame.send(ctx.source());
 	}
 
 	private List<ClientSession> getActiveClients() {
@@ -271,8 +292,10 @@ public class ReloadCommand extends AbstractCliCommand {
 		int failed = 0;
 		int timeout = 0;
 
+		List<ReloadEntry> entries = new ArrayList<>();
 		for (var entry : results.entrySet()) {
 			ReloadResult result = entry.getValue();
+			entries.add(new ReloadEntry(entry.getKey(), result.status, result.address, result.errorMessage));
 			switch (result.status) {
 				case SUCCESS -> successful++;
 				case FAILED -> failed++;
@@ -280,21 +303,63 @@ public class ReloadCommand extends AbstractCliCommand {
 			}
 		}
 
-		Component message = Component.text()
-				.append(Component.text("Config and scripts reloaded",
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_SUCCESS)))
-				.append(Component.newline())
-				.append(Component.text("Loaded: " + loaded + " | Enabled: " + enabled + " | Disabled: " + disabled,
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-				.append(Component.newline())
-				.append(Component.text("Re-registered commands for " + results.size() + " client(s)",
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-				.append(Component.newline())
-				.append(Component.text("Success: " + successful + " | Failed: " + failed + " | Timeout: " + timeout,
-					net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-				.build();
+		entries.sort((a, b) -> {
+			if (a.status != b.status) {
+				return a.status.ordinal() - b.status.ordinal();
+			}
+			return a.id.compareTo(b.id);
+		});
 
-		ctx.source().sendMessage(message);
+		List<Component> lines = new ArrayList<>();
+		Component success = MM.parse("<" + Theme.C_SUCCESS + "><bold>Config and scripts reloaded</bold></" + Theme.C_SUCCESS + ">");
+		lines.add(success);
+		lines.add(Component.empty());
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Loaded:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + loaded + "</" + Theme.C_ACCENT + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Enabled:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + enabled + "</" + Theme.C_SUCCESS + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Disabled:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + disabled + "</" + Theme.C_WARN + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">0</" + Theme.C_ERROR + ">"));
+		lines.add(Component.empty());
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Responses:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + results.size() + "</" + Theme.C_ACCENT + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Successful:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + successful + "</" + Theme.C_SUCCESS + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Failed:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">" + failed + "</" + Theme.C_ERROR + ">"));
+		lines.add(MM.parse("<" + Theme.C_MUTED + ">Timeout:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + timeout + "</" + Theme.C_WARN + ">"));
+		lines.add(Component.empty());
+
+		int idx = 0;
+		for (ReloadEntry entry : entries) {
+			String status;
+			String color;
+			switch (entry.status) {
+				case SUCCESS -> { status = "OK"; color = Theme.C_SUCCESS; }
+				case FAILED -> { status = "FAILED"; color = Theme.C_ERROR; }
+				case TIMEOUT -> { status = "TIMEOUT"; color = Theme.C_WARN; }
+				default -> { status = "UNKNOWN"; color = Theme.C_MUTED; }
+			}
+			Component header = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ")
+					.append(MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + entry.id + "</bold></gradient>"))
+					.append(MM.parse(" <" + color + ">" + status + "</" + color + ">"));
+			Component address = MM.parse("<" + Theme.C_MUTED + ">  Address:</" + Theme.C_MUTED + "> <white>" + entry.address + "</white>");
+			lines.add(header);
+			lines.add(address);
+			if (entry.errorMessage != null && !entry.errorMessage.isBlank()) {
+				lines.add(MM.parse("<" + Theme.C_MUTED + ">  Detail:</" + Theme.C_MUTED + "> <white>" + entry.errorMessage + "</white>"));
+			}
+			if (idx < entries.size() - 1) {
+				lines.add(Component.empty());
+			}
+			idx++;
+		}
+
+		int width = ChatLayout.titleWidth("Reload");
+		for (Component line : lines) {
+			width = Math.max(width, ChatLayout.visibleLength(line));
+		}
+		width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+		ChatFrame frame = new ChatFrame("Reload")
+				.width(width);
+		frame.lines(lines);
+		frame.send(ctx.source());
 	}
 
 	private void displayConsoleResults(ConcurrentHashMap<String, ReloadResult> results,

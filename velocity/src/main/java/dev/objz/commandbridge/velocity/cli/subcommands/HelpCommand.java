@@ -2,8 +2,12 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.BoxDrawing;
-import dev.objz.commandbridge.velocity.ui.CliLayout;
+import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+import java.util.ArrayList;
+import java.util.List;
+import dev.objz.commandbridge.velocity.ui.cli.BoxDrawing;
+import dev.objz.commandbridge.velocity.ui.cli.CliLayout;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
@@ -34,47 +38,31 @@ public class HelpCommand extends AbstractCliCommand {
     }
 
     private void renderChatHelp(CommandSource sender) {
-        // Stunning header
-        Component header = MM.parse(
-            "\n<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" +
-            "▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆\n" +
-            "  COMMANDBRIDGE\n" +
-            "▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆" +
-            "</bold></gradient>\n"
-        );
-        sender.sendMessage(header);
-
-        // Command list with beautiful formatting
+        List<Component> lines = new ArrayList<>();
         for (String[] cmd : COMMANDS) {
             String command = cmd[0];
             String description = cmd[1];
-            
-            Component bullet = MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + ">▶</gradient>");
-            Component commandComp = MM.parse("<gradient:" + Theme.C_ACCENT + ":" + Theme.C_PRIMARY + "><bold>" + command + "</bold></gradient>")
-                .clickEvent(ClickEvent.suggestCommand(command))
-                .hoverEvent(HoverEvent.showText(MM.parse(
-                    "<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + ">Click to use</gradient>\n" +
-                    "<" + Theme.C_MUTED + ">" + description + "</" + Theme.C_MUTED + ">"
-                )));
-            Component sep = MM.parse(" <" + Theme.C_SEP + ">━</" + Theme.C_SEP + "> ");
-            Component desc = MM.parse("<" + Theme.C_MUTED + ">" + description + "</" + Theme.C_MUTED + ">");
-            
-            Component line = Component.text(" ")
-                .append(bullet)
-                .append(Component.text(" "))
-                .append(commandComp)
-                .append(sep)
-                .append(desc);
-            
-            sender.sendMessage(line);
+
+            Component commandComp = MM.cmd(command)
+                    .hoverEvent(HoverEvent.showText(MM.parse("<" + Theme.C_MUTED + ">Run command</" + Theme.C_MUTED + ">")))
+                    .clickEvent(ClickEvent.runCommand(command));
+            Component line = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ").append(commandComp);
+            Component desc = MM.parse("<" + Theme.C_MUTED + ">  " + description + "</" + Theme.C_MUTED + ">");
+
+            lines.add(line);
+            lines.add(desc);
         }
 
-        // Footer
-        Component footer = MM.parse(
-            "\n<center><gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + ">━━━━━━━━━━━━━━━━━━━━━━━</gradient></center>\n" +
-            "<center><" + Theme.C_MUTED + "><i>Hover for details • Click to use</i></" + Theme.C_MUTED + "></center>\n"
-        );
-        sender.sendMessage(footer);
+        int width = ChatLayout.titleWidth("CommandBridge Help");
+        for (Component line : lines) {
+            width = Math.max(width, ChatLayout.visibleLength(line));
+        }
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+        ChatFrame frame = new ChatFrame("CommandBridge Help")
+                .width(width);
+        frame.lines(lines);
+        frame.send(sender);
     }
 
     private void renderConsoleHelp() {

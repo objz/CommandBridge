@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.velocity.ui.CliOutput;
+import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 
 public abstract class AbstractCliCommand {
 	protected CliOutput cli(String title) {

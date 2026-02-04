@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.velocity.ui.components;
 
 import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.CliLayout;
+import dev.objz.commandbridge.velocity.ui.cli.CliLayout;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import dev.objz.commandbridge.velocity.ui.UIComponent;

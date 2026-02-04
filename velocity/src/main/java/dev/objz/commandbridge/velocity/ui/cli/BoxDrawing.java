@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.velocity.ui;
+package dev.objz.commandbridge.velocity.ui.cli;
 
 public final class BoxDrawing {
 

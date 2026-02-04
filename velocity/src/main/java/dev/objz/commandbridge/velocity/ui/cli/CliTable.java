@@ -1,4 +1,6 @@
-package dev.objz.commandbridge.velocity.ui;
+package dev.objz.commandbridge.velocity.ui.cli;
+
+import dev.objz.commandbridge.velocity.ui.Theme;
 
 import java.util.ArrayList;
 import java.util.List;

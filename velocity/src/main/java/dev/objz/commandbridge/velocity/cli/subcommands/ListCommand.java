@@ -4,14 +4,16 @@ import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.velocity.ui.CliOutput;
-import dev.objz.commandbridge.velocity.ui.CliTable;
-import dev.objz.commandbridge.velocity.ui.RenderContext;
-import dev.objz.commandbridge.velocity.ui.components.HeaderComponent;
-import dev.objz.commandbridge.velocity.ui.components.TableComponent;
-
+import dev.objz.commandbridge.util.MM;
+import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
 import java.util.ArrayList;
 import java.util.List;
+import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
+import dev.objz.commandbridge.velocity.ui.cli.CliTable;
+import dev.objz.commandbridge.velocity.ui.RenderContext;
+import dev.objz.commandbridge.velocity.ui.Theme;
+import net.kyori.adventure.text.Component;
 
 public class ListCommand extends AbstractCliCommand {
     private final SessionHub sessions;
@@ -31,28 +33,53 @@ public class ListCommand extends AbstractCliCommand {
     }
 
     private void renderChat(CommandSource sender, RenderContext ctx) {
-        sender.sendMessage(new HeaderComponent("Clients").renderChat(ctx));
-
         List<ClientSession> authenticated = getAuthenticatedClients();
 
         if (authenticated.isEmpty()) {
-            sender.sendMessage(dev.objz.commandbridge.util.MM.warn("No authenticated clients connected"));
+            Component warn = MM.warn("No authenticated clients connected");
+            int width = Math.max(ChatLayout.titleWidth("Clients"), ChatLayout.visibleLength(warn));
+            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+            ChatFrame frame = new ChatFrame("Clients").width(width);
+            frame.line(warn);
+            frame.send(sender);
             return;
         }
 
-        TableComponent table = new TableComponent("ID", "Address", "Platform");
+        List<Component> lines = new ArrayList<>();
+        Component summary = MM.parse("<" + Theme.C_MUTED + ">Authenticated clients</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + authenticated.size() + "</" + Theme.C_ACCENT + ">");
+        lines.add(summary);
 
+        int index = 0;
         for (var s : authenticated) {
             String id = s.id() != null ? s.id() : "unknown";
             String address = s.ch() != null && s.ch().getSourceAddress() != null
                     ? s.ch().getSourceAddress().toString()
                     : "unknown";
-            String platform = "Bukkit";
+            String platform = s.location() != null ? s.location().name() : "unknown";
 
-            table.addRow(id, address, platform);
+            Component header = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ")
+                    .append(MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + id + "</bold></gradient>"))
+                    .append(MM.parse(" <" + Theme.C_MUTED + ">(" + platform + ")</" + Theme.C_MUTED + ">"));
+            Component addr = MM.parse("<" + Theme.C_MUTED + ">  Address:</" + Theme.C_MUTED + "> <white>" + address + "</white>");
+
+            lines.add(header);
+            lines.add(addr);
+            if (index < authenticated.size() - 1) {
+                lines.add(Component.empty());
+            }
+            index++;
         }
 
-        sender.sendMessage(table.renderChat(ctx));
+        int width = ChatLayout.titleWidth("Clients");
+        for (Component line : lines) {
+            width = Math.max(width, ChatLayout.visibleLength(line));
+        }
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+        ChatFrame frame = new ChatFrame("Clients")
+                .width(width);
+        frame.lines(lines);
+        frame.send(sender);
     }
 
     private void renderConsole() {

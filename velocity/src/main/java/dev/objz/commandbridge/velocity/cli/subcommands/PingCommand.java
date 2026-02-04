@@ -8,13 +8,18 @@ import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.net.out.ctx.PingRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.velocity.ui.CliOutput;
-import dev.objz.commandbridge.velocity.ui.CliTable;
+import dev.objz.commandbridge.util.MM;
+import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
+import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,8 +51,7 @@ public class PingCommand extends AbstractCliCommand {
 
         if (activeClients.isEmpty()) {
             if (ctx.isPlayer()) {
-                ctx.source().sendMessage(Component.text("No authenticated clients to ping", 
-                    net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_WARN)));
+                renderChatMessage(ctx, MM.warn("No authenticated clients to ping"));
             } else {
                 renderNoClientsConsole();
             }
@@ -91,8 +95,7 @@ public class PingCommand extends AbstractCliCommand {
 
         if (session == null) {
             if (ctx.isPlayer()) {
-                ctx.source().sendMessage(Component.text("Client not found: " + clientId,
-                    net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_ERROR)));
+                renderChatMessage(ctx, MM.error("Client not found: " + clientId));
             } else {
                 renderClientNotFoundConsole(clientId);
             }
@@ -130,31 +133,72 @@ public class PingCommand extends AbstractCliCommand {
     }
 
     private void renderChatResults(RenderContext ctx, ConcurrentHashMap<String, PingResult> results) {
-        // Simple chat output for now
+        List<Component> lines = new ArrayList<>();
         for (var entry : results.entrySet()) {
             PingResult res = entry.getValue();
             long latency = res.latency;
-            
-            Component msg;
+
+            String clientId = entry.getKey();
+            String address = res.address;
+            String latStr;
+            String quality;
+            String color;
+
             if (latency >= 0) {
-                String quality = latency < 50 ? "Excellent" : (latency < 150 ? "Good" : "Poor");
-                String color = latency < 50 ? Theme.C_SUCCESS : (latency < 150 ? Theme.C_ACCENT : Theme.C_ERROR);
-                msg = Component.text()
-                    .append(Component.text(entry.getKey() + ": ", 
-                        net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-                    .append(Component.text(latency + "ms (" + quality + ")", 
-                        net.kyori.adventure.text.format.TextColor.fromHexString(color)))
-                    .build();
+                latStr = latency + "ms";
+                if (latency < 50) {
+                    quality = "Excellent";
+                    color = Theme.C_SUCCESS;
+                } else if (latency < 150) {
+                    quality = "Good";
+                    color = Theme.C_ACCENT;
+                } else {
+                    quality = "Poor";
+                    color = Theme.C_ERROR;
+                }
             } else {
-                msg = Component.text()
-                    .append(Component.text(entry.getKey() + ": ", 
-                        net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_MUTED)))
-                    .append(Component.text("FAILED", 
-                        net.kyori.adventure.text.format.TextColor.fromHexString(Theme.C_ERROR)))
-                    .build();
+                latStr = "FAILED";
+                quality = "N/A";
+                color = Theme.C_ERROR;
             }
-            ctx.source().sendMessage(msg);
+
+            Component header = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ")
+                    .append(MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + clientId + "</bold></gradient>"));
+            Component addrLine = MM.parse("<" + Theme.C_MUTED + ">  Address:</" + Theme.C_MUTED + "> <white>" + address + "</white>");
+            Component latencyLine = MM.parse("<" + Theme.C_MUTED + ">  Latency:</" + Theme.C_MUTED + "> <" + color + ">" + latStr + "</" + color + ">");
+            Component qualityLine = MM.parse("<" + Theme.C_MUTED + ">  Quality:</" + Theme.C_MUTED + "> <" + color + ">" + quality + "</" + color + ">");
+
+            lines.add(header);
+            lines.add(addrLine);
+            lines.add(latencyLine);
+            lines.add(qualityLine);
+            lines.add(Component.empty());
         }
+        if (!lines.isEmpty()) {
+            lines.remove(lines.size() - 1);
+        }
+
+        Component hint = MM.parse("<" + Theme.C_MUTED + ">Latency reflects round trip time</" + Theme.C_MUTED + ">");
+        int width = ChatLayout.titleWidth("Ping");
+        for (Component line : lines) {
+            width = Math.max(width, ChatLayout.visibleLength(line));
+        }
+        width = Math.max(width, ChatLayout.visibleLength(hint));
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+        ChatFrame frame = new ChatFrame("Ping")
+                .width(width)
+                .hint(hint);
+        frame.lines(lines);
+        frame.send(ctx.source());
+    }
+
+    private void renderChatMessage(RenderContext ctx, Component line) {
+        int width = Math.max(ChatLayout.titleWidth("Ping"), ChatLayout.visibleLength(line));
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+        ChatFrame frame = new ChatFrame("Ping").width(width);
+        frame.line(line);
+        frame.send(ctx.source());
     }
 
     private void renderConsoleResults(ConcurrentHashMap<String, PingResult> results) {

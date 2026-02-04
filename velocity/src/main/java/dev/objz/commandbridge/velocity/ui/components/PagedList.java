@@ -32,8 +32,17 @@ public class PagedList<T> implements UIComponent {
 
     @Override
     public Component renderChat(RenderContext ctx) {
+        List<Component> lines = renderChatLines(ctx);
+        Component result = Component.empty();
+        for (Component c : lines) {
+            result = result.append(c).append(Component.newline());
+        }
+        return result;
+    }
+
+    public List<Component> renderChatLines(RenderContext ctx) {
         if (items.isEmpty()) {
-            return MM.parse("<" + Theme.C_MUTED + ">No items to display.</" + Theme.C_MUTED + ">");
+            return List.of(MM.parse("<" + Theme.C_MUTED + ">No items to display</" + Theme.C_MUTED + ">"));
         }
 
         int totalPages = (int) Math.ceil((double) items.size() / perPage);
@@ -43,17 +52,14 @@ public class PagedList<T> implements UIComponent {
 
         var builder = MM.msg();
 
-        // Items
         for (int i = start; i < end; i++) {
             builder.line(chatRenderer.apply(items.get(i)));
         }
 
-        // < [Page X/Y] >
         if (totalPages > 1) {
             builder.space();
             Component nav = Component.empty();
 
-            // Previous Button
             if (actualPage > 1) {
                 nav = nav.append(MM
                         .parse("<" + Theme.C_ACCENT + "><bold>" + Theme.SYMBOL_ARROW_LEFT + "</bold></" + Theme.C_ACCENT
@@ -68,7 +74,6 @@ public class PagedList<T> implements UIComponent {
             nav = nav.append(MM.parse(
                     " <" + Theme.C_MUTED + ">Page " + actualPage + "/" + totalPages + "</" + Theme.C_MUTED + "> "));
 
-            // Next Button
             if (actualPage < totalPages) {
                 nav = nav.append(MM
                         .parse("<" + Theme.C_ACCENT + "><bold>" + Theme.SYMBOL_ARROW_RIGHT + "</bold></"
@@ -83,12 +88,7 @@ public class PagedList<T> implements UIComponent {
             builder.line(nav);
         }
 
-        // Combine
-        Component result = Component.empty();
-        for (Component c : builder.getLines()) {
-            result = result.append(c).append(Component.newline());
-        }
-        return result;
+        return builder.getLines();
     }
 
     @Override

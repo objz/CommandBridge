@@ -5,12 +5,15 @@ import dev.objz.commandbridge.scripting.DebugPrinter;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ScriptManager;
-import dev.objz.commandbridge.velocity.ui.CliOutput;
+import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
-import dev.objz.commandbridge.velocity.ui.components.PagedList;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.HoverEvent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ScriptsCommand extends AbstractCliCommand {
 
@@ -32,61 +35,93 @@ public class ScriptsCommand extends AbstractCliCommand {
 
     private void renderChatScripts(CommandSource sender, int page) {
         var scripts = scriptManager.loaded();
-        
-        // Header
-        Component header = MM.parse(
-            "\n<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" +
-            "━━━━ SCRIPTS ━━━━" +
-            "</bold></gradient>\n"
-        );
-        sender.sendMessage(header);
 
         if (scripts.isEmpty()) {
-            sender.sendMessage(MM.warn("No scripts loaded"));
+            Component warn = MM.warn("No scripts loaded");
+            int width = Math.max(ChatLayout.titleWidth("Scripts"), ChatLayout.visibleLength(warn));
+            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+            ChatFrame frame = new ChatFrame("Scripts").width(width);
+            frame.line(warn);
+            frame.send(sender);
             return;
         }
 
-        PagedList<Script> list = new PagedList<>(
-            scripts,
-            // Chat Renderer
-            (s) -> {
-                String statusColor = s.enabled() ? Theme.C_SUCCESS : Theme.C_ERROR;
-                String statusIcon = s.enabled() ? Theme.SYMBOL_CHECK : Theme.SYMBOL_CROSS;
-                
-                Component bullet = MM.parse(" <" + statusColor + "><bold>" + statusIcon + "</bold></" + statusColor + "> ");
-                Component name = MM.parse("<gradient:" + Theme.C_ACCENT + ":" + Theme.C_PRIMARY + "><bold>" + s.name() + "</bold></gradient>");
-                Component desc = s.description() != null 
-                    ? MM.parse(" <" + Theme.C_SEP + ">━</" + Theme.C_SEP + "> <" + Theme.C_MUTED + ">" + s.description() + "</" + Theme.C_MUTED + ">") 
-                    : Component.empty();
-                
-                return bullet
-                        .append(name)
-                        .append(desc)
-                        .hoverEvent(HoverEvent.showText(
-                                MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + s.name() + "</bold></gradient>\n\n" +
-                                         "<" + Theme.C_ACCENT + ">Version:</" + Theme.C_ACCENT + "> <white>" + s.version() + "</white>\n" +
-                                         "<" + Theme.C_ACCENT + ">Aliases:</" + Theme.C_ACCENT + "> <white>" + (s.aliases() != null && !s.aliases().isEmpty() ? String.join(", ", s.aliases()) : "none") + "</white>\n" +
-                                         "<" + Theme.C_ACCENT + ">Commands:</" + Theme.C_ACCENT + "> <white>" + (s.commands() != null ? s.commands().size() : "0") + "</white>\n" +
-                                         "<" + Theme.C_ACCENT + ">Status:</" + Theme.C_ACCENT + "> " + (s.enabled() ? "<" + Theme.C_SUCCESS + ">Enabled</" + Theme.C_SUCCESS + ">" : "<" + Theme.C_ERROR + ">Disabled</" + Theme.C_ERROR + ">"))
-                        ));
-            },
-            // Console Renderer
-            (s) -> {
-                String color = s.enabled() ? Theme.ANSI_SUCCESS : Theme.ANSI_ERROR;
-                String icon = s.enabled() ? "+" : "-";
-                String desc = s.description() != null ? s.description() : "";
-                return String.format("%s%s%s %-20s %s%s%s", 
-                    color, icon, Theme.ANSI_RESET,
-                    s.name(), 
-                    Theme.ANSI_MUTED, desc, Theme.ANSI_RESET);
-            },
-            page,
-            10,
-            "/cb scripts"
-        );
+        int perPage = 5;
+        int totalPages = (int) Math.ceil((double) scripts.size() / perPage);
+        int actualPage = Math.max(1, Math.min(page, totalPages));
+        int start = (actualPage - 1) * perPage;
+        int end = Math.min(start + perPage, scripts.size());
 
-        RenderContext ctx = new RenderContext(sender);
-        sender.sendMessage(list.renderChat(ctx));
+        List<Component> lines = new ArrayList<>();
+        for (int i = start; i < end; i++) {
+            Script s = scripts.get(i);
+            String statusColor = s.enabled() ? Theme.C_SUCCESS : Theme.C_ERROR;
+            String statusIcon = s.enabled() ? Theme.SYMBOL_CHECK : Theme.SYMBOL_CROSS;
+            String descText = s.description() != null ? s.description() : "no description";
+            String aliases = s.aliases() != null && !s.aliases().isEmpty() ? String.join(", ", s.aliases()) : "none";
+            int commandCount = s.commands() != null ? s.commands().size() : 0;
+
+            Component header = MM.parse("<" + statusColor + "><bold>" + statusIcon + "</bold></" + statusColor + "> ")
+                    .append(MM.parse("<gradient:" + Theme.C_ACCENT + ":" + Theme.C_PRIMARY + "><bold>" + s.name() + "</bold></gradient>"));
+            Component desc = MM.parse("<" + Theme.C_MUTED + ">  " + descText + "</" + Theme.C_MUTED + ">");
+            Component version = MM.parse("<" + Theme.C_MUTED + ">  Version:</" + Theme.C_MUTED + "> <white>" + s.version() + "</white>");
+            Component aliasLine = MM.parse("<" + Theme.C_MUTED + ">  Aliases:</" + Theme.C_MUTED + "> <white>" + aliases + "</white>");
+            Component commandsLine = MM.parse("<" + Theme.C_MUTED + ">  Commands:</" + Theme.C_MUTED + "> <white>" + commandCount + "</white>");
+            Component statusLine = MM.parse("<" + Theme.C_MUTED + ">  Status:</" + Theme.C_MUTED + "> <" + statusColor + ">" + (s.enabled() ? "Enabled" : "Disabled") + "</" + statusColor + ">");
+
+            lines.add(header);
+            lines.add(desc);
+            lines.add(version);
+            lines.add(aliasLine);
+            lines.add(commandsLine);
+            lines.add(statusLine);
+            if (i < end - 1) {
+                lines.add(Component.empty());
+            }
+        }
+
+        int loaded = scriptManager.loaded().size();
+        int enabled = scriptManager.enabled().size();
+        int disabled = scriptManager.disabled().size();
+        long errors = scriptManager.errors();
+
+        lines.add(Component.empty());
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Loaded:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + loaded + "</" + Theme.C_ACCENT + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Enabled:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + enabled + "</" + Theme.C_SUCCESS + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Disabled:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + disabled + "</" + Theme.C_WARN + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">" + errors + "</" + Theme.C_ERROR + ">"));
+
+        if (totalPages > 1) {
+            Component nav = Component.empty();
+            if (actualPage > 1) {
+                nav = nav.append(MM.parse("<" + Theme.C_ACCENT + "><bold>" + Theme.SYMBOL_ARROW_LEFT + "</bold></" + Theme.C_ACCENT + ">")
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/cb scripts " + (actualPage - 1)))
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(MM.parse("<" + Theme.C_MUTED + ">Previous page</" + Theme.C_MUTED + ">"))));
+            } else {
+                nav = nav.append(MM.parse("<" + Theme.C_SEP + ">" + Theme.SYMBOL_ARROW_LEFT + "</" + Theme.C_SEP + ">"));
+            }
+            nav = nav.append(MM.parse(" <" + Theme.C_MUTED + ">Page " + actualPage + "/" + totalPages + "</" + Theme.C_MUTED + "> "));
+            if (actualPage < totalPages) {
+                nav = nav.append(MM.parse("<" + Theme.C_ACCENT + "><bold>" + Theme.SYMBOL_ARROW_RIGHT + "</bold></" + Theme.C_ACCENT + ">")
+                        .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/cb scripts " + (actualPage + 1)))
+                        .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(MM.parse("<" + Theme.C_MUTED + ">Next page</" + Theme.C_MUTED + ">"))));
+            } else {
+                nav = nav.append(MM.parse("<" + Theme.C_SEP + ">" + Theme.SYMBOL_ARROW_RIGHT + "</" + Theme.C_SEP + ">"));
+            }
+            lines.add(Component.empty());
+            lines.add(nav);
+        }
+
+        int width = ChatLayout.titleWidth("Scripts");
+        for (Component line : lines) {
+            width = Math.max(width, ChatLayout.visibleLength(line));
+        }
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+        ChatFrame frame = new ChatFrame("Scripts")
+                .width(width);
+        frame.lines(lines);
+        frame.send(sender);
     }
 
     private void renderConsoleScripts() {
