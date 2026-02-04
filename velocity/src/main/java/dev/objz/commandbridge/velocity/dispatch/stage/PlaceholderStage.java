@@ -25,7 +25,6 @@ import com.velocitypowered.api.proxy.Player;
 public final class PlaceholderStage implements Pipeline {
 
     private static final Pattern PATTERN = Pattern.compile("\\$\\{([^}]+)}");
-    private final PlaceholderAPI papi = PlaceholderAPI.createInstance();
 
     @Override
     public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
@@ -84,6 +83,7 @@ public final class PlaceholderStage implements Pipeline {
         CompletionStage<String> commandStage;
 
         if (papiUuid.isPresent()) {
+            PlaceholderAPI papi = PlaceholderAPI.createInstance();
             commandStage = papi.formatPlaceholders(resolvedCommand, papiUuid.get())
                     .handle((papiResolved, throwable) -> {
                         if (throwable != null) {
