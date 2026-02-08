@@ -31,7 +31,7 @@ defaults:
 args:
   - name: player
     required: true
-    type: PLAYERS
+    type: STRING
 
   - name: message
     required: true

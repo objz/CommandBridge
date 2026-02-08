@@ -190,9 +190,6 @@ public final class Main {
 			}
 		}
 
-		if (registrations != null) {
-			registrations.reset();
-		}
 		if (ws != null) {
 			ws.stop();
 		}
