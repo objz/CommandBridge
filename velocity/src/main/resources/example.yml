@@ -1,0 +1,41 @@
+# CommandBridge - Example Script
+# For a full reference of all options, visit https://cb.objz.dev/docs
+
+version: 2
+
+name: example
+description: An example command script - edit or replace this with your own
+enabled: false # Set to true to activate this script
+aliases: [ex]
+
+permissions:
+  enabled: true # Requires commandbridge.command.example to use
+  silent: false
+
+register:
+  - id: "client-1"
+    location: VELOCITY
+
+defaults:
+  run-as: CONSOLE
+  execute:
+    - id: "client-1"
+      location: BACKEND
+  server:
+    target-required: false
+    schedule-online: false
+    timeout: 5s
+  delay: 0s
+  cooldown: 0s
+
+args:
+  - name: player
+    required: true
+    type: PLAYERS
+
+  - name: message
+    required: true
+    type: TEXT
+
+commands:
+  - command: "msg ${player} ${message}"

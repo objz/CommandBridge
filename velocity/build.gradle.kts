@@ -28,6 +28,8 @@ dependencies {
     compileOnly("org.spongepowered:configurate-core:4.2.0")
     compileOnly("dev.jorel:commandapi-velocity-core:11.1.0")
 
+    compileOnly("org.bstats:bstats-velocity:3.1.0")
+
 
     compileOnly("net.william278:papiproxybridge:1.8.4")
 

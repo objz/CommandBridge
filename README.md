@@ -92,7 +92,7 @@ git checkout v3
   - [x] Placeholder and PlaceholderAPI support
   - [x] Console, player, and operator execution modes
   - [x] Offline command queue
-  - [ ] Database backend for task queue (currently JSON file)
+  - [ ] Database backend for task queue (currently JSON file) | maybe?
 
 - [x] **Admin Commands (`/cb`)**
   - [x] `/cb help`
@@ -102,10 +102,11 @@ git checkout v3
   - [x] `/cb list`
   - [x] `/cb ping`
   - [x] `/cb debug`
+    - [ ] `/cb dump`
   - [x] Dual-mode output (chat and console)
   - [ ] Automatic update checker
-  - [ ] `/cb dump`
   - [ ] Dump export to file or paste service
+  - [ ] bstats
 
 - [ ] **Web Interface**
   - [ ] ...

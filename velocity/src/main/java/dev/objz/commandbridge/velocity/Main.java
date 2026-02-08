@@ -2,11 +2,13 @@ package dev.objz.commandbridge.velocity;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.VelocityConfig;
@@ -21,6 +23,7 @@ import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatureSet;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
+import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
@@ -33,10 +36,19 @@ import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.ui.Theme;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 
 import org.slf4j.Logger;
+import org.bstats.velocity.Metrics;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
 		"objz" }, dependencies = { @Dependency(id = "commandapi"),
@@ -48,6 +60,7 @@ public final class Main {
 	private final Path dataDir;
 	private final Object pluginInstance;
 	private final Logger velocityLogger;
+    private final Metrics.Factory metrics;
 
 	private ConfigManager configManager;
 	private WsServer ws;
@@ -63,14 +76,15 @@ public final class Main {
 	private Object backendBootstrap;
 	private ArgumentBridge argumentBridge;
 	private PlatformFeatures platformFeatures;
-
+	private boolean legacyDetected;
 
     public static boolean isPapiEnabled = false;
 
 	@Inject
-	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir) {
+	public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir, Metrics.Factory metrics) {
 		this.proxy = proxy;
 		this.dataDir = dataDir;
+        this.metrics = metrics;
 		this.pluginInstance = this;
 		this.velocityLogger = velocityLogger;
 		Log.install(velocityLogger);
@@ -78,7 +92,12 @@ public final class Main {
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent e) {
+        int pluginID = 22008;
+        metrics.make(this, pluginID);
 		Log.info("Initializing CommandBridge");
+
+		copyExampleScript();
+		checkLegacyInstallation();
 
 		configManager = new ConfigManager(dataDir);
 		boolean ok = configManager.load(VelocityConfig.class);
@@ -213,5 +232,60 @@ public final class Main {
 		} catch (Exception ex) {
 			Log.error(ex, "Failed to start client mode");
 		}
+	}
+
+	private void copyExampleScript() {
+		Path scriptsDir = dataDir.resolve("scripts");
+		Path exampleFile = scriptsDir.resolve("example.yml");
+		if (Files.exists(exampleFile)) return;
+
+		try {
+			Files.createDirectories(scriptsDir);
+			try (InputStream in = getClass().getResourceAsStream("/example.yml")) {
+				if (in != null) {
+					Files.copy(in, exampleFile);
+					Log.debug("Created example script at scripts/example.yml");
+				}
+			}
+		} catch (IOException ex) {
+			Log.error("Failed to copy example script: {}", ex.getMessage());
+		}
+	}
+
+	private void checkLegacyInstallation() {
+		Path oldFolder = dataDir.getParent().resolve("CommandBridge");
+		if (!Files.isDirectory(oldFolder)) return;
+
+		legacyDetected = true;
+		Log.warn("Detected old CommandBridge installation at '{}'. Please view the migration guide: https://cb.objz.dev/docs/migration/", oldFolder);
+	}
+
+	@Subscribe
+	public void onPostLogin(PostLoginEvent event) {
+		if (!legacyDetected) return;
+
+		Player player = event.getPlayer();
+		if (!player.hasPermission("commandbridge.admin")) return;
+
+		proxy.getScheduler().buildTask(pluginInstance, () -> {
+			if (!player.isActive()) return;
+
+			String migrationUrl = "https://cb.objz.dev/docs/migration/";
+
+			player.sendMessage(Component.empty());
+			player.sendMessage(MM.parse(
+					"<" + Theme.C_WARN + "><bold>\u26A0 CommandBridge</bold></" + Theme.C_WARN + "> "
+					+ "<" + Theme.C_ERROR + ">Old installation detected</" + Theme.C_ERROR + ">"));
+			player.sendMessage(MM.parse(
+					"<" + Theme.C_MUTED + ">A legacy </><white>CommandBridge</white>"
+					+ "<" + Theme.C_MUTED + "> folder was found in your plugins directory.</" + Theme.C_MUTED + ">"));
+			player.sendMessage(MM.parse(
+					"<" + Theme.C_MUTED + ">View the migration guide: </" + Theme.C_MUTED + ">"
+					+ "<" + Theme.C_ACCENT + "><underlined>" + migrationUrl + "</underlined></" + Theme.C_ACCENT + ">")
+					.clickEvent(ClickEvent.openUrl(migrationUrl))
+					.hoverEvent(HoverEvent.showText(MM.parse(
+							"<" + Theme.C_MUTED + ">Click to open migration guide</" + Theme.C_MUTED + ">"))));
+			player.sendMessage(Component.empty());
+		}).delay(3, TimeUnit.SECONDS).schedule();
 	}
 }

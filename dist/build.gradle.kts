@@ -29,6 +29,7 @@ dependencies {
     implementation("org.snakeyaml:snakeyaml-engine:2.10")
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("net.kyori:adventure-text-minimessage:4.17.0")
+    implementation("org.bstats:bstats-velocity:3.1.0")
 }
 
 
@@ -49,6 +50,7 @@ tasks {
         relocate("org.jboss.threads", "dev.objz.libs.jboss.threads")
         relocate("org.spongepowered.configurate", "dev.objz.libs.configurate")
         relocate("org.yaml.snakeyaml", "dev.objz.libs.snakeyaml")
+        relocate("org.bstats", "dev.objz.libs.bstats")
         mergeServiceFiles()
 
         from(project(":velocity").layout.projectDirectory.dir("src/main/resources")) { include("velocity-plugin.json") }
