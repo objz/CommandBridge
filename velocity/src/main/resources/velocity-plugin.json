@@ -1,0 +1,14 @@
+{
+  "id": "commandbridge",
+  "name": "CommandBridge",
+  "version": "@version@",
+  "description": "I did it!",
+  "url": "https://cb.objz.dev",
+  "authors": ["objz"],
+  "dependencies": [
+    {"id": "commandapi", "optional": false},
+    {"id": "papiproxybridge", "optional": true},
+    {"id": "packetevents", "optional": true}
+  ],
+  "main": "dev.objz.commandbridge.velocity.Main"
+}

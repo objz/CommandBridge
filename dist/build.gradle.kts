@@ -1,5 +1,6 @@
 plugins {
     id("com.gradleup.shadow") version "9.2.2"
+    id("com.modrinth.minotaur") version "2.+"
     java
 }
 
@@ -32,15 +33,61 @@ dependencies {
     implementation("org.bstats:bstats-velocity:3.1.0")
 }
 
+val pluginVersion: Provider<String> = providers.gradleProperty("pluginVersion")
+
+modrinth {
+    token.set(System.getenv("MODRINTH_TOKEN"))
+    projectId.set("commandbridge")
+    versionNumber.set(pluginVersion)
+    versionName.set("CommandBridge $pluginVersion")
+    changelog.set(rootProject.file("CHANGELOG.md").readText())
+    versionType.set("beta")
+    uploadFile.set(tasks.shadowJar)
+    gameVersions.addAll("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11")
+    loaders.addAll("folia", "paper", "bukkit", "spigot", "purpur", "velocity")
+    dependencies {
+        required.project("commandapi")
+        optional.project("packetevents")
+        optional.project("papiproxybridge")
+        optional.project("placeholderapi")
+    }
+}
+
 
 tasks {
     jar { enabled = false }
 
+    val processPluginResources by registering(Copy::class) {
+        val version = pluginVersion
+        from(project(":backends").layout.projectDirectory.dir("src/main/resources")) {
+            include("plugin.yml", "paper-plugin.yml")
+        }
+        from(project(":velocity").layout.projectDirectory.dir("src/main/resources")) {
+            include("velocity-plugin.json")
+        }
+        into(layout.buildDirectory.dir("plugin-resources"))
+        filter { it.replace("@version@", version.get()) }
+    }
+
+    val generateVersionFile by registering {
+        val version = pluginVersion
+        val outputDir = layout.buildDirectory.dir("plugin-resources")
+        val versionFile = outputDir.map { it.file("version") }
+        outputs.file(versionFile)
+        doLast {
+            outputDir.get().asFile.mkdirs()
+            versionFile.get().asFile.writeText(version.get())
+        }
+    }
+
     shadowJar {
-    	if (project.hasProperty("buildVersion")) {
-        	archiveVersion.set(project.property("buildVersion") as String)
-    	} 
-    
+        dependsOn(processPluginResources, generateVersionFile)
+
+        archiveVersion.set(
+            if (project.hasProperty("buildVersion")) project.property("buildVersion") as String
+            else pluginVersion.get()
+        )
+
         archiveBaseName.set("CommandBridge")
         archiveClassifier.set("all")
 
@@ -53,9 +100,9 @@ tasks {
         relocate("org.bstats", "dev.objz.libs.bstats")
         mergeServiceFiles()
 
-        from(project(":velocity").layout.projectDirectory.dir("src/main/resources")) { include("velocity-plugin.json") }
-        from(project(":backends").layout.projectDirectory.dir("src/main/resources")) { include("plugin.yml", "paper-plugin.yml") }
-
+        from(layout.buildDirectory.dir("plugin-resources")) {
+            include("velocity-plugin.json", "plugin.yml", "paper-plugin.yml", "version.txt")
+        }
     }
 
     val copyToPaperPlugins by registering(Copy::class) {

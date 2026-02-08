@@ -18,3 +18,9 @@ dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
     compileOnly("dev.jorel:commandapi-spigot-core:11.1.0")
 }
+
+// plugin.yml and paper-plugin.yml contain @version@ placeholders.
+// The :dist module handles replacing them and packaging into the shadow JAR.
+tasks.jar {
+    exclude("plugin.yml", "paper-plugin.yml")
+}

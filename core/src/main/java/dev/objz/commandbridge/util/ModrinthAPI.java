@@ -14,7 +14,7 @@ import dev.objz.commandbridge.logging.Log;
 public class ModrinthAPI {
 
 	private static final String MODRINTH_URL = "https://api.modrinth.com/v2/";
-	private static final String USER_AGENT = "CommandBridge/3.0.0 (https://github.com/objz/commandbridge)";
+	private static final String USER_AGENT = "CommandBridge/" + BuildMeta.VERSION + " (https://github.com/objz/commandbridge)";
 	private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
 	public static String getLatestVersion(String projectId) {

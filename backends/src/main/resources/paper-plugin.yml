@@ -1,6 +1,6 @@
 name: CommandBridge
 prefix: commandbridge
-version: 3.0.0
+version: '@version@'
 main: dev.objz.commandbridge.backends.platform.bootstrap.BukkitMain
 author: objz
 api-version: '1.20'

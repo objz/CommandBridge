@@ -50,7 +50,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
-@Plugin(id = "commandbridge", name = "CommandBridge", version = "3.0.0", url = "https://cb.objz.dev", description = "I did it!", authors = {
+@Plugin(id = "commandbridge", name = "CommandBridge", version = "unknown", url = "https://cb.objz.dev", description = "I did it!", authors = {
 		"objz" }, dependencies = { @Dependency(id = "commandapi"),
 			@Dependency(id = "papiproxybridge", optional = true),
 			@Dependency(id = "packetevents", optional = true) })
