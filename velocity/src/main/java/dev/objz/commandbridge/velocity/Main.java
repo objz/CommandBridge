@@ -23,7 +23,9 @@ import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatureSet;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
+import dev.objz.commandbridge.util.BuildMeta;
 import dev.objz.commandbridge.util.MM;
+import dev.objz.commandbridge.util.ModrinthAPI;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
@@ -77,6 +79,7 @@ public final class Main {
 	private ArgumentBridge argumentBridge;
 	private PlatformFeatures platformFeatures;
 	private boolean legacyDetected;
+	private volatile String latestVersion;
 
     public static boolean isPapiEnabled = false;
 
@@ -176,6 +179,8 @@ public final class Main {
 		Log.debug("  Host: {}", cfg.bindHost());
 		Log.debug("  Port: {}", cfg.bindPort());
 		Log.debug("  Server ID: {}", cfg.serverId());
+
+		checkForUpdate();
 	}
 
 	@Subscribe
@@ -257,32 +262,69 @@ public final class Main {
 		Log.warn("Detected old CommandBridge installation at '{}'. Please view the migration guide: https://cb.objz.dev/docs/migration/", oldFolder);
 	}
 
+	private void checkForUpdate() {
+		proxy.getScheduler().buildTask(pluginInstance, () -> {
+			String latest = ModrinthAPI.getLatestVersion("commandbridge");
+			if (latest == null) return;
+
+			latestVersion = latest;
+			if (!latest.equals(BuildMeta.VERSION)) {
+				Log.warn("A new version of CommandBridge is available: {} (current: {})", latest, BuildMeta.VERSION);
+				Log.warn("Download it at: https://modrinth.com/plugin/commandbridge/version");
+			}
+		}).schedule();
+	}
+
 	@Subscribe
 	public void onPostLogin(PostLoginEvent event) {
-		if (!legacyDetected) return;
-
 		Player player = event.getPlayer();
 		if (!player.hasPermission("commandbridge.admin")) return;
+
+		boolean hasUpdate = latestVersion != null && !latestVersion.equals(BuildMeta.VERSION);
+
+		if (!legacyDetected && !hasUpdate) return;
 
 		proxy.getScheduler().buildTask(pluginInstance, () -> {
 			if (!player.isActive()) return;
 
-			String migrationUrl = "https://cb.objz.dev/docs/migration/";
+			if (legacyDetected) {
+				String migrationUrl = "https://cb.objz.dev/docs/migration/";
 
-			player.sendMessage(Component.empty());
-			player.sendMessage(MM.parse(
-					"<" + Theme.C_WARN + "><bold>\u26A0 CommandBridge</bold></" + Theme.C_WARN + "> "
-					+ "<" + Theme.C_ERROR + ">Old installation detected</" + Theme.C_ERROR + ">"));
-			player.sendMessage(MM.parse(
-					"<" + Theme.C_MUTED + ">A legacy </><white>CommandBridge</white>"
-					+ "<" + Theme.C_MUTED + "> folder was found in your plugins directory.</" + Theme.C_MUTED + ">"));
-			player.sendMessage(MM.parse(
-					"<" + Theme.C_MUTED + ">View the migration guide: </" + Theme.C_MUTED + ">"
-					+ "<" + Theme.C_ACCENT + "><underlined>" + migrationUrl + "</underlined></" + Theme.C_ACCENT + ">")
-					.clickEvent(ClickEvent.openUrl(migrationUrl))
-					.hoverEvent(HoverEvent.showText(MM.parse(
-							"<" + Theme.C_MUTED + ">Click to open migration guide</" + Theme.C_MUTED + ">"))));
-			player.sendMessage(Component.empty());
+				player.sendMessage(Component.empty());
+				player.sendMessage(MM.parse(
+						"<" + Theme.C_WARN + "><bold>\u26A0 CommandBridge</bold></" + Theme.C_WARN + "> "
+						+ "<" + Theme.C_ERROR + ">Old installation detected</" + Theme.C_ERROR + ">"));
+				player.sendMessage(MM.parse(
+						"<" + Theme.C_MUTED + ">A legacy </><white>CommandBridge</white>"
+						+ "<" + Theme.C_MUTED + "> folder was found in your plugins directory.</" + Theme.C_MUTED + ">"));
+				player.sendMessage(MM.parse(
+						"<" + Theme.C_MUTED + ">View the migration guide: </" + Theme.C_MUTED + ">"
+						+ "<" + Theme.C_ACCENT + "><underlined>" + migrationUrl + "</underlined></" + Theme.C_ACCENT + ">")
+						.clickEvent(ClickEvent.openUrl(migrationUrl))
+						.hoverEvent(HoverEvent.showText(MM.parse(
+								"<" + Theme.C_MUTED + ">Click to open migration guide</" + Theme.C_MUTED + ">"))));
+				player.sendMessage(Component.empty());
+			}
+
+			if (hasUpdate) {
+				String updateUrl = "https://modrinth.com/plugin/commandbridge/version";
+
+				player.sendMessage(Component.empty());
+				player.sendMessage(MM.parse(
+						"<" + Theme.C_WARN + "><bold>\u26A0 CommandBridge</bold></" + Theme.C_WARN + "> "
+						+ "<" + Theme.C_ACCENT + ">Update available</" + Theme.C_ACCENT + ">"));
+				player.sendMessage(MM.parse(
+						"<" + Theme.C_MUTED + ">A new version is available: </>"
+						+ "<white>" + latestVersion + "</white>"
+						+ "<" + Theme.C_MUTED + "> (current: " + BuildMeta.VERSION + ")</" + Theme.C_MUTED + ">"));
+				player.sendMessage(MM.parse(
+						"<" + Theme.C_MUTED + ">Download it here: </" + Theme.C_MUTED + ">"
+						+ "<" + Theme.C_ACCENT + "><underlined>" + updateUrl + "</underlined></" + Theme.C_ACCENT + ">")
+						.clickEvent(ClickEvent.openUrl(updateUrl))
+						.hoverEvent(HoverEvent.showText(MM.parse(
+								"<" + Theme.C_MUTED + ">Click to open Modrinth</" + Theme.C_MUTED + ">"))));
+				player.sendMessage(Component.empty());
+			}
 		}).delay(3, TimeUnit.SECONDS).schedule();
 	}
 }
