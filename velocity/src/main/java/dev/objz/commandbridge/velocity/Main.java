@@ -268,9 +268,10 @@ public final class Main {
 			if (latest == null) return;
 
 			latestVersion = latest;
-			if (!latest.equals(BuildMeta.VERSION)) {
-				Log.warn("A new version of CommandBridge is available: {} (current: {})", latest, BuildMeta.VERSION);
-				Log.warn("Download it at: https://modrinth.com/plugin/commandbridge/version");
+			if (compareVersions(latest, BuildMeta.VERSION) > 0) {
+				String updateUrl = "https://modrinth.com/plugin/commandbridge/version/" + latest;
+				Log.warn("A new version of CommandBridge is available: CommandBridge {} (current: {})", latest, BuildMeta.VERSION);
+				Log.warn("Download it at: {}", updateUrl);
 			}
 		}).schedule();
 	}
@@ -280,7 +281,7 @@ public final class Main {
 		Player player = event.getPlayer();
 		if (!player.hasPermission("commandbridge.admin")) return;
 
-		boolean hasUpdate = latestVersion != null && !latestVersion.equals(BuildMeta.VERSION);
+		boolean hasUpdate = latestVersion != null && compareVersions(latestVersion, BuildMeta.VERSION) > 0;
 
 		if (!legacyDetected && !hasUpdate) return;
 
@@ -307,7 +308,7 @@ public final class Main {
 			}
 
 			if (hasUpdate) {
-				String updateUrl = "https://modrinth.com/plugin/commandbridge/version";
+				String updateUrl = "https://modrinth.com/plugin/commandbridge/version/" + latestVersion;
 
 				player.sendMessage(Component.empty());
 				player.sendMessage(MM.parse(
@@ -315,7 +316,7 @@ public final class Main {
 						+ "<" + Theme.C_ACCENT + ">Update available</" + Theme.C_ACCENT + ">"));
 				player.sendMessage(MM.parse(
 						"<" + Theme.C_MUTED + ">A new version is available: </>"
-						+ "<white>" + latestVersion + "</white>"
+						+ "<white>CommandBridge " + latestVersion + "</white>"
 						+ "<" + Theme.C_MUTED + "> (current: " + BuildMeta.VERSION + ")</" + Theme.C_MUTED + ">"));
 				player.sendMessage(MM.parse(
 						"<" + Theme.C_MUTED + ">Download it here: </" + Theme.C_MUTED + ">"
@@ -326,5 +327,34 @@ public final class Main {
 				player.sendMessage(Component.empty());
 			}
 		}).delay(3, TimeUnit.SECONDS).schedule();
+	}
+
+	private static int compareVersions(String left, String right) {
+		int[] leftParts = parseVersion(left);
+		int[] rightParts = parseVersion(right);
+		int max = Math.max(leftParts.length, rightParts.length);
+		for (int i = 0; i < max; i++) {
+			int leftValue = i < leftParts.length ? leftParts[i] : 0;
+			int rightValue = i < rightParts.length ? rightParts[i] : 0;
+			if (leftValue != rightValue) {
+				return Integer.compare(leftValue, rightValue);
+			}
+		}
+		return 0;
+	}
+
+	private static int[] parseVersion(String version) {
+		String cleaned = version.replaceAll("[^0-9.]", "");
+		if (cleaned.isBlank()) return new int[0];
+		String[] parts = cleaned.split("\\.");
+		int[] numbers = new int[parts.length];
+		for (int i = 0; i < parts.length; i++) {
+			try {
+				numbers[i] = Integer.parseInt(parts[i]);
+			} catch (NumberFormatException ex) {
+				numbers[i] = 0;
+			}
+		}
+		return numbers;
 	}
 }
