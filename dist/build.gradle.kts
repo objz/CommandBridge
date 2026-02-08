@@ -39,7 +39,7 @@ modrinth {
     token.set(System.getenv("MODRINTH_TOKEN"))
     projectId.set("commandbridge")
     versionNumber.set(pluginVersion)
-    versionName.set("CommandBridge $pluginVersion")
+    versionName.set(pluginVersion.map { "CommandBridge $it" })
     changelog.set(rootProject.file("CHANGELOG.md").readText())
     versionType.set("beta")
     uploadFile.set(tasks.shadowJar)
@@ -101,7 +101,7 @@ tasks {
         mergeServiceFiles()
 
         from(layout.buildDirectory.dir("plugin-resources")) {
-            include("velocity-plugin.json", "plugin.yml", "paper-plugin.yml", "version.txt")
+            include("velocity-plugin.json", "plugin.yml", "paper-plugin.yml", "version")
         }
     }
 
