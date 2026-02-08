@@ -57,19 +57,69 @@ git checkout v3
 
 ### Current Status: Beta (v3.0)
 
-- [x] **Universal Backend Support:** Works on Bukkit, Paper, and Folia
-- [x] **Secure Communication:** TLS 1.3, mutual auth, and auto secrets
-- [x] **Declarative Scripting:** V2 YAML schema with strict validation
-- [x] **Cross-Server Pipeline:** Local and remote command dispatching
-- [x] **Resilient Connectivity:** Auto-reconnection and failsafe WsClient
-- [x] **Persistent Queues:** Database storage for offline commands
-- [x] **Multi-Proxy Support:** Proxy chaining support
-- [x] **PlaceholderAPI Support:** Resolve PAPI on backends and velocity using papiproxybridge
-- [x] **Custom Command Types:** String with infinite args, Time Argument
-- [ ] **Diagnostics Dump:** Debug reports via `/cb dump`
-- [ ] **Web Interface:** Dashboard for monitoring clients and logs
-- [ ] **Admin GUI:** In-game inventory menu
-- [ ] **Developer API:** API for custom hooks and packets
+- [x] **Backend Platform Support**
+  - [x] Bukkit support
+  - [x] Paper support
+  - [x] Folia support
+  - [x] Velocity(as client) support
+  - [x] Automatic platform detection
+
+- [x] **WebSocket Communication**
+  - [x] WebSocket server on Velocity
+  - [x] WebSocket client on backends
+  - [x] Session and client management
+  - [x] Rate limiting
+  - [x] Automatic reconnection on disconnect(configurable)
+
+- [x] **Security**
+  - [x] Mutual authentication (HMAC-SHA256)
+  - [x] TLS SPKI key pinning
+  - [x] TLS 1.3 encryption
+  - [x] Multiple TLS modes (PLAIN, TOFU, STRICT)
+
+- [x] **YAML Scripting**
+  - [x] YAML command definitions
+  - [x] Strict validation
+  - [x] Aliases, permissions, and cooldowns
+  - [x] Argument types (strings, numbers, players, locations, items, etc.)
+  - [x] Custom argument types via PacketEvents
+  - [ ] Duplicate script name detection
+  - [ ] More custom argument types
+
+- [x] **Cross-Server Command Execution**
+  - [x] Remote and local command execution
+  - [x] Automatic command registration sync to backends
+  - [x] Placeholder and PlaceholderAPI support
+  - [x] Console, player, and operator execution modes
+  - [x] Offline command queue
+  - [ ] Database backend for task queue (currently JSON file)
+
+- [x] **Admin Commands (`/cb`)**
+  - [x] `/cb help`
+  - [x] `/cb info`
+  - [x] `/cb scripts`
+  - [x] `/cb reload`
+  - [x] `/cb list`
+  - [x] `/cb ping`
+  - [x] `/cb debug`
+  - [x] Dual-mode output (chat and console)
+  - [ ] Automatic update checker
+  - [ ] `/cb dump`
+  - [ ] Dump export to file or paste service
+
+- [ ] **Web Interface**
+  - [ ] ...
+
+- [ ] **Admin GUI**
+  - [ ] ...
+
+- [ ] **Developer API**
+  - [ ] Public API module
+  - [ ] Custom pipeline stages
+  - [ ] Command lifecycle event hooks
+  - [ ] Custom argument type registration
+  - [ ] Custom message type registration
+  - [ ] Documentation and examples
 
 See the [open issues](https://github.com/objz/CommandBridge/issues) for features and bugs.
 
