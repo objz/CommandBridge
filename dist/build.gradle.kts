@@ -26,7 +26,7 @@ dependencies {
     implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation("org.spongepowered:configurate-core:4.2.0")
     implementation("org.yaml:snakeyaml:2.5")
-    implementation("org.snakeyaml:snakeyaml-engine:2.10")
+    implementation("org.snakeyaml:snakeyaml-engine:3.0.1")
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("net.kyori:adventure-text-minimessage:4.17.0")
     implementation("org.bstats:bstats-velocity:3.1.0")
