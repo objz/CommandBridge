@@ -106,7 +106,11 @@ public final class WsClient implements AutoCloseable {
 
     public synchronized void reconnect() throws Exception {
         Log.warn("Manual reconnection initiated");
-        close();
+        reconnectHandler.shutdown();
+        messageRouter.clearTap();
+        connectionHandler.forceClose();
+        stateRef.set(ConnectionState.DISCONNECTED);
+        resources.close();
         start();
     }
 
