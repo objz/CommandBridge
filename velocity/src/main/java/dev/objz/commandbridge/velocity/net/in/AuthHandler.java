@@ -11,7 +11,7 @@ import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
-import dev.objz.commandbridge.velocity.net.WsServer;
+import dev.objz.commandbridge.velocity.net.EndpointServer;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
@@ -23,14 +23,14 @@ public final class AuthHandler extends InboundHandler {
 
     private final AuthService auth;
     private final SessionHub sessions;
-    private final WsServer ws;
+    private final EndpointServer endpointServer;
 
     private volatile Consumer<ClientSession> onAuthed;
 
-    public AuthHandler(AuthService auth, SessionHub sessions, WsServer ws) {
+    public AuthHandler(AuthService auth, SessionHub sessions, EndpointServer endpointServer) {
         this.auth = Objects.requireNonNull(auth);
         this.sessions = Objects.requireNonNull(sessions);
-        this.ws = Objects.requireNonNull(ws);
+        this.endpointServer = Objects.requireNonNull(endpointServer);
     }
 
     public void register(InNode router) {
@@ -44,7 +44,7 @@ public final class AuthHandler extends InboundHandler {
     @Override
     public void accept(Endpoint endpoint, Envelope env) {
         if (env.type() != MessageType.AUTH_REQUEST || env.payload() == null) {
-            ws.close(endpoint);
+            endpointServer.close(endpoint);
             return;
         }
 
@@ -59,7 +59,7 @@ public final class AuthHandler extends InboundHandler {
                         Log.warn("Failed to send auth response: {}", ex.toString());
                         return null;
                     });
-            ws.close(endpoint);
+            endpointServer.close(endpoint);
             return;
         }
 
@@ -70,7 +70,7 @@ public final class AuthHandler extends InboundHandler {
                         Log.warn("Failed to send auth response: {}", ex.toString());
                         return null;
                     });
-            ws.close(endpoint);
+            endpointServer.close(endpoint);
             Log.error("Authentication failed (malformed payload) from '{}'", endpoint.describe());
             return;
         }
@@ -82,7 +82,7 @@ public final class AuthHandler extends InboundHandler {
                         Log.warn("Failed to send auth response: {}", ex.toString());
                         return null;
                     });
-            ws.close(endpoint);
+            endpointServer.close(endpoint);
             Log.error("Authentication failed for '{}' from '{}'", env.from(), endpoint.describe());
             return;
         }
@@ -92,7 +92,7 @@ public final class AuthHandler extends InboundHandler {
 
         sessions.get(env.from()).ifPresent(existing -> {
             if (existing.endpoint() != endpoint) {
-                ws.close(existing.endpoint());
+                endpointServer.close(existing.endpoint());
             }
         });
 

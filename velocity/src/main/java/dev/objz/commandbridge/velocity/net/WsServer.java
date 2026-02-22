@@ -29,7 +29,7 @@ import org.xnio.IoUtils;
 import java.io.IOException;
 import java.net.BindException;
 
-public final class WsServer {
+public final class WsServer implements EndpointServer {
 
     private final String host;
     private final int port;
@@ -62,6 +62,7 @@ public final class WsServer {
         return new SendOperation(endpoint, env, responses);
     }
 
+    @Override
     public void start() {
         WebSocketConnectionCallback cb = (WebSocketHttpExchange ex, WebSocketChannel ch) -> {
             final WsEndpoint endpoint = new WsEndpoint(ch);
@@ -141,6 +142,7 @@ public final class WsServer {
         }
     }
 
+    @Override
     public void stop() {
         try {
             if (server != null) {
@@ -155,10 +157,12 @@ public final class WsServer {
         Log.info("WebSocket server stopped");
     }
 
+    @Override
     public SendOperation send(Endpoint endpoint, Envelope request) {
         return new SendOperation(endpoint, request, responses);
     }
 
+    @Override
     public void close(Endpoint endpoint) {
         if (endpoint == null)
             return;

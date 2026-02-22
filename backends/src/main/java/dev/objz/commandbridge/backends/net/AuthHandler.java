@@ -5,7 +5,6 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
-import io.undertow.websockets.core.WebSocketChannel;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,7 +21,7 @@ public final class AuthHandler {
         this.stateRef = stateRef;
     }
 
-    public boolean authenticate(WebSocketChannel channel) {
+    public boolean authenticate() {
         if (!Boolean.TRUE.equals(cfg.security().requireAuth())) {
             Log.warn("Auth disabled by config; continuing unauthenticated");
             stateRef.set(ConnectionState.AUTHENTICATED);
@@ -41,7 +40,7 @@ public final class AuthHandler {
         };
 
         Duration timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
-        AuthRequestContext context = new AuthRequestContext(channel, timeout, statusUpdater);
+        AuthRequestContext context = new AuthRequestContext(timeout, statusUpdater);
 
         try {
             outNode.send(MessageType.AUTH_REQUEST, context);

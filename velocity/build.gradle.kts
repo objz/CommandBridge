@@ -18,6 +18,7 @@ repositories {
 
 dependencies {
     implementation(project(":core"))
+    implementation("redis.clients:jedis:7.1.0")
 
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
@@ -49,4 +50,3 @@ tasks.jar {
     // version replacement and packaging, so exclude it from the velocity jar.
     exclude("velocity-plugin.json")
 }
-

@@ -31,6 +31,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("net.kyori:adventure-text-minimessage:4.17.0")
     implementation("org.bstats:bstats-velocity:3.1.0")
+    implementation("redis.clients:jedis:7.1.0")
 }
 
 val pluginVersion: Provider<String> = providers.gradleProperty("pluginVersion")

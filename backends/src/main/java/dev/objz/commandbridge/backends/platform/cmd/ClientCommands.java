@@ -2,7 +2,7 @@ package dev.objz.commandbridge.backends.platform.cmd;
 
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.executors.CommandExecutor;
-import dev.objz.commandbridge.backends.net.WsClient;
+import dev.objz.commandbridge.backends.net.BackendClient;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.util.MM;
 import net.kyori.adventure.audience.Audience;
@@ -14,7 +14,7 @@ public final class ClientCommands {
     private ClientCommands() {
     }
 
-    public static void register(WsClient client) {
+    public static void register(BackendClient client) {
         new CommandAPICommand("commandbridgeclient")
                 .withAliases("cbc")
                 .withPermission("commandbridge.admin")

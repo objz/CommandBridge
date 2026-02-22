@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class WsClient implements AutoCloseable {
+public final class WsClient implements BackendClient {
     private final BackendsConfig cfg;
     private final Path dataDir;
 
@@ -61,6 +61,7 @@ public final class WsClient implements AutoCloseable {
         outNode.setClientId(cfg.clientId());
     }
 
+    @Override
     public synchronized void start() throws Exception {
         if (connectionHandler.isConnected()) {
             Log.debug("Already connected, skipping start");
@@ -88,7 +89,7 @@ public final class WsClient implements AutoCloseable {
 
             messageRouter.setupChannel(channel);
 
-            authHandler.authenticate(channel);
+            authHandler.authenticate();
 
             if (reconnectHandler.isReconnecting()) {
                 reconnectHandler.onReconnectSuccess();
@@ -105,6 +106,7 @@ public final class WsClient implements AutoCloseable {
         }
     }
 
+    @Override
     public synchronized void reconnect() throws Exception {
         Log.warn("Manual reconnection initiated");
         reconnectHandler.shutdown();
@@ -115,10 +117,12 @@ public final class WsClient implements AutoCloseable {
         start();
     }
 
+    @Override
     public void scheduleReconnection() {
         reconnectHandler.scheduleReconnect();
     }
 
+    @Override
     public SendOperation send(Envelope request) {
         if (!connectionHandler.isChannelHealthy()) {
             throw new IllegalStateException("Endpoint not connected or unhealthy");
@@ -153,26 +157,33 @@ public final class WsClient implements AutoCloseable {
         Log.debug("WsClient closed");
     }
 
+    @Override
     public ClientStatus status() {
         return stateRef.get().toClientStatus();
     }
 
+    @Override
     public String serverId() {
         return serverId;
     }
 
+    @Override
     public InNode inboundRouter() {
         return inNode;
     }
 
+    @Override
     public OutNode<Object> outboundRouter() {
         return outNode;
     }
 
+    @Override
     public void setLocation(Location location) {
         this.location = Objects.requireNonNull(location);
+        this.messageRouter.setLocation(this.location);
     }
 
+    @Override
     public void setServerId(String serverId) {
         this.serverId = serverId;
         outNode.setServerId(serverId);

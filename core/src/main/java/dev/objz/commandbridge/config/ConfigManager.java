@@ -7,14 +7,20 @@ import dev.objz.commandbridge.config.profile.BackendsConfigProfile;
 import dev.objz.commandbridge.config.profile.VelocityConfigProfile;
 import dev.objz.commandbridge.logging.Log;
 import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.serialize.SerializationException;
+import org.spongepowered.configurate.objectmapping.meta.Setting;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -53,6 +59,7 @@ public final class ConfigManager {
             ConfigurationNode root = loader.load();
 
             ConfigProfile<T> profile = profileOf(modelClass);
+            T defaults = profile.defaults();
 
             Set<String> valid = new HashSet<>(ConfigKeys.topLevelKeysOf(modelClass));
             for (var key : root.childrenMap().keySet()) {
@@ -68,7 +75,14 @@ public final class ConfigManager {
                 }
             }
 
-            T loaded = root.get(modelClass, profile.defaults());
+            boolean enumOk = validateEnumValues(root, modelClass, "");
+            if (!enumOk) {
+                this.current = defaults;
+                Log.error("Invalid config.yml");
+                return false;
+            }
+
+            T loaded = root.get(modelClass, defaults);
 
             var result = profile.normalize(loaded);
             this.current = result.config();
@@ -78,6 +92,10 @@ public final class ConfigManager {
             }
             return result.ok();
 
+        } catch (SerializationException e) {
+            Log.error("Invalid config.yml: {}", e.getMessage());
+            this.current = profileOf(modelClass).defaults();
+            return false;
         } catch (Exception e) {
             Log.error("Error loading config.yml: " + e.getMessage(), e);
             this.current = profileOf(modelClass).defaults();
@@ -143,5 +161,103 @@ public final class ConfigManager {
             }
         }
         return costs[b.length()];
+    }
+
+    private static boolean validateEnumValues(ConfigurationNode node, Class<?> recordType, String path) {
+        if (!recordType.isRecord() || node == null) {
+            return true;
+        }
+
+        boolean ok = true;
+        for (RecordComponent rc : recordType.getRecordComponents()) {
+            String key = yamlKeyFor(recordType, rc);
+            Class<?> componentType = rc.getType();
+            ConfigurationNode child = node.node(key);
+            String fullPath = path == null || path.isBlank() ? key : path + "." + key;
+
+            if (componentType.isEnum()) {
+                if (child.virtual()) {
+                    continue;
+                }
+
+                Object raw = child.raw();
+                String rawText = raw == null ? null : String.valueOf(raw).trim();
+                Class<? extends Enum<?>> enumType = (Class<? extends Enum<?>>) componentType;
+
+                if (rawText == null || rawText.isBlank()) {
+                    Log.error("'{}' must be set", fullPath);
+                    ok = false;
+                    continue;
+                }
+
+                String canonical = canonicalEnumValue(enumType, rawText);
+                if (canonical != null) {
+                    if (!canonical.equals(rawText)) {
+                        try {
+                            child.set(canonical);
+                        } catch (SerializationException ignored) {
+                        }
+                    }
+                    continue;
+                }
+
+                Set<String> values = enumConstants(enumType);
+                String suggestion = findClosest(rawText.toUpperCase(Locale.ROOT), values);
+                if (suggestion != null) {
+                    Log.warn("Invalid value '{}' for '{}'. did you mean '{}' ?", rawText, fullPath, suggestion);
+                } else {
+                    Log.error("Invalid value '{}' for '{}'. expected one of {}", rawText, fullPath, values);
+                }
+                ok = false;
+            } else if (componentType.isRecord()) {
+                ok &= validateEnumValues(child, componentType, fullPath);
+            }
+        }
+
+        return ok;
+    }
+
+    private static String yamlKeyFor(Class<?> recordType, RecordComponent rc) {
+        try {
+            Method m = recordType.getMethod(rc.getName());
+            Setting s = m.getAnnotation(Setting.class);
+            if (s != null && !s.value().isBlank()) {
+                return s.value();
+            }
+        } catch (NoSuchMethodException ignored) {
+        }
+
+        try {
+            Field f = recordType.getDeclaredField(rc.getName());
+            Setting s = f.getAnnotation(Setting.class);
+            if (s != null && !s.value().isBlank()) {
+                return s.value();
+            }
+        } catch (NoSuchFieldException ignored) {
+        }
+
+        Setting s = rc.getAnnotation(Setting.class);
+        if (s != null && !s.value().isBlank()) {
+            return s.value();
+        }
+
+        return rc.getName().replaceAll("(?<!^)([A-Z])", "-$1").toLowerCase(Locale.ROOT);
+    }
+
+    private static Set<String> enumConstants(Class<? extends Enum<?>> enumType) {
+        Set<String> values = new HashSet<>();
+        for (Enum<?> constant : enumType.getEnumConstants()) {
+            values.add(constant.name());
+        }
+        return values;
+    }
+
+    private static String canonicalEnumValue(Class<? extends Enum<?>> enumType, String raw) {
+        for (Enum<?> constant : enumType.getEnumConstants()) {
+            if (constant.name().equalsIgnoreCase(raw)) {
+                return constant.name();
+            }
+        }
+        return null;
     }
 }

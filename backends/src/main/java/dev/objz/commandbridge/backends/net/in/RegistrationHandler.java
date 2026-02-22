@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.backends.net.in;
 
-import dev.objz.commandbridge.backends.net.WsClient;
+import dev.objz.commandbridge.backends.net.BackendClient;
 import dev.objz.commandbridge.backends.platform.cmd.ArgumentMapper;
 import dev.objz.commandbridge.backends.platform.cmd.CommandRegistry;
 import dev.objz.commandbridge.logging.Log;
@@ -18,12 +18,12 @@ import java.util.List;
 import java.util.Objects;
 
 public final class RegistrationHandler extends InboundHandler {
-    private final WsClient ws;
+    private final BackendClient client;
     private final CommandRegistry registry;
 
-    public RegistrationHandler(WsClient ws) {
-        this.ws = Objects.requireNonNull(ws);
-        this.registry = new CommandRegistry(new ArgumentMapper(), ws.outboundRouter());
+    public RegistrationHandler(BackendClient client) {
+        this.client = Objects.requireNonNull(client);
+        this.registry = new CommandRegistry(new ArgumentMapper(), client.outboundRouter());
     }
 
     @Override
@@ -64,7 +64,7 @@ public final class RegistrationHandler extends InboundHandler {
                         + t.getMessage());
             }
         }
-        ws.setServerId(env.from());
+        client.setServerId(env.from());
         Feedback f = fc.build();
         Summary.feedbackSummary("Registration", f, env.from());
         Summary.feedbackDetails(f, env.from(), true);
