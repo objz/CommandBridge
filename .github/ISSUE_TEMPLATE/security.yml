@@ -1,6 +1,5 @@
 name: Security Issue
 description: Report a security vulnerability in CommandBridge
-title: "[Security]: "
 labels:
   - security
 body:
@@ -21,13 +20,6 @@ body:
         - Critical
     validations:
       required: true
-
-  - type: checkboxes
-    id: classification
-    attributes:
-      label: Additional Classification (Optional)
-      options:
-        - label: This is also a functional bug
 
   - type: textarea
     id: description
