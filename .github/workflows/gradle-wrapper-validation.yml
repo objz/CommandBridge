@@ -1,0 +1,24 @@
+name: Validate Gradle Wrapper
+
+on:
+  push:
+    branches: ["v3"]
+  pull_request:
+    branches: ["v3"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wrapper-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: Wrapper Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
