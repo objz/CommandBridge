@@ -3,7 +3,7 @@ package dev.objz.commandbridge.velocity.ui;
 import dev.objz.commandbridge.logging.Log;
 
 public final class Theme {
-    
+
     // Mini Message - Chat
     public static final String C_PRIMARY = "#7AA2FF";
     public static final String C_ACCENT = "#80E9FF";
@@ -16,7 +16,7 @@ public final class Theme {
 
     // ANSI - Console
     public static final String ANSI_RESET = Log.RESET;
-    public static final String ANSI_PRIMARY = Log.CYAN; 
+    public static final String ANSI_PRIMARY = Log.CYAN;
     public static final String ANSI_ACCENT = Log.CYAN;
     public static final String ANSI_SUCCESS = Log.GREEN;
     public static final String ANSI_WARN = Log.YELLOW;
@@ -30,10 +30,11 @@ public final class Theme {
     public static final String SYMBOL_BULLET = "•";
     public static final String SYMBOL_CHECK = "✔";
     public static final String SYMBOL_CROSS = "✖";
-    
+
     public static final String ANSI_SYMBOL_ARROW_RIGHT = "->";
     public static final String ANSI_SYMBOL_ARROW_LEFT = "<-";
     public static final String ANSI_SYMBOL_BULLET = "*";
 
-    private Theme() {}
+    private Theme() {
+    }
 }

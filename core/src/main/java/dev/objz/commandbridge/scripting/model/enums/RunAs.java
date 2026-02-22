@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.scripting.model.enums;
 
-public enum RunAs{
+public enum RunAs {
     CONSOLE,
     PLAYER,
     OPERATOR

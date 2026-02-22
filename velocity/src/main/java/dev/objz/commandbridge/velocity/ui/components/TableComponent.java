@@ -1,6 +1,5 @@
 package dev.objz.commandbridge.velocity.ui.components;
 
-import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.cli.BoxDrawing;
 import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
 import dev.objz.commandbridge.velocity.ui.chat.ChatTable;
