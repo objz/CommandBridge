@@ -1,0 +1,72 @@
+name: Bug Report
+description: Report a reproducible issue in CommandBridge
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the issue you are experiencing.
+
+  - type: input
+    id: version
+    attributes:
+      label: CommandBridge Version
+      description: Exact version number or commit hash if using a development build
+      placeholder: 3.0.1
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Velocity / Paper / Folia / Bukkit, including the exact versions
+      placeholder: Velocity 3.3.0, Paper 1.21.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: Explain what is happening and when it occurs
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen instead
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the issue, including commands or configuration if relevant
+      placeholder: |
+        1.
+        2.
+        3.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Stacktrace
+      description: Relevant console output (debug enabled if possible)
+      render: shell
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant Configuration
+      description: YAML scripts or configuration (if related to the issue)
+      render: yaml
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Anything else that might help (proxy setup, network layout, etc.)

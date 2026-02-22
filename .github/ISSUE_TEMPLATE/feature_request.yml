@@ -1,0 +1,48 @@
+name: Feature Request
+description: Suggest an improvement or new feature for CommandBridge
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the feature or improvement you would like to see.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Short description of the feature
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this feature would be useful or what problem it solves
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe how you think this should work.
+        Include command syntax, configuration changes, or API additions if relevant.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches or existing workarounds
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Examples, references, or anything else that helps explain the idea
