@@ -8,6 +8,7 @@ import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
+import dev.objz.commandbridge.net.endpoints.WsEndpoint;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthService;
@@ -47,8 +48,10 @@ public final class MessageRouter {
     }
 
     public void setupChannel(WebSocketChannel channel) {
-        inNode.setSendOperationFactory((ch, envelope) -> new SendOperation(ch, envelope, awaiter));
-        outNode.setSendOperationFactory(envelope -> new SendOperation(channel, envelope, awaiter));
+        var endpoint = new WsEndpoint(channel);
+
+        inNode.setSendOperationFactory((ep, envelope) -> new SendOperation(ep, envelope, awaiter));
+        outNode.setSendOperationFactory(envelope -> new SendOperation(endpoint, envelope, awaiter));
 
         inNode.setInboundTap(env -> {
             boolean matched = false;
@@ -76,7 +79,7 @@ public final class MessageRouter {
             @Override
             protected void onFullTextMessage(WebSocketChannel ch, BufferedTextMessage message) {
                 try {
-                    inNode.onText(ch, message.getData());
+                    inNode.onText(endpoint, message.getData());
                 } catch (Throwable t) {
                     Log.error(t, "Inbound message handling failed");
                 }

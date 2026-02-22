@@ -1,10 +1,12 @@
 package dev.objz.commandbridge.velocity.net;
 
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
-import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.InNode;
+import dev.objz.commandbridge.net.endpoints.WsEndpoint;
+import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.Handlers;
@@ -56,17 +58,18 @@ public final class WsServer {
         this.inNode.setSendOperationFactory(this::createSendOperation);
     }
 
-    private SendOperation createSendOperation(WebSocketChannel ch, Envelope env) {
-        return new SendOperation(ch, env, responses);
+    private SendOperation createSendOperation(Endpoint endpoint, Envelope env) {
+        return new SendOperation(endpoint, env, responses);
     }
 
     public void start() {
         WebSocketConnectionCallback cb = (WebSocketHttpExchange ex, WebSocketChannel ch) -> {
+            final WsEndpoint endpoint = new WsEndpoint(ch);
 
             ch.getReceiveSetter().set(new AbstractReceiveListener() {
                 @Override
                 protected void onFullTextMessage(WebSocketChannel c, BufferedTextMessage msg) {
-                    inNode.onText(c, msg.getData());
+                    inNode.onText(endpoint, msg.getData());
                 }
 
                 @Override
@@ -90,9 +93,11 @@ public final class WsServer {
                     }
 
                     try {
-                        Log.warn("WebSocket closed: {}", channel.getSourceAddress());
+                        Log.warn("Endpoint closed: {}", endpoint.describe());
                         IoUtils.safeClose(channel);
                     } catch (Throwable ignore) {
+                    } finally {
+                        sessions.remove(endpoint);
                     }
                 }
             });
@@ -138,23 +143,35 @@ public final class WsServer {
 
     public void stop() {
         try {
-            if (server != null)
+            if (server != null) {
                 for (ClientSession s : sessions) {
-                    close(s.ch());
+                    close(s.endpoint());
                 }
-            server.stop();
+                server.stop();
+            }
         } catch (Exception ignore) {
         }
         sessions.clear();
         Log.info("WebSocket server stopped");
     }
 
-    public SendOperation send(WebSocketChannel ch, Envelope request) {
-        return new SendOperation(ch, request, responses);
+    public SendOperation send(Endpoint endpoint, Envelope request) {
+        return new SendOperation(endpoint, request, responses);
+    }
+
+    public void close(Endpoint endpoint) {
+        if (endpoint == null)
+            return;
+
+        sessions.remove(endpoint);
+        if (!(endpoint instanceof WsEndpoint wsEndpoint))
+            return;
+
+        closeChannel(wsEndpoint.channel(), endpoint);
     }
 
     // always safe close
-    public void close(WebSocketChannel ch) {
+    private void closeChannel(WebSocketChannel ch, Endpoint endpoint) {
         if (ch == null)
             return;
 
@@ -162,7 +179,7 @@ public final class WsServer {
             try {
                 org.xnio.IoUtils.safeClose(ch);
             } finally {
-                sessions.remove(ch);
+                sessions.remove(endpoint);
             }
             return;
         }
@@ -173,7 +190,7 @@ public final class WsServer {
         }
 
         ch.addCloseTask(c -> {
-            sessions.remove(c);
+            sessions.remove(endpoint);
             org.xnio.IoUtils.safeClose(c);
         });
 
@@ -187,7 +204,7 @@ public final class WsServer {
                         try {
                             org.xnio.IoUtils.safeClose(channel);
                         } finally {
-                            sessions.remove(channel);
+                            sessions.remove(endpoint);
                         }
                     }
 
@@ -196,7 +213,7 @@ public final class WsServer {
                         try {
                             org.xnio.IoUtils.safeClose(channel);
                         } finally {
-                            sessions.remove(channel);
+                            sessions.remove(endpoint);
                         }
                     }
                 });

@@ -3,8 +3,6 @@ package dev.objz.commandbridge.net;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
 
-import io.undertow.websockets.core.WebSocketChannel;
-
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +18,7 @@ public class OutNode<T> {
 
     private final Map<MessageType, OutboundHandler<? super T>> handlers;
     private Function<Envelope, SendOperation> sendOperationFactory;
-    private BiFunction<WebSocketChannel, Envelope, SendOperation> channelSendOperationFactory;
+    private BiFunction<Endpoint, Envelope, SendOperation> endpointSendFactory;
     private String clientId;
     private String serverId;
 
@@ -33,9 +31,9 @@ public class OutNode<T> {
         return this;
     }
 
-    public OutNode<T> setChannelSendOperationFactory(
-            BiFunction<WebSocketChannel, Envelope, SendOperation> factory) {
-        this.channelSendOperationFactory = factory;
+    public OutNode<T> setEndpointSendFactory(
+            BiFunction<Endpoint, Envelope, SendOperation> factory) {
+        this.endpointSendFactory = factory;
         return this;
     }
 
@@ -53,7 +51,7 @@ public class OutNode<T> {
         Objects.requireNonNull(type);
         Objects.requireNonNull(handler);
         handler.setSendOperationFactory(sendOperationFactory);
-        handler.setChannelSendOperationFactory(channelSendOperationFactory);
+        handler.setEndpointSendFactory(endpointSendFactory);
         handler.setClientId(clientId);
         handler.setServerId(serverId);
         @SuppressWarnings("unchecked")
@@ -78,9 +76,9 @@ public class OutNode<T> {
             throw new IllegalStateException("No OutboundHandler registered for " + type);
         }
 
-        if (sendOperationFactory == null && channelSendOperationFactory == null) {
+        if (sendOperationFactory == null && endpointSendFactory == null) {
             throw new IllegalStateException(
-                    "SendOperation factory not configured. Call setSendOperationFactory() first.");
+                    "Send factory not configured. Call setSendOperationFactory() or setEndpointSendFactory() first.");
         }
 
         try {

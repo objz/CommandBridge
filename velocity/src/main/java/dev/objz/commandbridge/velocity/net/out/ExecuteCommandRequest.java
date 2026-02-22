@@ -31,7 +31,7 @@ public final class ExecuteCommandRequest extends OutboundHandler<ExecuteCommandC
                 ctx.session().id(),
                 Envelope.MAPPER.valueToTree(payload));
 
-        SendOperation op = send(ctx.session().ch(), env);
+        SendOperation op = send(ctx.session().endpoint(), env);
         op.dispatch()
                 .exceptionally(ex -> {
                     Log.error(ex, "Failed to send EXECUTE_COMMAND to '{}'", ctx.session().id());

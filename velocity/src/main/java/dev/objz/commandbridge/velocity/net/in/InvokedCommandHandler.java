@@ -1,13 +1,13 @@
 package dev.objz.commandbridge.velocity.net.in;
 
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Objects;
 
@@ -22,7 +22,7 @@ public final class InvokedCommandHandler extends InboundHandler {
     }
 
     @Override
-    public void accept(WebSocketChannel ch, Envelope env) {
+    public void accept(Endpoint endpoint, Envelope env) {
         if (env.payload() == null) {
             Log.warn("Received INVOKED_COMMAND with null payload from '{}'", env.from());
             return;
@@ -41,9 +41,11 @@ public final class InvokedCommandHandler extends InboundHandler {
             return;
         }
 
-        ClientSession session = sessions.get(ch);
+        ClientSession session = sessions.get(endpoint);
         if (session == null) {
-            Log.warn("No session found for channel when handling INVOKED_COMMAND");
+            String source = endpoint != null ? endpoint.describe() : "unknown";
+            Log.warn("No session found for endpoint '{}' while handling INVOKED_COMMAND from '{}'", source,
+                    env.from());
             return;
         }
 

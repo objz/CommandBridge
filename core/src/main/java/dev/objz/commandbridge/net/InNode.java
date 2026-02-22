@@ -3,7 +3,6 @@ package dev.objz.commandbridge.net;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
-import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -15,7 +14,7 @@ public class InNode {
 
     private final Map<MessageType, InboundHandler> handlers;
     private Predicate<Envelope> inboundTap;
-    private BiFunction<WebSocketChannel, Envelope, SendOperation> sendOperationFactory;
+    private BiFunction<Endpoint, Envelope, SendOperation> sendOperationFactory;
 
     public InNode() {
         this.handlers = new EnumMap<>(MessageType.class);
@@ -25,7 +24,7 @@ public class InNode {
         this.inboundTap = tap;
     }
 
-    public InNode setSendOperationFactory(BiFunction<WebSocketChannel, Envelope, SendOperation> factory) {
+    public InNode setSendOperationFactory(BiFunction<Endpoint, Envelope, SendOperation> factory) {
         this.sendOperationFactory = factory;
         return this;
     }
@@ -38,12 +37,13 @@ public class InNode {
         return this;
     }
 
-    public void onText(WebSocketChannel ch, String text) {
+    public void onText(Endpoint endpoint, String text) {
         final Envelope env;
         try {
             env = Envelope.MAPPER.readValue(text, Envelope.class);
         } catch (Exception e) {
-            Log.warn("Bad JSON from {}: {}", ch.getSourceAddress(), e.getMessage());
+            String source = endpoint != null ? endpoint.describe() : "unknown";
+            Log.warn("Bad JSON from {}: {}", source, e.getMessage());
             return;
         }
 
@@ -62,7 +62,7 @@ public class InNode {
         }
 
         try {
-            handler.accept(ch, env);
+            handler.accept(endpoint, env);
         } catch (Exception ex) {
             Log.error(ex, "Handler failure for type {}", env.type());
         }

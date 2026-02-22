@@ -8,6 +8,7 @@ import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
+import dev.objz.commandbridge.net.endpoints.WsEndpoint;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.SecretLoader;
@@ -120,15 +121,15 @@ public final class WsClient implements AutoCloseable {
 
     public SendOperation send(Envelope request) {
         if (!connectionHandler.isChannelHealthy()) {
-            throw new IllegalStateException("WebSocket not connected or unhealthy");
+            throw new IllegalStateException("Endpoint not connected or unhealthy");
         }
 
         WebSocketChannel channel = connectionHandler.getChannel();
         if (channel == null) {
-            throw new IllegalStateException("WebSocket channel is null");
+            throw new IllegalStateException("Endpoint transport is null");
         }
 
-        return new SendOperation(channel, request, awaiter);
+        return new SendOperation(new WsEndpoint(channel), request, awaiter);
     }
 
     @Override

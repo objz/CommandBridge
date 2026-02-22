@@ -1,22 +1,18 @@
 package dev.objz.commandbridge.velocity.net.session;
 
+import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthStatus;
-import io.undertow.websockets.core.WebSocketChannel;
 
 public final class ClientSession {
-    private final WebSocketChannel ch;
-    private volatile String id = "unknown";
-    private volatile AuthStatus status = AuthStatus.AUTH_OK;
+    private volatile Endpoint endpoint;
+    private volatile String id;
+    private volatile AuthStatus status = AuthStatus.AUTH_FAIL;
     private volatile Location location = Location.BACKEND;
 
-    public ClientSession(WebSocketChannel ch, String clientId) {
-        this.ch = ch;
+    public ClientSession(Endpoint endpoint, String clientId) {
+        this.endpoint = endpoint;
         this.id = clientId;
-    }
-
-    public WebSocketChannel ch() {
-        return ch;
     }
 
     public String id() {
@@ -29,6 +25,14 @@ public final class ClientSession {
 
     public void status(AuthStatus status) {
         this.status = status;
+    }
+
+    public Endpoint endpoint() {
+        return endpoint;
+    }
+
+    public void endpoint(Endpoint endpoint) {
+        this.endpoint = endpoint;
     }
 
     public Location location() {

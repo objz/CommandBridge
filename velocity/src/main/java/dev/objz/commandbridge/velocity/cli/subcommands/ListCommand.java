@@ -52,9 +52,7 @@ public class ListCommand extends AbstractCliCommand {
         int index = 0;
         for (var s : authenticated) {
             String id = s.id() != null ? s.id() : "unknown";
-            String address = s.ch() != null && s.ch().getSourceAddress() != null
-                    ? s.ch().getSourceAddress().toString()
-                    : "unknown";
+            String address = s.endpoint() != null ? s.endpoint().describe() : "unknown";
             String platform = s.location() != null ? s.location().name() : "unknown";
 
             Component header = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ")
@@ -101,9 +99,7 @@ public class ListCommand extends AbstractCliCommand {
 
         for (var s : authenticated) {
             String id = s.id() != null ? s.id() : "unknown";
-            String address = s.ch() != null && s.ch().getSourceAddress() != null
-                    ? s.ch().getSourceAddress().toString()
-                    : "unknown";
+            String address = s.endpoint() != null ? s.endpoint().describe() : "unknown";
             String platform = s.location() != null ? s.location().name() : "unknown";
             table.addRow(id, address, platform);
         }
@@ -115,7 +111,7 @@ public class ListCommand extends AbstractCliCommand {
     private List<ClientSession> getAuthenticatedClients() {
         List<ClientSession> authenticated = new ArrayList<>();
         for (ClientSession s : sessions) {
-            if (s.status() == AuthStatus.AUTH_OK && s.ch() != null && s.ch().isOpen()) {
+            if (s.status() == AuthStatus.AUTH_OK && s.endpoint() != null && s.endpoint().isOpen()) {
                 authenticated.add(s);
             }
         }

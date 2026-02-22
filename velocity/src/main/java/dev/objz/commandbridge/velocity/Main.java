@@ -209,7 +209,7 @@ public final class Main {
         inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
         inNode.register(MessageType.EXECUTE_COMMAND_RESULT, new ExecuteCommandHandler(proxy));
 
-        outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
+        outNode.setEndpointSendFactory((endpoint, env) -> ws.send(endpoint, env));
         outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
         outNode.register(MessageType.PING, new PingRequest());
         outNode.register(MessageType.EXECUTE_COMMAND, new ExecuteCommandRequest());

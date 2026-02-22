@@ -3,13 +3,13 @@ package dev.objz.commandbridge.velocity.net.in;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommandResult;
 import dev.objz.commandbridge.net.payloads.feedback.Feedback;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.util.MM;
-import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,7 +25,7 @@ public final class ExecuteCommandHandler extends InboundHandler {
     }
 
     @Override
-    public void accept(WebSocketChannel ch, Envelope env) {
+    public void accept(Endpoint endpoint, Envelope env) {
         if (env.payload() == null) {
             Log.warn("Received EXECUTE_COMMAND_RESULT with null payload from '{}'", env.from());
             return;
