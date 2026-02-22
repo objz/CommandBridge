@@ -71,6 +71,12 @@ git checkout v3
   - [x] Rate limiting
   - [x] Automatic reconnection on disconnect(configurable)
 
+- [ ] **Alternative Redis Communication**
+  - [ ] Extended config for Redis
+  - [ ] Redis implementation in core (SendOperation)
+  - [ ] Channel mapping alternative on velocity
+  - [ ] Sending/Receiving support on all Platforms
+
 - [x] **Security**
   - [x] Mutual authentication (HMAC-SHA256)
   - [x] TLS SPKI key pinning
@@ -106,7 +112,7 @@ git checkout v3
   - [x] Dual-mode output (chat and console)
   - [ ] Automatic update checker
   - [ ] Dump export to file or paste service
-  - [ ] bstats
+  - [x] bstats
 
 - [ ] **Web Interface**
   - [ ] ...
