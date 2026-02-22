@@ -1,8 +1,8 @@
 package dev.objz.commandbridge.scripting.platform;
 
 public final class PlatformFeatureKeys {
-	private PlatformFeatureKeys() {
-	}
+    private PlatformFeatureKeys() {
+    }
 
-	public static final String PACKET_EVENTS = "packetevents";
+    public static final String PACKET_EVENTS = "packetevents";
 }

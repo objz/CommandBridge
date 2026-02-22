@@ -10,33 +10,33 @@ import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 
 public final class ExecuteCommandRequest extends OutboundHandler<ExecuteCommandContext> {
 
-	@Override
-	public SendOperation accept(ExecuteCommandContext ctx) {
-		ExecuteCommand payload = new ExecuteCommand(
-				ctx.command(),
-				ctx.runAs(),
-				ctx.uuid(),
-				ctx.grantedPermissions());
+    @Override
+    public SendOperation accept(ExecuteCommandContext ctx) {
+        ExecuteCommand payload = new ExecuteCommand(
+                ctx.command(),
+                ctx.runAs(),
+                ctx.uuid(),
+                ctx.grantedPermissions());
 
-		Log.debug("Sending EXECUTE_COMMAND to '{}':  command='{}', runAs={}, uuid={}, permissions={}",
-				ctx.session().id(),
-				ctx.command(),
-				ctx.runAs(),
-				ctx.uuid(),
-				ctx.grantedPermissions() != null ? ctx.grantedPermissions().size() : 0);
+        Log.debug("Sending EXECUTE_COMMAND to '{}':  command='{}', runAs={}, uuid={}, permissions={}",
+                ctx.session().id(),
+                ctx.command(),
+                ctx.runAs(),
+                ctx.uuid(),
+                ctx.grantedPermissions() != null ? ctx.grantedPermissions().size() : 0);
 
-		Envelope env = Envelope.make(
-				MessageType.EXECUTE_COMMAND,
-				serverId,
-				ctx.session().id(),
-				Envelope.MAPPER.valueToTree(payload));
+        Envelope env = Envelope.make(
+                MessageType.EXECUTE_COMMAND,
+                serverId,
+                ctx.session().id(),
+                Envelope.MAPPER.valueToTree(payload));
 
-		SendOperation op = send(ctx.session().ch(), env);
-		op.dispatch()
-				.exceptionally(ex -> {
-					Log.error(ex, "Failed to send EXECUTE_COMMAND to '{}'", ctx.session().id());
-					return null;
-				});
-		return op;
-	}
+        SendOperation op = send(ctx.session().ch(), env);
+        op.dispatch()
+                .exceptionally(ex -> {
+                    Log.error(ex, "Failed to send EXECUTE_COMMAND to '{}'", ctx.session().id());
+                    return null;
+                });
+        return op;
+    }
 }

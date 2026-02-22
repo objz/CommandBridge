@@ -8,73 +8,73 @@ import org.slf4j.Logger;
 import java.nio.file.Path;
 
 public final class VelocityMain {
-	private final ProxyServer proxy;
-	private final Logger logger;
-	private final Path dataDirectory;
-	private final Object pluginInstance;
+    private final ProxyServer proxy;
+    private final Logger logger;
+    private final Path dataDirectory;
+    private final Object pluginInstance;
 
-	private PlatformAdapter adapter;
+    private PlatformAdapter adapter;
 
-	public VelocityMain(ProxyServer proxy, Logger logger, Path dataDirectory, Object pluginInstance) {
-		this.proxy = proxy;
-		this.logger = logger;
-		this.dataDirectory = dataDirectory;
-		this.pluginInstance = pluginInstance;
-	}
+    public VelocityMain(ProxyServer proxy, Logger logger, Path dataDirectory, Object pluginInstance) {
+        this.proxy = proxy;
+        this.logger = logger;
+        this.dataDirectory = dataDirectory;
+        this.pluginInstance = pluginInstance;
+    }
 
-	public void load() {
-		try {
-			String className = "dev.objz.commandbridge.velocity.Adapter";
-			Class<?> clazz = Class.forName(className);
-			this.adapter = (PlatformAdapter) clazz.getDeclaredConstructor().newInstance();
+    public void load() {
+        try {
+            String className = "dev.objz.commandbridge.velocity.Adapter";
+            Class<?> clazz = Class.forName(className);
+            this.adapter = (PlatformAdapter) clazz.getDeclaredConstructor().newInstance();
 
-			var env = new PlatformAdapter.PlatformEnv(dataDirectory, "client.yml");
-			adapter.load(env, this);
+            var env = new PlatformAdapter.PlatformEnv(dataDirectory, "client.yml");
+            adapter.load(env, this);
 
-		} catch (ClassNotFoundException e) {
-			Log.error("Adapter class not found: dev.objz.commandbridge.velocity.Adapter. " +
-					"Is the backends:velocity module loaded?", e);
-		} catch (Exception e) {
-			Log.error("Adapter load failed: {}", e.getMessage());
-			e.printStackTrace();
-		}
-	}
+        } catch (ClassNotFoundException e) {
+            Log.error("Adapter class not found: dev.objz.commandbridge.velocity.Adapter. " +
+                    "Is the backends:velocity module loaded?", e);
+        } catch (Exception e) {
+            Log.error("Adapter load failed: {}", e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-	public void enable() {
-		if (adapter == null)
-			return;
+    public void enable() {
+        if (adapter == null)
+            return;
 
-		try {
-			var env = new PlatformAdapter.PlatformEnv(dataDirectory, "client.yml");
-			adapter.start(env);
-		} catch (Exception ex) {
-			Log.error("Failed to enable CommandBridge Backend: {}", ex.getMessage());
-		}
-	}
+        try {
+            var env = new PlatformAdapter.PlatformEnv(dataDirectory, "client.yml");
+            adapter.start(env);
+        } catch (Exception ex) {
+            Log.error("Failed to enable CommandBridge Backend: {}", ex.getMessage());
+        }
+    }
 
-	public void disable() {
-		if (adapter != null) {
-			try {
-				adapter.stop();
-			} catch (Exception ex) {
-				Log.error("Error during backend shutdown: {}", ex.getMessage());
-			}
-		}
-	}
+    public void disable() {
+        if (adapter != null) {
+            try {
+                adapter.stop();
+            } catch (Exception ex) {
+                Log.error("Error during backend shutdown: {}", ex.getMessage());
+            }
+        }
+    }
 
-	public ProxyServer getProxy() {
-		return proxy;
-	}
+    public ProxyServer getProxy() {
+        return proxy;
+    }
 
-	public Logger getLogger() {
-		return logger;
-	}
+    public Logger getLogger() {
+        return logger;
+    }
 
-	public Path getDataDirectory() {
-		return dataDirectory;
-	}
+    public Path getDataDirectory() {
+        return dataDirectory;
+    }
 
-	public Object getPluginInstance() {
-		return pluginInstance;
-	}
+    public Object getPluginInstance() {
+        return pluginInstance;
+    }
 }

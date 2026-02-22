@@ -23,139 +23,139 @@ import java.util.function.Consumer;
 
 public final class ScheduleManager {
 
-	private final ScriptManager scriptManager;
-	private final ObjectMapper mapper = new ObjectMapper();
-	private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
-	private final File storageFile;
+    private final ScriptManager scriptManager;
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
+    private final File storageFile;
 
-	private Consumer<ExecutionContext> executionCallback;
+    private Consumer<ExecutionContext> executionCallback;
 
-	public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir, ScriptManager scriptManager) {
-		this.scriptManager = scriptManager;
-		this.storageFile = dataDir.resolve("tasks.json").toFile();
+    public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir, ScriptManager scriptManager) {
+        this.scriptManager = scriptManager;
+        this.storageFile = dataDir.resolve("tasks.json").toFile();
 
-		loadTasks();
+        loadTasks();
 
-		proxy.getScheduler().buildTask(plugin, this::saveTasks)
-				.repeat(5, TimeUnit.MINUTES)
-				.schedule();
-	}
+        proxy.getScheduler().buildTask(plugin, this::saveTasks)
+                .repeat(5, TimeUnit.MINUTES)
+                .schedule();
+    }
 
-	public void setExecutionCallback(Consumer<ExecutionContext> callback) {
-		this.executionCallback = callback;
-	}
+    public void setExecutionCallback(Consumer<ExecutionContext> callback) {
+        this.executionCallback = callback;
+    }
 
-	public void queueTask(ExecutionContext ctx, CmdMapping cmd, int index) {
-		if (ctx.source() instanceof Player player) {
-			UUID taskId = UUID.randomUUID();
-			ScheduledTask task = new ScheduledTask(
-					taskId,
-					player.getUniqueId(),
-					ctx.script().name(),
-					cmd,
-					ctx.arguments(),
-					index,
-					System.currentTimeMillis());
+    public void queueTask(ExecutionContext ctx, CmdMapping cmd, int index) {
+        if (ctx.source() instanceof Player player) {
+            UUID taskId = UUID.randomUUID();
+            ScheduledTask task = new ScheduledTask(
+                    taskId,
+                    player.getUniqueId(),
+                    ctx.script().name(),
+                    cmd,
+                    ctx.arguments(),
+                    index,
+                    System.currentTimeMillis());
 
-			tasks.put(taskId, task);
-			saveTasks();
+            tasks.put(taskId, task);
+            saveTasks();
 
-			Log.debug("Queued task {} for player {} (waiting for connection)", taskId,
-					player.getUsername());
-		} else {
-			Log.warn("Cannot schedule task for non-player source");
-		}
-	}
+            Log.debug("Queued task {} for player {} (waiting for connection)", taskId,
+                    player.getUsername());
+        } else {
+            Log.warn("Cannot schedule task for non-player source");
+        }
+    }
 
-	@Subscribe
-	public void onServerConnected(ServerConnectedEvent event) {
-		Player player = event.getPlayer();
-		String serverName = event.getServer().getServerInfo().getName();
+    @Subscribe
+    public void onServerConnected(ServerConnectedEvent event) {
+        Player player = event.getPlayer();
+        String serverName = event.getServer().getServerInfo().getName();
 
-		processQueue(player, serverName);
-	}
+        processQueue(player, serverName);
+    }
 
-	private void processQueue(Player player, String currentServerId) {
-		Iterator<Map.Entry<UUID, ScheduledTask>> it = tasks.entrySet().iterator();
+    private void processQueue(Player player, String currentServerId) {
+        Iterator<Map.Entry<UUID, ScheduledTask>> it = tasks.entrySet().iterator();
 
-		while (it.hasNext()) {
-			Map.Entry<UUID, ScheduledTask> entry = it.next();
-			ScheduledTask task = entry.getValue();
+        while (it.hasNext()) {
+            Map.Entry<UUID, ScheduledTask> entry = it.next();
+            ScheduledTask task = entry.getValue();
 
-			if (!task.playerUuid().equals(player.getUniqueId())) {
-				continue;
-			}
+            if (!task.playerUuid().equals(player.getUniqueId())) {
+                continue;
+            }
 
-			boolean isTargetServer = isTargetingServer(task.commandMapping(), currentServerId);
+            boolean isTargetServer = isTargetingServer(task.commandMapping(), currentServerId);
 
-			if (isTargetServer) {
-				Log.debug("Resuming task {} for player {} on server {}", task.id(),
-						player.getUsername(), currentServerId);
+            if (isTargetServer) {
+                Log.debug("Resuming task {} for player {} on server {}", task.id(),
+                        player.getUsername(), currentServerId);
 
-				ExecutionContext ctx = reconstructContext(player, task);
-				if (ctx != null && executionCallback != null) {
-					executionCallback.accept(ctx);
-				}
+                ExecutionContext ctx = reconstructContext(player, task);
+                if (ctx != null && executionCallback != null) {
+                    executionCallback.accept(ctx);
+                }
 
-				it.remove();
-			}
-		}
-		saveTasks();
-	}
+                it.remove();
+            }
+        }
+        saveTasks();
+    }
 
-	private boolean isTargetingServer(CmdMapping mapping, String serverId) {
-		if (mapping.execute() == null)
-			return false;
+    private boolean isTargetingServer(CmdMapping mapping, String serverId) {
+        if (mapping.execute() == null)
+            return false;
 
-		return mapping.execute().stream()
-				.anyMatch(idMapping -> idMapping
-						.location() == dev.objz.commandbridge.scripting.model.enums.Location.BACKEND
-						&&
-						idMapping.id().equalsIgnoreCase(serverId));
-	}
+        return mapping.execute().stream()
+                .anyMatch(idMapping -> idMapping
+                        .location() == dev.objz.commandbridge.scripting.model.enums.Location.BACKEND
+                        &&
+                        idMapping.id().equalsIgnoreCase(serverId));
+    }
 
-	private ExecutionContext reconstructContext(Player player, ScheduledTask task) {
-		Script script = scriptManager.loaded().stream()
-				.filter(s -> s.name().equals(task.scriptName()))
-				.findFirst()
-				.orElse(null);
+    private ExecutionContext reconstructContext(Player player, ScheduledTask task) {
+        Script script = scriptManager.loaded().stream()
+                .filter(s -> s.name().equals(task.scriptName()))
+                .findFirst()
+                .orElse(null);
 
-		if (script == null) {
-			Log.warn("Script '{}' for scheduled task missing, discarding task", task.scriptName());
-			return null;
-		}
+        if (script == null) {
+            Log.warn("Script '{}' for scheduled task missing, discarding task", task.scriptName());
+            return null;
+        }
 
-		return new ExecutionContext(
-				null,
-				null,
-				player,
-				script,
-				task.arguments(),
-				task.commandMapping(),
-				task.commandIndex());
-	}
+        return new ExecutionContext(
+                null,
+                null,
+                player,
+                script,
+                task.arguments(),
+                task.commandMapping(),
+                task.commandIndex());
+    }
 
-	private synchronized void loadTasks() {
-		if (!storageFile.exists())
-			return;
-		try {
-			List<ScheduledTask> loaded = mapper.readValue(storageFile,
-					new TypeReference<List<ScheduledTask>>() {
-					});
-			for (ScheduledTask t : loaded) {
-				tasks.put(t.id(), t);
-			}
-			Log.success(true, "Loaded '{}' pending tasks", tasks.size());
-		} catch (IOException e) {
-			Log.error("Failed to load scheduled tasks: " + e.getMessage());
-		}
-	}
+    private synchronized void loadTasks() {
+        if (!storageFile.exists())
+            return;
+        try {
+            List<ScheduledTask> loaded = mapper.readValue(storageFile,
+                    new TypeReference<List<ScheduledTask>>() {
+                    });
+            for (ScheduledTask t : loaded) {
+                tasks.put(t.id(), t);
+            }
+            Log.success(true, "Loaded '{}' pending tasks", tasks.size());
+        } catch (IOException e) {
+            Log.error("Failed to load scheduled tasks: " + e.getMessage());
+        }
+    }
 
-	private synchronized void saveTasks() {
-		try {
-			mapper.writeValue(storageFile, new ArrayList<>(tasks.values()));
-		} catch (IOException e) {
-			Log.error("Failed to save scheduled tasks: " + e.getMessage());
-		}
-	}
+    private synchronized void saveTasks() {
+        try {
+            mapper.writeValue(storageFile, new ArrayList<>(tasks.values()));
+        } catch (IOException e) {
+            Log.error("Failed to save scheduled tasks: " + e.getMessage());
+        }
+    }
 }

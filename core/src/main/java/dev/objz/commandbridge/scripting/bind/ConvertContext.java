@@ -3,7 +3,7 @@ package dev.objz.commandbridge.scripting.bind;
 import dev.objz.commandbridge.scripting.validation.ProblemSink;
 
 public interface ConvertContext {
-	TypeAdapterRegistry adapters();
+    TypeAdapterRegistry adapters();
 
-	ProblemSink problems();
+    ProblemSink problems();
 }

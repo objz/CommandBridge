@@ -6,15 +6,15 @@ import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentRegist
 import java.util.Objects;
 
 public final class PacketEventsArgumentBridge {
-	private final DeclareCommandsPatchListener patchListener;
+    private final DeclareCommandsPatchListener patchListener;
 
-	public PacketEventsArgumentBridge(CustomArgumentRegistry registry) {
-		Objects.requireNonNull(registry, "registry");
-		this.patchListener = new DeclareCommandsPatchListener(registry);
-	}
+    public PacketEventsArgumentBridge(CustomArgumentRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        this.patchListener = new DeclareCommandsPatchListener(registry);
+    }
 
-	public void install() {
-		PacketEvents.getAPI().getEventManager().registerListener(patchListener,
-				PacketListenerPriority.NORMAL);
-	}
+    public void install() {
+        PacketEvents.getAPI().getEventManager().registerListener(patchListener,
+                PacketListenerPriority.NORMAL);
+    }
 }

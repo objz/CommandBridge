@@ -10,7 +10,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ RECORD_COMPONENT, FIELD })
 public @interface Max {
-	long value();
+    long value();
 
-	String message() default "is above maximum";
+    String message() default "is above maximum";
 }

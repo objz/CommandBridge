@@ -11,9 +11,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ RECORD_COMPONENT, FIELD, TYPE_USE})
 public @interface Pattern {
-	String regex();
+    String regex();
 
-	int flags() default 0; 
+    int flags() default 0; 
 
-	String message() default "does not match required pattern";
+    String message() default "does not match required pattern";
 }

@@ -13,15 +13,15 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 
 @Model("defaults")
 public record Defaults(
-		@YmlKey("run-as") @Default("CONSOLE") RunAs runAs,
+        @YmlKey("run-as") @Default("CONSOLE") RunAs runAs,
 
-		List<IdMapping> execute,
+        List<IdMapping> execute,
 
-		Server server,
+        Server server,
 
-		@Min(0) @Default("0s") Duration delay,
+        @Min(0) @Default("0s") Duration delay,
 
-		@Min(0) @Default("0s") Duration cooldown
+        @Min(0) @Default("0s") Duration cooldown
 
 ) {
 

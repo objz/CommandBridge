@@ -10,35 +10,35 @@ import java.util.function.Consumer;
 
 public class ScriptResolutionStage implements Pipeline {
 
-	private final ScriptManager scriptManager;
+    private final ScriptManager scriptManager;
 
-	public ScriptResolutionStage(ScriptManager scriptManager) {
-		this.scriptManager = scriptManager;
-	}
+    public ScriptResolutionStage(ScriptManager scriptManager) {
+        this.scriptManager = scriptManager;
+    }
 
-	@Override
-	public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
-		String name = context.invoked().name();
+    @Override
+    public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
+        String name = context.invoked().name();
 
-		for (Script script : scriptManager.enabled()) {
-			if (matches(script, name)) {
-				next.accept(ExecutionResult.ok(context.withScript(script)));
-				return;
-			}
-		}
+        for (Script script : scriptManager.enabled()) {
+            if (matches(script, name)) {
+                next.accept(ExecutionResult.ok(context.withScript(script)));
+                return;
+            }
+        }
 
-		next.accept(ExecutionResult.stop("No script found for command: " + name));
-	}
+        next.accept(ExecutionResult.stop("No script found for command: " + name));
+    }
 
-	private boolean matches(Script script, String name) {
-		if (script.name().equalsIgnoreCase(name))
-			return true;
-		if (script.aliases() == null)
-			return false;
-		for (String alias : script.aliases()) {
-			if (alias.equalsIgnoreCase(name))
-				return true;
-		}
-		return false;
-	}
+    private boolean matches(Script script, String name) {
+        if (script.name().equalsIgnoreCase(name))
+            return true;
+        if (script.aliases() == null)
+            return false;
+        for (String alias : script.aliases()) {
+            if (alias.equalsIgnoreCase(name))
+                return true;
+        }
+        return false;
+    }
 }

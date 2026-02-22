@@ -7,16 +7,16 @@ import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentRegist
 import java.util.Objects;
 
 public final class VelocityArgumentTypes {
-	private VelocityArgumentTypes() {
-	}
+    private VelocityArgumentTypes() {
+    }
 
-	public static void register(CustomArgumentRegistry registry, PlatformFeatures features) {
-		Objects.requireNonNull(registry, "registry");
-		if (features == null) {
-			return;
-		}
-		if (features.isEnabled(Location.VELOCITY, PlatformFeatureKeys.PACKET_EVENTS)) {
-			registry.register(new TimeArgumentType());
-		}
-	}
+    public static void register(CustomArgumentRegistry registry, PlatformFeatures features) {
+        Objects.requireNonNull(registry, "registry");
+        if (features == null) {
+            return;
+        }
+        if (features.isEnabled(Location.VELOCITY, PlatformFeatureKeys.PACKET_EVENTS)) {
+            registry.register(new TimeArgumentType());
+        }
+    }
 }

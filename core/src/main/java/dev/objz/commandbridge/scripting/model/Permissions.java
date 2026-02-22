@@ -5,8 +5,8 @@ import dev.objz.commandbridge.scripting.anno.Model;
 
 @Model("permissions")
 public record Permissions(
-		@Default("true") boolean enabled,
-		@Default("false") boolean silent
+        @Default("true") boolean enabled,
+        @Default("false") boolean silent
 
 ) {
 }

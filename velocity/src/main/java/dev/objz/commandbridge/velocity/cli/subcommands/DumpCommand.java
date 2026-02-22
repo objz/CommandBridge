@@ -17,44 +17,44 @@ import java.util.List;
 
 public class DumpCommand extends AbstractCliCommand {
 
-	private final SessionHub sessions;
+    private final SessionHub sessions;
 
-	public DumpCommand(RegistrationManager registrations, SessionHub sessions) {
-		this.sessions = sessions;
-	}
+    public DumpCommand(RegistrationManager registrations, SessionHub sessions) {
+        this.sessions = sessions;
+    }
 
-	public void execute(CommandSource sender) {
-		List<ClientSession> list = new ArrayList<>();
-		for (ClientSession s : sessions)
-			list.add(s);
+    public void execute(CommandSource sender) {
+        List<ClientSession> list = new ArrayList<>();
+        for (ClientSession s : sessions)
+            list.add(s);
 
-		RenderContext ctx = new RenderContext(sender);
-		
-		if (ctx.isPlayer()) {
-			renderChat(ctx, list.size());
-		} else {
-			renderConsole(list.size());
-		}
-	}
-	
-	private void renderChat(RenderContext ctx, int clientCount) {
-		Component clients = MM.parse("<" + Theme.C_MUTED + ">Clients</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + clientCount + "</" + Theme.C_ACCENT + ">");
-		Component todo = MM.warn("TODO: detailed registration dump");
-		int width = Math.max(ChatLayout.titleWidth("Dump"), ChatLayout.visibleLength(clients));
-		width = Math.max(width, ChatLayout.visibleLength(todo));
-		width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-		ChatFrame frame = new ChatFrame("Dump").width(width);
-		frame.line(clients);
-		frame.line(todo);
-		frame.send(ctx.source());
-	}
-	
-	private void renderConsole(int clientCount) {
-		CliOutput output = cli("Dump");
-		output.appendRaw(Theme.ANSI_MUTED).appendRaw("Clients: ").appendRaw(Theme.ANSI_RESET);
-		output.appendRaw(Theme.ANSI_ACCENT).appendRaw(String.valueOf(clientCount)).appendRaw(Theme.ANSI_RESET);
-		output.appendRaw("\n\n");
-		output.warn("TODO: detailed registration dump");
-		log(output);
-	}
+        RenderContext ctx = new RenderContext(sender);
+        
+        if (ctx.isPlayer()) {
+            renderChat(ctx, list.size());
+        } else {
+            renderConsole(list.size());
+        }
+    }
+    
+    private void renderChat(RenderContext ctx, int clientCount) {
+        Component clients = MM.parse("<" + Theme.C_MUTED + ">Clients</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + clientCount + "</" + Theme.C_ACCENT + ">");
+        Component todo = MM.warn("TODO: detailed registration dump");
+        int width = Math.max(ChatLayout.titleWidth("Dump"), ChatLayout.visibleLength(clients));
+        width = Math.max(width, ChatLayout.visibleLength(todo));
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+        ChatFrame frame = new ChatFrame("Dump").width(width);
+        frame.line(clients);
+        frame.line(todo);
+        frame.send(ctx.source());
+    }
+    
+    private void renderConsole(int clientCount) {
+        CliOutput output = cli("Dump");
+        output.appendRaw(Theme.ANSI_MUTED).appendRaw("Clients: ").appendRaw(Theme.ANSI_RESET);
+        output.appendRaw(Theme.ANSI_ACCENT).appendRaw(String.valueOf(clientCount)).appendRaw(Theme.ANSI_RESET);
+        output.appendRaw("\n\n");
+        output.warn("TODO: detailed registration dump");
+        log(output);
+    }
 }

@@ -9,5 +9,5 @@ public record CommandStub(
         String name,          
         List<String> aliases,  
         String description,
-	List<ArgMapping> args
+    List<ArgMapping> args
 ) {}

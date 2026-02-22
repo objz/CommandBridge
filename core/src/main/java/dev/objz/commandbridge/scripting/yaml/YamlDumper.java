@@ -7,36 +7,36 @@ import java.util.*;
 
 public final class YamlDumper {
 
-	private final Dump dumper;
+    private final Dump dumper;
 
-	public YamlDumper() {
-		var settings = DumpSettings.builder()
-				.setDefaultScalarStyle(org.snakeyaml.engine.v2.common.ScalarStyle.PLAIN)
-				.setDefaultFlowStyle(org.snakeyaml.engine.v2.common.FlowStyle.BLOCK)
-				.build();
-		this.dumper = new Dump(settings);
-	}
+    public YamlDumper() {
+        var settings = DumpSettings.builder()
+                .setDefaultScalarStyle(org.snakeyaml.engine.v2.common.ScalarStyle.PLAIN)
+                .setDefaultFlowStyle(org.snakeyaml.engine.v2.common.FlowStyle.BLOCK)
+                .build();
+        this.dumper = new Dump(settings);
+    }
 
-	public String dump(YamlNode root) {
-		Object javaValue = fromYamlNode(root);
-		return dumper.dumpToString(javaValue);
-	}
+    public String dump(YamlNode root) {
+        Object javaValue = fromYamlNode(root);
+        return dumper.dumpToString(javaValue);
+    }
 
-	private Object fromYamlNode(YamlNode node) {
-		if (node instanceof YamlNode.Scalar s) {
-			return s.value();
-		}
-		if (node instanceof YamlNode.Mapping m) {
-			Map<String, Object> out = new LinkedHashMap<>();
-			m.entries().forEach((k, v) -> out.put(k, fromYamlNode(v)));
-			return out;
-		}
-		if (node instanceof YamlNode.Sequence seq) {
-			List<Object> list = new ArrayList<>(seq.elements().size());
-			for (YamlNode n : seq.elements())
-				list.add(fromYamlNode(n));
-			return list;
-		}
-		return null;
-	}
+    private Object fromYamlNode(YamlNode node) {
+        if (node instanceof YamlNode.Scalar s) {
+            return s.value();
+        }
+        if (node instanceof YamlNode.Mapping m) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            m.entries().forEach((k, v) -> out.put(k, fromYamlNode(v)));
+            return out;
+        }
+        if (node instanceof YamlNode.Sequence seq) {
+            List<Object> list = new ArrayList<>(seq.elements().size());
+            for (YamlNode n : seq.elements())
+                list.add(fromYamlNode(n));
+            return list;
+        }
+        return null;
+    }
 }

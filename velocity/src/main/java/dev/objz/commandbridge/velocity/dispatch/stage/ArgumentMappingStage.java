@@ -14,36 +14,36 @@ import java.util.function.Consumer;
 
 public class ArgumentMappingStage implements Pipeline {
 
-	@Override
-	public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
-		Script script = context.script();
-		List<InvokedCommand.TypedArgument> invokedArgs = context.invoked().args();
+    @Override
+    public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
+        Script script = context.script();
+        List<InvokedCommand.TypedArgument> invokedArgs = context.invoked().args();
 
-		List<ArgMapping> definedArgs = script.registeredArguments();
+        List<ArgMapping> definedArgs = script.registeredArguments();
 
-		if (definedArgs == null || definedArgs.isEmpty()) {
-			next.accept(ExecutionResult.ok(context.withArguments(Map.of())));
-			return;
-		}
+        if (definedArgs == null || definedArgs.isEmpty()) {
+            next.accept(ExecutionResult.ok(context.withArguments(Map.of())));
+            return;
+        }
 
-		Map<String, Object> mapped = new HashMap<>();
+        Map<String, Object> mapped = new HashMap<>();
 
-		for (int i = 0; i < definedArgs.size(); i++) {
-			ArgMapping def = definedArgs.get(i);
-			Object value = null;
+        for (int i = 0; i < definedArgs.size(); i++) {
+            ArgMapping def = definedArgs.get(i);
+            Object value = null;
 
-			if (invokedArgs != null && i < invokedArgs.size()) {
-				value = invokedArgs.get(i).value();
-			}
+            if (invokedArgs != null && i < invokedArgs.size()) {
+                value = invokedArgs.get(i).value();
+            }
 
-			if (value == null && def.required()) {
-				next.accept(ExecutionResult.error("Missing required argument: " + def.name()));
-				return;
-			}
+            if (value == null && def.required()) {
+                next.accept(ExecutionResult.error("Missing required argument: " + def.name()));
+                return;
+            }
 
-			mapped.put(def.name(), value);
-		}
+            mapped.put(def.name(), value);
+        }
 
-		next.accept(ExecutionResult.ok(context.withArguments(mapped)));
-	}
+        next.accept(ExecutionResult.ok(context.withArguments(mapped)));
+    }
 }

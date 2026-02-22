@@ -8,15 +8,15 @@ import java.util.Set;
 import java.util.UUID;
 
 public record ExecuteCommandContext(
-		ClientSession session,
-		String command,
-		RunAs runAs,
-		UUID uuid,
-		Set<String> grantedPermissions) {
+        ClientSession session,
+        String command,
+        RunAs runAs,
+        UUID uuid,
+        Set<String> grantedPermissions) {
 
-	public ExecuteCommandContext {
-		Objects.requireNonNull(session);
-		Objects.requireNonNull(command);
-		Objects.requireNonNull(runAs);
-	}
+    public ExecuteCommandContext {
+        Objects.requireNonNull(session);
+        Objects.requireNonNull(command);
+        Objects.requireNonNull(runAs);
+    }
 }

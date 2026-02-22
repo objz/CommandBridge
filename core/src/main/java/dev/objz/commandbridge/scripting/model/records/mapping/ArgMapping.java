@@ -10,8 +10,8 @@ import dev.objz.commandbridge.scripting.model.enums.ArgType;
 
 @Model("args")
 public record ArgMapping(
-		@Required String name,
-		@Default("false") boolean required,
-		@Default("STRING") ArgType type,
-		List<@Pattern(regex = "^[a-z0-9._+\\-]+$") String> suggestions) {
+        @Required String name,
+        @Default("false") boolean required,
+        @Default("STRING") ArgType type,
+        List<@Pattern(regex = "^[a-z0-9._+\\-]+$") String> suggestions) {
 }

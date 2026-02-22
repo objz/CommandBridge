@@ -4,10 +4,10 @@ import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.scripting.validation.ProblemSink;
 
 public record BindContext(TypeAdapterRegistry adapters, ProblemSink problems,
-		PlatformFeatures platformFeatures) implements ConvertContext {
-	public BindContext {
-		if (platformFeatures == null) {
-			platformFeatures = PlatformFeatures.none();
-		}
-	}
+        PlatformFeatures platformFeatures) implements ConvertContext {
+    public BindContext {
+        if (platformFeatures == null) {
+            platformFeatures = PlatformFeatures.none();
+        }
+    }
 }

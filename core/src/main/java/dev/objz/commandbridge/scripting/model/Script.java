@@ -18,65 +18,65 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 
 @ModelRoot("script")
 public record Script(
-		@Min(1) @Max(2) @Required int version,
+        @Min(1) @Max(2) @Required int version,
 
-		@Required @Pattern(regex = "^[a-z][a-z0-9-]{2,32}$") String name,
+        @Required @Pattern(regex = "^[a-z][a-z0-9-]{2,32}$") String name,
 
-		@Default("true") boolean enabled,
+        @Default("true") boolean enabled,
 
-		String description,
+        String description,
 
-		List<String> aliases,
+        List<String> aliases,
 
-		@Required Permissions permissions,
+        @Required Permissions permissions,
 
-		@Required List<IdMapping> register,
+        @Required List<IdMapping> register,
 
-		@Required Defaults defaults,
+        @Required Defaults defaults,
 
-		@Required List<ArgMapping> args,
+        @Required List<ArgMapping> args,
 
-		@Required List<CmdMapping> commands
+        @Required List<CmdMapping> commands
 
 ) {
 
-	public List<ArgMapping> usedArguments() {
-		if (commands == null || commands.isEmpty()) {
-			return List.of();
-		}
+    public List<ArgMapping> usedArguments() {
+        if (commands == null || commands.isEmpty()) {
+            return List.of();
+        }
 
-		if (args == null || args.isEmpty()) {
-			return List.of();
-		}
+        if (args == null || args.isEmpty()) {
+            return List.of();
+        }
 
-		List<String> commandStrings = new ArrayList<>();
-		for (CmdMapping cmd : commands) {
-			if (cmd != null && cmd.command() != null) {
-				commandStrings.add(cmd.command());
-			}
-		}
+        List<String> commandStrings = new ArrayList<>();
+        for (CmdMapping cmd : commands) {
+            if (cmd != null && cmd.command() != null) {
+                commandStrings.add(cmd.command());
+            }
+        }
 
-		List<String> usedNames = PlaceholderExtractor.extractAll(commandStrings);
+        List<String> usedNames = PlaceholderExtractor.extractAll(commandStrings);
 
-		Map<String, ArgMapping> argsByName = args.stream()
-				.filter(arg -> arg != null && arg.name() != null)
-				.collect(Collectors.toMap(ArgMapping::name, arg -> arg, (a, b) -> a));
+        Map<String, ArgMapping> argsByName = args.stream()
+                .filter(arg -> arg != null && arg.name() != null)
+                .collect(Collectors.toMap(ArgMapping::name, arg -> arg, (a, b) -> a));
 
-		List<ArgMapping> result = new ArrayList<>();
-		for (String name : usedNames) {
-			ArgMapping arg = argsByName.get(name);
-			if (arg != null) {
-				result.add(arg);
-			}
-		}
+        List<ArgMapping> result = new ArrayList<>();
+        for (String name : usedNames) {
+            ArgMapping arg = argsByName.get(name);
+            if (arg != null) {
+                result.add(arg);
+            }
+        }
 
-		return List.copyOf(result);
-	}
+        return List.copyOf(result);
+    }
 
-	public List<ArgMapping> registeredArguments() {
-		if (args == null || args.isEmpty()) {
-			return List.of();
-		}
-		return List.copyOf(args);
-	}
+    public List<ArgMapping> registeredArguments() {
+        if (args == null || args.isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(args);
+    }
 }

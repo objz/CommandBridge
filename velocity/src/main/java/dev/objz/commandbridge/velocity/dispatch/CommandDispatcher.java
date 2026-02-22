@@ -27,100 +27,100 @@ import java.util.UUID;
 
 public final class CommandDispatcher {
 
-	private final SessionHub sessions;
-	private final OutNode<Object> outNode;
-	private final VelocityExecutor velocityExecutor;
+    private final SessionHub sessions;
+    private final OutNode<Object> outNode;
+    private final VelocityExecutor velocityExecutor;
 
-	public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, VelocityExecutor velocityExecutor) {
-		this.sessions = sessions;
-		this.outNode = outNode;
-		this.velocityExecutor = velocityExecutor;
-	}
+    public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, VelocityExecutor velocityExecutor) {
+        this.sessions = sessions;
+        this.outNode = outNode;
+        this.velocityExecutor = velocityExecutor;
+    }
 
-	public void dispatchCommand(ExecutionContext ctx, CmdMapping cmd) {
-		var targets = Optional.ofNullable(cmd.execute()).orElse(List.of());
+    public void dispatchCommand(ExecutionContext ctx, CmdMapping cmd) {
+        var targets = Optional.ofNullable(cmd.execute()).orElse(List.of());
 
-		if (targets.isEmpty()) {
-			Log.warn("Command '{}' has no execution targets defined", cmd.command());
-			notifyExecutionError(ctx.source(), cmd.command(), "No execution targets configured");
-			return;
-		}
+        if (targets.isEmpty()) {
+            Log.warn("Command '{}' has no execution targets defined", cmd.command());
+            notifyExecutionError(ctx.source(), cmd.command(), "No execution targets configured");
+            return;
+        }
 
-		for (IdMapping target : targets) {
-			dispatchToTarget(ctx, cmd, target);
-		}
-	}
+        for (IdMapping target : targets) {
+            dispatchToTarget(ctx, cmd, target);
+        }
+    }
 
-	private void dispatchToTarget(ExecutionContext ctx, CmdMapping cmd, IdMapping target) {
-		String targetId = target.id();
-		Location targetLoc = target.location();
+    private void dispatchToTarget(ExecutionContext ctx, CmdMapping cmd, IdMapping target) {
+        String targetId = target.id();
+        Location targetLoc = target.location();
 
-		if (targetLoc == Location.VELOCITY && velocityExecutor.isLocal(targetId)) {
-			executeLocally(ctx, cmd);
-			return;
-		}
+        if (targetLoc == Location.VELOCITY && velocityExecutor.isLocal(targetId)) {
+            executeLocally(ctx, cmd);
+            return;
+        }
 
-		Optional<ClientSession> sessionOpt = sessions.findSession(targetId, targetLoc);
+        Optional<ClientSession> sessionOpt = sessions.findSession(targetId, targetLoc);
 
-		if (sessionOpt.isPresent()) {
-			dispatchCommand(sessionOpt.get(), ctx, cmd);
-		} else {
-			Log.warn("Target '{}' ({}) not found or not connected", targetId, targetLoc);
-			notifyExecutionError(ctx.source(), cmd.command(),
-					targetLoc + " server '" + targetId + "' is not connected");
+        if (sessionOpt.isPresent()) {
+            dispatchCommand(sessionOpt.get(), ctx, cmd);
+        } else {
+            Log.warn("Target '{}' ({}) not found or not connected", targetId, targetLoc);
+            notifyExecutionError(ctx.source(), cmd.command(),
+                    targetLoc + " server '" + targetId + "' is not connected");
 
-			Feedback feedback = new Feedback(1, 0, 1, List.of(),
-					List.of(targetLoc + " not connected: " + targetId));
-			Summary.feedbackSummary("Execution Failed", feedback, targetId);
-		}
-	}
+            Feedback feedback = new Feedback(1, 0, 1, List.of(),
+                    List.of(targetLoc + " not connected: " + targetId));
+            Summary.feedbackSummary("Execution Failed", feedback, targetId);
+        }
+    }
 
-	private void executeLocally(ExecutionContext ctx, CmdMapping cmd) {
-		var playerUuid = getUUID(ctx.source());
-		var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
+    private void executeLocally(ExecutionContext ctx, CmdMapping cmd) {
+        var playerUuid = getUUID(ctx.source());
+        var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
 
-		velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source())
-				.thenAccept(success -> {
-					if (!success) {
-						Log.warn("Local Velocity command '{}' execution failed", cmd.command());
-						notifyExecutionError(ctx.source(), cmd.command(),
-								"Command execution failed");
-					}
-				});
-	}
+        velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source())
+                .thenAccept(success -> {
+                    if (!success) {
+                        Log.warn("Local Velocity command '{}' execution failed", cmd.command());
+                        notifyExecutionError(ctx.source(), cmd.command(),
+                                "Command execution failed");
+                    }
+                });
+    }
 
-	private void dispatchCommand(ClientSession session, ExecutionContext ctx, CmdMapping cmd) {
-		var uuid = getUUID(ctx.source());
-		var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
+    private void dispatchCommand(ClientSession session, ExecutionContext ctx, CmdMapping cmd) {
+        var uuid = getUUID(ctx.source());
+        var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
 
-		Set<String> grantedPermissions = null;
-		if (runAs == RunAs.OPERATOR && ctx.script() != null) {
-			grantedPermissions = buildOPPermissions(ctx.script(), cmd);
-		}
+        Set<String> grantedPermissions = null;
+        if (runAs == RunAs.OPERATOR && ctx.script() != null) {
+            grantedPermissions = buildOPPermissions(ctx.script(), cmd);
+        }
 
-		Log.debug("Dispatching command to '{}' ({}): {}", session.id(), session.location(), cmd.command());
+        Log.debug("Dispatching command to '{}' ({}): {}", session.id(), session.location(), cmd.command());
 
-		outNode.send(MessageType.EXECUTE_COMMAND,
-				new ExecuteCommandContext(session, cmd.command(), runAs, uuid, grantedPermissions));
-	}
+        outNode.send(MessageType.EXECUTE_COMMAND,
+                new ExecuteCommandContext(session, cmd.command(), runAs, uuid, grantedPermissions));
+    }
 
-	private UUID getUUID(CommandSource source) {
-		return source instanceof Player p ? p.getUniqueId() : null;
-	}
+    private UUID getUUID(CommandSource source) {
+        return source instanceof Player p ? p.getUniqueId() : null;
+    }
 
-	private Set<String> buildOPPermissions(Script script, CmdMapping currentCmd) {
-		Set<String> permissions = new HashSet<>();
-		permissions.add("commandbridge.command." + script.name());
+    private Set<String> buildOPPermissions(Script script, CmdMapping currentCmd) {
+        Set<String> permissions = new HashSet<>();
+        permissions.add("commandbridge.command." + script.name());
 
-		String base = currentCmd.command().split(" ")[0].replace("/", "");
-		permissions.add(base);
-		permissions.add(base + ".*");
-		return permissions;
-	}
+        String base = currentCmd.command().split(" ")[0].replace("/", "");
+        permissions.add(base);
+        permissions.add(base + ".*");
+        return permissions;
+    }
 
-	private void notifyExecutionError(CommandSource source, String command, String errorMessage) {
-		if (source == null)
-			return;
-		source.sendMessage(MM.parse("<red>⚠</red> <gray>Execution failed: " + errorMessage + "</gray>"));
-	}
+    private void notifyExecutionError(CommandSource source, String command, String errorMessage) {
+        if (source == null)
+            return;
+        source.sendMessage(MM.parse("<red>⚠</red> <gray>Execution failed: " + errorMessage + "</gray>"));
+    }
 }

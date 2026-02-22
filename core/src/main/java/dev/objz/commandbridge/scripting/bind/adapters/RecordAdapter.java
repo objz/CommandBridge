@@ -10,31 +10,31 @@ import dev.objz.commandbridge.scripting.yaml.YamlNode;
 
 public final class RecordAdapter implements TypeAdapter<Object> {
 
-	private final RecordBinder binder;
+    private final RecordBinder binder;
 
-	public RecordAdapter(RecordBinder binder) {
-		this.binder = binder;
-	}
+    public RecordAdapter(RecordBinder binder) {
+        this.binder = binder;
+    }
 
-	@Override
-	public boolean supports(Type targetType) {
-		return targetType instanceof Class<?> c && c.isRecord();
-	}
+    @Override
+    public boolean supports(Type targetType) {
+        return targetType instanceof Class<?> c && c.isRecord();
+    }
 
-	@Override
-	public Object fromYaml(YamlNode node, Type targetType, ConvertContext ctx) {
-		if (!(targetType instanceof Class<?> c) || !c.isRecord()) {
-			throw new IllegalArgumentException("Target is not a record");
-		}
-		String override = RecordBinder.currentPath();
-		if (override != null && !override.isBlank()) {
-			return binder.bindRecord(c, node, (BindContext) ctx, override);
-		}
-		return binder.bindRecord(c, node, (BindContext) ctx);
-	}
+    @Override
+    public Object fromYaml(YamlNode node, Type targetType, ConvertContext ctx) {
+        if (!(targetType instanceof Class<?> c) || !c.isRecord()) {
+            throw new IllegalArgumentException("Target is not a record");
+        }
+        String override = RecordBinder.currentPath();
+        if (override != null && !override.isBlank()) {
+            return binder.bindRecord(c, node, (BindContext) ctx, override);
+        }
+        return binder.bindRecord(c, node, (BindContext) ctx);
+    }
 
-	@Override
-	public YamlNode toYaml(Object value, Type targetType, ConvertContext ctx) {
-		throw new UnsupportedOperationException("Record toYaml not implemented");
-	}
+    @Override
+    public YamlNode toYaml(Object value, Type targetType, ConvertContext ctx) {
+        throw new UnsupportedOperationException("Record toYaml not implemented");
+    }
 }

@@ -8,14 +8,14 @@ import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentRegist
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.VelocityArgumentBridge;
 
 public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>> {
-	private final VelocityArgumentBridge bridge;
+    private final VelocityArgumentBridge bridge;
 
-	public ArgumentMapper(ProxyServer proxy, CustomArgumentRegistry argumentRegistry) {
-		this.bridge = new VelocityArgumentBridge(proxy, argumentRegistry);
-	}
+    public ArgumentMapper(ProxyServer proxy, CustomArgumentRegistry argumentRegistry) {
+        this.bridge = new VelocityArgumentBridge(proxy, argumentRegistry);
+    }
 
-	@Override
-	public Argument<?> map(ArgMapping argMapping) {
-		return bridge.map(argMapping);
-	}
+    @Override
+    public Argument<?> map(ArgMapping argMapping) {
+        return bridge.map(argMapping);
+    }
 }

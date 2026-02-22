@@ -12,57 +12,57 @@ import java.util.concurrent.CompletableFuture;
 
 public final class VelocityExecutor {
 
-	private final ProxyServer proxy;
-	private final String localServerId;
+    private final ProxyServer proxy;
+    private final String localServerId;
 
-	public VelocityExecutor(ProxyServer proxy, String localServerId) {
-		this.proxy = Objects.requireNonNull(proxy);
-		this.localServerId = Objects.requireNonNull(localServerId);
-	}
+    public VelocityExecutor(ProxyServer proxy, String localServerId) {
+        this.proxy = Objects.requireNonNull(proxy);
+        this.localServerId = Objects.requireNonNull(localServerId);
+    }
 
-	public String getLocalServerId() {
-		return localServerId;
-	}
+    public String getLocalServerId() {
+        return localServerId;
+    }
 
-	public boolean isLocal(String targetId) {
-		return localServerId.equals(targetId);
-	}
+    public boolean isLocal(String targetId) {
+        return localServerId.equals(targetId);
+    }
 
-	public CompletableFuture<Boolean> execute(String command, RunAs runAs, UUID playerUuid,
-			CommandSource fallbackSource) {
-		String cmd = command.startsWith("/") ? command.substring(1) : command;
+    public CompletableFuture<Boolean> execute(String command, RunAs runAs, UUID playerUuid,
+            CommandSource fallbackSource) {
+        String cmd = command.startsWith("/") ? command.substring(1) : command;
 
-		CommandSource sender = switch (runAs != null ? runAs : RunAs.CONSOLE) {
-			case CONSOLE -> proxy.getConsoleCommandSource();
-			case PLAYER -> {
-				if (playerUuid != null) {
-					yield proxy.getPlayer(playerUuid).orElse(null);
-				}
-				yield (fallbackSource instanceof Player) ? fallbackSource : null;
-			}
-			case OPERATOR -> {
-				if (playerUuid != null) {
-					Player player = proxy.getPlayer(playerUuid).orElse(null);
-					if (player != null) {
-						yield proxy.getConsoleCommandSource();
-					}
-				}
-				yield proxy.getConsoleCommandSource();
-			}
-		};
+        CommandSource sender = switch (runAs != null ? runAs : RunAs.CONSOLE) {
+            case CONSOLE -> proxy.getConsoleCommandSource();
+            case PLAYER -> {
+                if (playerUuid != null) {
+                    yield proxy.getPlayer(playerUuid).orElse(null);
+                }
+                yield (fallbackSource instanceof Player) ? fallbackSource : null;
+            }
+            case OPERATOR -> {
+                if (playerUuid != null) {
+                    Player player = proxy.getPlayer(playerUuid).orElse(null);
+                    if (player != null) {
+                        yield proxy.getConsoleCommandSource();
+                    }
+                }
+                yield proxy.getConsoleCommandSource();
+            }
+        };
 
-		if (sender == null) {
-			Log.warn("Could not resolve sender for command '{}'", cmd);
-			return CompletableFuture.completedFuture(false);
-		}
+        if (sender == null) {
+            Log.warn("Could not resolve sender for command '{}'", cmd);
+            return CompletableFuture.completedFuture(false);
+        }
 
-		Log.debug("Executing local Velocity command '{}' as {}", cmd,
-				sender instanceof Player p ? p.getUsername() : "CONSOLE");
+        Log.debug("Executing local Velocity command '{}' as {}", cmd,
+                sender instanceof Player p ? p.getUsername() : "CONSOLE");
 
-		return proxy.getCommandManager().executeAsync(sender, cmd)
-				.exceptionally(ex -> {
-					Log.error(ex, "Velocity command '{}' threw exception", cmd);
-					return false;
-				});
-	}
+        return proxy.getCommandManager().executeAsync(sender, cmd)
+                .exceptionally(ex -> {
+                    Log.error(ex, "Velocity command '{}' threw exception", cmd);
+                    return false;
+                });
+    }
 }

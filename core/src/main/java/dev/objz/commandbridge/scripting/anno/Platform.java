@@ -12,10 +12,10 @@ import java.lang.annotation.Target;
 public @interface Platform {
     Location[] value();
 
-	OptionalSupport[] optional() default {};
+    OptionalSupport[] optional() default {};
 
-	@interface OptionalSupport {
-		Location location();
-		String feature();
-	}
+    @interface OptionalSupport {
+        Location location();
+        String feature();
+    }
 }

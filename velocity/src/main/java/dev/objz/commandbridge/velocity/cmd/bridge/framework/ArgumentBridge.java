@@ -5,21 +5,21 @@ import dev.objz.commandbridge.velocity.cmd.bridge.types.VelocityArgumentTypes;
 import java.util.Objects;
 
 public final class ArgumentBridge {
-	private final CustomArgumentRegistry registry;
+    private final CustomArgumentRegistry registry;
 
-	public ArgumentBridge(PlatformFeatures platformFeatures) {
-		this.registry = new CustomArgumentRegistry();
-		VelocityArgumentTypes.register(registry,
-				platformFeatures != null ? platformFeatures : PlatformFeatures.none());
-	}
+    public ArgumentBridge(PlatformFeatures platformFeatures) {
+        this.registry = new CustomArgumentRegistry();
+        VelocityArgumentTypes.register(registry,
+                platformFeatures != null ? platformFeatures : PlatformFeatures.none());
+    }
 
-	public ArgumentBridge(CustomArgumentRegistry registry, PlatformFeatures platformFeatures) {
-		this.registry = Objects.requireNonNull(registry);
-		VelocityArgumentTypes.register(registry,
-				platformFeatures != null ? platformFeatures : PlatformFeatures.none());
-	}
+    public ArgumentBridge(CustomArgumentRegistry registry, PlatformFeatures platformFeatures) {
+        this.registry = Objects.requireNonNull(registry);
+        VelocityArgumentTypes.register(registry,
+                platformFeatures != null ? platformFeatures : PlatformFeatures.none());
+    }
 
-	public CustomArgumentRegistry registry() {
-		return registry;
-	}
+    public CustomArgumentRegistry registry() {
+        return registry;
+    }
 }

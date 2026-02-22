@@ -5,12 +5,12 @@ import java.util.List;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 
 public record InvokedCommand(
-		String name,
-		List<TypedArgument> args,
-		SenderContext sender) {
+        String name,
+        List<TypedArgument> args,
+        SenderContext sender) {
 
-	public record TypedArgument(
-			ArgType type,
-			Object value) {
-	}
+    public record TypedArgument(
+            ArgType type,
+            Object value) {
+    }
 }

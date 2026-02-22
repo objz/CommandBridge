@@ -14,15 +14,15 @@ import dev.objz.commandbridge.scripting.model.records.Server;
 
 @Model("commands")
 public record CmdMapping(
-		@Required @Resolvable String command,
+        @Required @Resolvable String command,
 
-		@Merge @YmlKey("run-as") RunAs runAs,
+        @Merge @YmlKey("run-as") RunAs runAs,
 
-		@Merge List<IdMapping> execute,
+        @Merge List<IdMapping> execute,
 
-		@Merge Server server,
+        @Merge Server server,
 
-		@Merge @Min(0) Duration delay,
+        @Merge @Min(0) Duration delay,
 
-		@Merge @Min(0) Duration cooldown) {
+        @Merge @Min(0) Duration cooldown) {
 }

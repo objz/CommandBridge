@@ -16,93 +16,93 @@ import java.util.Locale;
 import java.util.stream.Stream;
 
 public final class ScriptManager {
-	private final Path scriptsDir;
-	private final PlatformFeatures platformFeatures;
+    private final Path scriptsDir;
+    private final PlatformFeatures platformFeatures;
 
-	private final List<Script> loaded = new ArrayList<>();
-	private final List<Script> enabled = new ArrayList<>();
-	private final List<Script> disabled = new ArrayList<>();
-	private long errors;
+    private final List<Script> loaded = new ArrayList<>();
+    private final List<Script> enabled = new ArrayList<>();
+    private final List<Script> disabled = new ArrayList<>();
+    private long errors;
 
-	public ScriptManager(Path dataDir, PlatformFeatures platformFeatures) {
-		this.scriptsDir = dataDir.resolve("scripts");
-		this.platformFeatures = platformFeatures != null
-				? platformFeatures
-				: PlatformFeatures.none();
-	}
+    public ScriptManager(Path dataDir, PlatformFeatures platformFeatures) {
+        this.scriptsDir = dataDir.resolve("scripts");
+        this.platformFeatures = platformFeatures != null
+                ? platformFeatures
+                : PlatformFeatures.none();
+    }
 
-	public void loadAll() {
-		loadAll(true);
-	}
+    public void loadAll() {
+        loadAll(true);
+    }
 
-	public void loadAll(boolean logSummary) {
-		loaded.clear();
-		enabled.clear();
-		errors = 0;
+    public void loadAll(boolean logSummary) {
+        loaded.clear();
+        enabled.clear();
+        errors = 0;
 
-		try {
-			Files.createDirectories(scriptsDir);
-		} catch (IOException e) {
-			Log.error(e, "Cannot create scripts directory at '{}'", scriptsDir);
-			return;
-		}
+        try {
+            Files.createDirectories(scriptsDir);
+        } catch (IOException e) {
+            Log.error(e, "Cannot create scripts directory at '{}'", scriptsDir);
+            return;
+        }
 
-		try (Stream<Path> files = Files.list(scriptsDir)) {
-			for (Path p : (Iterable<Path>) files::iterator) {
-				if (!isYaml(p))
-					continue;
+        try (Stream<Path> files = Files.list(scriptsDir)) {
+            for (Path p : (Iterable<Path>) files::iterator) {
+                if (!isYaml(p))
+                    continue;
 
-				try (var in = new FileInputStream(p.toFile())) {
-					LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
-							platformFeatures);
-					loaded.add(res.value);
-					if (res.ok() && res.value != null) {
-						if (res.value.enabled())
-							enabled.add(res.value);
-						else
-							disabled.add(res.value);
-					} else {
-						String header = "Script '" + p.getFileName() + "' invalid:";
-						Log.error(res.problems.toBulletedList(header));
-						disabled.add(res.value);
-						errors = res.problems.count();
-					}
-				} catch (Exception e) {
-					String header = "Script '" + p.getFileName() + "' invalid:";
-					Log.error(header + System.lineSeparator() +
-							"  - script: unexpected error: " + e.getMessage());
-				}
-			}
-		} catch (IOException e) {
-			Log.error(e, "Failed to list scripts at '{}'", scriptsDir);
-			return;
-		}
+                try (var in = new FileInputStream(p.toFile())) {
+                    LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
+                            platformFeatures);
+                    loaded.add(res.value);
+                    if (res.ok() && res.value != null) {
+                        if (res.value.enabled())
+                            enabled.add(res.value);
+                        else
+                            disabled.add(res.value);
+                    } else {
+                        String header = "Script '" + p.getFileName() + "' invalid:";
+                        Log.error(res.problems.toBulletedList(header));
+                        disabled.add(res.value);
+                        errors = res.problems.count();
+                    }
+                } catch (Exception e) {
+                    String header = "Script '" + p.getFileName() + "' invalid:";
+                    Log.error(header + System.lineSeparator() +
+                            "  - script: unexpected error: " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            Log.error(e, "Failed to list scripts at '{}'", scriptsDir);
+            return;
+        }
 
-		if (logSummary) {
-			Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
-		}
-	}
+        if (logSummary) {
+            Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
+        }
+    }
 
-	public List<Script> loaded() {
-		return loaded;
-	}
+    public List<Script> loaded() {
+        return loaded;
+    }
 
-	public List<Script> disabled() {
-		return disabled;
-	}
+    public List<Script> disabled() {
+        return disabled;
+    }
 
-	public List<Script> enabled() {
-		return enabled;
-	}
+    public List<Script> enabled() {
+        return enabled;
+    }
 
-	public long errors() {
-		return errors;
-	}
+    public long errors() {
+        return errors;
+    }
 
-	private static boolean isYaml(Path p) {
-		if (!Files.isRegularFile(p))
-			return false;
-		String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
-		return n.endsWith(".yml") || n.endsWith(".yaml");
-	}
+    private static boolean isYaml(Path p) {
+        if (!Files.isRegularFile(p))
+            return false;
+        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+        return n.endsWith(".yml") || n.endsWith(".yaml");
+    }
 }

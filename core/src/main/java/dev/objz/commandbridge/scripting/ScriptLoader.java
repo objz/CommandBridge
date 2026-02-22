@@ -20,69 +20,69 @@ import org.snakeyaml.engine.v2.exceptions.MarkedYamlEngineException;
 
 public final class ScriptLoader {
 
-	public static final class LoadResult<T> {
-		public final T value;
-		public final ProblemSink problems;
+    public static final class LoadResult<T> {
+        public final T value;
+        public final ProblemSink problems;
 
-		LoadResult(T value, ProblemSink problems) {
-			this.value = value;
-			this.problems = problems;
-		}
+        LoadResult(T value, ProblemSink problems) {
+            this.value = value;
+            this.problems = problems;
+        }
 
-		public boolean ok() {
-			return !problems.hasErrors();
-		}
-	}
+        public boolean ok() {
+            return !problems.hasErrors();
+        }
+    }
 
-	private static final RecordBinder BINDER = new RecordBinder();
-	private static final TypeAdapterRegistry REGISTRY = new TypeAdapterRegistry()
-			.register(new PrimitivesAdapter())
-			.register(new StringAdapter())
-			.register(new EnumAdapter())
-			.register(new DurationAdapter())
-			.register(new ListAdapter())
-			.register(new RecordAdapter(BINDER));
+    private static final RecordBinder BINDER = new RecordBinder();
+    private static final TypeAdapterRegistry REGISTRY = new TypeAdapterRegistry()
+            .register(new PrimitivesAdapter())
+            .register(new StringAdapter())
+            .register(new EnumAdapter())
+            .register(new DurationAdapter())
+            .register(new ListAdapter())
+            .register(new RecordAdapter(BINDER));
 
-	private static BindContext newContext(PlatformFeatures platformFeatures) {
-		return new BindContext(REGISTRY, new ProblemSink(), platformFeatures);
-	}
+    private static BindContext newContext(PlatformFeatures platformFeatures) {
+        return new BindContext(REGISTRY, new ProblemSink(), platformFeatures);
+    }
 
-	public static <T> LoadResult<T> loadResult(Class<T> modelType, InputStream in) {
-		return loadResult(modelType, in, PlatformFeatures.none());
-	}
+    public static <T> LoadResult<T> loadResult(Class<T> modelType, InputStream in) {
+        return loadResult(modelType, in, PlatformFeatures.none());
+    }
 
-	public static <T> LoadResult<T> loadResult(Class<T> modelType, InputStream in,
-			PlatformFeatures platformFeatures) {
-		var parser = new YamlParser();
-		BindContext ctx = newContext(platformFeatures);
+    public static <T> LoadResult<T> loadResult(Class<T> modelType, InputStream in,
+            PlatformFeatures platformFeatures) {
+        var parser = new YamlParser();
+        BindContext ctx = newContext(platformFeatures);
 
-		YamlNode node;
-		try {
-			node = parser.parse(in);
-		} catch (Exception ex) {
-			ctx.problems().error(null, prettyYamlError(ex));
-			return new LoadResult<>(null, ctx.problems());
-		}
+        YamlNode node;
+        try {
+            node = parser.parse(in);
+        } catch (Exception ex) {
+            ctx.problems().error(null, prettyYamlError(ex));
+            return new LoadResult<>(null, ctx.problems());
+        }
 
-		T result = BINDER.bindRecord(modelType, node, ctx);
-		return new LoadResult<>(result, ctx.problems());
-	}
+        T result = BINDER.bindRecord(modelType, node, ctx);
+        return new LoadResult<>(result, ctx.problems());
+    }
 
-	private static String prettyYamlError(Exception ex) {
-		if (ex instanceof MarkedYamlEngineException mye) {
-			Mark mark = mye.getProblemMark().orElse(null);
-			if (mark != null) {
-				int line = mark.getLine() + 1;
-				int col = mark.getColumn() + 1;
-				String problem = safeProblem(mye.getProblem());
-				return "YAML error at line " + line + ", column " + col + ": " + problem;
-			}
-			return "YAML error: " + safeProblem(mye.getProblem());
-		}
-		return "YAML error: " + (ex.getMessage() != null ? ex.getMessage() : ex.toString());
-	}
+    private static String prettyYamlError(Exception ex) {
+        if (ex instanceof MarkedYamlEngineException mye) {
+            Mark mark = mye.getProblemMark().orElse(null);
+            if (mark != null) {
+                int line = mark.getLine() + 1;
+                int col = mark.getColumn() + 1;
+                String problem = safeProblem(mye.getProblem());
+                return "YAML error at line " + line + ", column " + col + ": " + problem;
+            }
+            return "YAML error: " + safeProblem(mye.getProblem());
+        }
+        return "YAML error: " + (ex.getMessage() != null ? ex.getMessage() : ex.toString());
+    }
 
-	private static String safeProblem(String s) {
-		return (s == null || s.isBlank()) ? "parse error" : s;
-	}
+    private static String safeProblem(String s) {
+        return (s == null || s.isBlank()) ? "parse error" : s;
+    }
 }

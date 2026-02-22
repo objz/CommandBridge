@@ -5,11 +5,11 @@ import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import java.util.Optional;
 
 public interface CustomArgumentType<T> {
-	ArgType type();
+    ArgType type();
 
-	Argument<T> create(String nodeName);
+    Argument<T> create(String nodeName);
 
-	default Optional<PacketArgumentSpec> packetSpec() {
-		return Optional.empty();
-	}
+    default Optional<PacketArgumentSpec> packetSpec() {
+        return Optional.empty();
+    }
 }

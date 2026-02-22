@@ -19,5 +19,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target({ RECORD_COMPONENT, FIELD })
 public @interface Merge {
-	String from() default "defaults";
+    String from() default "defaults";
 }

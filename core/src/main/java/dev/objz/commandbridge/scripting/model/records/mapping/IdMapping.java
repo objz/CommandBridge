@@ -6,8 +6,8 @@ import dev.objz.commandbridge.scripting.model.enums.Location;
 
 @Model("id")
 public record IdMapping(
-		@Required String id,
-		@Required Location location
+        @Required String id,
+        @Required Location location
 
 ) {
 }

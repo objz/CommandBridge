@@ -5,11 +5,11 @@ import java.util.Map;
 import java.util.UUID;
 
 public record ScheduledTask(
-		UUID id,
-		UUID playerUuid,
-		String scriptName,
-		CmdMapping commandMapping,
-		Map<String, Object> arguments,
-		int commandIndex,
-		long timestamp) {
+        UUID id,
+        UUID playerUuid,
+        String scriptName,
+        CmdMapping commandMapping,
+        Map<String, Object> arguments,
+        int commandIndex,
+        long timestamp) {
 }

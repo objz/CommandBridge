@@ -13,39 +13,39 @@ import java.util.function.Consumer;
 
 public class CooldownStage implements Pipeline {
 
-	private final CooldownManager cooldownManager;
+    private final CooldownManager cooldownManager;
 
-	public CooldownStage(CooldownManager cooldownManager) {
-		this.cooldownManager = cooldownManager;
-	}
+    public CooldownStage(CooldownManager cooldownManager) {
+        this.cooldownManager = cooldownManager;
+    }
 
-	@Override
-	public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
-		Script script = context.script();
+    @Override
+    public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
+        Script script = context.script();
 
-		if (!(context.source() instanceof Player player)) {
-			next.accept(ExecutionResult.ok(context));
-			return;
-		}
+        if (!(context.source() instanceof Player player)) {
+            next.accept(ExecutionResult.ok(context));
+            return;
+        }
 
-		if (cooldownManager.isOnCooldown(script.name(), player.getUniqueId())) {
-			Duration remaining = cooldownManager.getRemaining(script.name(), player.getUniqueId());
-			context.source().sendMessage(
-					MM.error("Try again in " + formatDuration(remaining)));
-			next.accept(ExecutionResult.stop("Cooldown active"));
-			return;
-		}
+        if (cooldownManager.isOnCooldown(script.name(), player.getUniqueId())) {
+            Duration remaining = cooldownManager.getRemaining(script.name(), player.getUniqueId());
+            context.source().sendMessage(
+                    MM.error("Try again in " + formatDuration(remaining)));
+            next.accept(ExecutionResult.stop("Cooldown active"));
+            return;
+        }
 
-		Duration duration = script.defaults().cooldown();
-		if (duration != null && !duration.isZero()) {
-			cooldownManager.setCooldown(script.name(), player.getUniqueId(), duration);
-		}
+        Duration duration = script.defaults().cooldown();
+        if (duration != null && !duration.isZero()) {
+            cooldownManager.setCooldown(script.name(), player.getUniqueId(), duration);
+        }
 
-		next.accept(ExecutionResult.ok(context));
-	}
+        next.accept(ExecutionResult.ok(context));
+    }
 
-	private String formatDuration(Duration d) {
-		long s = d.getSeconds();
-		return s + "s";
-	}
+    private String formatDuration(Duration d) {
+        long s = d.getSeconds();
+        return s + "s";
+    }
 }
