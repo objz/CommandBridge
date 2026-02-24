@@ -30,6 +30,8 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
             endpointType = d.endpointType();
             ok = false;
         }
+        boolean websocketMode = endpointType == EndpointType.WEBSOCKET;
+        boolean redisMode = endpointType == EndpointType.REDIS;
 
         VelocityConfig.Endpoints endpointsIn = in.endpoints() != null ? in.endpoints() : d.endpoints();
 
@@ -45,7 +47,9 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
         } else {
             bindHost = bindHost.trim();
             if (bindHost.startsWith("ws://") || bindHost.startsWith("wss://")) {
-                Log.warn("'endpoints.websocket.bind-host' must NOT include ws:// or wss://");
+                if (websocketMode) {
+                    Log.warn("'endpoints.websocket.bind-host' must NOT include ws:// or wss://");
+                }
                 bindHost = bindHost.replaceFirst("^wss?://", "");
             }
         }
@@ -69,7 +73,9 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
         } else {
             redisHost = redisHost.trim();
             if (redisHost.startsWith("redis://") || redisHost.startsWith("rediss://")) {
-                Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
+                if (redisMode) {
+                    Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
+                }
                 redisHost = redisHost.replaceFirst("^rediss?://", "");
             }
         }
@@ -160,11 +166,11 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
                 ? d.security().keystoreType()
                 : secIn.keystoreType().trim();
 
-        if (!requireAuth) {
+        if (websocketMode && !requireAuth) {
             Log.warn("Authentication is disabled! This is insecure and should not be used");
         }
 
-        if (endpointType == EndpointType.WEBSOCKET && tlsMode == TlsMode.PLAIN && requireAuth) {
+        if (websocketMode && tlsMode == TlsMode.PLAIN && requireAuth) {
             Log.warn("'tls-mode=PLAIN' with 'require-auth=true' is unusual. consider TLS");
         }
 

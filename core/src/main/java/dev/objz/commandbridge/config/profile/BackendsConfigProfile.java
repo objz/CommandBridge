@@ -31,6 +31,8 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
             endpointType = d.endpointType();
             ok = false;
         }
+        boolean websocketMode = endpointType == EndpointType.WEBSOCKET;
+        boolean redisMode = endpointType == EndpointType.REDIS;
 
         BackendsConfig.Endpoints endpointsIn = in.endpoints() != null ? in.endpoints() : d.endpoints();
 
@@ -46,7 +48,9 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
         } else {
             wsHost = wsHost.trim();
             if (wsHost.startsWith("ws://") || wsHost.startsWith("wss://")) {
-                Log.warn("'endpoints.websocket.host' must NOT include ws:// or wss://");
+                if (websocketMode) {
+                    Log.warn("'endpoints.websocket.host' must NOT include ws:// or wss://");
+                }
                 wsHost = wsHost.replaceFirst("^wss?://", "");
             }
         }
@@ -70,7 +74,9 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
         } else {
             redisHost = redisHost.trim();
             if (redisHost.startsWith("redis://") || redisHost.startsWith("rediss://")) {
-                Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
+                if (redisMode) {
+                    Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
+                }
                 redisHost = redisHost.replaceFirst("^rediss?://", "");
             }
         }
@@ -136,15 +142,17 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
             Log.error("'security.secret' must not be empty");
             secret = d.security().secret();
             ok = false;
-        } else if (secret.toLowerCase().contains("change-me")) {
+        } else if (websocketMode && secret.toLowerCase().contains("change-me")) {
             Log.warn("'security.secret' contains 'change-me'. replace with real key");
         }
 
         Boolean requireAuth = secIn.requireAuth();
         if (requireAuth == null) {
-            Log.warn("'security.require-auth' must be set");
+            if (websocketMode) {
+                Log.warn("'security.require-auth' must be set");
+            }
             requireAuth = d.security().requireAuth();
-        } else if (Boolean.FALSE.equals(requireAuth)) {
+        } else if (websocketMode && Boolean.FALSE.equals(requireAuth)) {
             Log.warn("Authentication is disabled! This is insecure and should not be used");
         }
 
