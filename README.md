@@ -20,11 +20,11 @@ A WebSocket bridge for Velocity and Paper servers to run commands anywhere, anyt
 
 ## About The Project
 
-CommandBridge connects your Velocity proxy to your backend servers using WebSockets. It lets you run commands across your network even if no players are online.
+CommandBridge connects your Velocity proxy to your backend servers using WebSockets(version 3.1.0 covers redis as alternative). It lets you run commands across your network even if no players are online.
 
 ### The Problem
 
-Plugin messages need a player to work. If a server is empty, you can't send commands to it. CommandBridge uses persistent connections to fix this.
+Plugin messages need a player to work. If a server is empty, you can't send commands to it. CommandBridge uses persistent connections(or redis) to fix this.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -71,11 +71,11 @@ git checkout v3
   - [x] Rate limiting
   - [x] Automatic reconnection on disconnect(configurable)
 
-- [ ] **Alternative Redis Communication**
-  - [ ] Extended config for Redis
-  - [ ] Redis implementation in core (SendOperation)
-  - [ ] Channel mapping alternative on velocity
-  - [ ] Sending/Receiving support on all Platforms
+- [x] **Alternative Redis Communication**
+  - [x] Extended config for Redis
+  - [x] Redis implementation in core (SendOperation)
+  - [x] Channel mapping alternative on velocity
+  - [x] Sending/Receiving support on all Platforms
 
 - [x] **Security**
   - [x] Mutual authentication (HMAC-SHA256)
