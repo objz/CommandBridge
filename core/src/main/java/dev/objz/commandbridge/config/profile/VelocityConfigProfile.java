@@ -166,7 +166,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
                 ? d.security().keystoreType()
                 : secIn.keystoreType().trim();
 
-        if (!requireAuth) {
+        if (websocketMode && !requireAuth) {
             Log.warn("Authentication is disabled! This is insecure and should not be used");
         }
 

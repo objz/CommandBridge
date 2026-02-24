@@ -142,15 +142,17 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
             Log.error("'security.secret' must not be empty");
             secret = d.security().secret();
             ok = false;
-        } else if (secret.toLowerCase().contains("change-me")) {
+        } else if (websocketMode && secret.toLowerCase().contains("change-me")) {
             Log.warn("'security.secret' contains 'change-me'. replace with real key");
         }
 
         Boolean requireAuth = secIn.requireAuth();
         if (requireAuth == null) {
-            Log.warn("'security.require-auth' must be set");
+            if (websocketMode) {
+                Log.warn("'security.require-auth' must be set");
+            }
             requireAuth = d.security().requireAuth();
-        } else if (Boolean.FALSE.equals(requireAuth)) {
+        } else if (websocketMode && Boolean.FALSE.equals(requireAuth)) {
             Log.warn("Authentication is disabled! This is insecure and should not be used");
         }
 
