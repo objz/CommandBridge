@@ -20,8 +20,6 @@ import net.kyori.adventure.text.Component;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -64,9 +62,7 @@ public class PingCommand extends AbstractCliCommand {
 
         for (ClientSession session : activeClients) {
             String id = session.id();
-            String address = session.ch() != null && session.ch().getSourceAddress() != null
-                    ? session.ch().getSourceAddress().toString()
-                    : "unknown";
+            String address = session.endpoint() != null ? session.endpoint().describe() : "unknown";
 
             try {
                 outNode.send(
@@ -102,9 +98,7 @@ public class PingCommand extends AbstractCliCommand {
             return;
         }
 
-        String address = session.ch() != null && session.ch().getSourceAddress() != null
-                ? session.ch().getSourceAddress().toString()
-                : "unknown";
+        String address = session.endpoint() != null ? session.endpoint().describe() : "unknown";
 
         try {
             outNode.send(
@@ -264,7 +258,8 @@ public class PingCommand extends AbstractCliCommand {
     private List<ClientSession> getActiveClients() {
         List<ClientSession> activeClients = new ArrayList<>();
         for (ClientSession session : sessions) {
-            if (session.status() == AuthStatus.AUTH_OK && session.ch() != null && session.ch().isOpen()) {
+            if (session.status() == AuthStatus.AUTH_OK && session.endpoint() != null
+                    && session.endpoint().isOpen()) {
                 activeClients.add(session);
             }
         }

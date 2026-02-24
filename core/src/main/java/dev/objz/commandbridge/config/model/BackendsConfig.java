@@ -5,13 +5,33 @@ import org.spongepowered.configurate.objectmapping.meta.Setting;
 
 @ConfigSerializable
 public record BackendsConfig(
-        @Setting("host") String host,
-        @Setting("port") int port,
         @Setting("client-id") String clientId,
+        @Setting("endpoint-type") EndpointType endpointType,
+        @Setting("endpoints") Endpoints endpoints,
         @Setting("security") Security security,
         @Setting("timeouts") Timeouts timeouts,
         @Setting("limits") Limits limits,
         @Setting("debug") boolean debug) {
+    @ConfigSerializable
+    public static record Endpoints(
+            @Setting("websocket") WebSocket websocket,
+            @Setting("redis") Redis redis) {
+
+        @ConfigSerializable
+        public static record WebSocket(
+                @Setting("host") String host,
+                @Setting("port") int port) {
+        }
+
+        @ConfigSerializable
+        public static record Redis(
+                @Setting("host") String host,
+                @Setting("port") int port,
+                @Setting("username") String username,
+                @Setting("password") String password) {
+        }
+    }
+
     @ConfigSerializable
     public static record Security(
             @Setting("tls-mode") TlsMode tlsMode,
@@ -35,9 +55,11 @@ public record BackendsConfig(
 
     public static BackendsConfig defaults() {
         return new BackendsConfig(
-                "127.0.0.1",
-                8765,
                 "survival-1",
+                EndpointType.WEBSOCKET,
+                new Endpoints(
+                        new Endpoints.WebSocket("127.0.0.1", 8765),
+                        new Endpoints.Redis("127.0.0.1", 6379, "", "")),
                 new Security(TlsMode.TOFU, "", "change-me", true),
                 new Timeouts(5, 60, 5),
                 new Limits(60),

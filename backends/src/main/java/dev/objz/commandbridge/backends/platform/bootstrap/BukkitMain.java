@@ -4,6 +4,8 @@ import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.PlatformDetector;
 import dev.objz.commandbridge.backends.platform.PlatformDetector.Platform;
 import dev.objz.commandbridge.logging.Log;
+
+import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class BukkitMain extends JavaPlugin {
@@ -44,6 +46,8 @@ public final class BukkitMain extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        int pluginID = 22008;
+        new Metrics(this, pluginID);
         try {
             var env = new PlatformAdapter.PlatformEnv(getDataFolder().toPath());
             adapter.start(env);

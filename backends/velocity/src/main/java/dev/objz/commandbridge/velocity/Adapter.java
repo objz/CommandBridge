@@ -3,6 +3,8 @@ package dev.objz.commandbridge.velocity;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 
+import dev.objz.commandbridge.backends.net.BackendClient;
+import dev.objz.commandbridge.backends.net.RedisClient;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
@@ -13,6 +15,7 @@ import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
+import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
@@ -21,7 +24,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 public final class Adapter implements PlatformAdapter {
-    private WsClient client;
+    private BackendClient client;
     private BackendsConfig cfg;
     private Path dataDir;
     private ProxyServer proxy;
@@ -80,7 +83,9 @@ public final class Adapter implements PlatformAdapter {
             this.commandExecutor = new VelocityExecutor(proxy, pluginInstance);
         }
 
-        this.client = new WsClient(cfg, dataDir, this);
+        this.client = cfg.endpointType() == EndpointType.REDIS
+                ? new RedisClient(cfg, dataDir, this)
+                : new WsClient(cfg, dataDir, this);
 
         client.setLocation(Location.VELOCITY);
 

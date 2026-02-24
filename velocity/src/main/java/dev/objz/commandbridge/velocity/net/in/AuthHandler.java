@@ -3,6 +3,7 @@ package dev.objz.commandbridge.velocity.net.in;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.security.AuthService;
 import dev.objz.commandbridge.security.AuthStatus;
+import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.net.InboundHandler;
 import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.payloads.util.AuthRequestPayload;
@@ -10,10 +11,9 @@ import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
-import dev.objz.commandbridge.velocity.net.WsServer;
+import dev.objz.commandbridge.velocity.net.EndpointServer;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -23,14 +23,14 @@ public final class AuthHandler extends InboundHandler {
 
     private final AuthService auth;
     private final SessionHub sessions;
-    private final WsServer ws;
+    private final EndpointServer endpointServer;
 
     private volatile Consumer<ClientSession> onAuthed;
 
-    public AuthHandler(AuthService auth, SessionHub sessions, WsServer ws) {
+    public AuthHandler(AuthService auth, SessionHub sessions, EndpointServer endpointServer) {
         this.auth = Objects.requireNonNull(auth);
         this.sessions = Objects.requireNonNull(sessions);
-        this.ws = Objects.requireNonNull(ws);
+        this.endpointServer = Objects.requireNonNull(endpointServer);
     }
 
     public void register(InNode router) {
@@ -42,9 +42,9 @@ public final class AuthHandler extends InboundHandler {
     }
 
     @Override
-    public void accept(WebSocketChannel ch, Envelope env) {
+    public void accept(Endpoint endpoint, Envelope env) {
         if (env.type() != MessageType.AUTH_REQUEST || env.payload() == null) {
-            ws.close(ch);
+            endpointServer.close(endpoint);
             return;
         }
 
@@ -53,56 +53,62 @@ public final class AuthHandler extends InboundHandler {
             ap = Envelope.MAPPER.treeToValue(env.payload(), AuthRequestPayload.class);
         } catch (Exception e) {
             Log.error(e, "Failed to handle AUTH_REQUEST from {}", env.from());
-            reply(ch, env, MessageType.AUTH_FAIL, null)
+            reply(endpoint, env, MessageType.AUTH_FAIL, null)
                     .dispatch()
                     .exceptionally(ex -> {
                         Log.warn("Failed to send auth response: {}", ex.toString());
                         return null;
                     });
-            ws.close(ch);
+            endpointServer.close(endpoint);
             return;
         }
 
         if (ap == null || env.from() == null || ap.clientNonce() == null || ap.hmac() == null) {
-            reply(ch, env, MessageType.AUTH_FAIL, null)
+            reply(endpoint, env, MessageType.AUTH_FAIL, null)
                     .dispatch()
                     .exceptionally(ex -> {
                         Log.warn("Failed to send auth response: {}", ex.toString());
                         return null;
                     });
-            ws.close(ch);
-            Log.error("Authentication failed (malformed payload) from '{}'", ch.getSourceAddress());
+            endpointServer.close(endpoint);
+            Log.error("Authentication failed (malformed payload) from '{}'", endpoint.describe());
             return;
         }
 
         if (!auth.verify(env.from(), ap.clientNonce(), ap.hmac())) { // HMAC(clientId:clientNonce)
-            reply(ch, env, MessageType.AUTH_FAIL, null)
+            reply(endpoint, env, MessageType.AUTH_FAIL, null)
                     .dispatch()
                     .exceptionally(ex -> {
                         Log.warn("Failed to send auth response: {}", ex.toString());
                         return null;
                     });
-            ws.close(ch);
-            Log.error("Authentication failed for '{}' from '{}'", env.from(), ch.getSourceAddress());
+            endpointServer.close(endpoint);
+            Log.error("Authentication failed for '{}' from '{}'", env.from(), endpoint.describe());
             return;
         }
 
         final String serverNonce = UUID.randomUUID().toString().replace("-", "");
         final String serverMac = auth.signServerProof(env.from(), ap.clientNonce(), serverNonce);
 
-        ClientSession s = sessions.add(ch, env.from());
+        sessions.get(env.from()).ifPresent(existing -> {
+            if (existing.endpoint() != endpoint) {
+                endpointServer.close(existing.endpoint());
+            }
+        });
+
+        ClientSession s = sessions.add(env.from(), endpoint);
         s.status(AuthStatus.AUTH_FAIL);
 
         s.location(ap.location() != null ? ap.location() : Location.BACKEND);
 
-        reply(ch, env, MessageType.AUTH_OK, new AuthResponsePayload(serverNonce, serverMac))
+        reply(endpoint, env, MessageType.AUTH_OK, new AuthResponsePayload(serverNonce, serverMac))
                 .dispatch()
                 .exceptionally(ex -> {
                     Log.warn("Failed to send auth response: {}", ex.toString());
                     return null;
                 });
         s.status(AuthStatus.AUTH_OK);
-        Log.success(true, "Authentication succeeded for '{}' from '{}'", env.from(), ch.getSourceAddress());
+        Log.success(true, "Authentication succeeded for '{}' from '{}'", env.from(), endpoint.describe());
 
         var cb = onAuthed;
         if (cb != null) {

@@ -11,6 +11,7 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.config.ConfigManager;
+import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.InNode;
@@ -30,6 +31,8 @@ import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
 import dev.objz.commandbridge.velocity.cmd.bridge.packetevents.PacketEventsArgumentBridge;
+import dev.objz.commandbridge.velocity.net.EndpointServer;
+import dev.objz.commandbridge.velocity.net.RedisServer;
 import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.ExecuteCommandHandler;
@@ -65,7 +68,7 @@ public final class Main {
     private final Metrics.Factory metrics;
 
     private ConfigManager configManager;
-    private WsServer ws;
+    private EndpointServer endpointServer;
     private RegistrationManager registrations;
     private InNode inNode;
     private OutNode<Object> outNode;
@@ -142,12 +145,24 @@ public final class Main {
         outNode = new OutNode<>();
         outNode.setServerId(cfg.serverId());
 
-        var tls = TlsResolver.resolveServer(dataDir, cfg.security());
-        ws = tls.enabled()
-                ? new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inNode,
-                        true, tls.context())
-                : new WsServer(cfg.bindHost(), cfg.bindPort(), sessions, inNode);
-        ws.start();
+        if (cfg.endpointType() == EndpointType.REDIS) {
+            var redis = cfg.endpoints().redis();
+            endpointServer = new RedisServer(
+                    redis.host(),
+                    redis.port(),
+                    redis.username(),
+                    redis.password(),
+                    sessions,
+                    inNode);
+        } else {
+            var wsCfg = cfg.endpoints().webSocket();
+            var tls = TlsResolver.resolveServer(dataDir, cfg.security());
+            endpointServer = tls.enabled()
+                    ? new WsServer(wsCfg.bindHost(), wsCfg.bindPort(), sessions, inNode,
+                            true, tls.context())
+                    : new WsServer(wsCfg.bindHost(), wsCfg.bindPort(), sessions, inNode);
+        }
+        endpointServer.start();
 
         scriptManager = new ScriptManager(dataDir, platformFeatures);
         scriptManager.loadAll();
@@ -176,8 +191,14 @@ public final class Main {
         command.register();
 
         Log.debug("Config loaded:");
-        Log.debug("  Host: {}", cfg.bindHost());
-        Log.debug("  Port: {}", cfg.bindPort());
+        Log.debug("  Endpoint Type: {}", cfg.endpointType());
+        if (cfg.endpointType() == EndpointType.WEBSOCKET) {
+            Log.debug("  WS Host: {}", cfg.endpoints().webSocket().bindHost());
+            Log.debug("  WS Port: {}", cfg.endpoints().webSocket().bindPort());
+        } else {
+            Log.debug("  Redis Host: {}", cfg.endpoints().redis().host());
+            Log.debug("  Redis Port: {}", cfg.endpoints().redis().port());
+        }
         Log.debug("  Server ID: {}", cfg.serverId());
 
         checkForUpdate();
@@ -195,21 +216,21 @@ public final class Main {
             }
         }
 
-        if (ws != null) {
-            ws.stop();
+        if (endpointServer != null) {
+            endpointServer.stop();
         }
     }
 
     private void installRoutes() {
         var secret = new SecretLoader(dataDir).loadOrCreate();
         var auth = new AuthService(secret);
-        authHandler = new AuthHandler(auth, sessions, ws);
+        authHandler = new AuthHandler(auth, sessions, endpointServer);
         authHandler.register(inNode);
 
         inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
         inNode.register(MessageType.EXECUTE_COMMAND_RESULT, new ExecuteCommandHandler(proxy));
 
-        outNode.setChannelSendOperationFactory((ch, env) -> ws.send(ch, env));
+        outNode.setEndpointSendFactory((endpoint, env) -> endpointServer.send(endpoint, env));
         outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
         outNode.register(MessageType.PING, new PingRequest());
         outNode.register(MessageType.EXECUTE_COMMAND, new ExecuteCommandRequest());

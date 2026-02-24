@@ -1,7 +1,6 @@
 package dev.objz.commandbridge.net;
 
 import dev.objz.commandbridge.net.proto.Envelope;
-import io.undertow.websockets.core.WebSocketChannel;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -15,14 +14,14 @@ public abstract class OutboundHandler<T> {
     protected String clientId;
     protected String serverId;
     private Function<Envelope, SendOperation> sendOperationFactory;
-    private BiFunction<WebSocketChannel, Envelope, SendOperation> channelSendOperationFactory;
+    private BiFunction<Endpoint, Envelope, SendOperation> endpointSendFactory;
 
     public void setSendOperationFactory(Function<Envelope, SendOperation> factory) {
         this.sendOperationFactory = factory;
     }
 
-    public void setChannelSendOperationFactory(BiFunction<WebSocketChannel, Envelope, SendOperation> factory) {
-        this.channelSendOperationFactory = factory;
+    public void setEndpointSendFactory(BiFunction<Endpoint, Envelope, SendOperation> factory) {
+        this.endpointSendFactory = factory;
     }
 
     public void setClientId(String clientId) {
@@ -45,20 +44,20 @@ public abstract class OutboundHandler<T> {
      */
     protected SendOperation send(Envelope envelope) {
         if (sendOperationFactory == null) {
-            throw new IllegalStateException("SendOperation factory not configured");
+            throw new IllegalStateException("Default send factory not configured");
         }
         return sendOperationFactory.apply(envelope);
     }
 
     /**
-     * @param channel  The WebSocket channel to send to
+     * @param endpoint The endpoint to send to
      * @param envelope The envelope to send
      * @return SendOperation
      */
-    protected SendOperation send(WebSocketChannel channel, Envelope envelope) {
-        if (channelSendOperationFactory == null) {
-            throw new IllegalStateException("Channel SendOperation factory not configured");
+    protected SendOperation send(Endpoint endpoint, Envelope envelope) {
+        if (endpointSendFactory == null) {
+            throw new IllegalStateException("Endpoint send factory not configured");
         }
-        return channelSendOperationFactory.apply(channel, envelope);
+        return endpointSendFactory.apply(endpoint, envelope);
     }
 }

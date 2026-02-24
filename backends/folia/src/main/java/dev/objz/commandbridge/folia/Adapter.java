@@ -1,5 +1,7 @@
 package dev.objz.commandbridge.folia;
 
+import dev.objz.commandbridge.backends.net.BackendClient;
+import dev.objz.commandbridge.backends.net.RedisClient;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
@@ -9,6 +11,7 @@ import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
+import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
@@ -21,7 +24,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 public final class Adapter implements PlatformAdapter {
-    private WsClient client;
+    private BackendClient client;
     private BackendsConfig cfg;
     private Path dataDir;
     private JavaPlugin plugin;
@@ -69,7 +72,9 @@ public final class Adapter implements PlatformAdapter {
             this.commandExecutor = new FoliaExecutor(plugin);
         }
 
-        this.client = new WsClient(cfg, dataDir, this);
+        this.client = cfg.endpointType() == EndpointType.REDIS
+                ? new RedisClient(cfg, dataDir, this)
+                : new WsClient(cfg, dataDir, this);
 
         try {
             client.start();

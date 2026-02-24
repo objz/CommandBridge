@@ -93,9 +93,7 @@ public class ReloadCommand extends AbstractCliCommand {
 
             for (ClientSession session : activeClients) {
                 String clientId = session.id();
-                String address = session.ch() != null && session.ch().getSourceAddress() != null
-                        ? session.ch().getSourceAddress().toString()
-                        : "unknown";
+                String address = session.endpoint() != null ? session.endpoint().describe() : "unknown";
 
                 Set<dev.objz.commandbridge.scripting.model.Script> scripts = registrationManager
                         .getScriptsForSession(session);
@@ -141,12 +139,9 @@ public class ReloadCommand extends AbstractCliCommand {
                                 String clientId = session.id();
                                 if (sentTo.containsKey(clientId)
                                         && !results.containsKey(clientId)) {
-                                    String address = session.ch() != null && session
-                                            .ch()
-                                            .getSourceAddress() != null
-                                                    ? session.ch().getSourceAddress()
-                                                            .toString()
-                                                    : "unknown";
+                                    String address = session.endpoint() != null
+                                            ? session.endpoint().describe()
+                                            : "unknown";
                                     results.put(clientId,
                                             new ReloadResult(
                                                     ReloadStatus.TIMEOUT,
@@ -264,8 +259,8 @@ public class ReloadCommand extends AbstractCliCommand {
     private List<ClientSession> getActiveClients() {
         List<ClientSession> activeClients = new ArrayList<>();
         for (ClientSession session : sessionHub) {
-            if (session.status() == AuthStatus.AUTH_OK && session.ch() != null
-                    && session.ch().isOpen()) {
+            if (session.status() == AuthStatus.AUTH_OK && session.endpoint() != null
+                    && session.endpoint().isOpen()) {
                 activeClients.add(session);
             }
         }

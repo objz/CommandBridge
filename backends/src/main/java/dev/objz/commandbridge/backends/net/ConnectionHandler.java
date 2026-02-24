@@ -49,7 +49,9 @@ public final class ConnectionHandler {
                 : TlsMode.TOFU;
 
         String scheme = TlsResolver.schemeFor(mode);
-        String url = scheme + "://" + cfg.host() + ":" + cfg.port() + "/ws";
+        String host = cfg.endpoints().websocket().host();
+        int port = cfg.endpoints().websocket().port();
+        String url = scheme + "://" + host + ":" + port + "/ws";
 
         if (!isReconnecting) {
             Log.info("Connecting to {} as '{}'", url, cfg.clientId());

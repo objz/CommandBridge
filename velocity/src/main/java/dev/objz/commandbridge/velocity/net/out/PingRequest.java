@@ -21,7 +21,7 @@ public final class PingRequest extends OutboundHandler<PingRequestContext> {
         ObjectNode payloadNode = Envelope.MAPPER.valueToTree(payload);
         final Envelope env = Envelope.make(MessageType.PING, serverId, clientId, payloadNode);
 
-        SendOperation op = send(ctx.session.ch(), env)
+        SendOperation op = send(ctx.session.endpoint(), env)
                 .expect(MessageType.PONG)
                 .timeout(ctx.timeout);
 

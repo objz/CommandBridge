@@ -30,7 +30,9 @@ dependencies {
     implementation("org.snakeyaml:snakeyaml-engine:2.10")
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("net.kyori:adventure-text-minimessage:4.17.0")
-    implementation("org.bstats:bstats-velocity:3.1.0")
+    implementation("org.bstats:bstats-velocity:3.2.0")
+    implementation("org.bstats:bstats-bukkit:3.2.0")
+    implementation("redis.clients:jedis:7.1.0")
 }
 
 val pluginVersion: Provider<String> = providers.gradleProperty("pluginVersion")

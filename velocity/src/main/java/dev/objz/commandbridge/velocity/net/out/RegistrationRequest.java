@@ -49,7 +49,7 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
         ObjectNode payloadNode = Envelope.MAPPER.valueToTree(payload);
         final Envelope env = Envelope.make(MessageType.REGISTER_COMMANDS, serverId, clientId, payloadNode);
 
-        SendOperation op = send(ctx.session.ch(), env)
+        SendOperation op = send(ctx.session.endpoint(), env)
                 .expect(MessageType.REGISTER_COMMANDS_RESULT)
                 .timeout(ctx.timeout);
 
