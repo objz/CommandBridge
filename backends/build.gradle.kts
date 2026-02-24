@@ -19,6 +19,7 @@ dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
     compileOnly("dev.jorel:commandapi-spigot-core:11.1.0")
+    compileOnly("org.bstats:bstats-bukkit:3.2.0")
 }
 
 // plugin.yml and paper-plugin.yml contain @version@ placeholders.
