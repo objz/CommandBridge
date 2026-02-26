@@ -1,6 +1,10 @@
+import io.papermc.hangarpublishplugin.model.Platforms
+import java.net.URI
+
 plugins {
     id("com.gradleup.shadow") version "9.2.2"
     id("com.modrinth.minotaur") version "2.+"
+    id("io.papermc.hangar-publish-plugin") version "0.1.4"
     java
 }
 
@@ -36,6 +40,31 @@ dependencies {
 }
 
 val pluginVersion: Provider<String> = providers.gradleProperty("pluginVersion")
+val modrinthProjectSlug = "commandbridge"
+
+val modrinthDownloadUrl: Provider<String> = pluginVersion.map { version ->
+    val versionMetadata = URI("https://api.modrinth.com/v2/project/$modrinthProjectSlug/version/$version")
+        .toURL()
+        .readText()
+
+    Regex("\"url\":\"(https://cdn\\.modrinth\\.com/data/[^\"]+)\"")
+        .find(versionMetadata)
+        ?.groupValues
+        ?.get(1)
+        ?: error("Could not resolve Modrinth download URL for version $version")
+}
+
+val supportedMinecraftVersions = listOf(
+    "1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6",
+    "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6",
+    "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11"
+)
+
+val supportedVelocityVersions = listOf(
+    "3.4","3.4.0","3.5"
+)
+
+val releaseChannel: Provider<String> = providers.gradleProperty("releaseChannel")
 
 modrinth {
     token.set(System.getenv("MODRINTH_TOKEN"))
@@ -43,15 +72,59 @@ modrinth {
     versionNumber.set(pluginVersion)
     versionName.set(pluginVersion.map { "CommandBridge $it" })
     changelog.set(rootProject.file("CHANGELOG.md").readText())
-    versionType.set("beta")
+    versionType.set(releaseChannel)
     uploadFile.set(tasks.shadowJar)
-    gameVersions.addAll("1.20", "1.20.1", "1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11")
+    gameVersions.addAll(supportedMinecraftVersions)
     loaders.addAll("folia", "paper", "bukkit", "spigot", "purpur", "velocity")
     dependencies {
         required.project("commandapi")
         optional.project("packetevents")
         optional.project("papiproxybridge")
         optional.project("placeholderapi")
+    }
+}
+
+hangarPublish {
+    publications.register("plugin") {
+        version = pluginVersion.get()
+        channel = if (releaseChannel.get().contains("beta")) "Beta" else "Release"
+        id = "CommandBridge"
+        changelog = rootProject.file("CHANGELOG.md").readText()
+        apiKey = System.getenv("HANGAR_TOKEN")
+
+        platforms {
+            register(Platforms.PAPER) {
+                url.set(modrinthDownloadUrl)
+                platformVersions = supportedMinecraftVersions
+                dependencies {
+                    hangar("CommandAPI") {
+                        required.set(true)
+                    }
+                    hangar("PAPIProxyBridge") {
+                        required.set(false)
+                    }
+                    hangar("PlaceholderAPI") {
+                        required.set(false)
+                    }
+                }
+            }
+            register(Platforms.VELOCITY) {
+                url.set(modrinthDownloadUrl)
+                platformVersions = supportedVelocityVersions
+
+                dependencies {
+                    hangar("CommandAPI") {
+                        required.set(true)
+                    }
+                    hangar("PAPIProxyBridge") {
+                        required.set(false)
+                    }
+                    url("PacketEvents","https://modrinth.com/plugin/packetevents") {
+                        required.set(false)
+                    }
+                }
+           }
+        }
     }
 }
 
@@ -122,5 +195,6 @@ tasks {
     }
 
     register("dev") { dependsOn(copyToVelocityPlugins, copyToPaperPlugins) }
+    register("hangar") { dependsOn("publishPluginPublicationToHangar") }
     build { dependsOn(shadowJar) }
 }
