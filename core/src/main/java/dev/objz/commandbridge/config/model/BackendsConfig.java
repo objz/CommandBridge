@@ -10,7 +10,6 @@ public record BackendsConfig(
         @Setting("endpoints") Endpoints endpoints,
         @Setting("security") Security security,
         @Setting("timeouts") Timeouts timeouts,
-        @Setting("limits") Limits limits,
         @Setting("debug") boolean debug) {
     @ConfigSerializable
     public static record Endpoints(
@@ -36,8 +35,7 @@ public record BackendsConfig(
     public static record Security(
             @Setting("tls-mode") TlsMode tlsMode,
             @Setting("tls-pin") String tlsPin,
-            @Setting("secret") String secret,
-            @Setting("require-auth") Boolean requireAuth) {
+            @Setting("secret") String secret) {
     }
 
     @ConfigSerializable
@@ -48,10 +46,6 @@ public record BackendsConfig(
     ) {
     }
 
-    @ConfigSerializable
-    public static record Limits(
-            @Setting("inbound-messages-per-sec") int inboundMessagesSec) {
-    }
 
     public static BackendsConfig defaults() {
         return new BackendsConfig(
@@ -60,9 +54,8 @@ public record BackendsConfig(
                 new Endpoints(
                         new Endpoints.WebSocket("127.0.0.1", 8765),
                         new Endpoints.Redis("127.0.0.1", 6379, "", "")),
-                new Security(TlsMode.TOFU, "", "change-me", true),
+                new Security(TlsMode.TOFU, "", "change-me"),
                 new Timeouts(5, 60, 5),
-                new Limits(60),
                 false);
     }
 }

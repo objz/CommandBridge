@@ -22,11 +22,6 @@ public final class AuthHandler {
     }
 
     public boolean authenticate() {
-        if (!Boolean.TRUE.equals(cfg.security().requireAuth())) {
-            Log.warn("Auth disabled by config; continuing unauthenticated");
-            stateRef.set(ConnectionState.AUTHENTICATED);
-            return false;
-        }
 
         Consumer<ClientStatus> statusUpdater = status -> {
             ConnectionState newState = ConnectionState.fromClientStatus(status);

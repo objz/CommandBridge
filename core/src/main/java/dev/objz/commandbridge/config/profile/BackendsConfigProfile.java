@@ -17,7 +17,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
         boolean ok = true;
 
         String clientId = in.clientId();
-        if (clientId == null || clientId.isBlank()) {
+        if (isBlank(clientId)) {
             Log.warn("'client-id' missing or blank");
             clientId = d.clientId();
             ok = false;
@@ -31,26 +31,22 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
             endpointType = d.endpointType();
             ok = false;
         }
-        boolean websocketMode = endpointType == EndpointType.WEBSOCKET;
-        boolean redisMode = endpointType == EndpointType.REDIS;
 
-        BackendsConfig.Endpoints endpointsIn = in.endpoints() != null ? in.endpoints() : d.endpoints();
+        BackendsConfig.Endpoints endpointsDefaults = d.endpoints();
+        BackendsConfig.Endpoints endpointsIn = in.endpoints() != null ? in.endpoints() : endpointsDefaults;
 
         BackendsConfig.Endpoints.WebSocket wsIn = endpointsIn.websocket() != null
                 ? endpointsIn.websocket()
-                : d.endpoints().websocket();
+                : endpointsDefaults.websocket();
 
-        String wsHost = wsIn.host();
-        if (wsHost == null || wsHost.isBlank()) {
+        String wsHost = trimToNull(wsIn.host());
+        if (wsHost == null) {
             Log.error("'endpoints.websocket.host' must not be empty");
-            wsHost = d.endpoints().websocket().host();
+            wsHost = endpointsDefaults.websocket().host();
             ok = false;
         } else {
-            wsHost = wsHost.trim();
             if (wsHost.startsWith("ws://") || wsHost.startsWith("wss://")) {
-                if (websocketMode) {
-                    Log.warn("'endpoints.websocket.host' must NOT include ws:// or wss://");
-                }
+                Log.warn("'endpoints.websocket.host' must NOT include ws:// or wss://");
                 wsHost = wsHost.replaceFirst("^wss?://", "");
             }
         }
@@ -58,25 +54,22 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
         int wsPort = wsIn.port();
         if (wsPort <= 0 || wsPort > 65535) {
             Log.error("'endpoints.websocket.port' must be between 1 and 65535");
-            wsPort = d.endpoints().websocket().port();
+            wsPort = endpointsDefaults.websocket().port();
             ok = false;
         }
 
         BackendsConfig.Endpoints.Redis redisIn = endpointsIn.redis() != null
                 ? endpointsIn.redis()
-                : d.endpoints().redis();
+                : endpointsDefaults.redis();
 
-        String redisHost = redisIn.host();
-        if (redisHost == null || redisHost.isBlank()) {
+        String redisHost = trimToNull(redisIn.host());
+        if (redisHost == null) {
             Log.error("'endpoints.redis.host' must not be empty");
-            redisHost = d.endpoints().redis().host();
+            redisHost = endpointsDefaults.redis().host();
             ok = false;
         } else {
-            redisHost = redisHost.trim();
             if (redisHost.startsWith("redis://") || redisHost.startsWith("rediss://")) {
-                if (redisMode) {
-                    Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
-                }
+                Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
                 redisHost = redisHost.replaceFirst("^rediss?://", "");
             }
         }
@@ -84,7 +77,7 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
         int redisPort = redisIn.port();
         if (redisPort <= 0 || redisPort > 65535) {
             Log.error("'endpoints.redis.port' must be between 1 and 65535");
-            redisPort = d.endpoints().redis().port();
+            redisPort = endpointsDefaults.redis().port();
             ok = false;
         }
 
@@ -95,72 +88,62 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
                 new BackendsConfig.Endpoints.WebSocket(wsHost, wsPort),
                 new BackendsConfig.Endpoints.Redis(redisHost, redisPort, redisUsername, redisPassword));
 
-        BackendsConfig.Limits limitsIn = in.limits() != null ? in.limits() : d.limits();
-        int inboundMessagesSec = limitsIn.inboundMessagesSec();
-        if (inboundMessagesSec <= 0) {
-            Log.error("'limits.inbound-messages-per-sec' must be positive");
-            inboundMessagesSec = d.limits().inboundMessagesSec();
-            ok = false;
-        }
-        BackendsConfig.Limits limitsOut = new BackendsConfig.Limits(inboundMessagesSec);
+        BackendsConfig.Timeouts timeoutsDefaults = d.timeouts();
+        BackendsConfig.Timeouts timeoutsIn = in.timeouts() != null ? in.timeouts() : timeoutsDefaults;
 
-        BackendsConfig.Timeouts timeoutsIn = in.timeouts() != null ? in.timeouts() : d.timeouts();
         int authTimeout = timeoutsIn.authTimeout();
         int reconnectTimeout = timeoutsIn.reconnectTimeout();
         int reconnectInterval = timeoutsIn.reconnectInterval();
+
         if (authTimeout <= 0) {
             Log.error("'timeouts.auth-timeout' must be > 0");
-            authTimeout = d.timeouts().authTimeout();
+            authTimeout = timeoutsDefaults.authTimeout();
             ok = false;
         }
+
         if (reconnectTimeout <= 0) {
             Log.error("'timeouts.reconnect-timeout' must be > 0");
-            reconnectTimeout = d.timeouts().reconnectTimeout();
+            reconnectTimeout = timeoutsDefaults.reconnectTimeout();
             ok = false;
         }
+
         if (reconnectInterval <= 0) {
             Log.error("'timeouts.reconnect-interval' must be > 0");
-            reconnectInterval = d.timeouts().reconnectInterval();
+            reconnectInterval = timeoutsDefaults.reconnectInterval();
             ok = false;
         }
+
         BackendsConfig.Timeouts timeoutsOut = new BackendsConfig.Timeouts(authTimeout, reconnectTimeout,
                 reconnectInterval);
 
-        BackendsConfig.Security secIn = in.security() != null ? in.security() : d.security();
-        TlsMode tlsMode = secIn.tlsMode() != null ? secIn.tlsMode() : d.security().tlsMode();
+        BackendsConfig.Security securityDefaults = d.security();
+        BackendsConfig.Security secIn = in.security() != null ? in.security() : securityDefaults;
+
+        TlsMode tlsMode = secIn.tlsMode() != null ? secIn.tlsMode() : securityDefaults.tlsMode();
         if (secIn.tlsMode() == null) {
             Log.error("'security.tls-mode' must be set");
             ok = false;
         }
 
-        String tlsPin = (secIn.tlsPin() != null && !secIn.tlsPin().isBlank())
-                ? secIn.tlsPin().trim()
-                : d.security().tlsPin();
+        String tlsPin = trimToNull(secIn.tlsPin());
+        if (tlsPin == null) {
+            tlsPin = securityDefaults.tlsPin();
+        }
 
         String secret = secIn.secret();
-        if (secret == null || secret.isBlank()) {
+        if (isBlank(secret)) {
             Log.error("'security.secret' must not be empty");
-            secret = d.security().secret();
+            secret = securityDefaults.secret();
             ok = false;
-        } else if (websocketMode && secret.toLowerCase().contains("change-me")) {
+        } else if (secret.toLowerCase().contains("change-me")) {
             Log.warn("'security.secret' contains 'change-me'. replace with real key");
         }
 
-        Boolean requireAuth = secIn.requireAuth();
-        if (requireAuth == null) {
-            if (websocketMode) {
-                Log.warn("'security.require-auth' must be set");
-            }
-            requireAuth = d.security().requireAuth();
-        } else if (websocketMode && Boolean.FALSE.equals(requireAuth)) {
-            Log.warn("Authentication is disabled! This is insecure and should not be used");
+        if (endpointType == EndpointType.WEBSOCKET && tlsMode == TlsMode.PLAIN) {
+            Log.warn("'tls-mode=PLAIN' disables transport encryption. use TOFU/STRICT in production");
         }
 
-        if (endpointType == EndpointType.WEBSOCKET && tlsMode == TlsMode.PLAIN && Boolean.TRUE.equals(requireAuth)) {
-            Log.warn("'tls-mode=PLAIN' with 'require-auth=true' is unusual. consider TLS");
-        }
-
-        BackendsConfig.Security secOut = new BackendsConfig.Security(tlsMode, tlsPin, secret, requireAuth);
+        BackendsConfig.Security secOut = new BackendsConfig.Security(tlsMode, tlsPin, secret);
 
         BackendsConfig out = new BackendsConfig(
                 clientId,
@@ -168,9 +151,20 @@ public final class BackendsConfigProfile implements ConfigProfile<BackendsConfig
                 endpointsOut,
                 secOut,
                 timeoutsOut,
-                limitsOut,
                 in.debug());
 
         return new Result<>(out, ok);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private static String trimToNull(String s) {
+        if (s == null) {
+            return null;
+        }
+        String trimmed = s.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

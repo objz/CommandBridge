@@ -17,7 +17,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
         boolean ok = true;
 
         String serverId = in.serverId();
-        if (serverId == null || serverId.isBlank()) {
+        if (isBlank(serverId)) {
             serverId = d.serverId();
             Log.warn("'server-id' missing or blank. defaulting to '{}'", serverId);
         } else {
@@ -31,25 +31,22 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
             ok = false;
         }
         boolean websocketMode = endpointType == EndpointType.WEBSOCKET;
-        boolean redisMode = endpointType == EndpointType.REDIS;
 
-        VelocityConfig.Endpoints endpointsIn = in.endpoints() != null ? in.endpoints() : d.endpoints();
+        VelocityConfig.Endpoints endpointsDefaults = d.endpoints();
+        VelocityConfig.Endpoints endpointsIn = in.endpoints() != null ? in.endpoints() : endpointsDefaults;
 
         VelocityConfig.Endpoints.WebSocket wsIn = endpointsIn.webSocket() != null
                 ? endpointsIn.webSocket()
-                : d.endpoints().webSocket();
+                : endpointsDefaults.webSocket();
 
-        String bindHost = wsIn.bindHost();
-        if (bindHost == null || bindHost.isBlank()) {
+        String bindHost = trimToNull(wsIn.bindHost());
+        if (bindHost == null) {
             Log.error("'endpoints.websocket.bind-host' must not be empty");
-            bindHost = d.endpoints().webSocket().bindHost();
+            bindHost = endpointsDefaults.webSocket().bindHost();
             ok = false;
         } else {
-            bindHost = bindHost.trim();
             if (bindHost.startsWith("ws://") || bindHost.startsWith("wss://")) {
-                if (websocketMode) {
-                    Log.warn("'endpoints.websocket.bind-host' must NOT include ws:// or wss://");
-                }
+                Log.warn("'endpoints.websocket.bind-host' must NOT include ws:// or wss://");
                 bindHost = bindHost.replaceFirst("^wss?://", "");
             }
         }
@@ -57,25 +54,22 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
         int bindPort = wsIn.bindPort();
         if (bindPort <= 0 || bindPort > 65535) {
             Log.error("'endpoints.websocket.bind-port' must be between 1 and 65535");
-            bindPort = d.endpoints().webSocket().bindPort();
+            bindPort = endpointsDefaults.webSocket().bindPort();
             ok = false;
         }
 
         VelocityConfig.Endpoints.Redis redisIn = endpointsIn.redis() != null
                 ? endpointsIn.redis()
-                : d.endpoints().redis();
+                : endpointsDefaults.redis();
 
-        String redisHost = redisIn.host();
-        if (redisHost == null || redisHost.isBlank()) {
+        String redisHost = trimToNull(redisIn.host());
+        if (redisHost == null) {
             Log.error("'endpoints.redis.host' must not be empty");
-            redisHost = d.endpoints().redis().host();
+            redisHost = endpointsDefaults.redis().host();
             ok = false;
         } else {
-            redisHost = redisHost.trim();
             if (redisHost.startsWith("redis://") || redisHost.startsWith("rediss://")) {
-                if (redisMode) {
-                    Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
-                }
+                Log.warn("'endpoints.redis.host' must NOT include redis:// or rediss://");
                 redisHost = redisHost.replaceFirst("^rediss?://", "");
             }
         }
@@ -83,7 +77,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
         int redisPort = redisIn.port();
         if (redisPort <= 0 || redisPort > 65535) {
             Log.error("'endpoints.redis.port' must be between 1 and 65535");
-            redisPort = d.endpoints().redis().port();
+            redisPort = endpointsDefaults.redis().port();
             ok = false;
         }
 
@@ -94,121 +88,86 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
                 new VelocityConfig.Endpoints.WebSocket(bindHost, bindPort),
                 new VelocityConfig.Endpoints.Redis(redisHost, redisPort, redisUsername, redisPassword));
 
-        VelocityConfig.Heartbeat hbIn = in.heartbeat() != null ? in.heartbeat() : d.heartbeat();
-        int appPing = hbIn.appPingSeconds();
-        int stale = hbIn.staleAfterSeconds();
-        if (appPing <= 0) {
-            Log.error("'heartbeat.app-ping-seconds' must be > 0");
-            appPing = d.heartbeat().appPingSeconds();
-            ok = false;
-        }
-        if (stale < appPing) {
-            Log.error("'heartbeat.stale-after-seconds' must be >= 'heartbeat.app-ping-seconds'");
-            stale = Math.max(appPing, d.heartbeat().staleAfterSeconds());
-            ok = false;
-        }
-        VelocityConfig.Heartbeat hbOut = new VelocityConfig.Heartbeat(appPing, stale);
+        VelocityConfig.Timeouts timeoutsDefaults = d.timeouts();
+        VelocityConfig.Timeouts toIn = in.timeouts() != null ? in.timeouts() : timeoutsDefaults;
 
-        VelocityConfig.Timeouts toIn = in.timeouts() != null ? in.timeouts() : d.timeouts();
         int registerTimeout = toIn.registerTimeout();
         if (registerTimeout <= 0) {
             Log.error("'timeouts.register-timeout' must be > 0");
-            registerTimeout = d.timeouts().registerTimeout();
+            registerTimeout = timeoutsDefaults.registerTimeout();
             ok = false;
         }
+
         int pingTimeout = toIn.pingTimeout();
         if (pingTimeout <= 0) {
             Log.error("'timeouts.ping-timeout' must be > 0");
-            pingTimeout = d.timeouts().pingTimeout();
+            pingTimeout = timeoutsDefaults.pingTimeout();
             ok = false;
         }
+
         VelocityConfig.Timeouts toOut = new VelocityConfig.Timeouts(registerTimeout, pingTimeout);
 
-        VelocityConfig.Limits limitsIn = in.limits() != null ? in.limits() : d.limits();
-        int maxCon = limitsIn.maxConnections();
-        int maxMsg = limitsIn.maxMessageSizeBytes();
-        int inboundPerSec = limitsIn.inboundMessagesSec();
-        if (maxCon <= 0) {
-            Log.error("'limits.max-connections' must be positive");
-            maxCon = d.limits().maxConnections();
-            ok = false;
-        }
-        if (maxMsg < 1024) {
-            Log.error("'limits.max-message-size-bytes' too small");
-            maxMsg = Math.max(1024, d.limits().maxMessageSizeBytes());
-            ok = false;
-        }
-        if (inboundPerSec <= 0) {
-            Log.error("'limits.inbound-messages-per-sec' must be positive");
-            inboundPerSec = d.limits().inboundMessagesSec();
-            ok = false;
-        }
-        VelocityConfig.Limits limitsOut = new VelocityConfig.Limits(inboundPerSec, maxCon, maxMsg);
+        VelocityConfig.Security securityDefaults = d.security();
+        VelocityConfig.Security secIn = in.security() != null ? in.security() : securityDefaults;
 
-        VelocityConfig.Security secIn = in.security() != null ? in.security() : d.security();
-        TlsMode tlsMode = secIn.tlsMode() != null ? secIn.tlsMode() : d.security().tlsMode();
+        TlsMode tlsMode = secIn.tlsMode() != null ? secIn.tlsMode() : securityDefaults.tlsMode();
         if (secIn.tlsMode() == null) {
             Log.error("'security.tls-mode' must be set");
             ok = false;
         }
 
-        boolean requireAuth = secIn.requireAuth();
-        int authTimeout = secIn.authTimeoutSeconds();
-        if (authTimeout <= 0) {
-            Log.error("'security.auth-timeout-seconds' must be > 0");
-            authTimeout = d.security().authTimeoutSeconds();
-            ok = false;
-        }
-
-        String keystorePath = emptyToNull(secIn.keystorePath());
+        String keystorePath = trimToNull(secIn.keystorePath());
         String keystorePassword = secIn.keystorePassword();
-        String keystoreType = (secIn.keystoreType() == null || secIn.keystoreType().isBlank())
-                ? d.security().keystoreType()
+        String keystoreType = isBlank(secIn.keystoreType())
+                ? securityDefaults.keystoreType()
                 : secIn.keystoreType().trim();
 
-        if (websocketMode && !requireAuth) {
-            Log.warn("Authentication is disabled! This is insecure and should not be used");
+        if (websocketMode && tlsMode == TlsMode.PLAIN) {
+            Log.warn("'tls-mode=PLAIN' disables transport encryption. use TOFU/STRICT in production");
         }
 
-        if (websocketMode && tlsMode == TlsMode.PLAIN && requireAuth) {
-            Log.warn("'tls-mode=PLAIN' with 'require-auth=true' is unusual. consider TLS");
-        }
-
-        if (endpointType == EndpointType.WEBSOCKET && tlsMode == TlsMode.STRICT) {
-            if (keystorePath == null || keystorePath.isBlank()) {
+        if (websocketMode && tlsMode == TlsMode.STRICT) {
+            if (keystorePath == null) {
                 Log.error("'security.keystore-path' is required in STRICT mode");
                 ok = false;
-                keystorePath = d.security().keystorePath();
+                keystorePath = securityDefaults.keystorePath();
             }
-            if (keystorePassword == null) {
+
+            if (isBlank(keystorePassword)) {
                 Log.error("'security.keystore-password' is required in STRICT mode");
                 ok = false;
-                keystorePassword = d.security().keystorePassword();
+                keystorePassword = securityDefaults.keystorePassword();
             }
-            if (keystoreType == null || keystoreType.isBlank()) {
+
+            if (isBlank(keystoreType)) {
                 Log.error("security.keystore-type is required in STRICT mode");
                 ok = false;
-                keystoreType = d.security().keystoreType();
+                keystoreType = securityDefaults.keystoreType();
             }
         }
 
-        VelocityConfig.Security secOut = new VelocityConfig.Security(
-                requireAuth, authTimeout, tlsMode, keystorePath, keystorePassword, keystoreType);
+        VelocityConfig.Security secOut = new VelocityConfig.Security(tlsMode, keystorePath, keystorePassword, keystoreType);
 
         VelocityConfig out = new VelocityConfig(
                 in.actAsClient(),
                 serverId,
                 endpointType,
                 endpointsOut,
-                hbOut,
                 secOut,
                 toOut,
-                limitsOut,
                 in.debug());
         return new Result<>(out, ok);
     }
 
-    private static String emptyToNull(String s) {
-        return (s != null && s.isBlank()) ? null : s;
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private static String trimToNull(String s) {
+        if (s == null) {
+            return null;
+        }
+        String trimmed = s.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
