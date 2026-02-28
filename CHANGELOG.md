@@ -1,10 +1,16 @@
-well this is a big version jump because it has major rewrites to support
-a second backend. what do I mean by that? CommandBridge was(or still is)
-being powered by Websockets. but some users asked for the feature to implement
-redis. So here it is: 
+this version brings some nice additions mostly around target-required
+and player tracking across proxies. the wiki has been fully rewritten for this version so make sure to check that out.
 
-- full redis support as transport layer
-- you can either use websockets or redis depends on what you select in the config
+so whats new:
 
-so big version because the config has major changes and the plugin architecture
+- target-required per command option. this makes sure the player is actually on the target server before dispatching the command. also works when a proxy is in client mode so it checks across all connected proxies not just the local one
+- per-command cooldowns, the old pipeline cooldown stage is gone
+- player presence tracking. backends and client mode proxies now sync their player lists to the proxy. the full list only gets sent once on auth and after that only join/leave deltas get sent so you dont have to worry about huge packets even with like 30k players
+- added PLAYERS argument type for velocity
+- scripts now require version 3
+
+breaking changes:
+- removed Server.timeout from the config
+- removed some unused config values
+- script version 3 is now required, older versions wont work anymore
 
