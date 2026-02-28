@@ -248,13 +248,7 @@ public final class CommandEntry {
     }
 
     private InvokedCommand.TypedArgument createTypedArgument(ArgMapping mapping, CommandArguments args) {
-        var value = args.getOptional(mapping.name())
-                .map(raw -> {
-                    if (raw == null)
-                        return null;
-                    return raw.toString();
-                })
-                .orElse(null);
+        Object value = args.getOptional(mapping.name()).orElse(null);
         return new InvokedCommand.TypedArgument(mapping.type(), value);
     }
 

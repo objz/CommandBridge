@@ -22,7 +22,9 @@ public enum ArgType {
     RANGE,
     // good idea: maybe add script ref to reference to other scripts?
 
-    @Platform({ BACKEND })
+    @Platform(value = { BACKEND }, optional = {
+            @Platform.OptionalSupport(location = VELOCITY, feature = PlatformFeatureKeys.PACKET_EVENTS)
+    })
     PLAYERS,
     @Platform({ BACKEND })
     ENTITIES,

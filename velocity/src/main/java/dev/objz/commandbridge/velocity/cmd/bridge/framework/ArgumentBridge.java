@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.cmd.bridge.framework;
 
+import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.velocity.cmd.bridge.types.VelocityArgumentTypes;
 import java.util.Objects;
@@ -7,16 +8,18 @@ import java.util.Objects;
 public final class ArgumentBridge {
     private final CustomArgumentRegistry registry;
 
-    public ArgumentBridge(PlatformFeatures platformFeatures) {
+    public ArgumentBridge(ProxyServer proxy, PlatformFeatures platformFeatures) {
         this.registry = new CustomArgumentRegistry();
         VelocityArgumentTypes.register(registry,
-                platformFeatures != null ? platformFeatures : PlatformFeatures.none());
+                platformFeatures != null ? platformFeatures : PlatformFeatures.none(),
+                proxy);
     }
 
-    public ArgumentBridge(CustomArgumentRegistry registry, PlatformFeatures platformFeatures) {
+    public ArgumentBridge(ProxyServer proxy, CustomArgumentRegistry registry, PlatformFeatures platformFeatures) {
         this.registry = Objects.requireNonNull(registry);
         VelocityArgumentTypes.register(registry,
-                platformFeatures != null ? platformFeatures : PlatformFeatures.none());
+                platformFeatures != null ? platformFeatures : PlatformFeatures.none(),
+                proxy);
     }
 
     public CustomArgumentRegistry registry() {

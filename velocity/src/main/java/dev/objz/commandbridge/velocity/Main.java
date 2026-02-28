@@ -138,7 +138,7 @@ public final class Main {
         }
         platformFeatures = featuresBuilder.build();
 
-        argumentBridge = new ArgumentBridge(platformFeatures);
+        argumentBridge = new ArgumentBridge(proxy, platformFeatures);
         if (hasPacketEvents) {
             new PacketEventsArgumentBridge(argumentBridge.registry()).install();
         }
