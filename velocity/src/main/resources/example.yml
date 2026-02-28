@@ -1,7 +1,7 @@
 # CommandBridge - Example Script
 # For a full reference of all options, visit https://cb.objz.dev/docs
 
-version: 2
+version: 3
 
 name: example
 description: An example command script - edit or replace this with your own
@@ -24,14 +24,13 @@ defaults:
   server:
     target-required: false
     schedule-online: false
-    timeout: 5s
   delay: 0s
   cooldown: 0s
 
 args:
   - name: player
     required: true
-    type: STRING
+    type: PLAYERS
     suggestions: []
 
   - name: message
