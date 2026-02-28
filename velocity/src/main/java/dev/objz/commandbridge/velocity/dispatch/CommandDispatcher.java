@@ -17,6 +17,7 @@ import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.util.PlayerTracker;
 import dev.objz.commandbridge.util.MM;
 
 import java.util.HashSet;
@@ -30,11 +31,14 @@ public final class CommandDispatcher {
     private final SessionHub sessions;
     private final OutNode<Object> outNode;
     private final VelocityExecutor velocityExecutor;
+    private final PlayerTracker playerTracker;
 
-    public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, VelocityExecutor velocityExecutor) {
+    public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, VelocityExecutor velocityExecutor,
+                             PlayerTracker playerTracker) {
         this.sessions = sessions;
         this.outNode = outNode;
         this.velocityExecutor = velocityExecutor;
+        this.playerTracker = playerTracker;
     }
 
     public void dispatchCommand(ExecutionContext ctx, CmdMapping cmd) {
@@ -59,9 +63,7 @@ public final class CommandDispatcher {
                 && ctx.source() instanceof Player player) {
             boolean playerOnTarget = switch (targetLoc) {
                 case VELOCITY -> velocityExecutor.isLocal(targetId);
-                case BACKEND -> player.getCurrentServer()
-                        .map(conn -> conn.getServerInfo().getName().equalsIgnoreCase(targetId))
-                        .orElse(false);
+                case BACKEND -> playerTracker.isPlayerOn(player.getUniqueId(), targetId);
             };
             if (!playerOnTarget) {
                 Log.warn("target-required: player '{}' is not on {} '{}', skipping",

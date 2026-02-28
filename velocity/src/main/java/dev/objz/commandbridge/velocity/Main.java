@@ -37,10 +37,12 @@ import dev.objz.commandbridge.velocity.net.WsServer;
 import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
+import dev.objz.commandbridge.velocity.net.in.PlayerListHandler;
 import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.util.PlayerTracker;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -74,6 +76,7 @@ public final class Main {
     private OutNode<Object> outNode;
     private VelocityConfig cfg;
     private SessionHub sessions;
+    private PlayerTracker playerTracker;
     private AuthHandler authHandler;
     private CBCommand command;
     private ScriptManager scriptManager;
@@ -141,6 +144,8 @@ public final class Main {
         }
 
         sessions = new SessionHub();
+        playerTracker = new PlayerTracker();
+        sessions.onRemove(session -> playerTracker.remove(session.id()));
         inNode = new InNode();
         outNode = new OutNode<>();
         outNode.setServerId(cfg.serverId());
@@ -171,7 +176,7 @@ public final class Main {
                 argumentBridge.registry());
 
         commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
-                cfg.serverId(), dataDir);
+                cfg.serverId(), dataDir, playerTracker);
 
         registrations.setCommandEntry(commandEntry);
 
@@ -229,6 +234,7 @@ public final class Main {
 
         inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
         inNode.register(MessageType.EXECUTE_COMMAND_RESULT, new ExecuteCommandHandler(proxy));
+        inNode.register(MessageType.PLAYER_LIST, new PlayerListHandler(sessions, playerTracker));
 
         outNode.setEndpointSendFactory((endpoint, env) -> endpointServer.send(endpoint, env));
         outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());

@@ -9,11 +9,17 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public final class SessionHub implements Iterable<ClientSession> {
 
     private final ConcurrentHashMap<String, ClientSession> clientsById = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Endpoint, ClientSession> clientsByEndpoint = new ConcurrentHashMap<>();
+    private volatile Consumer<ClientSession> onRemoveListener;
+
+    public void onRemove(Consumer<ClientSession> listener) {
+        this.onRemoveListener = listener;
+    }
 
     public ClientSession add(String clientId, Endpoint endpoint) {
         Objects.requireNonNull(endpoint);
@@ -46,8 +52,11 @@ public final class SessionHub implements Iterable<ClientSession> {
         if (clientId == null)
             return null;
         var removed = clientsById.remove(clientId);
-        if (removed != null && removed.endpoint() != null) {
-            clientsByEndpoint.remove(removed.endpoint());
+        if (removed != null) {
+            if (removed.endpoint() != null) {
+                clientsByEndpoint.remove(removed.endpoint());
+            }
+            notifyRemoval(removed);
         }
         return removed;
     }
@@ -57,8 +66,11 @@ public final class SessionHub implements Iterable<ClientSession> {
             return null;
 
         var removed = clientsByEndpoint.remove(endpoint);
-        if (removed != null && removed.id() != null) {
-            clientsById.remove(removed.id(), removed);
+        if (removed != null) {
+            if (removed.id() != null) {
+                clientsById.remove(removed.id(), removed);
+            }
+            notifyRemoval(removed);
         }
         return removed;
     }
@@ -75,6 +87,16 @@ public final class SessionHub implements Iterable<ClientSession> {
     @Override
     public Iterator<ClientSession> iterator() {
         return clientsById.values().iterator();
+    }
+
+    private void notifyRemoval(ClientSession session) {
+        var listener = onRemoveListener;
+        if (listener != null) {
+            try {
+                listener.accept(session);
+            } catch (Exception ignore) {
+            }
+        }
     }
 
     public Optional<ClientSession> findSession(String id, Location location) {

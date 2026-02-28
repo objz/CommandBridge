@@ -23,6 +23,7 @@ import dev.objz.commandbridge.velocity.dispatch.stage.*;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
+import dev.objz.commandbridge.velocity.util.PlayerTracker;
 import dev.objz.commandbridge.util.MM;
 
 import java.nio.file.Path;
@@ -50,7 +51,8 @@ public final class CommandEntry {
             SessionHub sessions,
             OutNode<Object> outNode,
             String localServerId,
-            Path dataDir) {
+            Path dataDir,
+            PlayerTracker playerTracker) {
 
         this.proxy = Objects.requireNonNull(proxy);
         this.plugin = Objects.requireNonNull(plugin);
@@ -61,7 +63,7 @@ public final class CommandEntry {
 
         this.velocityExecutor = new VelocityExecutor(proxy, Objects.requireNonNull(localServerId));
 
-        this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor);
+        this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor, playerTracker);
 
         this.cooldowns = new CooldownManager();
         this.pipelineStages = List.of(
