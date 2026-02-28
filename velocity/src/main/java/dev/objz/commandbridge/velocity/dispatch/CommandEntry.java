@@ -23,8 +23,10 @@ import dev.objz.commandbridge.velocity.dispatch.stage.*;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
+import dev.objz.commandbridge.util.MM;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -38,6 +40,7 @@ public final class CommandEntry {
     private final ScheduleManager scheduler;
     private final VelocityExecutor velocityExecutor;
     private final CommandDispatcher dispatcher;
+    private final CooldownManager cooldowns;
     private final List<Pipeline> pipelineStages;
 
     public CommandEntry(
@@ -60,12 +63,11 @@ public final class CommandEntry {
 
         this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor);
 
-        var cooldowns = new CooldownManager();
+        this.cooldowns = new CooldownManager();
         this.pipelineStages = List.of(
                 new ScriptResolutionStage(scriptManager),
                 new ArgumentMappingStage(),
-                new PermissionCheckStage(),
-                new CooldownStage(cooldowns));
+                new PermissionCheckStage());
     }
 
     public VelocityExecutor getVelocityExecutor() {
@@ -129,8 +131,23 @@ public final class CommandEntry {
         var cmd = commands.get(index);
         var nextCtx = ctx.nextCommand(cmd, index);
 
+        if (ctx.source() instanceof Player player && cmd.cooldown() != null
+                && !cmd.cooldown().isZero() && !cmd.cooldown().isNegative()) {
+            String cooldownKey = ctx.script().name() + ":" + index;
+            if (cooldowns.isOnCooldown(cooldownKey, player.getUniqueId())) {
+                Duration remaining = cooldowns.getRemaining(cooldownKey, player.getUniqueId());
+                player.sendMessage(MM.error("Try again in " + formatDuration(remaining)));
+                return;
+            }
+        }
+
         new PlaceholderStage().process(nextCtx, result -> {
             if (result instanceof ExecutionResult.Continue c) {
+                if (ctx.source() instanceof Player player && cmd.cooldown() != null
+                        && !cmd.cooldown().isZero() && !cmd.cooldown().isNegative()) {
+                    String cooldownKey = ctx.script().name() + ":" + index;
+                    cooldowns.setCooldown(cooldownKey, player.getUniqueId(), cmd.cooldown());
+                }
                 scheduleAndExecute(c.context(), () -> processCommandAt(ctx, commands, index + 1));
             }
         });
@@ -237,5 +254,10 @@ public final class CommandEntry {
                 })
                 .orElse(null);
         return new InvokedCommand.TypedArgument(mapping.type(), value);
+    }
+
+    private String formatDuration(Duration d) {
+        long s = d.getSeconds();
+        return s + "s";
     }
 }
