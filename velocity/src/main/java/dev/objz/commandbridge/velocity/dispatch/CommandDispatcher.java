@@ -55,6 +55,21 @@ public final class CommandDispatcher {
         String targetId = target.id();
         Location targetLoc = target.location();
 
+        if (cmd.server() != null && cmd.server().targetRequired()
+                && ctx.source() instanceof Player player) {
+            boolean playerOnTarget = switch (targetLoc) {
+                case VELOCITY -> velocityExecutor.isLocal(targetId);
+                case BACKEND -> player.getCurrentServer()
+                        .map(conn -> conn.getServerInfo().getName().equalsIgnoreCase(targetId))
+                        .orElse(false);
+            };
+            if (!playerOnTarget) {
+                Log.warn("target-required: player '{}' is not on {} '{}', skipping",
+                        player.getUsername(), targetLoc, targetId);
+                return;
+            }
+        }
+
         if (targetLoc == Location.VELOCITY && velocityExecutor.isLocal(targetId)) {
             executeLocally(ctx, cmd);
             return;
