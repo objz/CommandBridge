@@ -1,5 +1,9 @@
 package dev.objz.commandbridge.velocity;
 
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.event.connection.PostLoginEvent;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 
@@ -8,6 +12,7 @@ import dev.objz.commandbridge.backends.net.RedisClient;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
+import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.bootstrap.VelocityMain;
@@ -22,6 +27,10 @@ import dev.objz.commandbridge.scripting.model.enums.Location;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public final class Adapter implements PlatformAdapter {
     private BackendClient client;
@@ -101,6 +110,9 @@ public final class Adapter implements PlatformAdapter {
         client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
+
+        client.onAuthenticated(this::sendPlayerList);
+        proxy.getEventManager().register(pluginInstance, new PlayerListener());
     }
 
     @Override
@@ -127,6 +139,37 @@ public final class Adapter implements PlatformAdapter {
     public void cancelSchedule(Object task) {
         if (task instanceof TimeoutTask t) {
             t.cancel();
+        }
+    }
+
+    @Override
+    public Set<UUID> getOnlinePlayerIds() {
+        return proxy.getAllPlayers().stream()
+                .map(Player::getUniqueId)
+                .collect(Collectors.toSet());
+    }
+
+    private void sendPlayerList() {
+        if (client == null) return;
+        try {
+            client.outboundRouter().send(MessageType.PLAYER_LIST,
+                    new PlayerListContext(getOnlinePlayerIds()));
+        } catch (Exception e) {
+            Log.debug("Failed to send player list: {}", e.getMessage());
+        }
+    }
+
+    private class PlayerListener {
+        @Subscribe
+        public void onPostLogin(PostLoginEvent event) {
+            sendPlayerList();
+        }
+
+        @Subscribe
+        public void onDisconnect(DisconnectEvent event) {
+            proxy.getScheduler().buildTask(pluginInstance, () -> sendPlayerList())
+                    .delay(50, TimeUnit.MILLISECONDS)
+                    .schedule();
         }
     }
 

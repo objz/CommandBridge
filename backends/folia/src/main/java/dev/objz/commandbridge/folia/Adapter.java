@@ -5,6 +5,7 @@ import dev.objz.commandbridge.backends.net.RedisClient;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
+import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
@@ -17,11 +18,19 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public final class Adapter implements PlatformAdapter {
     private BackendClient client;
@@ -88,6 +97,9 @@ public final class Adapter implements PlatformAdapter {
         client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
+
+        client.onAuthenticated(this::sendPlayerList);
+        Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
     }
 
     @Override
@@ -114,6 +126,36 @@ public final class Adapter implements PlatformAdapter {
     public void cancelSchedule(Object task) {
         if (task instanceof TimeoutTask t) {
             t.cancel();
+        }
+    }
+
+    @Override
+    public Set<UUID> getOnlinePlayerIds() {
+        return Bukkit.getOnlinePlayers().stream()
+                .map(Player::getUniqueId)
+                .collect(Collectors.toSet());
+    }
+
+    private void sendPlayerList() {
+        if (client == null) return;
+        try {
+            client.outboundRouter().send(MessageType.PLAYER_LIST,
+                    new PlayerListContext(getOnlinePlayerIds()));
+        } catch (Exception e) {
+            Log.debug("Failed to send player list: {}", e.getMessage());
+        }
+    }
+
+    private class PlayerListener implements Listener {
+        @EventHandler
+        public void onJoin(PlayerJoinEvent event) {
+            sendPlayerList();
+        }
+
+        @EventHandler
+        public void onQuit(PlayerQuitEvent event) {
+            // Use Folia async scheduler for slight delay
+            Bukkit.getAsyncScheduler().runDelayed(plugin, (t) -> sendPlayerList(), 50, TimeUnit.MILLISECONDS);
         }
     }
 
