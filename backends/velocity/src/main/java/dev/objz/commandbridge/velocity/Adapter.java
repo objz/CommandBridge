@@ -13,6 +13,7 @@ import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
+import dev.objz.commandbridge.backends.net.out.ctx.PlayerUpdateContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.bootstrap.VelocityMain;
@@ -159,15 +160,36 @@ public final class Adapter implements PlatformAdapter {
         }
     }
 
+    private void sendPlayerJoin(UUID playerUuid) {
+        if (client == null) return;
+        try {
+            client.outboundRouter().send(MessageType.PLAYER_JOIN,
+                    new PlayerUpdateContext(playerUuid));
+        } catch (Exception e) {
+            Log.debug("Failed to send player join: {}", e.getMessage());
+        }
+    }
+
+    private void sendPlayerLeave(UUID playerUuid) {
+        if (client == null) return;
+        try {
+            client.outboundRouter().send(MessageType.PLAYER_LEAVE,
+                    new PlayerUpdateContext(playerUuid));
+        } catch (Exception e) {
+            Log.debug("Failed to send player leave: {}", e.getMessage());
+        }
+    }
+
     private class PlayerListener {
         @Subscribe
         public void onPostLogin(PostLoginEvent event) {
-            sendPlayerList();
+            sendPlayerJoin(event.getPlayer().getUniqueId());
         }
 
         @Subscribe
         public void onDisconnect(DisconnectEvent event) {
-            proxy.getScheduler().buildTask(pluginInstance, () -> sendPlayerList())
+            UUID uuid = event.getPlayer().getUniqueId();
+            proxy.getScheduler().buildTask(pluginInstance, () -> sendPlayerLeave(uuid))
                     .delay(50, TimeUnit.MILLISECONDS)
                     .schedule();
         }

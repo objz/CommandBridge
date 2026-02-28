@@ -6,6 +6,7 @@ import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
+import dev.objz.commandbridge.backends.net.out.ctx.PlayerUpdateContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
@@ -146,16 +147,37 @@ public final class Adapter implements PlatformAdapter {
         }
     }
 
+    private void sendPlayerJoin(java.util.UUID playerUuid) {
+        if (client == null) return;
+        try {
+            client.outboundRouter().send(MessageType.PLAYER_JOIN,
+                    new PlayerUpdateContext(playerUuid));
+        } catch (Exception e) {
+            Log.debug("Failed to send player join: {}", e.getMessage());
+        }
+    }
+
+    private void sendPlayerLeave(java.util.UUID playerUuid) {
+        if (client == null) return;
+        try {
+            client.outboundRouter().send(MessageType.PLAYER_LEAVE,
+                    new PlayerUpdateContext(playerUuid));
+        } catch (Exception e) {
+            Log.debug("Failed to send player leave: {}", e.getMessage());
+        }
+    }
+
     private class PlayerListener implements Listener {
         @EventHandler
         public void onJoin(PlayerJoinEvent event) {
-            sendPlayerList();
+            sendPlayerJoin(event.getPlayer().getUniqueId());
         }
 
         @EventHandler
         public void onQuit(PlayerQuitEvent event) {
             // Use Folia async scheduler for slight delay
-            Bukkit.getAsyncScheduler().runDelayed(plugin, (t) -> sendPlayerList(), 50, TimeUnit.MILLISECONDS);
+            java.util.UUID uuid = event.getPlayer().getUniqueId();
+            Bukkit.getAsyncScheduler().runDelayed(plugin, (t) -> sendPlayerLeave(uuid), 50, TimeUnit.MILLISECONDS);
         }
     }
 

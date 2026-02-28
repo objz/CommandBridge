@@ -62,7 +62,8 @@ public final class CommandDispatcher {
         if (cmd.server() != null && cmd.server().targetRequired()
                 && ctx.source() instanceof Player player) {
             boolean playerOnTarget = switch (targetLoc) {
-                case VELOCITY -> velocityExecutor.isLocal(targetId);
+                case VELOCITY -> velocityExecutor.isLocal(targetId)
+                        || playerTracker.isPlayerOn(player.getUniqueId(), targetId);
                 case BACKEND -> playerTracker.isPlayerOn(player.getUniqueId(), targetId);
             };
             if (!playerOnTarget) {

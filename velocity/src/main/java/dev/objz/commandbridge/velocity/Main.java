@@ -38,6 +38,7 @@ import dev.objz.commandbridge.velocity.net.in.AuthHandler;
 import dev.objz.commandbridge.velocity.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
 import dev.objz.commandbridge.velocity.net.in.PlayerListHandler;
+import dev.objz.commandbridge.velocity.net.in.PlayerUpdateHandler;
 import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
@@ -235,6 +236,9 @@ public final class Main {
         inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
         inNode.register(MessageType.EXECUTE_COMMAND_RESULT, new ExecuteCommandHandler(proxy));
         inNode.register(MessageType.PLAYER_LIST, new PlayerListHandler(sessions, playerTracker));
+        var playerUpdateHandler = new PlayerUpdateHandler(sessions, playerTracker);
+        inNode.register(MessageType.PLAYER_JOIN, playerUpdateHandler);
+        inNode.register(MessageType.PLAYER_LEAVE, playerUpdateHandler);
 
         outNode.setEndpointSendFactory((endpoint, env) -> endpointServer.send(endpoint, env));
         outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());

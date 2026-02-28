@@ -9,5 +9,7 @@ public enum MessageType {
     EXECUTE_COMMAND_RESULT,
     SCHEDULE_LISTENER,
     PLAYER_LIST,
+    PLAYER_JOIN,
+    PLAYER_LEAVE,
     PING, PONG
 }

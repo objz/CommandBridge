@@ -4,6 +4,7 @@ import dev.objz.commandbridge.backends.net.in.PingHandler;
 import dev.objz.commandbridge.backends.net.out.AuthRequest;
 import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;
 import dev.objz.commandbridge.backends.net.out.PlayerListEvent;
+import dev.objz.commandbridge.backends.net.out.PlayerUpdateEvent;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.net.InNode;
@@ -71,6 +72,8 @@ public final class RedisMessageRouter {
         outNode.register(MessageType.AUTH_REQUEST, new AuthRequest(new AuthService(secret), location));
         outNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandEvent());
         outNode.register(MessageType.PLAYER_LIST, new PlayerListEvent());
+        outNode.register(MessageType.PLAYER_JOIN, new PlayerUpdateEvent(MessageType.PLAYER_JOIN));
+        outNode.register(MessageType.PLAYER_LEAVE, new PlayerUpdateEvent(MessageType.PLAYER_LEAVE));
         inNode.register(MessageType.PING, new PingHandler());
     }
 
