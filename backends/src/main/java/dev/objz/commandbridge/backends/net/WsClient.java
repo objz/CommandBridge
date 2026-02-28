@@ -189,6 +189,11 @@ public final class WsClient implements BackendClient {
         outNode.setServerId(serverId);
     }
 
+    @Override
+    public void onAuthenticated(Runnable callback) {
+        authHandler.onAuthenticated(callback);
+    }
+
     private void onConnectionLost() {
         stateRef.set(ConnectionState.RECONNECTING);
         connectionHandler.forceClose();

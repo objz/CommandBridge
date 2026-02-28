@@ -27,6 +27,8 @@ public interface BackendClient extends AutoCloseable {
 
     void setServerId(String serverId);
 
+    void onAuthenticated(Runnable callback);
+
     @Override
     void close() throws Exception;
 }

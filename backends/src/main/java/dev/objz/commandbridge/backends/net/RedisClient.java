@@ -168,6 +168,11 @@ public final class RedisClient implements BackendClient {
         outNode.setServerId(serverId);
     }
 
+    @Override
+    public void onAuthenticated(Runnable callback) {
+        authHandler.onAuthenticated(callback);
+    }
+
     private boolean isConnected() {
         return running && pool != null;
     }

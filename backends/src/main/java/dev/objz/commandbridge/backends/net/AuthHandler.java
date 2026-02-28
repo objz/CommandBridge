@@ -14,11 +14,16 @@ public final class AuthHandler {
     private final BackendsConfig cfg;
     private final OutNode<Object> outNode;
     private final AtomicReference<ConnectionState> stateRef;
+    private volatile Runnable onAuthed;
 
     public AuthHandler(BackendsConfig cfg, OutNode<Object> outNode, AtomicReference<ConnectionState> stateRef) {
         this.cfg = cfg;
         this.outNode = outNode;
         this.stateRef = stateRef;
+    }
+
+    public void onAuthenticated(Runnable callback) {
+        this.onAuthed = callback;
     }
 
     public boolean authenticate() {
@@ -29,6 +34,14 @@ public final class AuthHandler {
 
             if (newState == ConnectionState.AUTHENTICATED) {
                 Log.debug("Authentication successful");
+                var cb = onAuthed;
+                if (cb != null) {
+                    try {
+                        cb.run();
+                    } catch (Exception e) {
+                        Log.error("Authentication callback failed: {}", e.getMessage());
+                    }
+                }
             } else if (newState == ConnectionState.AUTH_FAILED) {
                 Log.error("Authentication failed");
             }
