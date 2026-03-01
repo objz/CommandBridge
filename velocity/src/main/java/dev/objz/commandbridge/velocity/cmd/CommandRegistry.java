@@ -54,7 +54,6 @@ public final class CommandRegistry implements CommandRegistryInterface {
 
             if (stub.description() != null && !stub.description().isBlank()) {
                 cmd.withShortDescription(stub.description());
-                cmd.withFullDescription(stub.description());
             }
 
             if (stub.aliases() != null && !stub.aliases().isEmpty()) {
