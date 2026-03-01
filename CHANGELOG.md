@@ -14,3 +14,4 @@ breaking changes:
 - removed some unused config values
 - script version 3 is now required, older versions wont work anymore
 
+latest commit: 37b29f5
