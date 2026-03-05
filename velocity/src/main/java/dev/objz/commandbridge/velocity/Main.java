@@ -43,7 +43,9 @@ import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.net.out.ResolveUuidRequest;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
+import dev.objz.commandbridge.velocity.util.UserCache;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -78,6 +80,7 @@ public final class Main {
     private VelocityConfig cfg;
     private SessionHub sessions;
     private PlayerTracker playerTracker;
+    private UserCache userCache;
     private AuthHandler authHandler;
     private CBCommand command;
     private ScriptManager scriptManager;
@@ -176,8 +179,15 @@ public final class Main {
         registrations = new RegistrationManager(proxy, sessions, cfg, outNode,
                 argumentBridge.registry());
 
+        userCache = new UserCache(proxy, sessions, outNode,
+                dataDir.resolve("data").resolve("usercache.json").toFile());
+
+        proxy.getScheduler().buildTask(pluginInstance, userCache::save)
+                .repeat(5, TimeUnit.MINUTES)
+                .schedule();
+
         commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
-                cfg.serverId(), dataDir, playerTracker);
+                cfg.serverId(), dataDir, playerTracker, userCache);
 
         registrations.setCommandEntry(commandEntry);
 
@@ -214,6 +224,10 @@ public final class Main {
     public void onProxyShutdown(ProxyShutdownEvent e) {
         Log.info("Stopping CommandBridge");
 
+        if (userCache != null) {
+            userCache.save();
+        }
+
         if (backendBootstrap != null) {
             try {
                 backendBootstrap.getClass().getMethod("disable").invoke(backendBootstrap);
@@ -244,6 +258,7 @@ public final class Main {
         outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());
         outNode.register(MessageType.PING, new PingRequest());
         outNode.register(MessageType.EXECUTE_COMMAND, new ExecuteCommandRequest());
+        outNode.register(MessageType.RESOLVE_UUID, new ResolveUuidRequest());
     }
 
     private void loadClientMode() {
@@ -310,6 +325,11 @@ public final class Main {
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
         Player player = event.getPlayer();
+
+        if (userCache != null) {
+            userCache.cachePlayer(player.getUsername(), player.getUniqueId());
+        }
+
         if (!player.hasPermission("commandbridge.admin")) return;
 
         boolean hasUpdate = latestVersion != null && compareVersions(latestVersion, BuildMeta.VERSION) > 0;

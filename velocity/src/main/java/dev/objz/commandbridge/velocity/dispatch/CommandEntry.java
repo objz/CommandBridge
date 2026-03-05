@@ -24,11 +24,13 @@ import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
+import dev.objz.commandbridge.velocity.util.UserCache;
 import dev.objz.commandbridge.util.MM;
 
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -42,6 +44,7 @@ public final class CommandEntry {
     private final CommandDispatcher dispatcher;
     private final CooldownManager cooldowns;
     private final PlayerTracker playerTracker;
+    private final UserCache userCache;
     private final List<Pipeline> pipelineStages;
 
     public CommandEntry(
@@ -52,11 +55,13 @@ public final class CommandEntry {
             OutNode<Object> outNode,
             String localServerId,
             Path dataDir,
-            PlayerTracker playerTracker) {
+            PlayerTracker playerTracker,
+            UserCache userCache) {
 
         this.proxy = Objects.requireNonNull(proxy);
         this.plugin = Objects.requireNonNull(plugin);
         this.playerTracker = Objects.requireNonNull(playerTracker);
+        this.userCache = Objects.requireNonNull(userCache);
 
         this.velocityExecutor = new VelocityExecutor(proxy, Objects.requireNonNull(localServerId));
 
@@ -151,8 +156,8 @@ public final class CommandEntry {
                     String cooldownKey = ctx.script().name() + ":" + index;
                     cooldowns.setCooldown(cooldownKey, player.getUniqueId(), cmd.cooldown());
                 }
-                ExecutionContext resolved = resolvePlayerArg(c.context());
-                scheduleAndExecute(resolved, () -> processCommandAt(ctx, commands, index + 1));
+                resolvePlayerArg(c.context()).thenAccept(resolved ->
+                        scheduleAndExecute(resolved, () -> processCommandAt(ctx, commands, index + 1)));
             }
         });
     }
@@ -218,34 +223,34 @@ public final class CommandEntry {
         return false;
     }
 
-    private ExecutionContext resolvePlayerArg(ExecutionContext ctx) {
+    private CompletableFuture<ExecutionContext> resolvePlayerArg(ExecutionContext ctx) {
         CmdMapping cmd = ctx.currentCommand();
         if (cmd == null || cmd.server() == null)
-            return ctx;
+            return CompletableFuture.completedFuture(ctx);
 
         String playerArgName = cmd.server().playerArg();
         if (playerArgName == null || playerArgName.isBlank())
-            return ctx;
+            return CompletableFuture.completedFuture(ctx);
 
         Object value = ctx.arguments().get(playerArgName);
         if (value == null)
-            return ctx;
+            return CompletableFuture.completedFuture(ctx);
 
-        UUID resolved = resolveToUuid(value);
-        if (resolved == null) {
-            Log.debug("player-arg '{}' did not resolve to a UUID", playerArgName);
-            return ctx;
-        }
-
-        return ctx.withPlayerUuid(resolved);
+        return resolveToUuid(value).thenApply(resolved -> {
+            if (resolved == null) {
+                Log.debug("player-arg '{}' did not resolve to a UUID", playerArgName);
+                return ctx;
+            }
+            return ctx.withPlayerUuid(resolved);
+        });
     }
 
-    private UUID resolveToUuid(Object value) {
+    private CompletableFuture<UUID> resolveToUuid(Object value) {
         if (value instanceof String str) {
             try {
-                return UUID.fromString(str);
+                return CompletableFuture.completedFuture(UUID.fromString(str));
             } catch (IllegalArgumentException e) {
-                return null;
+                return userCache.resolve(str);
             }
         }
 
@@ -253,14 +258,14 @@ public final class CommandEntry {
             Object first = list.getFirst();
             if (first instanceof EntityRef ref && ref.uuid() != null) {
                 try {
-                    return UUID.fromString(ref.uuid());
+                    return CompletableFuture.completedFuture(UUID.fromString(ref.uuid()));
                 } catch (IllegalArgumentException e) {
-                    return null;
+                    return CompletableFuture.completedFuture(null);
                 }
             }
         }
 
-        return null;
+        return CompletableFuture.completedFuture(null);
     }
 
     private ExecutionContext createInitialContext(InvokedCommand invoked, ClientSession session,

@@ -12,6 +12,7 @@ import dev.objz.commandbridge.backends.net.RedisClient;
 import dev.objz.commandbridge.backends.net.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
+import dev.objz.commandbridge.backends.net.in.ResolveUuidHandler;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerUpdateContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
@@ -111,6 +112,9 @@ public final class Adapter implements PlatformAdapter {
         client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
+        client.inboundRouter().register(MessageType.RESOLVE_UUID,
+                new ResolveUuidHandler(name -> proxy.getPlayer(name)
+                        .map(Player::getUniqueId).orElse(null)));
 
         client.onAuthenticated(this::sendPlayerList);
         proxy.getEventManager().register(pluginInstance, new PlayerListener());
