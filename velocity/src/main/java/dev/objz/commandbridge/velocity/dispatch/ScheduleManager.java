@@ -2,6 +2,7 @@ package dev.objz.commandbridge.velocity.dispatch;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
@@ -26,7 +27,7 @@ public final class ScheduleManager {
     private final ProxyServer proxy;
     private final ScriptManager scriptManager;
     private final String localVelocityId;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
     private final File storageFile;
 
