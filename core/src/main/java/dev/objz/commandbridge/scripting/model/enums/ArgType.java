@@ -1,10 +1,12 @@
 package dev.objz.commandbridge.scripting.model.enums;
 
 import dev.objz.commandbridge.scripting.anno.Platform;
+import dev.objz.commandbridge.scripting.anno.PlayerResolvable;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
 import static dev.objz.commandbridge.scripting.model.enums.Location.*;
 
 public enum ArgType {
+    @PlayerResolvable
     @Platform({ VELOCITY, BACKEND })
     STRING,
     @Platform({ VELOCITY, BACKEND })
@@ -22,6 +24,7 @@ public enum ArgType {
     RANGE,
     // good idea: maybe add script ref to reference to other scripts?
 
+    @PlayerResolvable
     @Platform(value = { BACKEND }, optional = {
             @Platform.OptionalSupport(location = VELOCITY, feature = PlatformFeatureKeys.PACKET_EVENTS)
     })

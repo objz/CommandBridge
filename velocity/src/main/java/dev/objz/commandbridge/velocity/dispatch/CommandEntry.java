@@ -4,6 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.jorel.commandapi.executors.CommandArguments;
+import dev.objz.commandbridge.cmd.ref.EntityRef;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
@@ -150,7 +151,8 @@ public final class CommandEntry {
                     String cooldownKey = ctx.script().name() + ":" + index;
                     cooldowns.setCooldown(cooldownKey, player.getUniqueId(), cmd.cooldown());
                 }
-                scheduleAndExecute(c.context(), () -> processCommandAt(ctx, commands, index + 1));
+                ExecutionContext resolved = resolvePlayerArg(c.context());
+                scheduleAndExecute(resolved, () -> processCommandAt(ctx, commands, index + 1));
             }
         });
     }
@@ -200,7 +202,7 @@ public final class CommandEntry {
 
         UUID playerUuid = ctx.getPlayerUuid();
         if (playerUuid == null) {
-            Log.warn("schedule-online: cannot schedule for non-player source (no player UUID available)");
+            Log.warn("Cannot schedule for non-player source (no player UUID available)");
             return false;
         }
 
@@ -214,6 +216,51 @@ public final class CommandEntry {
         }
 
         return false;
+    }
+
+    private ExecutionContext resolvePlayerArg(ExecutionContext ctx) {
+        CmdMapping cmd = ctx.currentCommand();
+        if (cmd == null || cmd.server() == null)
+            return ctx;
+
+        String playerArgName = cmd.server().playerArg();
+        if (playerArgName == null || playerArgName.isBlank())
+            return ctx;
+
+        Object value = ctx.arguments().get(playerArgName);
+        if (value == null)
+            return ctx;
+
+        UUID resolved = resolveToUuid(value);
+        if (resolved == null) {
+            Log.debug("player-arg '{}' did not resolve to a UUID", playerArgName);
+            return ctx;
+        }
+
+        return ctx.withPlayerUuid(resolved);
+    }
+
+    private UUID resolveToUuid(Object value) {
+        if (value instanceof String str) {
+            try {
+                return UUID.fromString(str);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+
+        if (value instanceof List<?> list && !list.isEmpty()) {
+            Object first = list.getFirst();
+            if (first instanceof EntityRef ref && ref.uuid() != null) {
+                try {
+                    return UUID.fromString(ref.uuid());
+                } catch (IllegalArgumentException e) {
+                    return null;
+                }
+            }
+        }
+
+        return null;
     }
 
     private ExecutionContext createInitialContext(InvokedCommand invoked, ClientSession session,

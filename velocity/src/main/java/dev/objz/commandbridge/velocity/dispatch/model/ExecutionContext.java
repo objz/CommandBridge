@@ -36,4 +36,8 @@ public record ExecutionContext(
     public ExecutionContext nextCommand(CmdMapping cmd, int index) {
         return new ExecutionContext(invoked, session, source, playerUuid, script, arguments, cmd, index);
     }
+
+    public ExecutionContext withPlayerUuid(UUID uuid) {
+        return new ExecutionContext(invoked, session, source, uuid, script, arguments, currentCommand, commandIndex);
+    }
 }

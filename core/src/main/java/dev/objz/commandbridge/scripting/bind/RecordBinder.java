@@ -14,6 +14,7 @@ import dev.objz.commandbridge.scripting.validation.processor.MergeProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.MinProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.PatternProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.PlatformProcessor;
+import dev.objz.commandbridge.scripting.validation.processor.PlayerArgProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.RequiredProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.ResolvableProcessor;
 import dev.objz.commandbridge.scripting.validation.processor.TrailingArgumentProcessor;
@@ -51,6 +52,7 @@ public final class RecordBinder {
                 new MaxProcessor(),
                 new ResolvableProcessor(),
                 new MergeProcessor(),
+                new PlayerArgProcessor(),
                 new PlatformProcessor(),
                 new ArgumentOrderProcessor(),
                 new TrailingArgumentProcessor()

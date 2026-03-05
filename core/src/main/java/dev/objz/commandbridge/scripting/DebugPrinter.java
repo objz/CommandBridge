@@ -191,6 +191,7 @@ public final class DebugPrinter {
             builder.increaseIndent();
             builder.addProperty("target-required", server.targetRequired());
             builder.addProperty("schedule-online", server.scheduleOnline());
+            builder.addProperty("player-arg", server.playerArg());
             builder.decreaseIndent();
         }
 
@@ -262,6 +263,7 @@ public final class DebugPrinter {
                 builder.increaseIndent();
                 builder.addProperty("target-required", server.targetRequired());
                 builder.addProperty("schedule-online", server.scheduleOnline());
+                builder.addProperty("player-arg", server.playerArg());
                 builder.decreaseIndent();
             }
 
@@ -595,7 +597,8 @@ public final class DebugPrinter {
         }
         Server defaultServer = defaults.server();
         return !Objects.equals(server.targetRequired(), defaultServer.targetRequired())
-                || !Objects.equals(server.scheduleOnline(), defaultServer.scheduleOnline());
+                || !Objects.equals(server.scheduleOnline(), defaultServer.scheduleOnline())
+                || !Objects.equals(server.playerArg(), defaultServer.playerArg());
     }
 
     private static int getVisibleWidth(String text) {
