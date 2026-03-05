@@ -31,7 +31,7 @@ public final class TlsResolver {
                 return new ServerTls(false, null);
             }
             case TOFU -> {
-                var ssl = TLS.ensure(dataDir, "localhost");
+                var ssl = TLS.ensure(dataDir.resolve("data"), "localhost");
                 return new ServerTls(true, ssl);
             }
             case STRICT -> {

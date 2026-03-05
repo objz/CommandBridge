@@ -39,7 +39,7 @@ public final class ScheduleManager {
         this.proxy = proxy;
         this.scriptManager = scriptManager;
         this.localVelocityId = localVelocityId;
-        this.storageFile = dataDir.resolve("tasks.json").toFile();
+        this.storageFile = dataDir.resolve("data").resolve("tasks.json").toFile();
 
         loadTasks();
 
@@ -166,6 +166,7 @@ public final class ScheduleManager {
 
     private synchronized void saveTasks() {
         try {
+            storageFile.getParentFile().mkdirs();
             mapper.writeValue(storageFile, new ArrayList<>(tasks.values()));
         } catch (IOException e) {
             Log.error("Failed to save scheduled tasks: " + e.getMessage());
