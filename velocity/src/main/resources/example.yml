@@ -1,7 +1,7 @@
 # CommandBridge - Example Script
 # For a full reference of all options, visit https://cb.objz.dev/docs
 
-version: 3
+version: 4
 
 name: example
 description: An example command script - edit or replace this with your own

@@ -18,7 +18,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 
 @ModelRoot("script")
 public record Script(
-        @Min(3) @Max(3) @Required int version,
+        @Min(4) @Max(4) @Required int version,
 
         @Required @Pattern(regex = "^[a-z][a-z0-9-]{2,32}$") String name,
 

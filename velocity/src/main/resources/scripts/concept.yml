@@ -1,4 +1,4 @@
-version: 3  # The configuration version. Must be 3 for the current schema.
+version: 4  # The configuration version. Must be 4 for the current schema.
 
 name: eco-give  # The canonical name of the script and the command. This will be the primary label on the proxy.
 description: Simple demo script that proxies an /eco command to a backend server  # A short description shown in /help.
