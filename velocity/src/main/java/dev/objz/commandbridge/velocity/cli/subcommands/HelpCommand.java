@@ -24,6 +24,7 @@ public class HelpCommand extends AbstractCliCommand {
         {"/cb info", "System & Plugin Information"},
         {"/cb dump", "Dump configuration for support"},
         {"/cb reload", "Reload configuration & scripts"},
+        {"/cb migrate", "Migrate scripts to latest version"},
         {"/cb debug", "Toggle debug mode"}
     };
 

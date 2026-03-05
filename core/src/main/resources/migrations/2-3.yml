@@ -1,0 +1,9 @@
+rules:
+  - type: REMOVE
+    path: defaults.server.timeout
+  - type: REMOVE
+    path: defaults.server.frequency
+  - type: REMOVE
+    path: commands[*].server.timeout
+  - type: REMOVE
+    path: commands[*].server.frequency

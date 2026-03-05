@@ -99,6 +99,10 @@ public final class ScriptManager {
         return errors;
     }
 
+    public Path scriptsDir() {
+        return scriptsDir;
+    }
+
     private static boolean isYaml(Path p) {
         if (!Files.isRegularFile(p))
             return false;

@@ -65,6 +65,7 @@ public final class CBCommand {
         var ping = new PingCommand(sessionHub, outNode, config);
         var debug = new DebugCommand();
         var dump = new DumpCommand(registrationManager, sessionHub);
+        var migrate = new MigrateCommand(scriptManager.scriptsDir());
         var infoCmd = new InfoCommand();
 
         new CommandAPICommand("commandbridge")
@@ -131,6 +132,12 @@ public final class CBCommand {
                 .withSubcommand(new CommandAPICommand("dump")
                         .executes((CommandExecutor) (sender, args) -> {
                             dump.execute(sender);
+                        }))
+
+                // /cb migrate
+                .withSubcommand(new CommandAPICommand("migrate")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            migrate.execute(sender);
                         }))
 
                 .register();

@@ -1,0 +1,9 @@
+rules:
+  - type: ADD
+    path: defaults.server.player-arg
+    value: '""'
+    after: schedule-online
+  - type: ADD
+    path: commands[*].server.player-arg
+    value: '""'
+    after: schedule-online
