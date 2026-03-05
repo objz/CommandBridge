@@ -2,16 +2,16 @@ package dev.objz.commandbridge.velocity.dispatch;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.model.Script;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ScheduledTask;
+import dev.objz.commandbridge.velocity.util.PlayerTracker;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,15 +23,21 @@ import java.util.function.Consumer;
 
 public final class ScheduleManager {
 
+    private final ProxyServer proxy;
     private final ScriptManager scriptManager;
+    private final String localVelocityId;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
     private final File storageFile;
 
     private Consumer<ExecutionContext> executionCallback;
 
-    public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir, ScriptManager scriptManager) {
+    public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir,
+            ScriptManager scriptManager, PlayerTracker playerTracker,
+            String localVelocityId) {
+        this.proxy = proxy;
         this.scriptManager = scriptManager;
+        this.localVelocityId = localVelocityId;
         this.storageFile = dataDir.resolve("tasks.json").toFile();
 
         loadTasks();
@@ -39,6 +45,8 @@ public final class ScheduleManager {
         proxy.getScheduler().buildTask(plugin, this::saveTasks)
                 .repeat(5, TimeUnit.MINUTES)
                 .schedule();
+
+        playerTracker.onPlayerJoin(this::onPlayerJoin);
     }
 
     public void setExecutionCallback(Consumer<ExecutionContext> callback) {
@@ -46,75 +54,76 @@ public final class ScheduleManager {
     }
 
     public void queueTask(ExecutionContext ctx, CmdMapping cmd, int index) {
-        if (ctx.source() instanceof Player player) {
-            UUID taskId = UUID.randomUUID();
-            ScheduledTask task = new ScheduledTask(
-                    taskId,
-                    player.getUniqueId(),
-                    ctx.script().name(),
-                    cmd,
-                    ctx.arguments(),
-                    index,
-                    System.currentTimeMillis());
-
-            tasks.put(taskId, task);
-            saveTasks();
-
-            Log.debug("Queued task {} for player {} (waiting for connection)", taskId,
-                    player.getUsername());
-        } else {
+        UUID playerUuid = ctx.getPlayerUuid();
+        if (playerUuid == null) {
             Log.warn("Cannot schedule task for non-player source");
+            return;
         }
+
+        UUID taskId = UUID.randomUUID();
+        ScheduledTask task = new ScheduledTask(
+                taskId,
+                playerUuid,
+                ctx.script().name(),
+                cmd,
+                ctx.arguments(),
+                index,
+                System.currentTimeMillis());
+
+        tasks.put(taskId, task);
+        saveTasks();
+
+        Log.debug("Queued task {} for player {} (waiting for player to join target)",
+                taskId, playerUuid);
     }
 
-    @Subscribe
-    public void onServerConnected(ServerConnectedEvent event) {
-        Player player = event.getPlayer();
-        String serverName = event.getServer().getServerInfo().getName();
-
-        processQueue(player, serverName);
+    private void onPlayerJoin(String clientId, UUID playerUuid) {
+        processQueue(clientId, playerUuid);
     }
 
-    private void processQueue(Player player, String currentServerId) {
+    private void processQueue(String clientId, UUID playerUuid) {
         Iterator<Map.Entry<UUID, ScheduledTask>> it = tasks.entrySet().iterator();
 
         while (it.hasNext()) {
             Map.Entry<UUID, ScheduledTask> entry = it.next();
             ScheduledTask task = entry.getValue();
 
-            if (!task.playerUuid().equals(player.getUniqueId())) {
+            if (!task.playerUuid().equals(playerUuid)) {
                 continue;
             }
 
-            boolean isTargetServer = isTargetingServer(task.commandMapping(), currentServerId);
-
-            if (isTargetServer) {
-                Log.debug("Resuming task {} for player {} on server {}", task.id(),
-                        player.getUsername(), currentServerId);
-
-                ExecutionContext ctx = reconstructContext(player, task);
-                if (ctx != null && executionCallback != null) {
-                    executionCallback.accept(ctx);
-                }
-
-                it.remove();
+            if (!isTargetingClient(task.commandMapping(), clientId)) {
+                continue;
             }
+
+            Log.debug("Resuming task {} for player {} on client {}",
+                    task.id(), playerUuid, clientId);
+
+            ExecutionContext ctx = reconstructContext(playerUuid, task);
+            if (ctx != null && executionCallback != null) {
+                executionCallback.accept(ctx);
+            }
+
+            it.remove();
         }
         saveTasks();
     }
 
-    private boolean isTargetingServer(CmdMapping mapping, String serverId) {
+    private boolean isTargetingClient(CmdMapping mapping, String clientId) {
         if (mapping.execute() == null)
             return false;
 
-        return mapping.execute().stream()
-                .anyMatch(idMapping -> idMapping
-                        .location() == dev.objz.commandbridge.scripting.model.enums.Location.BACKEND
-                        &&
-                        idMapping.id().equalsIgnoreCase(serverId));
+        return mapping.execute().stream().anyMatch(target -> {
+            if (target.location() == Location.VELOCITY) {
+                return target.id().equalsIgnoreCase(clientId)
+                        || (target.id().equalsIgnoreCase(localVelocityId)
+                                && clientId.equalsIgnoreCase(localVelocityId));
+            }
+            return target.id().equalsIgnoreCase(clientId);
+        });
     }
 
-    private ExecutionContext reconstructContext(Player player, ScheduledTask task) {
+    private ExecutionContext reconstructContext(UUID playerUuid, ScheduledTask task) {
         Script script = scriptManager.loaded().stream()
                 .filter(s -> s.name().equals(task.scriptName()))
                 .findFirst()
@@ -125,10 +134,13 @@ public final class ScheduleManager {
             return null;
         }
 
+        Player player = proxy.getPlayer(playerUuid).orElse(null);
+
         return new ExecutionContext(
                 null,
                 null,
                 player,
+                playerUuid,
                 script,
                 task.arguments(),
                 task.commandMapping(),

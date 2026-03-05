@@ -1,7 +1,6 @@
 package dev.objz.commandbridge.velocity.dispatch;
 
 import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.proxy.Player;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.net.OutNode;
@@ -59,16 +58,14 @@ public final class CommandDispatcher {
         String targetId = target.id();
         Location targetLoc = target.location();
 
-        if (cmd.server() != null && cmd.server().targetRequired()
-                && ctx.source() instanceof Player player) {
-            boolean playerOnTarget = switch (targetLoc) {
-                case VELOCITY -> velocityExecutor.isLocal(targetId)
-                        || playerTracker.isPlayerOn(player.getUniqueId(), targetId);
-                case BACKEND -> playerTracker.isPlayerOn(player.getUniqueId(), targetId);
-            };
+        UUID playerUuid = ctx.getPlayerUuid();
+
+        if (cmd.server() != null && cmd.server().targetRequired() && playerUuid != null) {
+            boolean playerOnTarget = playerTracker.isPlayerOnTarget(
+                    playerUuid, targetId, targetLoc, velocityExecutor.getLocalServerId());
             if (!playerOnTarget) {
                 Log.warn("target-required: player '{}' is not on {} '{}', skipping",
-                        player.getUsername(), targetLoc, targetId);
+                        playerUuid, targetLoc, targetId);
                 return;
             }
         }
@@ -94,7 +91,7 @@ public final class CommandDispatcher {
     }
 
     private void executeLocally(ExecutionContext ctx, CmdMapping cmd) {
-        var playerUuid = getUUID(ctx.source());
+        var playerUuid = ctx.getPlayerUuid();
         var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
 
         velocityExecutor.execute(cmd.command(), runAs, playerUuid, ctx.source())
@@ -108,7 +105,7 @@ public final class CommandDispatcher {
     }
 
     private void dispatchCommand(ClientSession session, ExecutionContext ctx, CmdMapping cmd) {
-        var uuid = getUUID(ctx.source());
+        var uuid = ctx.getPlayerUuid();
         var runAs = Optional.ofNullable(cmd.runAs()).orElse(RunAs.CONSOLE);
 
         Set<String> grantedPermissions = null;
@@ -120,10 +117,6 @@ public final class CommandDispatcher {
 
         outNode.send(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandContext(session, cmd.command(), runAs, uuid, grantedPermissions));
-    }
-
-    private UUID getUUID(CommandSource source) {
-        return source instanceof Player p ? p.getUniqueId() : null;
     }
 
     private Set<String> buildOPPermissions(Script script, CmdMapping currentCmd) {
