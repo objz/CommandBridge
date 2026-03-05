@@ -29,6 +29,9 @@ public enum ArgType {
             @Platform.OptionalSupport(location = VELOCITY, feature = PlatformFeatureKeys.PACKET_EVENTS)
     })
     PLAYERS,
+    @PlayerResolvable
+    @Platform({ VELOCITY, BACKEND })
+    OFFLINE_PLAYER,
     @Platform({ BACKEND })
     ENTITIES,
     @Platform({ BACKEND })

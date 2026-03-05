@@ -45,6 +45,12 @@ public final class UserCache {
         cache.put(name.toLowerCase(Locale.ROOT), new CacheEntry(name, uuid.toString()));
     }
 
+    public Collection<String> knownNames() {
+        return cache.values().stream()
+                .map(CacheEntry::name)
+                .toList();
+    }
+
     public CompletableFuture<UUID> resolve(String name) {
         if (name == null || name.isBlank()) {
             return CompletableFuture.completedFuture(null);

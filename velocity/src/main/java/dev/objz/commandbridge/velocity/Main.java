@@ -31,6 +31,7 @@ import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
 import dev.objz.commandbridge.velocity.cmd.bridge.packetevents.PacketEventsArgumentBridge;
+import dev.objz.commandbridge.velocity.cmd.bridge.types.OfflinePlayerArgumentType;
 import dev.objz.commandbridge.velocity.net.EndpointServer;
 import dev.objz.commandbridge.velocity.net.RedisServer;
 import dev.objz.commandbridge.velocity.net.WsServer;
@@ -181,6 +182,8 @@ public final class Main {
 
         userCache = new UserCache(proxy, sessions, outNode,
                 dataDir.resolve("data").resolve("usercache.json").toFile());
+
+        argumentBridge.registry().register(new OfflinePlayerArgumentType(proxy, userCache));
 
         proxy.getScheduler().buildTask(pluginInstance, userCache::save)
                 .repeat(5, TimeUnit.MINUTES)

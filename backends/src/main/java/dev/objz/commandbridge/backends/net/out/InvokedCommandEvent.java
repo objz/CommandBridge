@@ -101,6 +101,8 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
 
                     case ENTITY_TYPE -> (raw != null ? raw.toString() : null);
 
+                    case OFFLINE_PLAYER -> (raw != null ? raw.toString() : null);
+
                     case RANGE -> (raw != null ? raw.toString() : null);
 
                     case WORLD, ANGLE, ROTATION, ITEM_STACK, ENCHANTMENT, POTION_EFFECT,

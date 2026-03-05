@@ -31,7 +31,7 @@ defaults:
   server:
     target-required: true  # If true, abort if the target player is not online on the execution target. Defaults to false.
     schedule-online: true  # If true, queue the command until the target comes online on the execution target. Defaults to false.
-    player-arg: player  # References an arg name (must be a player-resolvable type: STRING or PLAYERS) to identify the player for target-required and schedule-online checks.
+    player-arg: player  # References an arg name (must be a player-resolvable type: STRING, PLAYERS, or OFFLINE_PLAYER) to identify the player for target-required and schedule-online checks.
   delay: 0s  # Delay before forwarding the command. Zero disables the delay.
   cooldown: 0s  # Cooldown per player between uses. Zero disables rate limiting.
 
@@ -51,6 +51,7 @@ defaults:
 #   DOUBLE         # Floating-point numbers.
 #   TEXT           # The rest of the input line as a single string, preserving spaces and quotes.
 #   GREEDY_STRING  # Consumes all remaining input as a raw string.
+#   OFFLINE_PLAYER # An offline player name. Player-resolvable. Suggests known players on both platforms.
 #
 # Backend only:
 #   RANGE          # A range like 1..10 (uses DoubleRangeArgument, no min/max support yet).
@@ -74,7 +75,7 @@ defaults:
 # Proxy only:
 #   SERVER         # A Velocity server name.
 #
-# Types marked "Player-resolvable" can be referenced by the server.player-arg setting.
+# Types marked "Player-resolvable" can be referenced by the server.player-arg setting (STRING, PLAYERS, OFFLINE_PLAYER).
 # Types with "optional Velocity support" work on the proxy only when the PacketEvents integration is available.
 # The PlatformProcessor ensures you do not use a backend-only type for a proxy-registered command.
 args:

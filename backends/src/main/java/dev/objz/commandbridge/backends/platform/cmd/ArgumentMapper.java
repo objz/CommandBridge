@@ -32,6 +32,14 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
             case RANGE -> new DoubleRangeArgument(argName);
 
             case PLAYERS -> new EntitySelectorArgument.ManyPlayers(argName);
+            case OFFLINE_PLAYER -> {
+                var arg = new StringArgument(argName);
+                arg.replaceSuggestions(ArgumentSuggestions.strings(info ->
+                        org.bukkit.Bukkit.getOnlinePlayers().stream()
+                                .map(org.bukkit.entity.Player::getName)
+                                .toArray(String[]::new)));
+                yield arg;
+            }
             case ENTITIES -> new EntitySelectorArgument.ManyEntities(argName);
             case ENTITY_TYPE -> new EntityTypeArgument(argName);
 
@@ -73,6 +81,7 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
                 ArgType.GREEDY_STRING,
                 ArgType.RANGE,
                 ArgType.PLAYERS,
+                ArgType.OFFLINE_PLAYER,
                 ArgType.ENTITIES,
                 ArgType.ENTITY_TYPE,
                 ArgType.WORLD,
