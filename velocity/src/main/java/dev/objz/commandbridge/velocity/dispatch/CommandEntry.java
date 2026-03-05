@@ -10,7 +10,6 @@ import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
 import dev.objz.commandbridge.scripting.model.Script;
-import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
@@ -37,11 +36,11 @@ public final class CommandEntry {
 
     private final ProxyServer proxy;
     private final Object plugin;
-    private final SessionHub sessions;
     private final ScheduleManager scheduler;
     private final VelocityExecutor velocityExecutor;
     private final CommandDispatcher dispatcher;
     private final CooldownManager cooldowns;
+    private final PlayerTracker playerTracker;
     private final List<Pipeline> pipelineStages;
 
     public CommandEntry(
@@ -56,12 +55,13 @@ public final class CommandEntry {
 
         this.proxy = Objects.requireNonNull(proxy);
         this.plugin = Objects.requireNonNull(plugin);
-        this.sessions = Objects.requireNonNull(sessions);
-
-        this.scheduler = new ScheduleManager(proxy, plugin, dataDir, scriptManager);
-        this.scheduler.setExecutionCallback(this::resumeTask);
+        this.playerTracker = Objects.requireNonNull(playerTracker);
 
         this.velocityExecutor = new VelocityExecutor(proxy, Objects.requireNonNull(localServerId));
+
+        this.scheduler = new ScheduleManager(proxy, plugin, dataDir, scriptManager,
+                playerTracker, localServerId);
+        this.scheduler.setExecutionCallback(this::resumeTask);
 
         this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor, playerTracker);
 
@@ -169,7 +169,7 @@ public final class CommandEntry {
     private void scheduleAndExecute(ExecutionContext ctx, Runnable continuation) {
         var cmd = ctx.currentCommand();
 
-        if (shouldSchedule(cmd)) {
+        if (shouldSchedule(ctx, cmd)) {
             scheduler.queueTask(ctx, cmd, ctx.commandIndex());
             return;
         }
@@ -189,7 +189,7 @@ public final class CommandEntry {
         }
     }
 
-    private boolean shouldSchedule(CmdMapping cmd) {
+    private boolean shouldSchedule(ExecutionContext ctx, CmdMapping cmd) {
         if (cmd.server() == null || !cmd.server().scheduleOnline()) {
             return false;
         }
@@ -198,23 +198,28 @@ public final class CommandEntry {
             return false;
         }
 
+        UUID playerUuid = ctx.getPlayerUuid();
+        if (playerUuid == null) {
+            Log.warn("schedule-online: cannot schedule for non-player source (no player UUID available)");
+            return false;
+        }
+
         for (IdMapping target : cmd.execute()) {
-            if (target.location() == Location.BACKEND) {
-                boolean online = sessions.findSession(target.id(), Location.BACKEND).isPresent();
-                if (!online) {
-                    return true;
-                }
+            boolean playerOnTarget = playerTracker.isPlayerOnTarget(
+                    playerUuid, target.id(), target.location(),
+                    velocityExecutor.getLocalServerId());
+            if (!playerOnTarget) {
+                return true;
             }
         }
 
         return false;
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-
     private ExecutionContext createInitialContext(InvokedCommand invoked, ClientSession session,
             CommandSource source) {
-        return new ExecutionContext(invoked, session, source, null, Map.of(), null, -1);
+        UUID playerUuid = source instanceof Player p ? p.getUniqueId() : null;
+        return new ExecutionContext(invoked, session, source, playerUuid, null, Map.of(), null, -1);
     }
 
     private Optional<CommandSource> resolveSource(SenderContext sender) {
