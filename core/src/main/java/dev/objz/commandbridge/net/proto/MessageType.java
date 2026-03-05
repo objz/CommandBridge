@@ -11,5 +11,6 @@ public enum MessageType {
     PLAYER_LIST,
     PLAYER_JOIN,
     PLAYER_LEAVE,
-    PING, PONG
+    PING, PONG,
+    RESOLVE_UUID, RESOLVE_UUID_RESPONSE
 }
