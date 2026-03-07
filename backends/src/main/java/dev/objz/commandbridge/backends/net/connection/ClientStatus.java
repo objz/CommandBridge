@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.backends.net;
+package dev.objz.commandbridge.backends.net.connection;
 
 public enum ClientStatus {
     DISCONNECTED,

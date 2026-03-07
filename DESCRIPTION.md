@@ -33,9 +33,13 @@ Everything runs through scripts. You create a `.yml` file, define the command na
 Here is a quick example. This registers `/alert` on the proxy and broadcasts a message to two backends as console:
 
 ```yaml
-version: 4
+version: 3
 name: alert
 description: Broadcast an alert to all servers
+
+permissions:
+  enabled: true 
+  silent: false
 
 register:
   - id: "proxy-1"
@@ -48,6 +52,11 @@ defaults:
       location: BACKEND
     - id: "survival"
       location: BACKEND
+  server:
+    target-required: false
+    schedule-online: false
+  delay:  0s
+  cooldown: 0s
 
 args:
   - name: message

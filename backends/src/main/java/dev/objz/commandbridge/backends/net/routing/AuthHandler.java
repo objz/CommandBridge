@@ -1,5 +1,7 @@
-package dev.objz.commandbridge.backends.net;
+package dev.objz.commandbridge.backends.net.routing;
 
+import dev.objz.commandbridge.backends.net.connection.ClientStatus;
+import dev.objz.commandbridge.backends.net.connection.ConnectionState;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;

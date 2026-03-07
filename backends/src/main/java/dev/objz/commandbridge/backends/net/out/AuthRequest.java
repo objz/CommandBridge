@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.backends.net.out;
 
-import dev.objz.commandbridge.backends.net.ClientStatus;
+import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutboundHandler;

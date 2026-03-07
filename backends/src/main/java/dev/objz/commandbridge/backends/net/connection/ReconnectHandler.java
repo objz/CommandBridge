@@ -1,4 +1,4 @@
-package dev.objz.commandbridge.backends.net;
+package dev.objz.commandbridge.backends.net.connection;
 
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.config.model.BackendsConfig;

@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.backends.net.in;
 
-import dev.objz.commandbridge.backends.net.BackendClient;
+import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.backends.platform.cmd.ArgumentMapper;
 import dev.objz.commandbridge.backends.platform.cmd.CommandRegistry;
 import dev.objz.commandbridge.logging.Log;

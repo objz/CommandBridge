@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import dev.objz.commandbridge.backends.net.ClientStatus;
+import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 
 public final class AuthRequestContext {
     public final Duration timeout;

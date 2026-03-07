@@ -7,9 +7,9 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 
-import dev.objz.commandbridge.backends.net.BackendClient;
-import dev.objz.commandbridge.backends.net.RedisClient;
-import dev.objz.commandbridge.backends.net.WsClient;
+import dev.objz.commandbridge.backends.net.client.BackendClient;
+import dev.objz.commandbridge.backends.net.client.RedisClient;
+import dev.objz.commandbridge.backends.net.client.WsClient;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.net.in.ResolveUuidHandler;

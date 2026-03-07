@@ -122,7 +122,6 @@ public final class Main {
         Log.setDebug(cfg.debug());
 
         if (cfg.actAsClient()) {
-            Log.warn("This instance is configured as a client-only. Not starting server");
             loadClientMode();
             return;
         }
@@ -208,18 +207,6 @@ public final class Main {
                 outNode,
                 cfg);
         command.register();
-
-        Log.debug("Config loaded:");
-        Log.debug("  Endpoint Type: {}", cfg.endpointType());
-        if (cfg.endpointType() == EndpointType.WEBSOCKET) {
-            Log.debug("  WS Host: {}", cfg.endpoints().webSocket().bindHost());
-            Log.debug("  WS Port: {}", cfg.endpoints().webSocket().bindPort());
-        } else {
-            Log.debug("  Redis Host: {}", cfg.endpoints().redis().host());
-            Log.debug("  Redis Port: {}", cfg.endpoints().redis().port());
-        }
-        Log.debug("  Server ID: {}", cfg.serverId());
-
         checkForUpdate();
     }
 

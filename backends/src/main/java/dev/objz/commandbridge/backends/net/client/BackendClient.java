@@ -1,5 +1,6 @@
-package dev.objz.commandbridge.backends.net;
+package dev.objz.commandbridge.backends.net.client;
 
+import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.SendOperation;

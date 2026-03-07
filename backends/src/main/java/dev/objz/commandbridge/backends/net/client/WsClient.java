@@ -1,5 +1,12 @@
-package dev.objz.commandbridge.backends.net;
+package dev.objz.commandbridge.backends.net.client;
 
+import dev.objz.commandbridge.backends.net.connection.ConnectionHandler;
+import dev.objz.commandbridge.backends.net.connection.ConnectionState;
+import dev.objz.commandbridge.backends.net.connection.ClientStatus;
+import dev.objz.commandbridge.backends.net.connection.ReconnectHandler;
+import dev.objz.commandbridge.backends.net.connection.ResourcePool;
+import dev.objz.commandbridge.backends.net.routing.AuthHandler;
+import dev.objz.commandbridge.backends.net.routing.MessageRouter;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;

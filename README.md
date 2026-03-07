@@ -110,7 +110,7 @@ git checkout v3
   - [x] `/cb debug`
     - [ ] `/cb dump`
   - [x] Dual-mode output (chat and console)
-  - [ ] Automatic update checker
+  - [x] Automatic update checker
   - [ ] Dump export to file or paste service
   - [x] bstats
 
