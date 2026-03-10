@@ -1,0 +1,11 @@
+configs:
+  - type: REMOVE
+    path: heartbeat
+
+  - type: REMOVE
+    path: security.require-auth
+  - type: REMOVE
+    path: security.auth-timeout-seconds
+
+  - type: REMOVE
+    path: limits

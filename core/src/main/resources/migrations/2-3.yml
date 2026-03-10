@@ -1,4 +1,4 @@
-rules:
+scripts:
   - type: REMOVE
     path: defaults.server.timeout
   - type: REMOVE
