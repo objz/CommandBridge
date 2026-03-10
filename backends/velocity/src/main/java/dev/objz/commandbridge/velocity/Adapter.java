@@ -10,6 +10,7 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.backends.net.client.RedisClient;
 import dev.objz.commandbridge.backends.net.client.WsClient;
+import dev.objz.commandbridge.backends.net.in.DumpRequestHandler;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.net.in.ResolveUuidHandler;
@@ -109,12 +110,20 @@ public final class Adapter implements PlatformAdapter {
 
         ClientCommands.register(client);
 
-        client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
+        RegistrationHandler registrationHandler = new RegistrationHandler(client);
+        client.inboundRouter().register(MessageType.REGISTER_COMMANDS, registrationHandler);
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
         client.inboundRouter().register(MessageType.RESOLVE_UUID,
                 new ResolveUuidHandler(name -> proxy.getPlayer(name)
                         .map(Player::getUniqueId).orElse(null)));
+        client.inboundRouter().register(MessageType.DUMP_REQUEST,
+                new DumpRequestHandler(
+                        () -> cfg,
+                        registrationHandler::snapshotRegisteredCommands,
+                        () -> getOnlinePlayerIds().size(),
+                        client::serverId,
+                        Location.VELOCITY));
 
         client.onAuthenticated(this::sendPlayerList);
         proxy.getEventManager().register(pluginInstance, new PlayerListener());

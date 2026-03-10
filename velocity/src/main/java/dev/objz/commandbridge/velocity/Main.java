@@ -41,6 +41,7 @@ import dev.objz.commandbridge.velocity.net.in.InvokedCommandHandler;
 import dev.objz.commandbridge.velocity.net.in.PlayerListHandler;
 import dev.objz.commandbridge.velocity.net.in.PlayerUpdateHandler;
 import dev.objz.commandbridge.velocity.net.out.ExecuteCommandRequest;
+import dev.objz.commandbridge.velocity.net.out.DumpRequest;
 import dev.objz.commandbridge.velocity.net.out.PingRequest;
 import dev.objz.commandbridge.velocity.net.out.RegistrationRequest;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -205,7 +206,8 @@ public final class Main {
                 registrations,
                 sessions,
                 outNode,
-                cfg);
+                cfg,
+                dataDir);
         command.register();
         checkForUpdate();
     }
@@ -249,6 +251,7 @@ public final class Main {
         outNode.register(MessageType.PING, new PingRequest());
         outNode.register(MessageType.EXECUTE_COMMAND, new ExecuteCommandRequest());
         outNode.register(MessageType.RESOLVE_UUID, new ResolveUuidRequest());
+        outNode.register(MessageType.DUMP_REQUEST, new DumpRequest());
     }
 
     private void loadClientMode() {

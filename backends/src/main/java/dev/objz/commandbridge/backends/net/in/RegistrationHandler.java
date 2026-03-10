@@ -20,6 +20,7 @@ import java.util.Objects;
 public final class RegistrationHandler extends InboundHandler {
     private final BackendClient client;
     private final CommandRegistry registry;
+    private volatile List<CommandStub> registeredCommands = List.of();
 
     public RegistrationHandler(BackendClient client) {
         this.client = Objects.requireNonNull(client);
@@ -43,6 +44,7 @@ public final class RegistrationHandler extends InboundHandler {
 
         if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
             Log.warn("Received empty or malformed REGISTER_COMMANDS. All commands unregistered");
+            registeredCommands = List.of();
             Feedback f = new Feedback(0, 0, 0,
                     List.of("Received empty registration request"),
                     List.of());
@@ -64,6 +66,7 @@ public final class RegistrationHandler extends InboundHandler {
                         + t.getMessage());
             }
         }
+        registeredCommands = List.copyOf(rc.commands());
         client.setServerId(env.from());
         Feedback f = fc.build();
         Summary.feedbackSummary("Registration", f, env.from());
@@ -73,5 +76,9 @@ public final class RegistrationHandler extends InboundHandler {
             Log.warn("Failed to send FEEDBACK: {}", ex.toString());
             return null;
         });
+    }
+
+    public List<CommandStub> snapshotRegisteredCommands() {
+        return List.copyOf(registeredCommands);
     }
 }

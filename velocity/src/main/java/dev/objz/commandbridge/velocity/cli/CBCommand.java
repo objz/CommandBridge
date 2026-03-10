@@ -18,6 +18,7 @@ import dev.objz.commandbridge.velocity.cli.subcommands.*;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +30,7 @@ public final class CBCommand {
     private final SessionHub sessionHub;
     private final OutNode<Object> outNode;
     private final VelocityConfig config;
+    private final Path dataDir;
 
     public CBCommand(
             ConfigManager configManager,
@@ -36,7 +38,8 @@ public final class CBCommand {
             RegistrationManager registrationManager,
             SessionHub sessionHub,
             OutNode<Object> outNode,
-            VelocityConfig config) {
+            VelocityConfig config,
+            Path dataDir) {
 
         this.configManager = configManager;
         this.scriptManager = scriptManager;
@@ -44,6 +47,7 @@ public final class CBCommand {
         this.sessionHub = sessionHub;
         this.outNode = outNode;
         this.config = config;
+        this.dataDir = dataDir;
     }
 
     public void register() {
@@ -64,7 +68,7 @@ public final class CBCommand {
         var list = new ListCommand(sessionHub);
         var ping = new PingCommand(sessionHub, outNode, config);
         var debug = new DebugCommand();
-        var dump = new DumpCommand(registrationManager, sessionHub);
+        var dump = new DumpCommand(registrationManager, sessionHub, outNode, scriptManager, config, dataDir);
         var migrate = new MigrateCommand(scriptManager.scriptsDir());
         var infoCmd = new InfoCommand();
 

@@ -1,0 +1,11 @@
+name = "dawn-field-90e4"
+main = "src/index.ts"
+compatibility_date = "2026-03-10"
+
+[vars]
+DUMP_AUTH_TOKEN = "cb-dump-upload-v1"
+
+[[d1_databases]]
+binding = "DUMP_DB"
+database_name = "commandbridge-dumps"
+database_id = "ee1f540f-16ea-4f4b-959f-530645077feb"

@@ -3,6 +3,7 @@ package dev.objz.commandbridge.paper;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.backends.net.client.RedisClient;
 import dev.objz.commandbridge.backends.net.client.WsClient;
+import dev.objz.commandbridge.backends.net.in.DumpRequestHandler;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
 import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
@@ -16,6 +17,7 @@ import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -98,9 +100,17 @@ public final class Adapter implements PlatformAdapter {
 
         ClientCommands.register(client);
 
-        client.inboundRouter().register(MessageType.REGISTER_COMMANDS, new RegistrationHandler(client));
+        RegistrationHandler registrationHandler = new RegistrationHandler(client);
+        client.inboundRouter().register(MessageType.REGISTER_COMMANDS, registrationHandler);
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
+        client.inboundRouter().register(MessageType.DUMP_REQUEST,
+                new DumpRequestHandler(
+                        () -> cfg,
+                        registrationHandler::snapshotRegisteredCommands,
+                        () -> getOnlinePlayerIds().size(),
+                        client::serverId,
+                        Location.BACKEND));
 
         client.onAuthenticated(this::sendPlayerList);
         Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
