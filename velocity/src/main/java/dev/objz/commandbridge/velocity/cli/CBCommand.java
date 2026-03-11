@@ -69,7 +69,7 @@ public final class CBCommand {
         var ping = new PingCommand(sessionHub, outNode, config);
         var debug = new DebugCommand();
         var dump = new DumpCommand(registrationManager, sessionHub, outNode, scriptManager, config, dataDir);
-        var migrate = new MigrateCommand(scriptManager.scriptsDir());
+        var migrate = new MigrateCommand(scriptManager.scriptsDir(), dataDir);
         var infoCmd = new InfoCommand();
 
         new CommandAPICommand("commandbridge")

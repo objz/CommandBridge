@@ -3,7 +3,7 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.migration.MigrationResult;
-import dev.objz.commandbridge.scripting.migration.ScriptMigrator;
+import dev.objz.commandbridge.scripting.migration.YamlMigrator;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
@@ -25,18 +25,37 @@ import java.util.stream.Stream;
 
 public class MigrateCommand extends AbstractCliCommand {
 
-    private final Path scriptsDir;
+    private static final int CURRENT_SCRIPT_VERSION = 4;
+    private static final int CURRENT_CONFIG_VERSION = 2;
 
-    public MigrateCommand(Path scriptsDir) {
+    private final Path scriptsDir;
+    private final Path dataDir;
+
+    public MigrateCommand(Path scriptsDir, Path dataDir) {
         this.scriptsDir = scriptsDir;
+        this.dataDir = dataDir;
     }
 
     public void execute(CommandSource sender) {
         RenderContext ctx = new RenderContext(sender);
         long startNs = System.nanoTime();
 
-        ScriptMigrator migrator = new ScriptMigrator(4);
+        YamlMigrator scriptMigrator = new YamlMigrator(CURRENT_SCRIPT_VERSION);
+        YamlMigrator configMigrator = new YamlMigrator(CURRENT_CONFIG_VERSION);
 
+        List<FileResult> scriptResults = migrateScripts(scriptMigrator);
+        List<FileResult> configResults = migrateConfigs(configMigrator);
+
+        if (ctx.isPlayer()) {
+            renderChat(ctx, scriptResults, configResults, scriptMigrator, configMigrator);
+        } else {
+            renderConsole(scriptResults, configResults, scriptMigrator, configMigrator, startNs);
+        }
+    }
+
+    // ── Script migration ───────────────────────────────────────────────
+
+    private List<FileResult> migrateScripts(YamlMigrator migrator) {
         List<Path> yamlFiles = new ArrayList<>();
         try (Stream<Path> files = Files.list(scriptsDir)) {
             for (Path p : (Iterable<Path>) files::iterator) {
@@ -46,96 +65,114 @@ public class MigrateCommand extends AbstractCliCommand {
             }
         } catch (IOException e) {
             Log.error(e, "Failed to list scripts at '{}'", scriptsDir);
-            sendError(ctx, "Failed to read scripts directory", startNs);
-            return;
-        }
-
-        if (yamlFiles.isEmpty()) {
-            sendEmpty(ctx, startNs);
-            return;
+            return List.of(new FileResult("scripts/", FileStatus.ERROR, -1, -1,
+                    "Failed to read scripts directory"));
         }
 
         List<FileResult> results = new ArrayList<>();
         for (Path file : yamlFiles) {
-            String filename = file.getFileName().toString();
-            String yaml;
-            try {
-                yaml = Files.readString(file, StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                results.add(new FileResult(filename, FileStatus.ERROR, -1, -1, "Read error: " + e.getMessage()));
-                continue;
-            }
+            results.add(migrateFile(file, migrator, YamlMigrator.SECTION_SCRIPTS, -1));
+        }
+        return results;
+    }
 
-            MigrationResult result = migrator.migrate(yaml);
+    // ── Config migration ───────────────────────────────────────────────
 
-            if (result.skipped()) {
-                results.add(
-                        new FileResult(filename, FileStatus.SKIPPED, result.fromVersion(), result.toVersion(), null));
-                continue;
-            }
+    private List<FileResult> migrateConfigs(YamlMigrator migrator) {
+        List<FileResult> results = new ArrayList<>();
 
-            if (!result.ok()) {
-                results.add(new FileResult(filename, FileStatus.ERROR, result.fromVersion(), result.toVersion(),
-                        result.error()));
-                continue;
-            }
-
-            try {
-                Files.writeString(file, result.yaml(), StandardCharsets.UTF_8);
-                results.add(new FileResult(filename, FileStatus.MIGRATED,
-                        result.fromVersion(), result.toVersion(), null));
-            } catch (IOException e) {
-                results.add(new FileResult(filename, FileStatus.ERROR,
-                        result.fromVersion(), result.toVersion(), "Write error: " + e.getMessage()));
-            }
+        Path configFile = dataDir.resolve("config.yml");
+        if (Files.exists(configFile)) {
+            results.add(migrateFile(configFile, migrator, YamlMigrator.SECTION_CONFIGS, 1));
         }
 
-        if (ctx.isPlayer()) {
-            renderChat(ctx, results, migrator.currentVersion());
-        } else {
-            renderConsole(results, migrator.currentVersion(), startNs);
+        return results;
+    }
+
+    // ── Shared file migration ──────────────────────────────────────────
+
+    private FileResult migrateFile(Path file, YamlMigrator migrator, String section,
+            int defaultVersion) {
+        String filename = file.getFileName().toString();
+        String yaml;
+        try {
+            yaml = Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return new FileResult(filename, FileStatus.ERROR, -1, -1,
+                    "Read error: " + e.getMessage());
+        }
+
+        MigrationResult result = migrator.migrate(yaml, section, defaultVersion);
+
+        if (result.skipped()) {
+            return new FileResult(filename, FileStatus.SKIPPED,
+                    result.fromVersion(), result.toVersion(), null);
+        }
+
+        if (!result.ok()) {
+            return new FileResult(filename, FileStatus.ERROR,
+                    result.fromVersion(), result.toVersion(), result.error());
+        }
+
+        try {
+            Files.writeString(file, result.yaml(), StandardCharsets.UTF_8);
+            return new FileResult(filename, FileStatus.MIGRATED,
+                    result.fromVersion(), result.toVersion(), null);
+        } catch (IOException e) {
+            return new FileResult(filename, FileStatus.ERROR,
+                    result.fromVersion(), result.toVersion(),
+                    "Write error: " + e.getMessage());
         }
     }
 
     // ── Console rendering ──────────────────────────────────────────────
 
-    private void renderConsole(List<FileResult> results, int targetVersion, long startNs) {
-        int migrated = 0;
-        int skipped = 0;
-        int errors = 0;
-        for (FileResult r : results) {
-            switch (r.status) {
-                case MIGRATED -> migrated++;
-                case SKIPPED -> skipped++;
-                case ERROR -> errors++;
-            }
-        }
+    private void renderConsole(List<FileResult> scriptResults, List<FileResult> configResults,
+            YamlMigrator scriptMigrator, YamlMigrator configMigrator, long startNs) {
+
+        int totalMigrated = countStatus(scriptResults, FileStatus.MIGRATED)
+                + countStatus(configResults, FileStatus.MIGRATED);
+        int totalErrors = countStatus(scriptResults, FileStatus.ERROR)
+                + countStatus(configResults, FileStatus.ERROR);
 
         CliOutput output = cli("Migrate");
 
-        if (errors > 0) {
-            output.warn("Migration completed with " + errors + " error(s)");
-        } else if (migrated > 0) {
+        if (totalErrors > 0) {
+            output.warn("Migration completed with " + totalErrors + " error(s)");
+        } else if (totalMigrated > 0) {
             output.success("Migration completed");
         } else {
-            output.muted("All scripts are already at version " + targetVersion);
+            output.muted("Everything is already up to date");
         }
 
-        output.blankLine();
-        output.accent("Summary");
-        output.appendRaw(buildSummaryTable(output.width(), results.size(), migrated, skipped, errors).render());
-        output.blankLine();
+        // Scripts section
+        renderConsoleSection(output, "Scripts", scriptResults, scriptMigrator.currentVersion());
 
-        if (migrated > 0 || errors > 0) {
-            output.accent("Results");
-            output.appendRaw(buildResultsTable(output.width(), results).render());
-        }
+        // Configs section
+        renderConsoleSection(output, "Configs", configResults, configMigrator.currentVersion());
 
         output.muted("Completed in " + elapsedMs(startNs) + "ms");
         log(output);
     }
 
-    private CliTable buildSummaryTable(int width, int total, int migrated, int skipped, int errors) {
+    private void renderConsoleSection(CliOutput output, String title, List<FileResult> results,
+            int targetVersion) {
+        int migrated = countStatus(results, FileStatus.MIGRATED);
+        int skipped = countStatus(results, FileStatus.SKIPPED);
+        int errors = countStatus(results, FileStatus.ERROR);
+
+        output.blankLine();
+        output.accent(title);
+        output.appendRaw(buildSummaryTable(output.width(), results.size(),
+                migrated, skipped, errors).render());
+
+        if (migrated > 0 || errors > 0) {
+            output.appendRaw(buildResultsTable(output.width(), results).render());
+        }
+    }
+
+    private CliTable buildSummaryTable(int width, int total, int migrated, int skipped,
+            int errors) {
         CliTable table = new CliTable()
                 .width(width)
                 .addColumn("Total", CliTable.Align.RIGHT, 1, 5)
@@ -153,7 +190,7 @@ public class MigrateCommand extends AbstractCliCommand {
     private CliTable buildResultsTable(int width, List<FileResult> results) {
         CliTable table = new CliTable()
                 .width(width)
-                .addColumn("Script", CliTable.Align.LEFT, 3, 12)
+                .addColumn("File", CliTable.Align.LEFT, 3, 12)
                 .addColumn("Status", CliTable.Align.LEFT, 1, 8)
                 .addColumn("Version", CliTable.Align.LEFT, 1, 9)
                 .addColumn("Detail", CliTable.Align.LEFT, 4, 12);
@@ -197,43 +234,73 @@ public class MigrateCommand extends AbstractCliCommand {
 
     // ── Chat rendering ─────────────────────────────────────────────────
 
-    private void renderChat(RenderContext ctx, List<FileResult> results, int targetVersion) {
-        int migrated = 0;
-        int skipped = 0;
-        int errors = 0;
-        for (FileResult r : results) {
-            switch (r.status) {
-                case MIGRATED -> migrated++;
-                case SKIPPED -> skipped++;
-                case ERROR -> errors++;
-            }
-        }
+    private void renderChat(RenderContext ctx, List<FileResult> scriptResults,
+            List<FileResult> configResults, YamlMigrator scriptMigrator,
+            YamlMigrator configMigrator) {
+
+        int totalMigrated = countStatus(scriptResults, FileStatus.MIGRATED)
+                + countStatus(configResults, FileStatus.MIGRATED);
+        int totalErrors = countStatus(scriptResults, FileStatus.ERROR)
+                + countStatus(configResults, FileStatus.ERROR);
 
         List<Component> lines = new ArrayList<>();
 
-        if (errors > 0) {
+        if (totalErrors > 0) {
             lines.add(MM.parse("<" + Theme.C_WARN + "><bold>Migration completed with "
-                    + errors + " error(s)</bold></" + Theme.C_WARN + ">"));
-        } else if (migrated > 0) {
-            lines.add(MM.parse("<" + Theme.C_SUCCESS + "><bold>Migration completed</bold></" + Theme.C_SUCCESS + ">"));
+                    + totalErrors + " error(s)</bold></" + Theme.C_WARN + ">"));
+        } else if (totalMigrated > 0) {
+            lines.add(MM.parse("<" + Theme.C_SUCCESS + "><bold>Migration completed</bold></"
+                    + Theme.C_SUCCESS + ">"));
         } else {
-            lines.add(MM.parse("<" + Theme.C_MUTED + ">All scripts are already at version "
-                    + targetVersion + "</" + Theme.C_MUTED + ">"));
+            lines.add(MM.parse("<" + Theme.C_MUTED + ">Everything is already up to date</"
+                    + Theme.C_MUTED + ">"));
         }
 
+        // Scripts section
+        renderChatSection(lines, "Scripts", scriptResults);
+
+        // Configs section
+        renderChatSection(lines, "Configs", configResults);
+
+        if (totalMigrated > 0) {
+            lines.add(Component.empty());
+            Component reloadHint = MM.parse("<" + Theme.C_MUTED + ">Run </" + Theme.C_MUTED + ">")
+                    .append(MM.cmd("/cb reload"))
+                    .append(MM.parse("<" + Theme.C_MUTED + "> to apply changes</"
+                            + Theme.C_MUTED + ">"));
+            lines.add(reloadHint);
+        }
+
+        int width = ChatLayout.titleWidth("Migrate");
+        for (Component line : lines) {
+            width = Math.max(width, ChatLayout.visibleLength(line));
+        }
+        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
+
+        ChatFrame frame = new ChatFrame("Migrate").width(width);
+        frame.lines(lines);
+        frame.send(ctx.source());
+    }
+
+    private void renderChatSection(List<Component> lines, String title,
+            List<FileResult> results) {
+        int migrated = countStatus(results, FileStatus.MIGRATED);
+        int skipped = countStatus(results, FileStatus.SKIPPED);
+        int errors = countStatus(results, FileStatus.ERROR);
+
         lines.add(Component.empty());
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Total:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">"
-                + results.size() + "</" + Theme.C_ACCENT + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Migrated:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">"
-                + migrated + "</" + Theme.C_SUCCESS + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Skipped:</" + Theme.C_MUTED + "> <" + Theme.C_MUTED + ">"
-                + skipped + "</" + Theme.C_MUTED + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">"
-                + errors + "</" + Theme.C_ERROR + ">"));
+        lines.add(MM.parse("<" + Theme.C_ACCENT + "><bold>" + title + "</bold></"
+                + Theme.C_ACCENT + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Total:</" + Theme.C_MUTED + "> <"
+                + Theme.C_ACCENT + ">" + results.size() + "</" + Theme.C_ACCENT + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Migrated:</" + Theme.C_MUTED + "> <"
+                + Theme.C_SUCCESS + ">" + migrated + "</" + Theme.C_SUCCESS + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Skipped:</" + Theme.C_MUTED + "> <"
+                + Theme.C_MUTED + ">" + skipped + "</" + Theme.C_MUTED + ">"));
+        lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <"
+                + Theme.C_ERROR + ">" + errors + "</" + Theme.C_ERROR + ">"));
 
         if (migrated > 0 || errors > 0) {
-            lines.add(Component.empty());
-
             for (FileResult r : results) {
                 if (r.status == FileStatus.SKIPPED) {
                     continue;
@@ -261,75 +328,36 @@ public class MigrateCommand extends AbstractCliCommand {
                         : "";
 
                 Component header = MM
-                        .parse("<" + Theme.C_ACCENT + ">" + Theme.SYMBOL_BULLET + "</" + Theme.C_ACCENT + "> ")
+                        .parse("<" + Theme.C_ACCENT + ">" + Theme.SYMBOL_BULLET + "</"
+                                + Theme.C_ACCENT + "> ")
                         .append(MM.parse("<white>" + r.filename + "</white>"))
                         .append(MM.parse(" <" + color + ">" + statusText + "</" + color + ">"));
                 lines.add(header);
 
                 if (!version.isEmpty()) {
-                    lines.add(MM.parse("<" + Theme.C_MUTED + ">  " + version + "</" + Theme.C_MUTED + ">"));
+                    lines.add(MM.parse("<" + Theme.C_MUTED + ">  " + version + "</"
+                            + Theme.C_MUTED + ">"));
                 }
                 if (r.error != null && !r.error.isBlank()) {
-                    lines.add(MM.parse("<" + Theme.C_ERROR + ">  " + r.error + "</" + Theme.C_ERROR + ">"));
+                    lines.add(MM.parse("<" + Theme.C_ERROR + ">  " + r.error + "</"
+                            + Theme.C_ERROR + ">"));
                 }
             }
         }
-
-        if (migrated > 0) {
-            lines.add(Component.empty());
-            Component reloadHint = MM.parse("<" + Theme.C_MUTED + ">Run </" + Theme.C_MUTED + ">")
-                    .append(MM.cmd("/cb reload"))
-                    .append(MM.parse("<" + Theme.C_MUTED + "> to apply changes</" + Theme.C_MUTED + ">"));
-            lines.add(reloadHint);
-        }
-
-        int width = ChatLayout.titleWidth("Migrate");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Migrate").width(width);
-        frame.lines(lines);
-        frame.send(ctx.source());
     }
 
     // ── Helpers ────────────────────────────────────────────────────────
 
-    private void sendError(RenderContext ctx, String message, long startNs) {
-        if (ctx.isPlayer()) {
-            Component err = MM.error(message);
-            int width = Math.max(ChatLayout.titleWidth("Migrate"), ChatLayout.visibleLength(err));
-            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-            ChatFrame frame = new ChatFrame("Migrate").width(width);
-            frame.line(err);
-            frame.send(ctx.source());
-        } else {
-            CliOutput output = cli("Migrate");
-            output.error(message);
-            output.muted("Completed in " + elapsedMs(startNs) + "ms");
-            log(output);
-        }
-    }
-
-    private void sendEmpty(RenderContext ctx, long startNs) {
-        if (ctx.isPlayer()) {
-            Component msg = MM.muted("No scripts found in scripts directory");
-            int width = Math.max(ChatLayout.titleWidth("Migrate"), ChatLayout.visibleLength(msg));
-            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-            ChatFrame frame = new ChatFrame("Migrate").width(width);
-            frame.line(msg);
-            frame.send(ctx.source());
-        } else {
-            CliOutput output = cli("Migrate");
-            output.muted("No scripts found in scripts directory");
-            output.muted("Completed in " + elapsedMs(startNs) + "ms");
-            log(output);
-        }
-    }
-
     private long elapsedMs(long startNs) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
+    }
+
+    private static int countStatus(List<FileResult> results, FileStatus status) {
+        int count = 0;
+        for (FileResult r : results) {
+            if (r.status == status) count++;
+        }
+        return count;
     }
 
     private static boolean isYaml(Path p) {
