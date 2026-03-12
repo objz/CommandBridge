@@ -54,7 +54,6 @@ public class OutNode<T> {
         handler.setEndpointSendFactory(endpointSendFactory);
         handler.setClientId(clientId);
         handler.setServerId(serverId);
-        @SuppressWarnings("unchecked")
         OutboundHandler<? super T> typedHandler = (OutboundHandler<? super T>) handler;
         handlers.put(type, typedHandler);
         return this;
@@ -82,7 +81,6 @@ public class OutNode<T> {
         }
 
         try {
-            @SuppressWarnings("unchecked")
             OutboundHandler<T> typedHandler = (OutboundHandler<T>) handler;
             return typedHandler.accept(context);
         } catch (Exception ex) {

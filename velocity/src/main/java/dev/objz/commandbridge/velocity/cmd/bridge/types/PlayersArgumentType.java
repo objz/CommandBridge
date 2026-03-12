@@ -29,7 +29,6 @@ public final class PlayersArgumentType implements CustomArgumentType<List> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Argument<List> create(String nodeName) {
         return (Argument<List>) (Argument<?>) new PlayersArgument(nodeName, proxy);
     }

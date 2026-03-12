@@ -25,7 +25,6 @@ public final class PlayersArgument extends Argument<List<EntityRef>> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Class<List<EntityRef>> getPrimitiveType() {
         return (Class<List<EntityRef>>) (Class<?>) List.class;
     }

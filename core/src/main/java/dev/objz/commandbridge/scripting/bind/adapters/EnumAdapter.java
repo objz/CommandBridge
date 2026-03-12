@@ -13,7 +13,6 @@ public final class EnumAdapter implements TypeAdapter<Enum<?>> {
         return targetType instanceof Class<?> c && c.isEnum();
     }
 
-    @SuppressWarnings({ "rawtypes" })
     @Override
     public Enum<?> fromYaml(YamlNode node, Type targetType, ConvertContext ctx) {
         if (!(targetType instanceof Class<?> c) || !c.isEnum())
