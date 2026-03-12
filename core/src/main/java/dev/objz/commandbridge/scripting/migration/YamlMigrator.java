@@ -16,18 +16,8 @@ import org.snakeyaml.engine.v2.api.LoadSettings;
  * merges chains of rules into a single pass, and applies the merged rules
  * directly
  * on raw YAML text lines to preserve comments, formatting, and layout.
- * <p>
- * Migration files contain sections (e.g. {@code scripts}, {@code configs})
- * each with their own list of rules. When migrating, a specific section
- * is selected so only the relevant rules are applied.
  */
 public final class YamlMigrator {
-
-    /** Well-known section name for script migrations. */
-    public static final String SECTION_SCRIPTS = "scripts";
-
-    /** Well-known section name for config migrations. */
-    public static final String SECTION_CONFIGS = "configs";
 
     private static final Pattern VERSION_LINE = Pattern.compile("(version:\\s*)\\d+");
     private static final Pattern WILDCARD_PATTERN = Pattern.compile("^(.+?)\\[\\*]$");
@@ -63,53 +53,29 @@ public final class YamlMigrator {
         return -1;
     }
 
-    /**
-     * @param yaml    the raw YAML content
-     * @param section the migration section to use
-     * @return the result containing the migrated YAML or an error
-     */
-    public MigrationResult migrate(String yaml, String section) {
-        return migrate(yaml, section, -1);
-    }
-
-    /**
-     * Migrates a raw YAML string from its detected version to the current
-     * version, using rules from the given section.
-     *
-     * @param yaml           the raw YAML content
-     * @param section        the migration section to use (e.g. "scripts" or
-     *                       "configs")
-     * @param defaultVersion the version to assume if no {@code version:} field is
-     *                       found,
-     *                       or {@code -1} to require an explicit version field
-     * @return the result containing the migrated YAML or an error
-     */
-    public MigrationResult migrate(String yaml, String section, int defaultVersion) {
+    public MigrationResult migrate(String yaml) {
         int from = detectVersion(yaml);
         if (from < 0) {
-            if (defaultVersion > 0) {
-                from = defaultVersion;
-            } else {
-                return MigrationResult.error("Could not detect version");
-            }
+            return MigrationResult.error("Could not detect script version");
         }
         if (from == currentVersion) {
             return MigrationResult.skip(from);
         }
         if (from > currentVersion) {
             return MigrationResult.error(String.format(
-                    "Version %d is newer than the current version %d", from, currentVersion));
+                    "Script version %d is newer than the current version %d", from,
+                    currentVersion));
         }
-        return migrate(yaml, section, from, currentVersion);
+        return migrate(yaml, from, currentVersion);
     }
 
     /**
      * Migrates a raw YAML string from {@code from} to {@code to} by applying
-     * merged rules for the given section directly on text lines, preserving
-     * all comments, blank lines, and formatting.
+     * merged rules directly on text lines, preserving all comments, blank
+     * lines, and formatting.
      */
-    public MigrationResult migrate(String yaml, String section, int from, int to) {
-        List<MigrationRule> merged = mergeRules(from, to, section);
+    public MigrationResult migrate(String yaml, int from, int to) {
+        List<MigrationRule> merged = mergeRules(from, to);
         List<String> lines = new ArrayList<>(Arrays.asList(yaml.split("\n", -1)));
 
         List<TargetAction> modifyActions = new ArrayList<>();
@@ -461,7 +427,7 @@ public final class YamlMigrator {
     private record InsertAction(int lineIndex, String content) {
     }
 
-    List<MigrationRule> mergeRules(int from, int to, String section) {
+    List<MigrationRule> mergeRules(int from, int to) {
         Map<String, String> pathMap = new LinkedHashMap<>();
         Map<String, MigrationRule> addedRules = new LinkedHashMap<>();
         List<MigrationRule> effective = new ArrayList<>();
@@ -472,7 +438,7 @@ public final class YamlMigrator {
                 continue;
             }
 
-            for (MigrationRule rule : step.rules(section)) {
+            for (MigrationRule rule : step.rules()) {
                 switch (rule.type()) {
                     case REMOVE -> {
                         String resolvedPath = resolveCurrentPath(pathMap, rule.path());
@@ -579,32 +545,16 @@ public final class YamlMigrator {
                     continue;
                 }
 
-                Map<String, List<MigrationRule>> sections = new LinkedHashMap<>();
-
-                for (var entry : map.entrySet()) {
-                    String key = Objects.toString(entry.getKey(), "");
-                    Object value = entry.getValue();
-
-                    if (!(value instanceof List<?> ruleList)) {
-                        continue;
-                    }
-
-                    List<MigrationRule> rules = parseRules(ruleList, filename);
-                    if (!rules.isEmpty()) {
-                        sections.put(key, List.copyOf(rules));
-                    }
+                Object rulesObj = map.get("rules");
+                List<MigrationRule> rules = new ArrayList<>();
+                if (rulesObj instanceof List<?> ruleList) {
+                    rules.addAll(parseRules(ruleList, filename));
                 }
 
-                if (sections.isEmpty()) {
-                    continue;
-                }
-
-                MigrationStep step = new MigrationStep(from, from + 1, sections);
+                MigrationStep step = new MigrationStep(from, from + 1, rules);
                 steps.put(from, step);
-
-                int totalRules = sections.values().stream().mapToInt(List::size).sum();
-                Log.debug("Loaded migration step {} -> {} with {} rule(s) across {} section(s)",
-                        from, from + 1, totalRules, sections.size());
+                Log.debug("Loaded migration step {} -> {} with {} rule(s)",
+                        from, from + 1, rules.size());
 
             } catch (Exception e) {
                 Log.warn("Failed to load migration file '{}': {}", filename, e.getMessage());
