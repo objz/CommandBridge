@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
@@ -33,9 +33,7 @@ public class DebugCommand extends AbstractCliCommand {
                 .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
                         MM.parse("<" + Theme.C_MUTED + ">Click to toggle debug</" + Theme.C_MUTED + ">")));
         Component line = statusComp.append(toggle);
-        int width = Math.max(ChatLayout.titleWidth("Debug"), ChatLayout.visibleLength(line));
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-        ChatFrame frame = new ChatFrame("Debug").width(width);
+        ChatFrame frame = new ChatFrame("Debug");
         frame.line(line);
         frame.send(ctx.source());
     }

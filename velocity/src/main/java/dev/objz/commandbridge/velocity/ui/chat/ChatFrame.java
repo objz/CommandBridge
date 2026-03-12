@@ -10,15 +10,9 @@ public final class ChatFrame {
     private final String title;
     private final List<Component> lines = new ArrayList<>();
     private Component hint;
-    private int width;
 
     public ChatFrame(String title) {
         this.title = title;
-    }
-
-    public ChatFrame width(int width) {
-        this.width = Math.max(0, width);
-        return this;
     }
 
     public ChatFrame hint(Component hint) {
@@ -42,14 +36,12 @@ public final class ChatFrame {
     }
 
     public List<Component> render() {
-        int resolvedWidth = width > 0 ? width : computeWidth();
-        resolvedWidth = Math.max(ChatLayout.DEFAULT_WIDTH_PX, resolvedWidth);
         List<Component> out = new ArrayList<>();
         out.add(Component.empty());
-        out.add(ChatLayout.headerTitle(title, resolvedWidth));
-        out.add(ChatLayout.headerUnderline(resolvedWidth));
+        out.add(ChatLayout.headerTitle(title));
+        out.add(ChatLayout.headerUnderline());
         if (hint != null) {
-            out.add(ChatLayout.center(hint, resolvedWidth));
+            out.add(hint);
         }
         out.addAll(lines);
         return out;
@@ -62,17 +54,5 @@ public final class ChatFrame {
         for (Component line : render()) {
             audience.sendMessage(line);
         }
-    }
-
-
-    private int computeWidth() {
-        int max = ChatLayout.titleWidth(title);
-        if (hint != null) {
-            max = Math.max(max, ChatLayout.visibleLength(hint));
-        }
-        for (Component line : lines) {
-            max = Math.max(max, ChatLayout.visibleLength(line));
-        }
-        return max;
     }
 }

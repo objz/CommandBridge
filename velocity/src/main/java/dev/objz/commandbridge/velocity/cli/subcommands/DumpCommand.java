@@ -13,7 +13,7 @@ import dev.objz.commandbridge.velocity.dump.SupportDumpBuilder;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
@@ -137,13 +137,7 @@ public class DumpCommand extends AbstractCliCommand {
                     + safeMessage(result.localError()) + "</" + Theme.C_ERROR + ">"));
         }
 
-        int width = ChatLayout.titleWidth("Dump");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Dump").width(width);
+        ChatFrame frame = new ChatFrame("Dump");
         frame.lines(lines);
         frame.send(ctx.source());
     }
@@ -186,9 +180,7 @@ public class DumpCommand extends AbstractCliCommand {
 
     private void renderChatError(RenderContext ctx, Exception ex) {
         Component line = MM.error("Failed to build dump: " + safeMessage(ex));
-        int width = Math.max(ChatLayout.titleWidth("Dump"), ChatLayout.visibleLength(line));
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-        ChatFrame frame = new ChatFrame("Dump").width(width);
+        ChatFrame frame = new ChatFrame("Dump");
         frame.line(line);
         frame.send(ctx.source());
     }

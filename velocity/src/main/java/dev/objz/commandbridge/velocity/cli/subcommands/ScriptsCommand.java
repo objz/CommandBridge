@@ -6,7 +6,7 @@ import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
@@ -38,9 +38,7 @@ public class ScriptsCommand extends AbstractCliCommand {
 
         if (scripts.isEmpty()) {
             Component warn = MM.warn("No scripts loaded");
-            int width = Math.max(ChatLayout.titleWidth("Scripts"), ChatLayout.visibleLength(warn));
-            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-            ChatFrame frame = new ChatFrame("Scripts").width(width);
+            ChatFrame frame = new ChatFrame("Scripts");
             frame.line(warn);
             frame.send(sender);
             return;
@@ -112,14 +110,7 @@ public class ScriptsCommand extends AbstractCliCommand {
             lines.add(nav);
         }
 
-        int width = ChatLayout.titleWidth("Scripts");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Scripts")
-                .width(width);
+        ChatFrame frame = new ChatFrame("Scripts");
         frame.lines(lines);
         frame.send(sender);
     }

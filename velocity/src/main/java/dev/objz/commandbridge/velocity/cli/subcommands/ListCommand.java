@@ -6,7 +6,7 @@ import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import java.util.ArrayList;
 import java.util.List;
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
@@ -37,9 +37,7 @@ public class ListCommand extends AbstractCliCommand {
 
         if (authenticated.isEmpty()) {
             Component warn = MM.warn("No authenticated clients connected");
-            int width = Math.max(ChatLayout.titleWidth("Clients"), ChatLayout.visibleLength(warn));
-            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-            ChatFrame frame = new ChatFrame("Clients").width(width);
+            ChatFrame frame = new ChatFrame("Clients");
             frame.line(warn);
             frame.send(sender);
             return;
@@ -68,14 +66,7 @@ public class ListCommand extends AbstractCliCommand {
             index++;
         }
 
-        int width = ChatLayout.titleWidth("Clients");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Clients")
-                .width(width);
+        ChatFrame frame = new ChatFrame("Clients");
         frame.lines(lines);
         frame.send(sender);
     }

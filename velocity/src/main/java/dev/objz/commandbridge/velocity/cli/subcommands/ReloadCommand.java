@@ -14,7 +14,7 @@ import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
@@ -232,14 +232,7 @@ public class ReloadCommand extends AbstractCliCommand {
                         MM.parse("<" + Theme.C_MUTED + ">Open script list</" + Theme.C_MUTED + ">")));
         lines.add(action);
 
-        int width = ChatLayout.titleWidth("Reload");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Reload")
-                .width(width);
+        ChatFrame frame = new ChatFrame("Reload");
         frame.lines(lines);
         frame.send(ctx.source());
     }
@@ -247,10 +240,7 @@ public class ReloadCommand extends AbstractCliCommand {
     private void renderChatError(RenderContext ctx, String error, String details) {
         Component err = MM.error(error);
         Component detail = MM.muted(details);
-        int width = Math.max(ChatLayout.titleWidth("Reload"), ChatLayout.visibleLength(err));
-        width = Math.max(width, ChatLayout.visibleLength(detail));
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-        ChatFrame frame = new ChatFrame("Reload").width(width);
+        ChatFrame frame = new ChatFrame("Reload");
         frame.line(err);
         frame.line(detail);
         frame.send(ctx.source());
@@ -345,14 +335,7 @@ public class ReloadCommand extends AbstractCliCommand {
             idx++;
         }
 
-        int width = ChatLayout.titleWidth("Reload");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Reload")
-                .width(width);
+        ChatFrame frame = new ChatFrame("Reload");
         frame.lines(lines);
         frame.send(ctx.source());
     }

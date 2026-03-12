@@ -8,7 +8,7 @@ import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import net.kyori.adventure.text.Component;
@@ -293,13 +293,7 @@ public class MigrateCommand extends AbstractCliCommand {
             lines.add(reloadHint);
         }
 
-        int width = ChatLayout.titleWidth("Migrate");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("Migrate").width(width);
+        ChatFrame frame = new ChatFrame("Migrate");
         frame.lines(lines);
         frame.send(ctx.source());
     }
@@ -309,10 +303,7 @@ public class MigrateCommand extends AbstractCliCommand {
     private void sendError(RenderContext ctx, String message, long startNs) {
         if (ctx.isPlayer()) {
             Component err = MM.error(message);
-            int width = Math.max(ChatLayout.titleWidth("Migrate"),
-                    ChatLayout.visibleLength(err));
-            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-            ChatFrame frame = new ChatFrame("Migrate").width(width);
+            ChatFrame frame = new ChatFrame("Migrate");
             frame.line(err);
             frame.send(ctx.source());
         } else {
@@ -326,10 +317,7 @@ public class MigrateCommand extends AbstractCliCommand {
     private void sendEmpty(RenderContext ctx, long startNs) {
         if (ctx.isPlayer()) {
             Component msg = MM.muted("No scripts found in scripts directory");
-            int width = Math.max(ChatLayout.titleWidth("Migrate"),
-                    ChatLayout.visibleLength(msg));
-            width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-            ChatFrame frame = new ChatFrame("Migrate").width(width);
+            ChatFrame frame = new ChatFrame("Migrate");
             frame.line(msg);
             frame.send(ctx.source());
         } else {

@@ -1,9 +1,8 @@
 package dev.objz.commandbridge.velocity.ui.components;
 
-import dev.objz.commandbridge.util.MM;
+import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
 import dev.objz.commandbridge.velocity.ui.cli.CliLayout;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
-import dev.objz.commandbridge.velocity.ui.Theme;
 import dev.objz.commandbridge.velocity.ui.UIComponent;
 import net.kyori.adventure.text.Component;
 
@@ -23,13 +22,14 @@ public class HeaderComponent implements UIComponent {
 
     @Override
     public Component renderChat(RenderContext ctx) {
-        String gradient = "<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + ">";
-        String titleText = gradient + "<bold>" + title.toUpperCase() + "</bold></gradient>";
-
-        String underline = "<" + Theme.C_SEP + "><st>" + " ".repeat(title.length() + 10) + "</st></" + Theme.C_SEP
-                + ">";
-
-        return MM.parse("\n " + titleText + "\n " + underline + "\n");
+        Component titleComp = ChatLayout.headerTitle(title);
+        Component underline = ChatLayout.headerUnderline();
+        return Component.empty()
+                .append(Component.newline())
+                .append(titleComp)
+                .append(Component.newline())
+                .append(underline)
+                .append(Component.newline());
     }
 
     @Override

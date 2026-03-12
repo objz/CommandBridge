@@ -10,7 +10,7 @@ import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
@@ -173,24 +173,15 @@ public class PingCommand extends AbstractCliCommand {
         }
 
         Component hint = MM.parse("<" + Theme.C_MUTED + ">Latency reflects round trip time</" + Theme.C_MUTED + ">");
-        int width = ChatLayout.titleWidth("Ping");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.visibleLength(hint));
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
 
         ChatFrame frame = new ChatFrame("Ping")
-                .width(width)
                 .hint(hint);
         frame.lines(lines);
         frame.send(ctx.source());
     }
 
     private void renderChatMessage(RenderContext ctx, Component line) {
-        int width = Math.max(ChatLayout.titleWidth("Ping"), ChatLayout.visibleLength(line));
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-        ChatFrame frame = new ChatFrame("Ping").width(width);
+        ChatFrame frame = new ChatFrame("Ping");
         frame.line(line);
         frame.send(ctx.source());
     }

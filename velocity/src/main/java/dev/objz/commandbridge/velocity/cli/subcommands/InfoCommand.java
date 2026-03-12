@@ -3,7 +3,7 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
@@ -48,15 +48,7 @@ public class InfoCommand extends AbstractCliCommand {
                 .append(bar.renderChat(ctx))
                 .append(MM.parse(" <" + Theme.C_MUTED + ">" + memUsed + "MB / " + memTotal + "MB (" + percent + "%)</" + Theme.C_MUTED + ">"));
 
-        int width = ChatLayout.titleWidth("System Info");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.visibleLength(barLine));
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
         ChatFrame frame = new ChatFrame("System Info")
-                .width(width)
                 .hint(MM.parse("<" + Theme.C_MUTED + "><italic>Snapshot from this proxy</italic></" + Theme.C_MUTED + ">"));
         frame.lines(lines);
         frame.space();

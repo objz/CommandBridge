@@ -3,7 +3,7 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-import dev.objz.commandbridge.velocity.ui.chat.ChatLayout;
+
 import java.util.ArrayList;
 import java.util.List;
 import dev.objz.commandbridge.velocity.ui.cli.BoxDrawing;
@@ -54,14 +54,7 @@ public class HelpCommand extends AbstractCliCommand {
             lines.add(desc);
         }
 
-        int width = ChatLayout.titleWidth("CommandBridge Help");
-        for (Component line : lines) {
-            width = Math.max(width, ChatLayout.visibleLength(line));
-        }
-        width = Math.max(width, ChatLayout.DEFAULT_WIDTH_PX);
-
-        ChatFrame frame = new ChatFrame("CommandBridge Help")
-                .width(width);
+        ChatFrame frame = new ChatFrame("CommandBridge Help");
         frame.lines(lines);
         frame.send(sender);
     }

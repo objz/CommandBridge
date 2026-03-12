@@ -10,6 +10,7 @@ import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 public final class ChatLayout {
     public static final int DEFAULT_WIDTH_PX = 200;
     private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
+    private static final int SEPARATOR_LENGTH = 40;
 
     private ChatLayout() {
     }
@@ -23,31 +24,18 @@ public final class ChatLayout {
         return pixelWidth(safe, true);
     }
 
-    public static Component headerTitle(String title, int width) {
+    public static Component headerTitle(String title) {
         String safe = title == null ? "" : title.toUpperCase();
-        Component titleComp = MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + safe + "</bold></gradient>");
-        return center(titleComp, width);
+        return MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + safe + "</bold></gradient>");
     }
 
-    public static Component headerUnderline(int width) {
-        String line = repeatToWidth("━", Math.max(0, width));
+    public static Component headerUnderline() {
+        String line = "━".repeat(SEPARATOR_LENGTH);
         return MM.parse("<" + Theme.C_SEP + ">" + line + "</" + Theme.C_SEP + ">");
     }
 
-    public static Component center(Component content, int width) {
-        int len = visibleLength(content);
-        int totalPadding = Math.max(0, width - len);
-        int leftPad = totalPadding / 2;
-        int rightPad = totalPadding - leftPad;
-        return Component.empty()
-                .append(Component.text(spacesForPixels(leftPad)))
-                .append(content)
-                .append(Component.text(spacesForPixels(rightPad)));
-    }
-
-    public static Component separator(int width) {
-        String line = repeatToWidth("━", Math.max(0, width));
-        return MM.parse("<" + Theme.C_SEP + ">" + line + "</" + Theme.C_SEP + ">");
+    public static Component separator() {
+        return headerUnderline();
     }
 
     public static String repeat(String value, int count) {
