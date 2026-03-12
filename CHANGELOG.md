@@ -1,17 +1,21 @@
-this version brings some nice additions mostly around target-required
-and player tracking across proxies. the wiki has been fully rewritten for this version so make sure to check that out.
+this update is mostly about migration tooling, better player resolution, and support/debug quality of life.
+also had some internal cleanup and an important fix for velocity running in client mode.
 
 so whats new:
 
-- target-required per command option. this makes sure the player is actually on the target server before dispatching the command. also works when a proxy is in client mode so it checks across all connected proxies not just the local one
-- per-command cooldowns, the old pipeline cooldown stage is gone
-- player presence tracking. backends and client mode proxies now sync their player lists to the proxy. the full list only gets sent once on auth and after that only join/leave deltas get sent so you dont have to worry about huge packets even with like 30k players
-- added PLAYERS argument type for velocity
-- scripts now require version 3
+- added `/cb dump` for support snapshots (sanitized upload + local file export)
+- added `/cb migrate` to migrate script files to the current schema
+- migration is script-only now. there was a short config migration path but that got reverted again
+- added `player-arg` per command for `target-required` and `schedule-online`
+- added remote uuid resolving between connected proxies (`RESOLVE_UUID`) + local `UserCache` + Mojang fallback
+- added `OFFLINE_PLAYER` argument type with suggestions support
+- reworked schedule-online / player tracking flow to be more reliable and added clearer warning logs when player resolution fails
+- fixed double command descriptions in command registration output
+- fixed velocity client mode startup crash (`ClassNotFoundException: org.bukkit.command.CommandSender`)
 
 breaking changes:
-- removed Server.timeout from the config
-- removed some unused config values
-- script version 3 is now required, older versions wont work anymore
+- scripts now require `version: 4`
+- older scripts must be migrated first
+- internal runtime files moved into the `data/` subdirectory
 
-latest commit: 37b29f5
+latest commit: e951a9e
