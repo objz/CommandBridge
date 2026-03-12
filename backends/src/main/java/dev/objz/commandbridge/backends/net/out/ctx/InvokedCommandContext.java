@@ -5,18 +5,16 @@ import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 
 import java.util.Objects;
 
-import org.bukkit.command.CommandSender;
-
 public final class InvokedCommandContext {
 
     public final String commandName;
-    public final CommandSender sender;
+    public final Object sender;
     public final CommandArguments args;
     public final CommandStub stub;
 
     public InvokedCommandContext(
             String commandName,
-            CommandSender sender,
+            Object sender,
             CommandArguments args,
             CommandStub stub) {
         this.commandName = Objects.requireNonNull(commandName, "commandName");

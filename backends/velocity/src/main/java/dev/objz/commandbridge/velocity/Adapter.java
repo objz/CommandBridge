@@ -12,14 +12,12 @@ import dev.objz.commandbridge.backends.net.client.RedisClient;
 import dev.objz.commandbridge.backends.net.client.WsClient;
 import dev.objz.commandbridge.backends.net.in.DumpRequestHandler;
 import dev.objz.commandbridge.backends.net.in.ExecuteCommandHandler;
-import dev.objz.commandbridge.backends.net.in.RegistrationHandler;
 import dev.objz.commandbridge.backends.net.in.ResolveUuidHandler;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerUpdateContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.bootstrap.VelocityMain;
-import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
@@ -108,9 +106,10 @@ public final class Adapter implements PlatformAdapter {
             client.scheduleReconnection();
         }
 
-        ClientCommands.register(client);
+        VelocityClientCommands.register(client);
 
-        RegistrationHandler registrationHandler = new RegistrationHandler(client);
+        VelocityRegistrationHandler registrationHandler = new VelocityRegistrationHandler(client,
+                proxy);
         client.inboundRouter().register(MessageType.REGISTER_COMMANDS, registrationHandler);
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));

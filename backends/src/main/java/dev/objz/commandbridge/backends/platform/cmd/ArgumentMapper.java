@@ -4,6 +4,9 @@ import dev.jorel.commandapi.arguments.*;
 import dev.objz.commandbridge.cmd.ArgumentMapperInterface;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
+
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.stream.Collectors;
 
@@ -34,10 +37,7 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
             case PLAYERS -> new EntitySelectorArgument.ManyPlayers(argName);
             case OFFLINE_PLAYER -> {
                 var arg = new StringArgument(argName);
-                arg.replaceSuggestions(ArgumentSuggestions.strings(info ->
-                        org.bukkit.Bukkit.getOnlinePlayers().stream()
-                                .map(org.bukkit.entity.Player::getName)
-                                .toArray(String[]::new)));
+                arg.replaceSuggestions(ArgumentSuggestions.strings(info -> onlinePlayerNames()));
                 yield arg;
             }
             case ENTITIES -> new EntitySelectorArgument.ManyEntities(argName);
@@ -69,6 +69,33 @@ public final class ArgumentMapper implements ArgumentMapperInterface<Argument<?>
         }
 
         return argument;
+    }
+
+    private String[] onlinePlayerNames() {
+        try {
+            Class<?> bukkit = Class.forName("org.bukkit.Bukkit");
+            Object onlinePlayers = bukkit.getMethod("getOnlinePlayers").invoke(null);
+            if (!(onlinePlayers instanceof Collection<?> players)) {
+                return new String[0];
+            }
+
+            var names = new ArrayList<String>(players.size());
+            for (Object player : players) {
+                if (player == null) {
+                    continue;
+                }
+                Object rawName = player.getClass().getMethod("getName").invoke(player);
+                if (rawName != null) {
+                    String name = rawName.toString();
+                    if (!name.isBlank()) {
+                        names.add(name);
+                    }
+                }
+            }
+            return names.toArray(String[]::new);
+        } catch (Throwable ignored) {
+            return new String[0];
+        }
     }
 
     private String supportedTypeNames() {

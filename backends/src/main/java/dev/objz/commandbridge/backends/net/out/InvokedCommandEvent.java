@@ -14,102 +14,28 @@ import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
+
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import org.bukkit.command.BlockCommandSender;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Player;
+import java.util.Objects;
+import java.util.UUID;
 
 public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandContext> {
 
     @Override
     public SendOperation accept(InvokedCommandContext ctx) {
-        CommandSender sender = ctx.sender;
-        SenderContext senderCtx;
-        if (sender instanceof Player p) {
-            senderCtx = new SenderContext.Player(p.getName(), p.getUniqueId().toString());
-        } else if (sender instanceof ConsoleCommandSender) {
-            senderCtx = new SenderContext.Console();
-        } else if (sender instanceof BlockCommandSender b) {
-            var l = b.getBlock().getLocation();
-            senderCtx = new SenderContext.Block(
-                    new Location3D(
-                            l.getWorld().getName(),
-                            l.getX(),
-                            l.getY(),
-                            l.getZ()));
-        } else {
-            senderCtx = new SenderContext.Other(sender.getClass().getSimpleName());
-        }
+        SenderContext senderCtx = mapSender(ctx.sender);
 
         List<InvokedCommand.TypedArgument> typedArgs = new ArrayList<>();
         CommandStub stub = ctx.stub;
         CommandArguments args = ctx.args;
 
         if (stub.args() != null && !stub.args().isEmpty()) {
-            for (ArgMapping m : stub.args()) {
-                String name = m.name();
-                ArgType type = m.type();
-                Object raw = args.getOptional(name).orElse(null);
-
-                Object value = switch (type) {
-                    case STRING, TEXT, GREEDY_STRING -> (raw != null ? raw.toString() : null);
-
-                    case INTEGER, TIME -> (raw != null ? ((Number) raw).intValue() : 0);
-
-                    case DOUBLE -> (raw != null ? ((Number) raw).doubleValue() : 0.0);
-
-                    case BOOLEAN -> (raw instanceof Boolean b ? b
-                            : raw != null && Boolean.TRUE.equals(raw));
-
-                    case LOCATION -> {
-                        org.bukkit.Location l = (org.bukkit.Location) raw;
-                        yield (l == null) ? null
-                                : new Location3D(
-                                        l.getWorld().getName(),
-                                        l.getX(),
-                                        l.getY(),
-                                        l.getZ());
-                    }
-
-                    case LOCATION_2D -> {
-                        org.bukkit.Location l = (org.bukkit.Location) raw;
-                        yield (l == null) ? null
-                                : new Location2D(
-                                        l.getWorld().getName(),
-                                        l.getX(),
-                                        l.getZ());
-                    }
-
-                    case PLAYERS, ENTITIES -> {
-                        var list = ((raw instanceof java.util.Collection<?>)
-                                ? (java.util.Collection<?>) raw
-                                : List.of())
-                                .stream()
-                                .filter(o -> o instanceof org.bukkit.entity.Entity)
-                                .map(o -> {
-                                    var e = (org.bukkit.entity.Entity) o;
-                                    return new EntityRef(
-                                            e.getType().name(),
-                                            e.getUniqueId().toString(),
-                                            e.getName());
-                                })
-                                .toList();
-                        yield list; // List<EntityRef>
-                    }
-
-                    case ENTITY_TYPE -> (raw != null ? raw.toString() : null);
-
-                    case OFFLINE_PLAYER -> (raw != null ? raw.toString() : null);
-
-                    case RANGE -> (raw != null ? raw.toString() : null);
-
-                    case WORLD, ANGLE, ROTATION, ITEM_STACK, ENCHANTMENT, POTION_EFFECT,
-                            SOUND, BIOME, SERVER ->
-                        (raw != null ? raw.toString() : null);
-                };
-
+            for (ArgMapping mapping : stub.args()) {
+                ArgType type = mapping.type();
+                Object raw = args.getOptional(mapping.name()).orElse(null);
+                Object value = mapArgument(type, raw);
                 typedArgs.add(new InvokedCommand.TypedArgument(type, value));
             }
         }
@@ -126,5 +52,240 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         SendOperation op = send(env);
         op.dispatch();
         return op;
+    }
+
+    private SenderContext mapSender(Object sender) {
+        if (sender == null) {
+            return new SenderContext.Other("null");
+        }
+
+        SenderContext.Player player = asPlayerSender(sender);
+        if (player != null) {
+            return player;
+        }
+
+        if (isConsoleSender(sender)) {
+            return new SenderContext.Console();
+        }
+
+        Location3D block = extractBlockLocation(sender);
+        if (block != null) {
+            return new SenderContext.Block(block);
+        }
+
+        return new SenderContext.Other(sender.getClass().getSimpleName());
+    }
+
+    private SenderContext.Player asPlayerSender(Object sender) {
+        UUID uuid = invokeUuid(sender, "getUniqueId");
+        if (uuid == null) {
+            return null;
+        }
+
+        String name = invokeString(sender, "getUsername");
+        if (name == null || name.isBlank()) {
+            name = invokeString(sender, "getName");
+        }
+        if (name == null || name.isBlank()) {
+            name = sender.getClass().getSimpleName();
+        }
+
+        return new SenderContext.Player(name, uuid.toString());
+    }
+
+    private boolean isConsoleSender(Object sender) {
+        String className = sender.getClass().getName();
+        return className.endsWith("ConsoleCommandSender")
+                || className.endsWith("ConsoleCommandSource");
+    }
+
+    private Location3D extractBlockLocation(Object sender) {
+        Object block = invoke(sender, "getBlock");
+        if (block == null) {
+            return null;
+        }
+        Object location = invoke(block, "getLocation");
+        return toLocation3D(location);
+    }
+
+    private Object mapArgument(ArgType type, Object raw) {
+        return switch (type) {
+            case STRING, TEXT, GREEDY_STRING, ENTITY_TYPE, OFFLINE_PLAYER, RANGE,
+                    WORLD, ANGLE, ROTATION, ITEM_STACK, ENCHANTMENT, POTION_EFFECT,
+                    SOUND, BIOME, SERVER -> raw != null ? raw.toString() : null;
+
+            case INTEGER, TIME -> toInt(raw);
+
+            case DOUBLE -> toDouble(raw);
+
+            case BOOLEAN -> toBoolean(raw);
+
+            case LOCATION -> toLocation3D(raw);
+
+            case LOCATION_2D -> toLocation2D(raw);
+
+            case PLAYERS, ENTITIES -> toEntityRefs(raw);
+        };
+    }
+
+    private int toInt(Object raw) {
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        if (raw == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(raw.toString());
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private double toDouble(Object raw) {
+        if (raw instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (raw == null) {
+            return 0.0;
+        }
+        try {
+            return Double.parseDouble(raw.toString());
+        } catch (NumberFormatException ignored) {
+            return 0.0;
+        }
+    }
+
+    private boolean toBoolean(Object raw) {
+        if (raw instanceof Boolean value) {
+            return value;
+        }
+        return raw != null && Boolean.parseBoolean(raw.toString());
+    }
+
+    private Location3D toLocation3D(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+
+        Double x = invokeDouble(raw, "getX");
+        Double y = invokeDouble(raw, "getY");
+        Double z = invokeDouble(raw, "getZ");
+        if (x == null || y == null || z == null) {
+            return null;
+        }
+
+        return new Location3D(resolveWorldName(raw), x, y, z);
+    }
+
+    private Location2D toLocation2D(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+
+        Double x = invokeDouble(raw, "getX");
+        Double z = invokeDouble(raw, "getZ");
+        if (x == null || z == null) {
+            return null;
+        }
+
+        return new Location2D(resolveWorldName(raw), x, z);
+    }
+
+    private String resolveWorldName(Object location) {
+        Object world = invoke(location, "getWorld");
+        String worldName = invokeString(world, "getName");
+        if (worldName == null || worldName.isBlank()) {
+            worldName = invokeString(location, "getWorldName");
+        }
+        return (worldName == null || worldName.isBlank()) ? "unknown" : worldName;
+    }
+
+    private List<EntityRef> toEntityRefs(Object raw) {
+        if (!(raw instanceof Collection<?> collection)) {
+            return List.of();
+        }
+
+        return collection.stream()
+                .map(this::toEntityRef)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private EntityRef toEntityRef(Object entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        if (entity instanceof String name && !name.isBlank()) {
+            return new EntityRef("PLAYER", null, name);
+        }
+
+        String uuid = null;
+        UUID parsedUuid = invokeUuid(entity, "getUniqueId");
+        if (parsedUuid != null) {
+            uuid = parsedUuid.toString();
+        }
+
+        String name = invokeString(entity, "getName");
+
+        Object typeObj = invoke(entity, "getType");
+        String type = invokeString(typeObj, "name");
+        if (type == null || type.isBlank()) {
+            type = typeObj != null ? typeObj.toString() : "UNKNOWN";
+        }
+
+        if ((name == null || name.isBlank()) && uuid == null) {
+            return null;
+        }
+
+        return new EntityRef(type, uuid, name);
+    }
+
+    private Object invoke(Object target, String method) {
+        if (target == null) {
+            return null;
+        }
+
+        try {
+            return target.getClass().getMethod(method).invoke(target);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private String invokeString(Object target, String method) {
+        Object value = invoke(target, method);
+        return value != null ? value.toString() : null;
+    }
+
+    private UUID invokeUuid(Object target, String method) {
+        Object value = invoke(target, method);
+        if (value instanceof UUID uuid) {
+            return uuid;
+        }
+        if (value instanceof String str) {
+            try {
+                return UUID.fromString(str);
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Double invokeDouble(Object target, String method) {
+        Object value = invoke(target, method);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value instanceof String str) {
+            try {
+                return Double.parseDouble(str);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 }

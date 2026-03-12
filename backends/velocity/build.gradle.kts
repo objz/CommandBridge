@@ -14,5 +14,5 @@ repositories {
 dependencies {
     implementation(project(":backends"))
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
-    compileOnly("dev.jorel:commandapi-paper-core:11.0.0")
+    compileOnly("dev.jorel:commandapi-velocity-core:11.1.0")
 }
