@@ -33,38 +33,46 @@ Everything runs through scripts. You create a `.yml` file, define the command na
 Here is a quick example. This registers `/alert` on the proxy and broadcasts a message to two backends as console:
 
 ```yaml
-version: 3
-name: alert
-description: Broadcast an alert to all servers
+version: 4
+
+name: example
+description: An example command script - edit or replace this with your own
+enabled: false
+aliases: [ex]
 
 permissions:
-  enabled: true 
+  enabled: true
   silent: false
 
 register:
-  - id: "proxy-1"
+  - id: "client-1"
     location: VELOCITY
 
 defaults:
   run-as: CONSOLE
   execute:
-    - id: "lobby"
-      location: BACKEND
-    - id: "survival"
+    - id: "survival-1"
       location: BACKEND
   server:
     target-required: false
     schedule-online: false
-  delay:  0s
+    player-arg: ""
+  delay: 0s
   cooldown: 0s
 
 args:
+  - name: player
+    required: true
+    type: STRING
+    suggestions: []
+
   - name: message
     required: true
-    type: GREEDY_STRING
+    type: TEXT
+    suggestions: []
 
 commands:
-  - command: "say [Alert]: ${message}"
+  - command: "msg ${player} ${message}"
 ```
 
 That's a real script. You can do a lot more than that, but this shows how simple the basics are.

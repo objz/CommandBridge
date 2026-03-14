@@ -108,10 +108,12 @@ git checkout v3
   - [x] `/cb list`
   - [x] `/cb ping`
   - [x] `/cb debug`
-    - [ ] `/cb dump`
+    - [x] `/cb dump`
+    - [x] `/cb migrate`
   - [x] Dual-mode output (chat and console)
   - [x] Automatic update checker
-  - [ ] Dump export to file or paste service
+  - [x] Dump export to file or paste service
+  - [x] Migration implementation for scripts
   - [x] bstats
 
 - [ ] **Web Interface**
