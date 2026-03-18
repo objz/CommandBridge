@@ -7,7 +7,7 @@ import dev.objz.commandbridge.net.proto.Envelope;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.core.WebSockets;
 
-public class WsEndpoint implements Endpoint {
+public final class WsEndpoint implements Endpoint {
 
     private final WebSocketChannel ch;
 

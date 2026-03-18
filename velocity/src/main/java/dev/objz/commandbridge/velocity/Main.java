@@ -181,7 +181,7 @@ public final class Main {
                 argumentBridge.registry());
 
         userCache = new UserCache(proxy, sessions, outNode,
-                dataDir.resolve("data").resolve("usercache.json").toFile());
+                dataDir.resolve("data").resolve("usercache.json"));
 
         argumentBridge.registry().register(new OfflinePlayerArgumentType(proxy, userCache));
 
@@ -268,8 +268,7 @@ public final class Main {
             Log.success(true, "CommandBridge running in Client Mode (Backend)");
 
         } catch (ClassNotFoundException ex) {
-            Log.error("Could not find backend bootstrap class. " +
-                    "Ensure the 'backends' module is included in your build");
+            Log.error("Could not find backend bootstrap class. Ensure the 'backends' module is included in your build");
         } catch (Exception ex) {
             Log.error(ex, "Failed to start client mode");
         }

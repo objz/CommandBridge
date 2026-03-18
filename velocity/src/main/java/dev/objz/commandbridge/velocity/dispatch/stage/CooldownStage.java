@@ -11,7 +11,7 @@ import dev.objz.commandbridge.util.MM;
 import java.time.Duration;
 import java.util.function.Consumer;
 
-public class CooldownStage implements Pipeline {
+public final class CooldownStage implements Pipeline {
 
     private final CooldownManager cooldownManager;
 

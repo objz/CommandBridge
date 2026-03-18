@@ -42,7 +42,7 @@ public final class Summary {
                 if (backendMode) {
                     Log.warn(w);
                 } else {
-                    Log.warn("@" + from + ": " + w);
+                    Log.warn("@{}: {}", from, w);
                 }
             }
         }
@@ -51,7 +51,7 @@ public final class Summary {
                 if (backendMode) {
                     Log.error(e);
                 } else {
-                    Log.error("@" + from + ": " + e);
+                    Log.error("@{}: {}", from, e);
                 }
             }
         }

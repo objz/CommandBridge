@@ -11,14 +11,14 @@ public final class DumpRequest extends OutboundHandler<DumpRequestContext> {
 
     @Override
     public SendOperation accept(DumpRequestContext ctx) {
-        String clientId = ctx.session.id();
+        String clientId = ctx.session().id();
         ObjectNode payload = Envelope.MAPPER.createObjectNode();
         payload.put("requested", "dump");
 
         Envelope env = Envelope.make(MessageType.DUMP_REQUEST, serverId, clientId, payload);
 
-        return send(ctx.session.endpoint(), env)
+        return send(ctx.session().endpoint(), env)
                 .expect(MessageType.DUMP_RESPONSE)
-                .timeout(ctx.timeout);
+                .timeout(ctx.timeout());
     }
 }

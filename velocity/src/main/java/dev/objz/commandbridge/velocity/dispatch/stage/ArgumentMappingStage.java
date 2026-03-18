@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class ArgumentMappingStage implements Pipeline {
+public final class ArgumentMappingStage implements Pipeline {
 
     @Override
     public void process(ExecutionContext context, Consumer<ExecutionResult> next) {

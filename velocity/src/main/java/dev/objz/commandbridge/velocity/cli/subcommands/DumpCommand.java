@@ -24,7 +24,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DumpCommand extends AbstractCliCommand {
+public final class DumpCommand extends AbstractCliCommand {
 
     private final RegistrationManager registrations;
     private final SessionHub sessions;

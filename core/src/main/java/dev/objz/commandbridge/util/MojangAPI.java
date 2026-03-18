@@ -15,7 +15,7 @@ import com.google.gson.JsonParser;
 
 import dev.objz.commandbridge.logging.Log;
 
-public class MojangAPI {
+public final class MojangAPI {
 
     private static final String API_URL = "https://api.mojang.com/";
     private static final String USER_AGENT = "CommandBridge/" + BuildMeta.VERSION

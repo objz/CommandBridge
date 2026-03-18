@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PingCommand extends AbstractCliCommand {
+public final class PingCommand extends AbstractCliCommand {
 
     private final SessionHub sessions;
     private final OutNode<Object> outNode;

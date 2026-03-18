@@ -10,7 +10,7 @@ import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
 
-public class DebugCommand extends AbstractCliCommand {
+public final class DebugCommand extends AbstractCliCommand {
     public void execute(CommandSource sender) {
         boolean newState = !Log.isDebug();
         Log.setDebug(newState);

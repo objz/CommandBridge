@@ -23,17 +23,25 @@ public final class EnumAdapter implements TypeAdapter<Enum<?>> {
         if (v == null)
             return null;
         String name = v.toString();
-        Class<? extends Enum> ec = (Class<? extends Enum>) c;
-        for (Object constant : ec.getEnumConstants()) {
-            Enum e = (Enum) constant;
-            if (e.name().equalsIgnoreCase(name))
+        for (Object constant : c.getEnumConstants()) {
+            if (constant instanceof Enum<?> e && e.name().equalsIgnoreCase(name)) {
                 return e;
+            }
         }
+        Enum<?> exact = exactValueOf(c, name);
+        if (exact != null) {
+            return exact;
+        }
+        throw new IllegalArgumentException(
+                "Unknown enum constant: " + name + " for " + c.getSimpleName());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Enum<E>> E exactValueOf(Class<?> enumClass, String name) {
         try {
-            return Enum.valueOf(ec, name);
-        } catch (Exception ex) {
-            throw new IllegalArgumentException(
-                    "Unknown enum constant: " + name + " for " + c.getSimpleName());
+            return Enum.valueOf((Class<E>) enumClass, name);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 

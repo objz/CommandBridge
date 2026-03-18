@@ -44,11 +44,9 @@ public final class Adapter implements PlatformAdapter {
 
     @Override
     public void load(PlatformEnv env, Object plugin) throws Exception {
-        if (!(plugin instanceof VelocityMain)) {
+        if (!(plugin instanceof VelocityMain bootstrap)) {
             throw new IllegalArgumentException("Plugin must be instance of VelocityMain");
         }
-
-        VelocityMain bootstrap = (VelocityMain) plugin;
         this.proxy = bootstrap.getProxy();
         this.pluginInstance = bootstrap.getPluginInstance();
 
@@ -62,7 +60,7 @@ public final class Adapter implements PlatformAdapter {
         }
         if (cfg != null) {
             Log.setDebug(cfg.debug());
-            Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+            Log.info("Debug mode is {}", cfg.debug() ? "enabled" : "disabled");
         }
 
         this.commandExecutor = new VelocityExecutor(proxy, this.pluginInstance);

@@ -7,9 +7,9 @@ import dev.objz.commandbridge.scripting.ScriptLoader.LoadResult;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -47,35 +47,33 @@ public final class ScriptManager {
             return;
         }
 
+        List<Path> yamlFiles;
         try (Stream<Path> files = Files.list(scriptsDir)) {
-            for (Path p : (Iterable<Path>) files::iterator) {
-                if (!isYaml(p))
-                    continue;
-
-                try (var in = new FileInputStream(p.toFile())) {
-                    LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
-                            platformFeatures);
-                    loaded.add(res.value);
-                    if (res.ok() && res.value != null) {
-                        if (res.value.enabled())
-                            enabled.add(res.value);
-                        else
-                            disabled.add(res.value);
-                    } else {
-                        String header = "Script '" + p.getFileName() + "' invalid:";
-                        Log.error(res.problems.toBulletedList(header));
-                        disabled.add(res.value);
-                        errors = res.problems.count();
-                    }
-                } catch (Exception e) {
-                    String header = "Script '" + p.getFileName() + "' invalid:";
-                    Log.error(header + System.lineSeparator() +
-                            "  - script: unexpected error: " + e.getMessage());
-                }
-            }
+            yamlFiles = files.filter(ScriptManager::isYaml).toList();
         } catch (IOException e) {
             Log.error(e, "Failed to list scripts at '{}'", scriptsDir);
             return;
+        }
+
+        for (Path p : yamlFiles) {
+            try (var in = Files.newInputStream(p)) {
+                LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
+                        platformFeatures);
+                loaded.add(res.value);
+                if (res.ok() && res.value != null) {
+                    if (res.value.enabled())
+                        enabled.add(res.value);
+                    else
+                        disabled.add(res.value);
+                } else {
+                    String header = "Script '" + p.getFileName() + "' invalid:";
+                    Log.error(res.problems.toBulletedList(header));
+                    disabled.add(res.value);
+                    errors = res.problems.count();
+                }
+            } catch (Exception e) {
+                Log.error(e, "Script '{}' invalid: unexpected error: {}", p.getFileName(), e.getMessage());
+            }
         }
 
         if (logSummary) {

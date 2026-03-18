@@ -15,7 +15,7 @@ import com.google.gson.JsonParser;
 
 import dev.objz.commandbridge.logging.Log;
 
-public class ModrinthAPI {
+public final class ModrinthAPI {
 
     private static final String MODRINTH_URL = "https://api.modrinth.com/v2/";
     private static final String USER_AGENT = "CommandBridge/" + BuildMeta.VERSION + " (https://github.com/objz/commandbridge; support@objz.dev)";

@@ -44,7 +44,10 @@ public final class Adapter implements PlatformAdapter {
 
     @Override
     public void load(PlatformEnv env, Object plugin) throws Exception {
-        this.plugin = (JavaPlugin) plugin;
+        if (!(plugin instanceof JavaPlugin jp)) {
+            throw new IllegalArgumentException("Plugin must be instance of JavaPlugin");
+        }
+        this.plugin = jp;
         this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
         var cfgMgr = new ConfigManager(dataDir);
         boolean ok = cfgMgr.load(BackendsConfig.class);
@@ -56,7 +59,7 @@ public final class Adapter implements PlatformAdapter {
 
         if (cfg != null) {
             Log.setDebug(cfg.debug());
-            Log.info("Debug mode is " + (cfg.debug() ? "enabled" : "disabled"));
+            Log.info("Debug mode is {}", cfg.debug() ? "enabled" : "disabled");
         }
 
         this.commandExecutor = new BukkitExecutor(this.plugin);
@@ -84,7 +87,7 @@ public final class Adapter implements PlatformAdapter {
         }
 
         Log.installThreadMarshalling(
-                () -> Bukkit.isPrimaryThread(),
+                Bukkit::isPrimaryThread,
                 task -> Bukkit.getScheduler().runTask(plugin, task));
 
         this.client = cfg.endpointType() == EndpointType.REDIS

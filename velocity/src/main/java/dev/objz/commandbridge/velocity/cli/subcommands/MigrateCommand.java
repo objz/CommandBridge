@@ -23,7 +23,7 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-public class MigrateCommand extends AbstractCliCommand {
+public final class MigrateCommand extends AbstractCliCommand {
 
     private final Path scriptsDir;
 
@@ -37,13 +37,9 @@ public class MigrateCommand extends AbstractCliCommand {
 
         YamlMigrator migrator = new YamlMigrator(4);
 
-        List<Path> yamlFiles = new ArrayList<>();
+        List<Path> yamlFiles;
         try (Stream<Path> files = Files.list(scriptsDir)) {
-            for (Path p : (Iterable<Path>) files::iterator) {
-                if (isYaml(p)) {
-                    yamlFiles.add(p);
-                }
-            }
+            yamlFiles = files.filter(MigrateCommand::isYaml).toList();
         } catch (IOException e) {
             Log.error(e, "Failed to list scripts at '{}'", scriptsDir);
             sendError(ctx, "Failed to read scripts directory", startNs);

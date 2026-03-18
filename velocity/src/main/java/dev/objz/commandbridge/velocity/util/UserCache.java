@@ -14,10 +14,17 @@ import dev.objz.commandbridge.velocity.net.out.ctx.ResolveUuidRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -30,13 +37,13 @@ public final class UserCache {
     private final OutNode<Object> outNode;
     private final ObjectMapper mapper = new ObjectMapper();
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
-    private final File cacheFile;
+    private final Path cachePath;
 
-    public UserCache(ProxyServer proxy, SessionHub sessions, OutNode<Object> outNode, File cacheFile) {
+    public UserCache(ProxyServer proxy, SessionHub sessions, OutNode<Object> outNode, Path cachePath) {
         this.proxy = Objects.requireNonNull(proxy);
         this.sessions = Objects.requireNonNull(sessions);
         this.outNode = Objects.requireNonNull(outNode);
-        this.cacheFile = Objects.requireNonNull(cacheFile);
+        this.cachePath = Objects.requireNonNull(cachePath);
         load();
     }
 
@@ -142,18 +149,18 @@ public final class UserCache {
 
     public synchronized void save() {
         try {
-            cacheFile.getParentFile().mkdirs();
+            Files.createDirectories(cachePath.getParent());
             List<CacheEntry> entries = new ArrayList<>(cache.values());
-            mapper.writeValue(cacheFile, entries);
+            mapper.writeValue(cachePath.toFile(), entries);
         } catch (IOException e) {
             Log.error("Failed to save user cache: {}", e.getMessage());
         }
     }
 
     private synchronized void load() {
-        if (!cacheFile.exists()) return;
+        if (Files.notExists(cachePath)) return;
         try {
-            List<CacheEntry> entries = mapper.readValue(cacheFile,
+            List<CacheEntry> entries = mapper.readValue(cachePath.toFile(),
                     new TypeReference<List<CacheEntry>>() {
                     });
             for (CacheEntry entry : entries) {

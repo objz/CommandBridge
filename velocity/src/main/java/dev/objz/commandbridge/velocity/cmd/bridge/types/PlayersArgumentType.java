@@ -6,11 +6,13 @@ import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.CustomArgumentType;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.PacketArgumentSpec;
 
+import dev.objz.commandbridge.cmd.ref.EntityRef;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public final class PlayersArgumentType implements CustomArgumentType<List> {
+public final class PlayersArgumentType implements CustomArgumentType<List<EntityRef>> {
 
     // minecraft:entity flags: 0x01 = single only, 0x02 = players only
     // ManyPlayers = 0x02 (multiple allowed, players only)
@@ -28,9 +30,10 @@ public final class PlayersArgumentType implements CustomArgumentType<List> {
         return ArgType.PLAYERS;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Argument<List> create(String nodeName) {
-        return (Argument<List>) (Argument<?>) new PlayersArgument(nodeName, proxy);
+    public Argument<List<EntityRef>> create(String nodeName) {
+        return (Argument<List<EntityRef>>) (Argument<?>) new PlayersArgument(nodeName, proxy);
     }
 
     @Override

@@ -124,13 +124,11 @@ public final class PlaceholderStage implements Pipeline {
             return Optional.empty();
         }
 
-        if (source instanceof Player) {
-            UUID pUuid = ((Player) source).getUniqueId();
-            return Optional.of(pUuid);
+        if (source instanceof Player player) {
+            return Optional.of(player.getUniqueId());
         }
         return Optional.empty();
-
-    };
+    }
 
     private String convertToString(Object value) {
         if (value == null) {

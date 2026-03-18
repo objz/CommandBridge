@@ -2,6 +2,7 @@ package dev.objz.commandbridge.scripting.platform;
 
 import dev.objz.commandbridge.scripting.model.enums.Location;
 
+@FunctionalInterface
 public interface PlatformFeatures {
     boolean isEnabled(Location location, String feature);
 

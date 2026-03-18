@@ -14,10 +14,14 @@ import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ScheduledTask;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -29,7 +33,7 @@ public final class ScheduleManager {
     private final String localVelocityId;
     private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
-    private final File storageFile;
+    private final Path storagePath;
 
     private Consumer<ExecutionContext> executionCallback;
 
@@ -39,7 +43,7 @@ public final class ScheduleManager {
         this.proxy = proxy;
         this.scriptManager = scriptManager;
         this.localVelocityId = localVelocityId;
-        this.storageFile = dataDir.resolve("data").resolve("tasks.json").toFile();
+        this.storagePath = dataDir.resolve("data").resolve("tasks.json");
 
         loadTasks();
 
@@ -149,10 +153,10 @@ public final class ScheduleManager {
     }
 
     private synchronized void loadTasks() {
-        if (!storageFile.exists())
+        if (Files.notExists(storagePath))
             return;
         try {
-            List<ScheduledTask> loaded = mapper.readValue(storageFile,
+            List<ScheduledTask> loaded = mapper.readValue(storagePath.toFile(),
                     new TypeReference<List<ScheduledTask>>() {
                     });
             for (ScheduledTask t : loaded) {
@@ -160,16 +164,16 @@ public final class ScheduleManager {
             }
             Log.success(true, "Loaded '{}' pending tasks", tasks.size());
         } catch (IOException e) {
-            Log.error("Failed to load scheduled tasks: " + e.getMessage());
+            Log.error("Failed to load scheduled tasks: {}", e.getMessage());
         }
     }
 
     private synchronized void saveTasks() {
         try {
-            storageFile.getParentFile().mkdirs();
-            mapper.writeValue(storageFile, new ArrayList<>(tasks.values()));
+            Files.createDirectories(storagePath.getParent());
+            mapper.writeValue(storagePath.toFile(), new ArrayList<>(tasks.values()));
         } catch (IOException e) {
-            Log.error("Failed to save scheduled tasks: " + e.getMessage());
+            Log.error("Failed to save scheduled tasks: {}", e.getMessage());
         }
     }
 }

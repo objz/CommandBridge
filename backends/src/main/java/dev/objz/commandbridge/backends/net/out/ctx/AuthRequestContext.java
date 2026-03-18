@@ -6,12 +6,12 @@ import java.util.function.Consumer;
 
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 
-public final class AuthRequestContext {
-    public final Duration timeout;
-    public final Consumer<ClientStatus> statusSink;
+public record AuthRequestContext(
+        Duration timeout,
+        Consumer<ClientStatus> statusSink) {
 
-    public AuthRequestContext(Duration timeout, Consumer<ClientStatus> statusSink) {
-        this.timeout = Objects.requireNonNull(timeout);
-        this.statusSink = Objects.requireNonNull(statusSink);
+    public AuthRequestContext {
+        Objects.requireNonNull(timeout);
+        Objects.requireNonNull(statusSink);
     }
 }

@@ -1,19 +1,11 @@
 package dev.objz.commandbridge.scripting.validation;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public final class ProblemSink {
 
-    public static final class Problem {
-        public final String path;
-        public final String message;
-
-        public Problem(String path, String message) {
-            this.path = path;
-            this.message = message;
-        }
+    public record Problem(String path, String message) {
 
         @Override
         public String toString() {
@@ -36,7 +28,7 @@ public final class ProblemSink {
     }
 
     public List<Problem> problems() {
-        return Collections.unmodifiableList(problems);
+        return List.copyOf(problems);
     }
 
     public String toBulletedList(String header) {
@@ -46,10 +38,10 @@ public final class ProblemSink {
         }
         for (Problem p : problems) {
             sb.append("  - ");
-            if (p.path != null && !p.path.isBlank()) {
-                sb.append(p.path).append(": ");
+            if (p.path() != null && !p.path().isBlank()) {
+                sb.append(p.path()).append(": ");
             }
-            sb.append(p.message);
+            sb.append(p.message());
             sb.append("\n");
         }
         return sb.toString();

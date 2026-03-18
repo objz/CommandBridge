@@ -2,6 +2,7 @@ package dev.objz.commandbridge.velocity.dispatch.model;
 
 import java.util.function.Consumer;
 
+@FunctionalInterface
 public interface Pipeline {
     /**
      * 

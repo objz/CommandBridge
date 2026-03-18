@@ -7,7 +7,6 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public final class MM {
@@ -137,7 +136,7 @@ public final class MM {
         }
 
         public List<Component> getLines() {
-            return Collections.unmodifiableList(lines);
+            return List.copyOf(lines);
         }
 
         public void send(Audience audience) {

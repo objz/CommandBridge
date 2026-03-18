@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 
-public class RenderContext {
+public final class RenderContext {
     private final CommandSource source;
     private final boolean isPlayer;
     private final int width;

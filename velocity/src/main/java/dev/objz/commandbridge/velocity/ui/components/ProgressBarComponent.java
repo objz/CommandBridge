@@ -6,7 +6,7 @@ import dev.objz.commandbridge.velocity.ui.Theme;
 import dev.objz.commandbridge.velocity.ui.UIComponent;
 import net.kyori.adventure.text.Component;
 
-public class ProgressBarComponent implements UIComponent {
+public final class ProgressBarComponent implements UIComponent {
 
     private final double value; 
     private final int width;

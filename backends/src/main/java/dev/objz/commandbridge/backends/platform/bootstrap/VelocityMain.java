@@ -32,11 +32,9 @@ public final class VelocityMain {
             adapter.load(env, this);
 
         } catch (ClassNotFoundException e) {
-            Log.error("Adapter class not found: dev.objz.commandbridge.velocity.Adapter. " +
-                    "Is the backends:velocity module loaded?", e);
+            Log.error(e, "Adapter class not found: dev.objz.commandbridge.velocity.Adapter. Is the backends:velocity module loaded?");
         } catch (Exception e) {
-            Log.error("Adapter load failed: {}", e.getMessage());
-            e.printStackTrace();
+            Log.error(e, "Adapter load failed: {}", e.getMessage());
         }
     }
 

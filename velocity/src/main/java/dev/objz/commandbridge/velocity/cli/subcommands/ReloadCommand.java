@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.TimeUnit;
 
-public class ReloadCommand extends AbstractCliCommand {
+public final class ReloadCommand extends AbstractCliCommand {
 
     private final ConfigManager configManager;
     private final ScriptManager scriptManager;

@@ -37,11 +37,11 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
                 .match(reply -> reply.id().equals(env.id())
                         && (reply.type() == MessageType.AUTH_OK
                                 || reply.type() == MessageType.AUTH_FAIL))
-                .timeout(ctx.timeout);
+                .timeout(ctx.timeout());
 
         op.await().thenApply(reply -> {
             if (reply.type() == MessageType.AUTH_FAIL) {
-                ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+                ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                 Log.error("Authentication rejected by server");
                 return reply;
             }
@@ -51,7 +51,7 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
                 sp = Envelope.MAPPER.treeToValue(reply.payload(),
                         AuthResponsePayload.class);
             } catch (Exception e) {
-                ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+                ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                 Log.error(e, "Authentication response malformed");
                 return reply;
             }
@@ -62,16 +62,16 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
                     serverMac);
 
             if (!ok) {
-                ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+                ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                 Log.error("Authentication failed: invalid server proof");
             } else {
-                ctx.statusSink.accept(ClientStatus.AUTH_OK);
+                ctx.statusSink().accept(ClientStatus.AUTH_OK);
                 Log.success("Authenticated successfully");
             }
             return reply;
         })
                 .exceptionally(ex -> {
-                    ctx.statusSink.accept(ClientStatus.AUTH_FAILED);
+                    ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                     var cause = (ex.getCause() != null) ? ex.getCause() : ex;
                     if (cause instanceof java.util.concurrent.TimeoutException) {
                         Log.error("Authentication timeout");

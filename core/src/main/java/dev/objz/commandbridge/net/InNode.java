@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-public class InNode {
+public final class InNode {
 
     private final Map<MessageType, InboundHandler> handlers;
     private Predicate<Envelope> inboundTap;

@@ -8,7 +8,7 @@ import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
 
 import java.util.function.Consumer;
 
-public class ScriptResolutionStage implements Pipeline {
+public final class ScriptResolutionStage implements Pipeline {
 
     private final ScriptManager scriptManager;
 

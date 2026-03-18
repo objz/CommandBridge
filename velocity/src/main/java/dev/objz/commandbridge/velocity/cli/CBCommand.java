@@ -14,7 +14,15 @@ import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.velocity.RegistrationManager;
 import dev.objz.commandbridge.velocity.ScriptManager;
-import dev.objz.commandbridge.velocity.cli.subcommands.*;
+import dev.objz.commandbridge.velocity.cli.subcommands.DebugCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.DumpCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.HelpCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.InfoCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.ListCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.MigrateCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.PingCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.ReloadCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.ScriptsCommand;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 

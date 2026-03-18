@@ -5,7 +5,9 @@ import org.spongepowered.configurate.objectmapping.meta.Setting;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class ConfigKeys {

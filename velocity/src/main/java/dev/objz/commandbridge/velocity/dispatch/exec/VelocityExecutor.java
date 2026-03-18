@@ -38,7 +38,7 @@ public final class VelocityExecutor {
                 if (playerUuid != null) {
                     yield proxy.getPlayer(playerUuid).orElse(null);
                 }
-                yield (fallbackSource instanceof Player) ? fallbackSource : null;
+                yield fallbackSource instanceof Player p ? p : null;
             }
             case OPERATOR -> {
                 if (playerUuid != null) {

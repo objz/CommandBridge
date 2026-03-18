@@ -7,7 +7,12 @@ import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -430,8 +435,8 @@ public final class DebugPrinter {
                 String color = bool ? theme.booleanTrue : theme.booleanFalse;
                 return color + value + theme.reset;
             }
-            if (value instanceof Number) {
-                return theme.number + value + theme.reset;
+            if (value instanceof Number num) {
+                return theme.number + num + theme.reset;
             }
             if (value instanceof java.time.Duration duration) {
                 return theme.comment + formatDuration(duration) + theme.reset;

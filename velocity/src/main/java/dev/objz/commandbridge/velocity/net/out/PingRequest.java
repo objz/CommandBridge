@@ -14,16 +14,16 @@ public final class PingRequest extends OutboundHandler<PingRequestContext> {
 
     @Override
     public SendOperation accept(PingRequestContext ctx) {
-        String clientId = ctx.session.id();
+        String clientId = ctx.session().id();
         long startTime = System.currentTimeMillis();
 
         var payload = new PingPayload(startTime);
         ObjectNode payloadNode = Envelope.MAPPER.valueToTree(payload);
         final Envelope env = Envelope.make(MessageType.PING, serverId, clientId, payloadNode);
 
-        SendOperation op = send(ctx.session.endpoint(), env)
+        SendOperation op = send(ctx.session().endpoint(), env)
                 .expect(MessageType.PONG)
-                .timeout(ctx.timeout);
+                .timeout(ctx.timeout());
 
         op.await().thenApply(pongEnv -> {
             if (pongEnv != null) {
@@ -35,10 +35,10 @@ public final class PingRequest extends OutboundHandler<PingRequestContext> {
 
                     long latency = endTime - pong.timestamp();
                     Log.debug("Received pong from '{}' with {}ms latency", clientId, latency);
-                    ctx.resultCallback.accept(true, latency);
+                    ctx.resultCallback().accept(true, latency);
                 } catch (Exception e) {
                     Log.error(e, "Failed to process pong from '{}'", clientId);
-                    ctx.resultCallback.accept(false, -1L);
+                    ctx.resultCallback().accept(false, -1L);
                 }
             }
             return env;
@@ -49,7 +49,7 @@ public final class PingRequest extends OutboundHandler<PingRequestContext> {
             } else {
                 Log.error(cause, "Ping failed for '{}'", clientId);
             }
-            ctx.resultCallback.accept(false, -1L);
+            ctx.resultCallback().accept(false, -1L);
             return null;
         });
 

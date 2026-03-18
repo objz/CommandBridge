@@ -14,7 +14,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 
-public class HelpCommand extends AbstractCliCommand {
+public final class HelpCommand extends AbstractCliCommand {
 
     private static final String[][] COMMANDS = {
         {"/cb help", "Shows this help menu"},

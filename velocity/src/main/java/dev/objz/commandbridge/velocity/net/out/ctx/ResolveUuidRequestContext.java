@@ -7,17 +7,16 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-public final class ResolveUuidRequestContext {
-    public final ClientSession session;
-    public final String name;
-    public final Duration timeout;
-    public final CompletableFuture<UUID> resultFuture;
+public record ResolveUuidRequestContext(
+        ClientSession session,
+        String name,
+        Duration timeout,
+        CompletableFuture<UUID> resultFuture) {
 
-    public ResolveUuidRequestContext(ClientSession session, String name, Duration timeout,
-            CompletableFuture<UUID> resultFuture) {
-        this.session = Objects.requireNonNull(session);
-        this.name = Objects.requireNonNull(name);
-        this.timeout = Objects.requireNonNull(timeout);
-        this.resultFuture = Objects.requireNonNull(resultFuture);
+    public ResolveUuidRequestContext {
+        Objects.requireNonNull(session);
+        Objects.requireNonNull(name);
+        Objects.requireNonNull(timeout);
+        Objects.requireNonNull(resultFuture);
     }
 }

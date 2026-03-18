@@ -9,7 +9,9 @@ import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.validation.PostProcessor;
 
 import java.lang.reflect.RecordComponent;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Validates that required arguments do not follow optional arguments

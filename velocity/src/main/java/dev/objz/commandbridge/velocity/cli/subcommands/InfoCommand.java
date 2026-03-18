@@ -16,7 +16,7 @@ import java.util.List;
 
 import java.lang.management.ManagementFactory;
 
-public class InfoCommand extends AbstractCliCommand {
+public final class InfoCommand extends AbstractCliCommand {
 
     public void execute(CommandSource sender) {
         RenderContext ctx = new RenderContext(sender);

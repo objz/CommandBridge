@@ -11,7 +11,7 @@ import net.kyori.adventure.text.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TableComponent implements UIComponent {
+public final class TableComponent implements UIComponent {
 
     private final String[] headers;
     private final List<String[]> rows;

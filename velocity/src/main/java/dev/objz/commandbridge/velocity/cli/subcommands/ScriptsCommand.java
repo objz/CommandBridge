@@ -15,7 +15,7 @@ import net.kyori.adventure.text.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ScriptsCommand extends AbstractCliCommand {
+public final class ScriptsCommand extends AbstractCliCommand {
 
     private final ScriptManager scriptManager;
 

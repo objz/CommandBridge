@@ -97,7 +97,7 @@ public final class ConfigManager {
             this.current = profileOf(modelClass).defaults();
             return false;
         } catch (Exception e) {
-            Log.error("Error loading config.yml: " + e.getMessage(), e);
+            Log.error(e, "Error loading config.yml: {}", e.getMessage());
             this.current = profileOf(modelClass).defaults();
             return false;
         }

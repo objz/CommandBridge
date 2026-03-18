@@ -15,7 +15,7 @@ import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import net.kyori.adventure.text.Component;
 
-public class ListCommand extends AbstractCliCommand {
+public final class ListCommand extends AbstractCliCommand {
     private final SessionHub sessions;
 
     public ListCommand(SessionHub sessions) {

@@ -6,7 +6,7 @@ import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.UIComponent;
 import net.kyori.adventure.text.Component;
 
-public class HeaderComponent implements UIComponent {
+public final class HeaderComponent implements UIComponent {
 
     private final String title;
     private final int width;

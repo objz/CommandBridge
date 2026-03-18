@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public class CooldownManager {
+public final class CooldownManager {
 
     private final Cache<String, Instant> cooldowns;
 

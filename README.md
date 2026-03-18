@@ -123,12 +123,7 @@ git checkout v3
   - [ ] ...
 
 - [ ] **Developer API**
-  - [ ] Public API module
-  - [ ] Custom pipeline stages
-  - [ ] Command lifecycle event hooks
-  - [ ] Custom argument type registration
-  - [ ] Custom message type registration
-  - [ ] Documentation and examples
+  - [ ] ...
 
 See the [open issues](https://github.com/objz/CommandBridge/issues) for features and bugs.
 

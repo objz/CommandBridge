@@ -6,7 +6,7 @@ import dev.objz.commandbridge.velocity.ui.UIComponent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
-public class TextComponent implements UIComponent {
+public final class TextComponent implements UIComponent {
 
     private final String mmContent;
     private final String ansiContent;

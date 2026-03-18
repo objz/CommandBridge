@@ -3,7 +3,13 @@ package dev.objz.commandbridge.scripting.migration;
 import dev.objz.commandbridge.logging.Log;
 
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,7 +82,7 @@ public final class YamlMigrator {
      */
     public MigrationResult migrate(String yaml, int from, int to) {
         List<MigrationRule> merged = mergeRules(from, to);
-        List<String> lines = new ArrayList<>(Arrays.asList(yaml.split("\n", -1)));
+        List<String> lines = new ArrayList<>(List.of(yaml.split("\n", -1)));
 
         List<TargetAction> modifyActions = new ArrayList<>();
         for (MigrationRule rule : merged) {
