@@ -44,6 +44,18 @@ public final class SecretLoader {
         }
     }
 
+    /**
+     * Resolves the shared secret: uses the config value if present, otherwise loads/creates from file.
+     */
+    public static String resolve(String configSecret, Path dataDir) {
+        if (configSecret != null && !configSecret.isBlank()) {
+            Log.debug("Secret resolved from config value");
+            return configSecret;
+        }
+        Log.debug("Secret resolved from file at {}", dataDir.resolve("secret.key"));
+        return new SecretLoader(dataDir).loadOrCreate();
+    }
+
     private static String generate() {
         byte[] raw = new byte[32];
         new SecureRandom().nextBytes(raw);

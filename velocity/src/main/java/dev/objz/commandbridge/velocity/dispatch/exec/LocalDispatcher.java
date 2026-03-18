@@ -10,12 +10,12 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-public final class VelocityExecutor {
+public final class LocalDispatcher {
 
     private final ProxyServer proxy;
     private final String localServerId;
 
-    public VelocityExecutor(ProxyServer proxy, String localServerId) {
+    public LocalDispatcher(ProxyServer proxy, String localServerId) {
         this.proxy = Objects.requireNonNull(proxy);
         this.localServerId = Objects.requireNonNull(localServerId);
     }

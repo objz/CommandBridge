@@ -11,7 +11,7 @@ import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.enums.RunAs;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
-import dev.objz.commandbridge.velocity.dispatch.exec.VelocityExecutor;
+import dev.objz.commandbridge.velocity.dispatch.exec.LocalDispatcher;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
@@ -29,10 +29,10 @@ public final class CommandDispatcher {
 
     private final SessionHub sessions;
     private final OutNode<Object> outNode;
-    private final VelocityExecutor velocityExecutor;
+    private final LocalDispatcher velocityExecutor;
     private final PlayerTracker playerTracker;
 
-    public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, VelocityExecutor velocityExecutor,
+    public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, LocalDispatcher velocityExecutor,
                              PlayerTracker playerTracker) {
         this.sessions = sessions;
         this.outNode = outNode;

@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.backends.net.connection;
 
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.backends.platform.ScheduleHandle;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 
@@ -11,7 +12,7 @@ public final class ReconnectHandler {
     private final BackendsConfig cfg;
     private final PlatformAdapter adapter;
     private final AtomicBoolean isReconnecting = new AtomicBoolean(false);
-    private volatile Object reconnectionTask;
+    private volatile ScheduleHandle reconnectionTask;
     private final Runnable reconnectCallback;
 
     public ReconnectHandler(BackendsConfig cfg, PlatformAdapter adapter, Runnable reconnectCallback) {
@@ -22,10 +23,12 @@ public final class ReconnectHandler {
 
     public synchronized void scheduleReconnect() {
         if (isReconnecting.get()) {
+            Log.debug("Reconnect already in progress, skipping");
             return;
         }
 
         if (reconnectionTask != null) {
+            Log.debug("Reconnect task already scheduled, skipping");
             return;
         }
 
@@ -79,7 +82,7 @@ public final class ReconnectHandler {
 
     public synchronized void stopReconnect() {
         if (reconnectionTask != null) {
-            adapter.cancelSchedule(reconnectionTask);
+            reconnectionTask.cancel();
             reconnectionTask = null;
         }
         isReconnecting.set(false);

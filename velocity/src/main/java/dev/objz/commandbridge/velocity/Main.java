@@ -93,7 +93,7 @@ public final class Main {
     private boolean legacyDetected;
     private volatile String latestVersion;
 
-    public static boolean isPapiEnabled = false;
+
 
     @Inject
     public Main(ProxyServer proxy, Logger velocityLogger, @DataDirectory Path dataDir, Metrics.Factory metrics) {
@@ -127,15 +127,16 @@ public final class Main {
             return;
         }
 
-        if (proxy.getPluginManager().getPlugin("papiproxybridge").isPresent()) {
+        boolean hasPapi = proxy.getPluginManager().getPlugin("papiproxybridge").isPresent();
+        boolean hasPacketEvents = proxy.getPluginManager().getPlugin("packetevents").isPresent();
+
+        var featuresBuilder = PlatformFeatureSet.builder();
+        if (hasPapi) {
             Log.success("Hooked into PapiProxyBridge. PlaceholderAPI is now enabled");
-            isPapiEnabled = true;
+            featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PAPI);
         } else {
             Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
         }
-
-        boolean hasPacketEvents = proxy.getPluginManager().getPlugin("packetevents").isPresent();
-        var featuresBuilder = PlatformFeatureSet.builder();
         if (hasPacketEvents) {
             featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PACKET_EVENTS);
         } else {
@@ -190,7 +191,7 @@ public final class Main {
                 .schedule();
 
         commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
-                cfg.serverId(), dataDir, playerTracker, userCache);
+                cfg.serverId(), dataDir, playerTracker, userCache, platformFeatures);
 
         registrations.setCommandEntry(commandEntry);
 

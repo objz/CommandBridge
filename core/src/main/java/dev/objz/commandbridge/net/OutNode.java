@@ -80,6 +80,7 @@ public class OutNode<T> {
                     "Send factory not configured. Call setSendOperationFactory() or setEndpointSendFactory() first.");
         }
 
+        Log.debug("Outbound message type={}", type);
         try {
             OutboundHandler<T> typedHandler = (OutboundHandler<T>) handler;
             return typedHandler.accept(context);

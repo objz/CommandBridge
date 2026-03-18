@@ -16,6 +16,7 @@ import dev.objz.commandbridge.backends.net.in.ResolveUuidHandler;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerUpdateContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
+import dev.objz.commandbridge.backends.platform.ScheduleHandle;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.bootstrap.VelocityMain;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
@@ -142,15 +143,8 @@ public final class Adapter implements PlatformAdapter {
     }
 
     @Override
-    public Object runSchedule(Runnable task, Duration timeout, Duration interval) {
+    public ScheduleHandle runSchedule(Runnable task, Duration timeout, Duration interval) {
         return new TimeoutTask(task, timeout.toMillis(), interval).start();
-    }
-
-    @Override
-    public void cancelSchedule(Object task) {
-        if (task instanceof TimeoutTask t) {
-            t.cancel();
-        }
     }
 
     @Override
@@ -205,7 +199,7 @@ public final class Adapter implements PlatformAdapter {
         }
     }
 
-    private class TimeoutTask implements Runnable {
+    private class TimeoutTask implements Runnable, ScheduleHandle {
         private final Runnable delegate;
         private final long timeoutMillis;
         private final Duration interval;

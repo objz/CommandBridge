@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.dispatch.stage;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
@@ -22,6 +23,8 @@ public final class ScriptResolutionStage implements Pipeline {
 
         for (Script script : scriptManager.enabled()) {
             if (matches(script, name)) {
+                Log.debug("Script '{}' resolved for command '{}' ({} enabled scripts searched)",
+                        script.name(), name, scriptManager.enabled().size());
                 next.accept(ExecutionResult.ok(context.withScript(script)));
                 return;
             }

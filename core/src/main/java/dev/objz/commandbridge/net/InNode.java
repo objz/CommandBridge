@@ -47,11 +47,16 @@ public final class InNode {
             return;
         }
 
+        Log.debug("Inbound message type={} id={} from={}", env.type(), env.id(), env.from());
+
         if (inboundTap != null) {
             try {
-                if (inboundTap.test(env))
+                if (inboundTap.test(env)) {
+                    Log.debug("Inbound message type={} id={} consumed by awaiter", env.type(), env.id());
                     return;
-            } catch (Exception ignored) {
+                }
+            } catch (Exception e) {
+                Log.warn("Inbound tap threw exception for type {}: {}", env.type(), e.getMessage());
             }
         }
 

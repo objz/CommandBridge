@@ -6,10 +6,29 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class MM {
+
+    /**
+     * Formats a duration as a human-readable short string (e.g., "5s", "2m 30s", "1h 5m").
+     */
+    public static String formatDuration(Duration d) {
+        long totalSeconds = d.getSeconds();
+        if (totalSeconds < 60) {
+            return totalSeconds + "s";
+        }
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        if (minutes < 60) {
+            return seconds > 0 ? minutes + "m " + seconds + "s" : minutes + "m";
+        }
+        long hours = minutes / 60;
+        minutes = minutes % 60;
+        return minutes > 0 ? hours + "h " + minutes + "m" : hours + "h";
+    }
 
     private static final String C_PRIMARY = "#7AA2FF";
     private static final String C_ACCENT = "#80E9FF";

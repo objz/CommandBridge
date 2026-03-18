@@ -223,10 +223,7 @@ public final class WsClient implements BackendClient {
     }
 
     private String resolveSecret() {
-        String s = cfg.security() != null ? cfg.security().secret() : null;
-        if (s != null && !s.isBlank()) {
-            return s;
-        }
-        return new SecretLoader(dataDir).loadOrCreate();
+        String configSecret = cfg.security() != null ? cfg.security().secret() : null;
+        return SecretLoader.resolve(configSecret, dataDir);
     }
 }

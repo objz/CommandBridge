@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.dispatch.stage;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
@@ -44,6 +45,7 @@ public final class ArgumentMappingStage implements Pipeline {
             mapped.put(def.name(), value);
         }
 
+        Log.debug("Mapped {} arguments for script '{}': {}", mapped.size(), script.name(), mapped.keySet());
         next.accept(ExecutionResult.ok(context.withArguments(mapped)));
     }
 }

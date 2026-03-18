@@ -61,6 +61,9 @@ public final class ScriptManager {
                         platformFeatures);
                 loaded.add(res.value);
                 if (res.ok() && res.value != null) {
+                    Log.debug("Loaded script '{}' from '{}' (enabled={}, commands={})",
+                            res.value.name(), p.getFileName(), res.value.enabled(),
+                            res.value.commands() != null ? res.value.commands().size() : 0);
                     if (res.value.enabled())
                         enabled.add(res.value);
                     else

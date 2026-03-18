@@ -10,6 +10,7 @@ import dev.objz.commandbridge.backends.net.out.ctx.PlayerListContext;
 import dev.objz.commandbridge.backends.net.out.ctx.PlayerUpdateContext;
 import dev.objz.commandbridge.backends.platform.PathsUtil;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.backends.platform.ScheduleHandle;
 import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.config.ConfigManager;
@@ -132,15 +133,10 @@ public final class Adapter implements PlatformAdapter {
     }
 
     @Override
-    public Object runSchedule(Runnable task, Duration timeout, Duration interval) {
-        return new TimeoutTask(task, timeout.toMillis(), interval.toMillis()).start();
-    }
-
-    @Override
-    public void cancelSchedule(Object task) {
-        if (task instanceof TimeoutTask t) {
-            t.cancel();
-        }
+    public ScheduleHandle runSchedule(Runnable task, Duration timeout, Duration interval) {
+        long timeoutMillis = timeout.toMillis();
+        long intervalMillis = interval.toMillis();
+        return new TimeoutTask(task, timeoutMillis, intervalMillis).start();
     }
 
     @Override
@@ -194,7 +190,7 @@ public final class Adapter implements PlatformAdapter {
         }
     }
 
-    private class TimeoutTask {
+    private class TimeoutTask implements ScheduleHandle {
         private final Runnable delegate;
         private final long timeoutMillis;
         private final long intervalMillis;

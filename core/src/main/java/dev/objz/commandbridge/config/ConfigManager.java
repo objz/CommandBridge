@@ -86,6 +86,7 @@ public final class ConfigManager {
 
             var result = profile.normalize(loaded);
             this.current = result.config();
+            Log.debug("Config loaded from '{}' for model {} (valid={})", filePath, modelClass.getSimpleName(), result.ok());
 
             if (!result.ok()) {
                 Log.error("Invalid config.yml");

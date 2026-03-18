@@ -15,7 +15,7 @@ import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.velocity.ScriptManager;
-import dev.objz.commandbridge.velocity.dispatch.exec.VelocityExecutor;
+import dev.objz.commandbridge.velocity.dispatch.exec.LocalDispatcher;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
 import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
@@ -28,6 +28,7 @@ import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.CooldownManager;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
 import dev.objz.commandbridge.velocity.util.UserCache;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.util.MM;
 
 import java.nio.file.Path;
@@ -48,12 +49,13 @@ public final class CommandEntry {
     private final ProxyServer proxy;
     private final Object plugin;
     private final ScheduleManager scheduler;
-    private final VelocityExecutor velocityExecutor;
+    private final LocalDispatcher velocityExecutor;
     private final CommandDispatcher dispatcher;
     private final CooldownManager cooldowns;
     private final PlayerTracker playerTracker;
     private final UserCache userCache;
     private final List<Pipeline> pipelineStages;
+    private final PlatformFeatures platformFeatures;
 
     public CommandEntry(
             ProxyServer proxy,
@@ -64,14 +66,16 @@ public final class CommandEntry {
             String localServerId,
             Path dataDir,
             PlayerTracker playerTracker,
-            UserCache userCache) {
+            UserCache userCache,
+            PlatformFeatures platformFeatures) {
 
         this.proxy = Objects.requireNonNull(proxy);
         this.plugin = Objects.requireNonNull(plugin);
         this.playerTracker = Objects.requireNonNull(playerTracker);
         this.userCache = Objects.requireNonNull(userCache);
+        this.platformFeatures = Objects.requireNonNull(platformFeatures);
 
-        this.velocityExecutor = new VelocityExecutor(proxy, Objects.requireNonNull(localServerId));
+        this.velocityExecutor = new LocalDispatcher(proxy, Objects.requireNonNull(localServerId));
 
         this.scheduler = new ScheduleManager(proxy, plugin, dataDir, scriptManager,
                 playerTracker, localServerId);
@@ -86,7 +90,7 @@ public final class CommandEntry {
                 new PermissionCheckStage());
     }
 
-    public VelocityExecutor getVelocityExecutor() {
+    public LocalDispatcher getLocalDispatcher() {
         return velocityExecutor;
     }
 
@@ -152,12 +156,12 @@ public final class CommandEntry {
             String cooldownKey = ctx.script().name() + ":" + index;
             if (cooldowns.isOnCooldown(cooldownKey, player.getUniqueId())) {
                 Duration remaining = cooldowns.getRemaining(cooldownKey, player.getUniqueId());
-                player.sendMessage(MM.error("Try again in " + formatDuration(remaining)));
+                player.sendMessage(MM.error("Try again in " + MM.formatDuration(remaining)));
                 return;
             }
         }
 
-        new PlaceholderStage().process(nextCtx, result -> {
+        new PlaceholderStage(platformFeatures).process(nextCtx, result -> {
             if (result instanceof ExecutionResult.Continue c) {
                 if (ctx.source() instanceof Player player && cmd.cooldown() != null
                         && !cmd.cooldown().isZero() && !cmd.cooldown().isNegative()) {
@@ -317,8 +321,4 @@ public final class CommandEntry {
         return new InvokedCommand.TypedArgument(mapping.type(), value);
     }
 
-    private String formatDuration(Duration d) {
-        long s = d.getSeconds();
-        return s + "s";
-    }
 }

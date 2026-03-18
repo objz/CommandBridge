@@ -1,11 +1,10 @@
 package dev.objz.commandbridge.velocity.dispatch;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
@@ -31,7 +30,7 @@ public final class ScheduleManager {
     private final ProxyServer proxy;
     private final ScriptManager scriptManager;
     private final String localVelocityId;
-    private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
     private final Path storagePath;
 
@@ -153,10 +152,11 @@ public final class ScheduleManager {
     }
 
     private synchronized void loadTasks() {
+        Log.debug("Loading scheduled tasks from '{}'", storagePath);
         if (Files.notExists(storagePath))
             return;
         try {
-            List<ScheduledTask> loaded = mapper.readValue(storagePath.toFile(),
+            List<ScheduledTask> loaded = Envelope.MAPPER.readValue(storagePath.toFile(),
                     new TypeReference<List<ScheduledTask>>() {
                     });
             for (ScheduledTask t : loaded) {
@@ -171,7 +171,7 @@ public final class ScheduleManager {
     private synchronized void saveTasks() {
         try {
             Files.createDirectories(storagePath.getParent());
-            mapper.writeValue(storagePath.toFile(), new ArrayList<>(tasks.values()));
+            Envelope.MAPPER.writeValue(storagePath.toFile(), new ArrayList<>(tasks.values()));
         } catch (IOException e) {
             Log.error("Failed to save scheduled tasks: {}", e.getMessage());
         }

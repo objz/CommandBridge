@@ -5,4 +5,5 @@ public final class PlatformFeatureKeys {
     }
 
     public static final String PACKET_EVENTS = "packetevents";
+    public static final String PAPI = "papiproxybridge";
 }

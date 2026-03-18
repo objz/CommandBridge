@@ -298,16 +298,14 @@ public final class RedisClient implements BackendClient {
         if (p != null) {
             try {
                 p.close();
-            } catch (Exception ignore) {
+            } catch (Exception e) {
+                Log.warn("Failed to close Redis pool: {}", e.getMessage());
             }
         }
     }
 
     private String resolveSecret() {
-        String s = cfg.security() != null ? cfg.security().secret() : null;
-        if (s != null && !s.isBlank()) {
-            return s;
-        }
-        return new SecretLoader(dataDir).loadOrCreate();
+        String configSecret = cfg.security() != null ? cfg.security().secret() : null;
+        return SecretLoader.resolve(configSecret, dataDir);
     }
 }

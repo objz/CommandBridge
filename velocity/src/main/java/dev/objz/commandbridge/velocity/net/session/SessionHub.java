@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.net.session;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthStatus;
@@ -33,6 +34,7 @@ public final class SessionHub implements Iterable<ClientSession> {
             clientsByEndpoint.remove(previous.endpoint());
         }
         clientsByEndpoint.put(endpoint, s);
+        Log.debug("Session created for client '{}' via {}", clientId, endpoint.describe());
         return s;
     }
 
@@ -67,6 +69,7 @@ public final class SessionHub implements Iterable<ClientSession> {
 
         var removed = clientsByEndpoint.remove(endpoint);
         if (removed != null) {
+            Log.debug("Session removed for client '{}' via endpoint disconnect", removed.id());
             if (removed.id() != null) {
                 clientsById.remove(removed.id(), removed);
             }
@@ -94,7 +97,8 @@ public final class SessionHub implements Iterable<ClientSession> {
         if (listener != null) {
             try {
                 listener.accept(session);
-            } catch (Exception ignore) {
+            } catch (Exception e) {
+                Log.warn("Session removal listener failed for '{}': {}", session.id(), e.getMessage());
             }
         }
     }

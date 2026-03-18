@@ -41,12 +41,7 @@ public interface PlatformAdapter {
      * @param task      The task to run.
      * @param timeout   The total duration after which the task should stop running.
      * @param interval  The delay between executions (frequency).
-     * @return An object representing the scheduled task (for early cancellation).
+     * @return A handle for early cancellation.
      */
-    Object runSchedule(Runnable task, Duration timeout, Duration interval);
-
-    /**
-     * @param task The task object returned by runSchedule.
-     */
-    void cancelSchedule(Object task);
+    ScheduleHandle runSchedule(Runnable task, Duration timeout, Duration interval);
 }

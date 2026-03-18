@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.dispatch.stage;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.model.Permissions;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
@@ -29,7 +30,9 @@ public final class PermissionCheckStage implements Pipeline {
 
         String permissionNode = "commandbridge.command." + script.name();
 
-        if (context.source().hasPermission(permissionNode)) {
+        boolean hasPermission = context.source().hasPermission(permissionNode);
+        Log.debug("Permission check for '{}': node='{}', granted={}", script.name(), permissionNode, hasPermission);
+        if (hasPermission) {
             next.accept(ExecutionResult.ok(context));
             return;
         }

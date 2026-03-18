@@ -1,8 +1,10 @@
 package dev.objz.commandbridge.velocity.dispatch.stage;
 
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
-import dev.objz.commandbridge.velocity.Main;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
+import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionResult;
 import dev.objz.commandbridge.velocity.dispatch.model.Pipeline;
@@ -11,6 +13,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.william278.papiproxybridge.api.PlaceholderAPI;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +28,11 @@ import com.velocitypowered.api.proxy.Player;
 public final class PlaceholderStage implements Pipeline {
 
     private static final Pattern PATTERN = Pattern.compile("\\$\\{([^}]+)}");
+    private final PlatformFeatures platformFeatures;
+
+    public PlaceholderStage(PlatformFeatures platformFeatures) {
+        this.platformFeatures = Objects.requireNonNull(platformFeatures);
+    }
 
     @Override
     public void process(ExecutionContext context, Consumer<ExecutionResult> next) {
@@ -75,8 +83,7 @@ public final class PlaceholderStage implements Pipeline {
         matcher.appendTail(sb);
 
         String resolvedCommand = sb.toString();
-
-        // re validate the parsed string now with papi placeholder
+        Log.debug("Placeholder resolution: '{}' -> '{}'", rawCommand, resolvedCommand);
 
         Optional<UUID> papiUuid = parsePAPI(context.source());
 
@@ -120,7 +127,7 @@ public final class PlaceholderStage implements Pipeline {
     }
 
     private Optional<UUID> parsePAPI(CommandSource source) {
-        if (!Main.isPapiEnabled) {
+        if (!platformFeatures.isEnabled(Location.VELOCITY, PlatformFeatureKeys.PAPI)) {
             return Optional.empty();
         }
 

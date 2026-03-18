@@ -31,7 +31,7 @@ public final class CooldownStage implements Pipeline {
         if (cooldownManager.isOnCooldown(script.name(), player.getUniqueId())) {
             Duration remaining = cooldownManager.getRemaining(script.name(), player.getUniqueId());
             context.source().sendMessage(
-                    MM.error("Try again in " + formatDuration(remaining)));
+                    MM.error("Try again in " + MM.formatDuration(remaining)));
             next.accept(ExecutionResult.stop("Cooldown active"));
             return;
         }
@@ -42,10 +42,5 @@ public final class CooldownStage implements Pipeline {
         }
 
         next.accept(ExecutionResult.ok(context));
-    }
-
-    private String formatDuration(Duration d) {
-        long s = d.getSeconds();
-        return s + "s";
     }
 }
