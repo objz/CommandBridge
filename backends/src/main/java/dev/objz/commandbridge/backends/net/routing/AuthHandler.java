@@ -14,11 +14,11 @@ import java.util.function.Consumer;
 
 public final class AuthHandler {
     private final BackendsConfig cfg;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final AtomicReference<ConnectionState> stateRef;
     private volatile Runnable onAuthed;
 
-    public AuthHandler(BackendsConfig cfg, OutNode<Object> outNode, AtomicReference<ConnectionState> stateRef) {
+    public AuthHandler(BackendsConfig cfg, OutNode outNode, AtomicReference<ConnectionState> stateRef) {
         this.cfg = cfg;
         this.outNode = outNode;
         this.stateRef = stateRef;

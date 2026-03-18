@@ -74,11 +74,11 @@ public final class Main {
     private final Logger velocityLogger;
     private final Metrics.Factory metrics;
 
-    private ConfigManager configManager;
+    private ConfigManager<VelocityConfig> configManager;
     private EndpointServer endpointServer;
     private RegistrationManager registrations;
     private InNode inNode;
-    private OutNode<Object> outNode;
+    private OutNode outNode;
     private VelocityConfig cfg;
     private SessionHub sessions;
     private PlayerTracker playerTracker;
@@ -87,7 +87,7 @@ public final class Main {
     private CBCommand command;
     private ScriptManager scriptManager;
     private CommandEntry commandEntry;
-    private Object backendBootstrap;
+    private dev.objz.commandbridge.lifecycle.BackendLifecycle backendBootstrap;
     private ArgumentBridge argumentBridge;
     private PlatformFeatures platformFeatures;
     private boolean legacyDetected;
@@ -114,9 +114,9 @@ public final class Main {
         copyExampleScript();
         checkLegacyInstallation();
 
-        configManager = new ConfigManager(dataDir);
-        boolean ok = configManager.load(VelocityConfig.class);
-        cfg = configManager.current(VelocityConfig.class);
+        configManager = new ConfigManager<>(dataDir, VelocityConfig.class);
+        boolean ok = configManager.load();
+        cfg = configManager.current();
         if (!ok || cfg == null) {
             return;
         }
@@ -153,7 +153,7 @@ public final class Main {
         playerTracker = new PlayerTracker();
         sessions.onRemove(session -> playerTracker.remove(session.id()));
         inNode = new InNode();
-        outNode = new OutNode<>();
+        outNode = new OutNode();
         outNode.setServerId(cfg.serverId());
 
         if (cfg.endpointType() == EndpointType.REDIS) {
@@ -222,11 +222,7 @@ public final class Main {
         }
 
         if (backendBootstrap != null) {
-            try {
-                backendBootstrap.getClass().getMethod("disable").invoke(backendBootstrap);
-            } catch (Exception ex) {
-                Log.error("Failed to disable backend mode: {}", ex.getMessage());
-            }
+            backendBootstrap.disable();
         }
 
         if (endpointServer != null) {
@@ -261,10 +257,16 @@ public final class Main {
             Class<?> clazz = Class.forName(bootstrapClass);
 
             var ctor = clazz.getConstructor(ProxyServer.class, Logger.class, Path.class, Object.class);
-            this.backendBootstrap = ctor.newInstance(proxy, velocityLogger, dataDir, pluginInstance);
+            var instance = ctor.newInstance(proxy, velocityLogger, dataDir, pluginInstance);
 
-            clazz.getMethod("load").invoke(backendBootstrap);
-            clazz.getMethod("enable").invoke(backendBootstrap);
+            if (!(instance instanceof dev.objz.commandbridge.lifecycle.BackendLifecycle lifecycle)) {
+                Log.error("Backend bootstrap does not implement BackendLifecycle");
+                return;
+            }
+
+            this.backendBootstrap = lifecycle;
+            lifecycle.load();
+            lifecycle.enable();
 
             Log.success(true, "CommandBridge running in Client Mode (Backend)");
 

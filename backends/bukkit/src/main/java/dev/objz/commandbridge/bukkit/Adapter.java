@@ -31,11 +31,12 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public final class Adapter implements PlatformAdapter {
+public final class Adapter implements PlatformAdapter<JavaPlugin> {
     private BackendClient client;
     private BackendsConfig cfg;
     private Path dataDir;
@@ -44,15 +45,12 @@ public final class Adapter implements PlatformAdapter {
     private boolean configOk = true;
 
     @Override
-    public void load(PlatformEnv env, Object plugin) throws Exception {
-        if (!(plugin instanceof JavaPlugin jp)) {
-            throw new IllegalArgumentException("Plugin must be instance of JavaPlugin");
-        }
-        this.plugin = jp;
+    public void load(PlatformEnv env, JavaPlugin plugin) throws Exception {
+        this.plugin = Objects.requireNonNull(plugin);
         this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
-        var cfgMgr = new ConfigManager(dataDir);
-        boolean ok = cfgMgr.load(BackendsConfig.class);
-        this.cfg = cfgMgr.current(BackendsConfig.class);
+        var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
+        boolean ok = cfgMgr.load();
+        this.cfg = cfgMgr.current();
         if (!ok || cfg == null) {
             configOk = false;
             return;
@@ -74,12 +72,12 @@ public final class Adapter implements PlatformAdapter {
         if (this.dataDir == null)
             this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
         if (this.cfg == null) {
-            var cfgMgr = new ConfigManager(dataDir);
-            if (!cfgMgr.load(BackendsConfig.class)) {
+            var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
+            if (!cfgMgr.load()) {
                 Log.error("Could not load BackendsConfig");
                 return;
             }
-            this.cfg = cfgMgr.current(BackendsConfig.class);
+            this.cfg = cfgMgr.current();
             Log.setDebug(cfg.debug());
         }
 

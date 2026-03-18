@@ -34,12 +34,12 @@ public final class UserCache {
 
     private final ProxyServer proxy;
     private final SessionHub sessions;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final ObjectMapper mapper = new ObjectMapper();
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final Path cachePath;
 
-    public UserCache(ProxyServer proxy, SessionHub sessions, OutNode<Object> outNode, Path cachePath) {
+    public UserCache(ProxyServer proxy, SessionHub sessions, OutNode outNode, Path cachePath) {
         this.proxy = Objects.requireNonNull(proxy);
         this.sessions = Objects.requireNonNull(sessions);
         this.outNode = Objects.requireNonNull(outNode);

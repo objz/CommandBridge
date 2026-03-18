@@ -27,10 +27,11 @@ public abstract class InboundHandler {
      * @param endpoint  The transport endpoint
      * @param request   The original request envelope
      * @param replyType The message type for the reply
-     * @param payload   The payload object
+     * @param payload   The payload object (serialized via Jackson)
+     * @param <P> The payload type
      * @return SendOperation
      */
-    protected SendOperation reply(Endpoint endpoint, Envelope request, MessageType replyType, Object payload) {
+    protected <P> SendOperation reply(Endpoint endpoint, Envelope request, MessageType replyType, P payload) {
         if (sendOperationFactory == null) {
             throw new IllegalStateException("Inbound send factory not configured");
         }

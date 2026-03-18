@@ -23,10 +23,10 @@ final class VelocityCommandRegistry implements CommandRegistryInterface {
     private final Set<String> registeredCommands = ConcurrentHashMap.newKeySet();
     private final Set<String> registeredAliases = ConcurrentHashMap.newKeySet();
     private final VelocityArgumentMapper argumentMapper;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final Object registrationLock = new Object();
 
-    VelocityCommandRegistry(ProxyServer proxy, OutNode<Object> outNode) {
+    VelocityCommandRegistry(ProxyServer proxy, OutNode outNode) {
         this.argumentMapper = new VelocityArgumentMapper(proxy);
         this.outNode = outNode;
     }

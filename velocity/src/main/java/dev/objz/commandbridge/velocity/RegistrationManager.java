@@ -31,7 +31,7 @@ public final class RegistrationManager {
 
     private final ProxyServer proxy;
     private final SessionHub sessions;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final String localServerId;
     private final Duration registerTimeout;
     private final CustomArgumentRegistry argumentRegistry;
@@ -44,7 +44,7 @@ public final class RegistrationManager {
     private volatile CommandEntry commandEntry;
 
     public RegistrationManager(ProxyServer proxy, SessionHub sessions, VelocityConfig config,
-            OutNode<Object> outNode, CustomArgumentRegistry argumentRegistry) {
+            OutNode outNode, CustomArgumentRegistry argumentRegistry) {
         this.proxy = Objects.requireNonNull(proxy);
         this.sessions = Objects.requireNonNull(sessions);
         this.outNode = Objects.requireNonNull(outNode);

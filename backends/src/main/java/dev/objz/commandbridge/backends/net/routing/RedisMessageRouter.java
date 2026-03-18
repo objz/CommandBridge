@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class RedisMessageRouter {
     private final InNode inNode;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final ResponseAwaiter awaiter;
     private final AtomicReference<ConnectionState> stateRef;
     private final String secret;
@@ -28,7 +28,7 @@ public final class RedisMessageRouter {
 
     public RedisMessageRouter(
             InNode inNode,
-            OutNode<Object> outNode,
+            OutNode outNode,
             ResponseAwaiter awaiter,
             AtomicReference<ConnectionState> stateRef,
             String secret,

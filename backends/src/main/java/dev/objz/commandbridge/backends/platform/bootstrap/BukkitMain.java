@@ -10,7 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class BukkitMain extends JavaPlugin {
 
-    private PlatformAdapter adapter;
+    private PlatformAdapter<JavaPlugin> adapter;
 
     @Override
     public void onLoad() {
@@ -68,10 +68,11 @@ public final class BukkitMain extends JavaPlugin {
         }
     }
 
-    private PlatformAdapter loadAdapter(String className) throws Exception {
+    @SuppressWarnings("unchecked")
+    private PlatformAdapter<JavaPlugin> loadAdapter(String className) throws Exception {
         try {
             Class<?> clazz = Class.forName(className);
-            return (PlatformAdapter) clazz.getDeclaredConstructor().newInstance();
+            return (PlatformAdapter<JavaPlugin>) clazz.getDeclaredConstructor().newInstance();
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Adapter class not found: " + className +
                     ". Make sure the corresponding backend module is included in the build.", e);

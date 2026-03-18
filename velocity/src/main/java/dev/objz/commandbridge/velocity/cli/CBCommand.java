@@ -32,20 +32,20 @@ import java.util.List;
 
 public final class CBCommand {
 
-    private final ConfigManager configManager;
+    private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
     private final RegistrationManager registrationManager;
     private final SessionHub sessionHub;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final VelocityConfig config;
     private final Path dataDir;
 
     public CBCommand(
-            ConfigManager configManager,
+            ConfigManager<VelocityConfig> configManager,
             ScriptManager scriptManager,
             RegistrationManager registrationManager,
             SessionHub sessionHub,
-            OutNode<Object> outNode,
+            OutNode outNode,
             VelocityConfig config,
             Path dataDir) {
 

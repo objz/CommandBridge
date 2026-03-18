@@ -22,10 +22,10 @@ public final class CommandRegistry implements CommandRegistryInterface {
     private final Set<String> registeredCommands = ConcurrentHashMap.newKeySet();
     private final Set<String> registeredAliases = ConcurrentHashMap.newKeySet();
     private final ArgumentMapperInterface<Argument<?>> argumentMapper;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final Object registrationLock = new Object();
 
-    public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper, OutNode<Object> outNode) {
+    public CommandRegistry(ArgumentMapperInterface<Argument<?>> mapper, OutNode outNode) {
         this.argumentMapper = mapper;
         this.outNode = outNode;
     }

@@ -2,18 +2,19 @@ package dev.objz.commandbridge.backends.platform.bootstrap;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
+import dev.objz.commandbridge.lifecycle.BackendLifecycle;
 import dev.objz.commandbridge.logging.Log;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
-public final class VelocityMain {
+public final class VelocityMain implements BackendLifecycle {
     private final ProxyServer proxy;
     private final Logger logger;
     private final Path dataDirectory;
     private final Object pluginInstance;
 
-    private PlatformAdapter adapter;
+    private PlatformAdapter<VelocityMain> adapter;
 
     public VelocityMain(ProxyServer proxy, Logger logger, Path dataDirectory, Object pluginInstance) {
         this.proxy = proxy;
@@ -26,7 +27,9 @@ public final class VelocityMain {
         try {
             String className = "dev.objz.commandbridge.velocity.Adapter";
             Class<?> clazz = Class.forName(className);
-            this.adapter = (PlatformAdapter) clazz.getDeclaredConstructor().newInstance();
+            @SuppressWarnings("unchecked")
+            PlatformAdapter<VelocityMain> typed = (PlatformAdapter<VelocityMain>) clazz.getDeclaredConstructor().newInstance();
+            this.adapter = typed;
 
             var env = new PlatformAdapter.PlatformEnv(dataDirectory, "client.yml");
             adapter.load(env, this);

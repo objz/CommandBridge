@@ -36,7 +36,6 @@ public final class EnumAdapter implements TypeAdapter<Enum<?>> {
                 "Unknown enum constant: " + name + " for " + c.getSimpleName());
     }
 
-    @SuppressWarnings("unchecked")
     private static <E extends Enum<E>> E exactValueOf(Class<?> enumClass, String name) {
         try {
             return Enum.valueOf((Class<E>) enumClass, name);

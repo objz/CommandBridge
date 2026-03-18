@@ -31,15 +31,15 @@ import java.util.concurrent.TimeUnit;
 
 public final class ReloadCommand extends AbstractCliCommand {
 
-    private final ConfigManager configManager;
+    private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
     private final RegistrationManager registrationManager;
     private final SessionHub sessionHub;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
 
-    public ReloadCommand(ConfigManager configManager, ScriptManager scriptManager,
+    public ReloadCommand(ConfigManager<VelocityConfig> configManager, ScriptManager scriptManager,
             RegistrationManager registrationManager, SessionHub sessionHub,
-            OutNode<Object> outNode) {
+            OutNode outNode) {
         this.configManager = configManager;
         this.scriptManager = scriptManager;
         this.registrationManager = registrationManager;
@@ -52,8 +52,8 @@ public final class ReloadCommand extends AbstractCliCommand {
         long startNs = System.nanoTime();
 
         try {
-            boolean configOk = configManager.reload(VelocityConfig.class);
-            var cfg = configManager.current(VelocityConfig.class);
+            boolean configOk = configManager.reload();
+            var cfg = configManager.current();
             if (!configOk || cfg == null) {
                 sendError(ctx, "Failed to reload config", "Check console for details", startNs);
                 return;

@@ -105,7 +105,7 @@ public final class PlatformProcessor implements PostProcessor {
                     .toArray(Class[]::new);
             var ctor = Script.class.getDeclaredConstructor(argTypes);
             ctor.setAccessible(true);
-            return (Script) ctor.newInstance(values);
+            return ctor.newInstance(values);
         } catch (Exception e) {
             ctx.problems().error("script", "Could not validate platform compatibility: " + e.getMessage());
             return null;

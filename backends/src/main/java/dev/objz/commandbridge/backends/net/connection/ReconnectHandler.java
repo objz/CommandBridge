@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ReconnectHandler {
     private final BackendsConfig cfg;
-    private final PlatformAdapter adapter;
+    private final PlatformAdapter<?> adapter;
     private final AtomicBoolean isReconnecting = new AtomicBoolean(false);
     private volatile ScheduleHandle reconnectionTask;
     private final Runnable reconnectCallback;
 
-    public ReconnectHandler(BackendsConfig cfg, PlatformAdapter adapter, Runnable reconnectCallback) {
+    public ReconnectHandler(BackendsConfig cfg, PlatformAdapter<?> adapter, Runnable reconnectCallback) {
         this.cfg = cfg;
         this.adapter = adapter;
         this.reconnectCallback = reconnectCallback;

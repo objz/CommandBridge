@@ -18,11 +18,9 @@ import java.util.concurrent.CompletableFuture;
 public final class VelocityExecutor implements CommandExecutor {
 
     private final ProxyServer proxy;
-    private final Object plugin;
 
-    public VelocityExecutor(ProxyServer proxy, Object plugin) {
+    public VelocityExecutor(ProxyServer proxy) {
         this.proxy = Objects.requireNonNull(proxy, "proxy");
-        this.plugin = Objects.requireNonNull(plugin, "plugin");
     }
 
     @Override

@@ -24,19 +24,22 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-public final class ConfigManager {
+public final class ConfigManager<T> {
     private final Path filePath;
-    private volatile Object current;
+    private final Class<T> modelClass;
+    private volatile T current;
 
     private static final Map<Class<?>, ConfigProfile<?>> PROFILES = Map.of(VelocityConfig.class,
             new VelocityConfigProfile(), BackendsConfig.class, new BackendsConfigProfile());
 
-    public ConfigManager(Path dataDir) {
+    public ConfigManager(Path dataDir, Class<T> modelClass) {
         this.filePath = dataDir.resolve("config.yml");
+        this.modelClass = modelClass;
     }
 
-    public ConfigManager(Path dataDir, String name) {
+    public ConfigManager(Path dataDir, String name, Class<T> modelClass) {
         this.filePath = dataDir.resolve(name);
+        this.modelClass = modelClass;
     }
 
     private YamlConfigurationLoader loader() {
@@ -47,11 +50,11 @@ public final class ConfigManager {
                 .build();
     }
 
-    public <T> boolean load(Class<T> modelClass) {
+    public boolean load() {
         ensureDir();
 
         if (!Files.exists(filePath)) {
-            saveDefaults(modelClass);
+            saveDefaults();
         }
 
         try {
@@ -104,12 +107,12 @@ public final class ConfigManager {
         }
     }
 
-    public <T> boolean reload(Class<T> modelClass) {
-        return load(modelClass);
+    public boolean reload() {
+        return load();
     }
 
-    public <T> T current(Class<T> modelClass) {
-        return modelClass.cast(current);
+    public T current() {
+        return current;
     }
 
     private void ensureDir() {
@@ -121,7 +124,7 @@ public final class ConfigManager {
         }
     }
 
-    private <T> void saveDefaults(Class<T> modelClass) {
+    private void saveDefaults() {
         try {
             var loader = loader();
             ConfigurationNode root = loader.createNode();

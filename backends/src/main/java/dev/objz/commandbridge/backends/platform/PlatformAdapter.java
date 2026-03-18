@@ -7,14 +7,14 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 
-public interface PlatformAdapter {
+public interface PlatformAdapter<P> {
     record PlatformEnv(Path dataDir, String configName) {
         public PlatformEnv(Path dataDir) {
             this(dataDir, "config.yml");
         }
     }
 
-    default void load(PlatformEnv env, Object plugin) throws Exception {
+    default void load(PlatformEnv env, P plugin) throws Exception {
     }
 
     void start(PlatformEnv env) throws Exception;

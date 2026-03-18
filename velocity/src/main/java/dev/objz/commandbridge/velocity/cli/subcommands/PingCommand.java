@@ -26,10 +26,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class PingCommand extends AbstractCliCommand {
 
     private final SessionHub sessions;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final Duration pingTimeout;
 
-    public PingCommand(SessionHub sessions, OutNode<Object> outNode, VelocityConfig config) {
+    public PingCommand(SessionHub sessions, OutNode outNode, VelocityConfig config) {
         this.sessions = sessions;
         this.outNode = outNode;
         this.pingTimeout = Duration.ofSeconds(config.timeouts().pingTimeout());

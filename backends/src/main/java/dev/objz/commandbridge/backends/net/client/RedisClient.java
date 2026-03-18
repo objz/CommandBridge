@@ -33,14 +33,14 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class RedisClient implements BackendClient {
     private final BackendsConfig cfg;
     private final Path dataDir;
-    private final PlatformAdapter adapter;
+    private final PlatformAdapter<?> adapter;
 
     private final ReconnectHandler reconnectHandler;
     private final AuthHandler authHandler;
     private final RedisMessageRouter messageRouter;
 
     private final InNode inNode = new InNode();
-    private final OutNode<Object> outNode = new OutNode<>();
+    private final OutNode outNode = new OutNode();
     private final ResponseAwaiter awaiter = new ResponseAwaiter();
     private final AtomicReference<ConnectionState> stateRef = new AtomicReference<>(ConnectionState.DISCONNECTED);
 
@@ -53,7 +53,7 @@ public final class RedisClient implements BackendClient {
     private Location location = Location.BACKEND;
     private String serverId;
 
-    public RedisClient(BackendsConfig cfg, Path dataDir, PlatformAdapter adapter) {
+    public RedisClient(BackendsConfig cfg, Path dataDir, PlatformAdapter<?> adapter) {
         this.cfg = Objects.requireNonNull(cfg);
         this.dataDir = Objects.requireNonNull(dataDir);
         this.adapter = Objects.requireNonNull(adapter);
@@ -157,7 +157,7 @@ public final class RedisClient implements BackendClient {
     }
 
     @Override
-    public OutNode<Object> outboundRouter() {
+    public OutNode outboundRouter() {
         return outNode;
     }
 

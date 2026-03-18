@@ -22,10 +22,10 @@ public final class RemoteDumpCollector {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final SessionHub sessions;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final Duration timeout;
 
-    public RemoteDumpCollector(SessionHub sessions, OutNode<Object> outNode, Duration timeout) {
+    public RemoteDumpCollector(SessionHub sessions, OutNode outNode, Duration timeout) {
         this.sessions = sessions;
         this.outNode = outNode;
         this.timeout = timeout;

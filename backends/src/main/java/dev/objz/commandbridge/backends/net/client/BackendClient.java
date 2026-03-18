@@ -22,14 +22,11 @@ public interface BackendClient extends AutoCloseable {
 
     InNode inboundRouter();
 
-    OutNode<Object> outboundRouter();
+    OutNode outboundRouter();
 
     void setLocation(Location location);
 
     void setServerId(String serverId);
 
     void onAuthenticated(Runnable callback);
-
-    @Override
-    void close() throws Exception;
 }

@@ -123,7 +123,7 @@ public final class DeclareCommandsPatchListener implements PacketListener {
             return;
         }
         node.setParser(Optional.of(parser));
-        node.setProperties(spec.properties());
+        node.setProperties(spec.properties().map(bytes -> List.<Object>copyOf(bytes)));
         spec.suggestionsTypeKey().ifPresent(suggestionsType -> {
             node.setSuggestionsType(Optional.of(new ResourceLocation(suggestionsType)));
             node.setFlags((byte) (node.getFlags() | Node.FLAG_CUSTOM_SUGGESTIONS));

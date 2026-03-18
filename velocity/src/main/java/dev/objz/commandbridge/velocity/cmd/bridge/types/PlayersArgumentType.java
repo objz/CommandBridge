@@ -16,9 +16,8 @@ public final class PlayersArgumentType implements CustomArgumentType<List<Entity
 
     // minecraft:entity flags: 0x01 = single only, 0x02 = players only
     // ManyPlayers = 0x02 (multiple allowed, players only)
-    private static final PacketArgumentSpec PACKET_SPEC =
-            PacketArgumentSpec.ofParser("minecraft:entity", List.of((Object) (byte) 2));
-
+    private static final PacketArgumentSpec PACKET_SPEC = PacketArgumentSpec.ofParser("minecraft:entity",
+            List.of((byte) 2));
     private final ProxyServer proxy;
 
     public PlayersArgumentType(ProxyServer proxy) {
@@ -30,7 +29,6 @@ public final class PlayersArgumentType implements CustomArgumentType<List<Entity
         return ArgType.PLAYERS;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Argument<List<EntityRef>> create(String nodeName) {
         return (Argument<List<EntityRef>>) (Argument<?>) new PlayersArgument(nodeName, proxy);

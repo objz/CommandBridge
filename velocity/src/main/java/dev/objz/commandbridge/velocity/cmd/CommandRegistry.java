@@ -74,10 +74,8 @@ public final class CommandRegistry implements CommandRegistryInterface {
             }
 
             cmd.executes((sender, args) -> {
-                CommandSource source = (CommandSource) sender;
-
                 if (executionHandler != null) {
-                    executionHandler.execute(cmdName, source, args, stub);
+                    executionHandler.execute(cmdName, sender, args, stub);
                 } else {
                     Log.info("Command '{}' executed by {} (no handler configured)", cmdName,
                             sender.toString());

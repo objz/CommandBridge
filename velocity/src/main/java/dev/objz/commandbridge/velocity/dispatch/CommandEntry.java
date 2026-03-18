@@ -62,7 +62,7 @@ public final class CommandEntry {
             Object plugin,
             ScriptManager scriptManager,
             SessionHub sessions,
-            OutNode<Object> outNode,
+            OutNode outNode,
             String localServerId,
             Path dataDir,
             PlayerTracker playerTracker,

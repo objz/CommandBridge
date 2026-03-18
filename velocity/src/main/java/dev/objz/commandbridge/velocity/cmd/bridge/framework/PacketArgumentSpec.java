@@ -6,7 +6,7 @@ import java.util.Optional;
 
 public record PacketArgumentSpec(
         String parserKey,
-        Optional<List<Object>> properties,
+        Optional<List<Byte>> properties,
         Optional<String> suggestionsTypeKey) {
 
     public PacketArgumentSpec {
@@ -19,7 +19,7 @@ public record PacketArgumentSpec(
         return new PacketArgumentSpec(parserKey, Optional.empty(), Optional.empty());
     }
 
-    public static PacketArgumentSpec ofParser(String parserKey, List<Object> properties) {
+    public static PacketArgumentSpec ofParser(String parserKey, List<Byte> properties) {
         return new PacketArgumentSpec(parserKey, Optional.of(List.copyOf(properties)), Optional.empty());
     }
 

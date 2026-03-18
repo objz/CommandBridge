@@ -28,11 +28,11 @@ import java.util.UUID;
 public final class CommandDispatcher {
 
     private final SessionHub sessions;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final LocalDispatcher velocityExecutor;
     private final PlayerTracker playerTracker;
 
-    public CommandDispatcher(SessionHub sessions, OutNode<Object> outNode, LocalDispatcher velocityExecutor,
+    public CommandDispatcher(SessionHub sessions, OutNode outNode, LocalDispatcher velocityExecutor,
                              PlayerTracker playerTracker) {
         this.sessions = sessions;
         this.outNode = outNode;

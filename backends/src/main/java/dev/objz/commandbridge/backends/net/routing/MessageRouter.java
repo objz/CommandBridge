@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public final class MessageRouter {
     private final InNode inNode;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final ResponseAwaiter awaiter;
     private final AtomicReference<ConnectionState> stateRef;
     private final Runnable reconnectCallback;
@@ -35,7 +35,7 @@ public final class MessageRouter {
 
     public MessageRouter(
             InNode inNode,
-            OutNode<Object> outNode,
+            OutNode outNode,
             ResponseAwaiter awaiter,
             AtomicReference<ConnectionState> stateRef,
             Runnable reconnectCallback,

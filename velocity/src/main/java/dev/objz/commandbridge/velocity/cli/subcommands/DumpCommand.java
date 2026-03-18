@@ -28,7 +28,7 @@ public final class DumpCommand extends AbstractCliCommand {
 
     private final RegistrationManager registrations;
     private final SessionHub sessions;
-    private final OutNode<Object> outNode;
+    private final OutNode outNode;
     private final ScriptManager scripts;
     private final VelocityConfig config;
     private final DumpExporter exporter;
@@ -36,7 +36,7 @@ public final class DumpCommand extends AbstractCliCommand {
     public DumpCommand(
             RegistrationManager registrations,
             SessionHub sessions,
-            OutNode<Object> outNode,
+            OutNode outNode,
             ScriptManager scripts,
             VelocityConfig config,
             Path dataDir) {

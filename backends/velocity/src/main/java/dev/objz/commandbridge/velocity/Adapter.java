@@ -34,7 +34,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public final class Adapter implements PlatformAdapter {
+public final class Adapter implements PlatformAdapter<VelocityMain> {
     private BackendClient client;
     private BackendsConfig cfg;
     private Path dataDir;
@@ -44,17 +44,14 @@ public final class Adapter implements PlatformAdapter {
     private boolean configOk = true;
 
     @Override
-    public void load(PlatformEnv env, Object plugin) throws Exception {
-        if (!(plugin instanceof VelocityMain bootstrap)) {
-            throw new IllegalArgumentException("Plugin must be instance of VelocityMain");
-        }
-        this.proxy = bootstrap.getProxy();
-        this.pluginInstance = bootstrap.getPluginInstance();
+    public void load(PlatformEnv env, VelocityMain plugin) throws Exception {
+        this.proxy = plugin.getProxy();
+        this.pluginInstance = plugin.getPluginInstance();
 
         this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
-        var cfgMgr = new ConfigManager(dataDir, env.configName());
-        boolean ok = cfgMgr.load(BackendsConfig.class);
-        this.cfg = cfgMgr.current(BackendsConfig.class);
+        var cfgMgr = new ConfigManager<>(dataDir, env.configName(), BackendsConfig.class);
+        boolean ok = cfgMgr.load();
+        this.cfg = cfgMgr.current();
         if (!ok || cfg == null) {
             configOk = false;
             return;
@@ -64,7 +61,7 @@ public final class Adapter implements PlatformAdapter {
             Log.info("Debug mode is {}", cfg.debug() ? "enabled" : "disabled");
         }
 
-        this.commandExecutor = new VelocityExecutor(proxy, this.pluginInstance);
+        this.commandExecutor = new VelocityExecutor(proxy);
     }
 
     @Override
@@ -76,12 +73,12 @@ public final class Adapter implements PlatformAdapter {
             this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 
         if (this.cfg == null) {
-            var cfgMgr = new ConfigManager(dataDir);
-            if (!cfgMgr.load(BackendsConfig.class)) {
+            var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
+            if (!cfgMgr.load()) {
                 Log.error("Could not load BackendsConfig");
                 return;
             }
-            this.cfg = cfgMgr.current(BackendsConfig.class);
+            this.cfg = cfgMgr.current();
             Log.setDebug(cfg.debug());
         }
 
@@ -89,7 +86,7 @@ public final class Adapter implements PlatformAdapter {
             if (proxy == null)
                 throw new IllegalStateException(
                         "ProxyServer not initialized (load() was not called or failed)");
-            this.commandExecutor = new VelocityExecutor(proxy, pluginInstance);
+            this.commandExecutor = new VelocityExecutor(proxy);
         }
 
         this.client = cfg.endpointType() == EndpointType.REDIS

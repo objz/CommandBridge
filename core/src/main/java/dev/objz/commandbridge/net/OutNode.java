@@ -12,11 +12,15 @@ import java.util.function.Function;
 import dev.objz.commandbridge.net.proto.Envelope;
 
 /**
- * @param <T> The context type that handlers receive
+ * Type-safe heterogeneous outbound message router.
+ * <p>
+ * Each {@link MessageType} is bound to a specific {@link OutboundHandler} context type
+ * at registration time. The type safety is enforced by the contract: callers must
+ * invoke {@code send(type, context)} with the same context type that was registered.
  */
-public class OutNode<T> {
+public final class OutNode {
 
-    private final Map<MessageType, OutboundHandler<? super T>> handlers;
+    private final Map<MessageType, OutboundHandler<?>> handlers;
     private Function<Envelope, SendOperation> sendOperationFactory;
     private BiFunction<Endpoint, Envelope, SendOperation> endpointSendFactory;
     private String clientId;
@@ -26,36 +30,35 @@ public class OutNode<T> {
         this.handlers = new EnumMap<>(MessageType.class);
     }
 
-    public OutNode<T> setSendOperationFactory(Function<Envelope, SendOperation> factory) {
+    public OutNode setSendOperationFactory(Function<Envelope, SendOperation> factory) {
         this.sendOperationFactory = factory;
         return this;
     }
 
-    public OutNode<T> setEndpointSendFactory(
+    public OutNode setEndpointSendFactory(
             BiFunction<Endpoint, Envelope, SendOperation> factory) {
         this.endpointSendFactory = factory;
         return this;
     }
 
-    public OutNode<T> setClientId(String clientId) {
+    public OutNode setClientId(String clientId) {
         this.clientId = clientId;
         return this;
     }
 
-    public OutNode<T> setServerId(String serverId) {
+    public OutNode setServerId(String serverId) {
         this.serverId = serverId;
         return this;
     }
 
-    public <C extends T> OutNode<T> register(MessageType type, OutboundHandler<C> handler) {
+    public <T> OutNode register(MessageType type, OutboundHandler<T> handler) {
         Objects.requireNonNull(type);
         Objects.requireNonNull(handler);
         handler.setSendOperationFactory(sendOperationFactory);
         handler.setEndpointSendFactory(endpointSendFactory);
         handler.setClientId(clientId);
         handler.setServerId(serverId);
-        OutboundHandler<? super T> typedHandler = (OutboundHandler<? super T>) handler;
-        handlers.put(type, typedHandler);
+        handlers.put(type, handler);
         return this;
     }
 
@@ -64,7 +67,8 @@ public class OutNode<T> {
      * @param context The context containing data for building the message
      * @return SendOperation
      */
-    public SendOperation send(MessageType type, T context) {
+    @SuppressWarnings("unchecked")
+    public <T> SendOperation send(MessageType type, T context) {
         if (type == null) {
             throw new IllegalArgumentException("MessageType cannot be null");
         }

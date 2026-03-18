@@ -29,9 +29,6 @@ public final class WsClient implements BackendClient {
     private final BackendsConfig cfg;
     private final Path dataDir;
 
-    // idk about this
-    private final PlatformAdapter adapter;
-
     private final ResourcePool resources;
     private final ConnectionHandler connectionHandler;
     private final ReconnectHandler reconnectHandler;
@@ -39,17 +36,16 @@ public final class WsClient implements BackendClient {
     private final AuthHandler authHandler;
 
     private final InNode inNode = new InNode();
-    private final OutNode<Object> outNode = new OutNode<>();
+    private final OutNode outNode = new OutNode();
     private final ResponseAwaiter awaiter = new ResponseAwaiter();
 
     private final AtomicReference<ConnectionState> stateRef = new AtomicReference<>(ConnectionState.DISCONNECTED);
     private Location location = Location.BACKEND;
     private String serverId;
 
-    public WsClient(BackendsConfig cfg, Path dataDir, PlatformAdapter adapter) {
+    public WsClient(BackendsConfig cfg, Path dataDir, PlatformAdapter<?> adapter) {
         this.cfg = Objects.requireNonNull(cfg);
         this.dataDir = Objects.requireNonNull(dataDir);
-        this.adapter = Objects.requireNonNull(adapter);
         this.resources = new ResourcePool();
         this.connectionHandler = new ConnectionHandler(cfg, resources);
         this.reconnectHandler = new ReconnectHandler(cfg, adapter, this::attemptReconnect);
@@ -180,7 +176,7 @@ public final class WsClient implements BackendClient {
     }
 
     @Override
-    public OutNode<Object> outboundRouter() {
+    public OutNode outboundRouter() {
         return outNode;
     }
 
