@@ -11,13 +11,6 @@ import java.util.function.Function;
 
 import dev.objz.commandbridge.net.proto.Envelope;
 
-/**
- * Type-safe heterogeneous outbound message router.
- * <p>
- * Each {@link MessageType} is bound to a specific {@link OutboundHandler} context type
- * at registration time. The type safety is enforced by the contract: callers must
- * invoke {@code send(type, context)} with the same context type that was registered.
- */
 public final class OutNode {
 
     private final Map<MessageType, OutboundHandler<?>> handlers;
