@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.backends.net.client;
 
 import dev.objz.commandbridge.backends.net.connection.ConnectionHandler;
-import dev.objz.commandbridge.backends.net.connection.ConnectionState;
+import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.backends.net.connection.ReconnectHandler;
 import dev.objz.commandbridge.backends.net.connection.ResourcePool;
@@ -162,7 +162,7 @@ public final class WsClient implements BackendClient {
 
     @Override
     public ClientStatus status() {
-        return stateRef.get().toClientStatus();
+        return ClientStatus.fromConnectionState(stateRef.get());
     }
 
     @Override

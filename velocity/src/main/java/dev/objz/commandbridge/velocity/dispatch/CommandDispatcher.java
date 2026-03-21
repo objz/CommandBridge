@@ -8,7 +8,7 @@ import dev.objz.commandbridge.net.payloads.feedback.Feedback;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.Location;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.velocity.dispatch.exec.LocalDispatcher;

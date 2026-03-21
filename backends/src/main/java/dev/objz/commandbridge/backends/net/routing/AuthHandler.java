@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.backends.net.routing;
 
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
-import dev.objz.commandbridge.backends.net.connection.ConnectionState;
+import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
@@ -31,7 +31,7 @@ public final class AuthHandler {
     public boolean authenticate() {
 
         Consumer<ClientStatus> statusUpdater = status -> {
-            ConnectionState newState = ConnectionState.fromClientStatus(status);
+            ConnectionState newState = status.toConnectionState();
             stateRef.set(newState);
 
             if (newState == ConnectionState.AUTHENTICATED) {

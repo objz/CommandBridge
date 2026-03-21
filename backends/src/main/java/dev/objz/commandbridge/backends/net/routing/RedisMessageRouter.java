@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.backends.net.routing;
 
-import dev.objz.commandbridge.backends.net.connection.ConnectionState;
+import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.backends.net.in.PingHandler;
 import dev.objz.commandbridge.backends.net.out.AuthRequest;
 import dev.objz.commandbridge.backends.net.out.InvokedCommandEvent;

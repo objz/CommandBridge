@@ -4,7 +4,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 
 import java.util.Objects;
 import java.util.UUID;

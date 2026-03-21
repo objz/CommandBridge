@@ -1,7 +1,7 @@
 package dev.objz.commandbridge.backends.net.client;
 
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
-import dev.objz.commandbridge.backends.net.connection.ConnectionState;
+import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.backends.net.connection.ReconnectHandler;
 import dev.objz.commandbridge.backends.net.routing.AuthHandler;
 import dev.objz.commandbridge.backends.net.routing.RedisMessageRouter;
@@ -143,7 +143,7 @@ public final class RedisClient implements BackendClient {
 
     @Override
     public ClientStatus status() {
-        return stateRef.get().toClientStatus();
+        return ClientStatus.fromConnectionState(stateRef.get());
     }
 
     @Override

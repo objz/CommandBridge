@@ -1,6 +1,6 @@
 package dev.objz.commandbridge.velocity.net.out.ctx;
 
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 
 import java.util.Objects;

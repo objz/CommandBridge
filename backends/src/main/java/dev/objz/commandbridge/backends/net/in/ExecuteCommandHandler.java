@@ -8,7 +8,7 @@ import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommand;
 import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommandResult;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 
 import java.util.HashSet;
 import java.util.Objects;
