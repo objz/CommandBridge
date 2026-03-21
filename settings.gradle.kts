@@ -6,6 +6,7 @@ plugins {
 rootProject.name = "CommandBridge"
 include("core")
 include("velocity")
+include("api")
 
 include("dist")
 
