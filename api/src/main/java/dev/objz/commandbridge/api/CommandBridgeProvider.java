@@ -25,7 +25,7 @@ public final class CommandBridgeProvider {
         return type.cast(api);
     }
 
-    static void register(CommandBridgeAPI impl) {
+    public static void register(CommandBridgeAPI impl) {
         Objects.requireNonNull(impl);
         if (instance != null) {
             throw new IllegalStateException("CommandBridge already registered");
@@ -33,7 +33,7 @@ public final class CommandBridgeProvider {
         instance = impl;
     }
 
-    static void unregister() {
+    public static void unregister() {
         instance = null;
     }
 }

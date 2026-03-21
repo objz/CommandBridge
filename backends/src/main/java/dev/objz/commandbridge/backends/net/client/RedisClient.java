@@ -2,6 +2,7 @@ package dev.objz.commandbridge.backends.net.client;
 
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.api.platform.ConnectionState;
+import dev.objz.commandbridge.backends.api.BackendCommandBridgeImpl;
 import dev.objz.commandbridge.backends.net.connection.ReconnectHandler;
 import dev.objz.commandbridge.backends.net.routing.AuthHandler;
 import dev.objz.commandbridge.backends.net.routing.RedisMessageRouter;
@@ -43,6 +44,7 @@ public final class RedisClient implements BackendClient {
     private final OutNode outNode = new OutNode();
     private final ResponseAwaiter awaiter = new ResponseAwaiter();
     private final AtomicReference<ConnectionState> stateRef = new AtomicReference<>(ConnectionState.DISCONNECTED);
+    private final BackendCommandBridgeImpl api;
 
     private volatile JedisPool pool;
     private volatile JedisPubSub subscriber;
@@ -69,6 +71,7 @@ public final class RedisClient implements BackendClient {
                 location);
 
         outNode.setClientId(cfg.clientId());
+        this.api = new BackendCommandBridgeImpl(this);
     }
 
     @Override
@@ -89,6 +92,7 @@ public final class RedisClient implements BackendClient {
 
             proxyEndpoint = new RedisEndpoint("proxy", this::publishToProxy, this::isConnected);
             messageRouter.setupEndpoint(proxyEndpoint);
+            api.bootstrap();
             startSubscriber();
 
             stateRef.set(ConnectionState.CONNECTED);
@@ -112,6 +116,7 @@ public final class RedisClient implements BackendClient {
     public synchronized void reconnect() throws Exception {
         Log.warn("Manual reconnection initiated");
         reconnectHandler.shutdown();
+        api.shutdown();
         messageRouter.clearTap();
         stopInternal();
         stateRef.set(ConnectionState.DISCONNECTED);

@@ -9,9 +9,7 @@ import java.util.concurrent.CompletableFuture;
 
 public interface MessageChannel<P extends ChannelPayload> {
 
-    void send(Platform.ServerTarget target, P payload);
-
-    CompletableFuture<Void> sendAsync(Platform.ServerTarget target, P payload);
+    CompletableFuture<Void> send(Platform.ServerTarget target, P payload);
 
     CompletableFuture<P> request(Platform.ServerTarget target, P payload);
 

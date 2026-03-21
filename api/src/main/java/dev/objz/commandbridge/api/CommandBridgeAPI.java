@@ -11,13 +11,14 @@ import dev.objz.commandbridge.api.platform.PlayerLocator;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public interface CommandBridgeAPI {
 
     <T extends ChannelPayload, C extends MessageChannel<T>> C channel(ChannelType<T, C> type);
 
-    <P extends ChannelPayload> void broadcast(MessageChannel<P> channel, P payload);
+    <P extends ChannelPayload> CompletableFuture<Void> broadcast(MessageChannel<P> channel, P payload);
 
     Platform.ServerTarget server();
 

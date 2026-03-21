@@ -2,6 +2,7 @@ package dev.objz.commandbridge.backends.net.client;
 
 import dev.objz.commandbridge.backends.net.connection.ConnectionHandler;
 import dev.objz.commandbridge.api.platform.ConnectionState;
+import dev.objz.commandbridge.backends.api.BackendCommandBridgeImpl;
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.backends.net.connection.ReconnectHandler;
 import dev.objz.commandbridge.backends.net.connection.ResourcePool;
@@ -38,6 +39,7 @@ public final class WsClient implements BackendClient {
     private final InNode inNode = new InNode();
     private final OutNode outNode = new OutNode();
     private final ResponseAwaiter awaiter = new ResponseAwaiter();
+    private final BackendCommandBridgeImpl api;
 
     private final AtomicReference<ConnectionState> stateRef = new AtomicReference<>(ConnectionState.DISCONNECTED);
     private Location location = Location.BACKEND;
@@ -62,6 +64,7 @@ public final class WsClient implements BackendClient {
                 location);
 
         outNode.setClientId(cfg.clientId());
+        this.api = new BackendCommandBridgeImpl(this);
     }
 
     @Override
@@ -91,6 +94,7 @@ public final class WsClient implements BackendClient {
             stateRef.set(ConnectionState.CONNECTED);
 
             messageRouter.setupChannel(channel);
+            api.bootstrap();
 
             authHandler.authenticate();
 
@@ -144,6 +148,7 @@ public final class WsClient implements BackendClient {
         Log.debug("Closing WsClient");
 
         reconnectHandler.shutdown();
+        api.shutdown();
 
         try {
             messageRouter.clearTap();
