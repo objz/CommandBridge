@@ -2,7 +2,7 @@ package dev.objz.commandbridge.backends.platform;
 
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommand;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;

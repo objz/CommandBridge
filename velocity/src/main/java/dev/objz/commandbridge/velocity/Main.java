@@ -10,6 +10,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
+import dev.objz.commandbridge.api.CommandBridgeProvider;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.config.model.VelocityConfig;
@@ -29,6 +30,8 @@ import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.util.ModrinthAPI;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
+import dev.objz.commandbridge.velocity.api.VelocityCommandBridgeImpl;
+import dev.objz.commandbridge.velocity.api.VelocityPluginMessageHandler;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
 import dev.objz.commandbridge.velocity.cmd.bridge.packetevents.PacketEventsArgumentBridge;
 import dev.objz.commandbridge.velocity.cmd.bridge.types.OfflinePlayerArgumentType;
@@ -88,6 +91,7 @@ public final class Main {
     private ScriptManager scriptManager;
     private CommandEntry commandEntry;
     private dev.objz.commandbridge.lifecycle.BackendLifecycle backendBootstrap;
+    private VelocityCommandBridgeImpl api;
     private ArgumentBridge argumentBridge;
     private PlatformFeatures platformFeatures;
     private boolean legacyDetected;
@@ -151,7 +155,12 @@ public final class Main {
 
         sessions = new SessionHub();
         playerTracker = new PlayerTracker();
-        sessions.onRemove(session -> playerTracker.remove(session.id()));
+        sessions.onRemove(session -> {
+            playerTracker.remove(session.id());
+            if (api != null) {
+                api.onServerDisconnected(session);
+            }
+        });
         inNode = new InNode();
         outNode = new OutNode();
         outNode.setServerId(cfg.serverId());
@@ -197,9 +206,9 @@ public final class Main {
 
         registrations.load(scriptManager.enabled());
 
-        installRoutes();
+        api = new VelocityCommandBridgeImpl(sessions, playerTracker, cfg.serverId(), endpointServer);
 
-        authHandler.onAuthenticated(registrations::onClientAuthenticated);
+        installRoutes();
 
         command = new CBCommand(
                 configManager,
@@ -210,6 +219,13 @@ public final class Main {
                 cfg,
                 dataDir);
         command.register();
+
+        CommandBridgeProvider.register(api);
+        authHandler.onAuthenticated(session -> {
+            registrations.onClientAuthenticated(session);
+            api.onServerConnected(session);
+        });
+
         checkForUpdate();
     }
 
@@ -228,6 +244,8 @@ public final class Main {
         if (endpointServer != null) {
             endpointServer.stop();
         }
+
+        CommandBridgeProvider.unregister();
     }
 
     private void installRoutes() {
@@ -242,6 +260,8 @@ public final class Main {
         var playerUpdateHandler = new PlayerUpdateHandler(sessions, playerTracker);
         inNode.register(MessageType.PLAYER_JOIN, playerUpdateHandler);
         inNode.register(MessageType.PLAYER_LEAVE, playerUpdateHandler);
+        inNode.register(MessageType.PLUGIN_MESSAGE, new VelocityPluginMessageHandler(api, false));
+        inNode.register(MessageType.PLUGIN_MESSAGE_RESPONSE, new VelocityPluginMessageHandler(api, true));
 
         outNode.setEndpointSendFactory((endpoint, env) -> endpointServer.send(endpoint, env));
         outNode.register(MessageType.REGISTER_COMMANDS, new RegistrationRequest());

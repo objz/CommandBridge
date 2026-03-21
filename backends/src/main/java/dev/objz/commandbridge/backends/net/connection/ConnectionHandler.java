@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.backends.net.connection;
 
+import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.logging.Log;

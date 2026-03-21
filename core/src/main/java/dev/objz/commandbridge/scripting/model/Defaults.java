@@ -7,7 +7,7 @@ import dev.objz.commandbridge.scripting.anno.Default;
 import dev.objz.commandbridge.scripting.anno.Min;
 import dev.objz.commandbridge.scripting.anno.Model;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.scripting.model.records.Server;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 

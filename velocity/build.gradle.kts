@@ -17,6 +17,7 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":api"))
     implementation(project(":core"))
     implementation("redis.clients:jedis:7.1.0")
 

@@ -9,7 +9,7 @@ import dev.objz.commandbridge.scripting.anno.Model;
 import dev.objz.commandbridge.scripting.anno.Required;
 import dev.objz.commandbridge.scripting.anno.Resolvable;
 import dev.objz.commandbridge.scripting.anno.YmlKey;
-import dev.objz.commandbridge.scripting.model.enums.RunAs;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.scripting.model.records.Server;
 
 @Model("commands")
