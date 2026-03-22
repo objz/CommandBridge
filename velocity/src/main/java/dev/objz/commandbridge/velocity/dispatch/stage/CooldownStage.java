@@ -36,11 +36,6 @@ public final class CooldownStage implements Pipeline {
             return;
         }
 
-        Duration duration = script.defaults().cooldown();
-        if (duration != null && !duration.isZero()) {
-            cooldownManager.setCooldown(script.name(), player.getUniqueId(), duration);
-        }
-
         next.accept(ExecutionResult.ok(context));
     }
 }

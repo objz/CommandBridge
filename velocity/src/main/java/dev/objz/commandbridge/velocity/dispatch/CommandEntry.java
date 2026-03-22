@@ -56,6 +56,7 @@ public final class CommandEntry {
     private final UserCache userCache;
     private final List<Pipeline> pipelineStages;
     private final PlatformFeatures platformFeatures;
+    private final PlaceholderStage placeholderStage;
 
     public CommandEntry(
             ProxyServer proxy,
@@ -84,6 +85,7 @@ public final class CommandEntry {
         this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor, playerTracker);
 
         this.cooldowns = new CooldownManager();
+        this.placeholderStage = new PlaceholderStage(platformFeatures);
         this.pipelineStages = List.of(
                 new ScriptResolutionStage(scriptManager),
                 new ArgumentMappingStage(),
@@ -138,6 +140,12 @@ public final class CommandEntry {
     }
 
     private void executeCommands(ExecutionContext ctx) {
+        if (ctx.script() != null && ctx.source() instanceof Player player) {
+            Duration scriptCooldown = ctx.script().defaults().cooldown();
+            if (scriptCooldown != null && !scriptCooldown.isZero()) {
+                cooldowns.setCooldown(ctx.script().name(), player.getUniqueId(), scriptCooldown);
+            }
+        }
         Optional.ofNullable(ctx.script())
                 .map(Script::commands)
                 .filter(Predicate.not(List::isEmpty))
@@ -161,15 +169,16 @@ public final class CommandEntry {
             }
         }
 
-        new PlaceholderStage(platformFeatures).process(nextCtx, result -> {
+        placeholderStage.process(nextCtx, result -> {
             if (result instanceof ExecutionResult.Continue c) {
-                if (ctx.source() instanceof Player player && cmd.cooldown() != null
-                        && !cmd.cooldown().isZero() && !cmd.cooldown().isNegative()) {
-                    String cooldownKey = ctx.script().name() + ":" + index;
-                    cooldowns.setCooldown(cooldownKey, player.getUniqueId(), cmd.cooldown());
-                }
-                resolvePlayerArg(c.context()).thenAccept(resolved ->
-                        scheduleAndExecute(resolved, () -> processCommandAt(ctx, commands, index + 1)));
+                resolvePlayerArg(c.context()).thenAccept(resolved -> {
+                    if (ctx.source() instanceof Player player && cmd.cooldown() != null
+                            && !cmd.cooldown().isZero() && !cmd.cooldown().isNegative()) {
+                        String cooldownKey = ctx.script().name() + ":" + index;
+                        cooldowns.setCooldown(cooldownKey, player.getUniqueId(), cmd.cooldown());
+                    }
+                    scheduleAndExecute(resolved, () -> processCommandAt(ctx, commands, index + 1));
+                });
             }
         });
     }

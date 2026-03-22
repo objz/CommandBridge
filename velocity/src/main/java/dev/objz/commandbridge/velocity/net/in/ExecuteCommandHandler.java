@@ -81,11 +81,14 @@ public final class ExecuteCommandHandler extends InboundHandler {
                 MM.parse("<dark_gray>If this persists, please contact an administrator</dark_gray>"));
 
         if (player.hasPermission("commandbridge.admin")) {
-            player.sendMessage(MM.parse("<dark_gray>Command: </dark_gray><white>" + command + "</white>"));
-            player.sendMessage(MM.parse("<dark_gray>Backend: </dark_gray><white>" + clientId + "</white>"));
+            String safeCmd = command != null ? command.replace("<", "\\<") : "unknown";
+            String safeClient = clientId != null ? clientId.replace("<", "\\<") : "unknown";
+            player.sendMessage(MM.parse("<dark_gray>Command: </dark_gray><white>" + safeCmd + "</white>"));
+            player.sendMessage(MM.parse("<dark_gray>Backend: </dark_gray><white>" + safeClient + "</white>"));
             if (errorMessage != null) {
+                String safeError = errorMessage.replace("<", "\\<");
                 player.sendMessage(MM.parse(
-                        "<dark_gray>Error:  </dark_gray><red>" + errorMessage + "</red>"));
+                        "<dark_gray>Error:  </dark_gray><red>" + safeError + "</red>"));
             }
         }
     }

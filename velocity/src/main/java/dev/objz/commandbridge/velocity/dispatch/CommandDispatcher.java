@@ -132,6 +132,7 @@ public final class CommandDispatcher {
     private void notifyExecutionError(CommandSource source, String command, String errorMessage) {
         if (source == null)
             return;
-        source.sendMessage(MM.parse("<red>⚠</red> <gray>Execution failed: " + errorMessage + "</gray>"));
+        String safe = errorMessage != null ? errorMessage.replace("<", "\\<") : "unknown";
+        source.sendMessage(MM.parse("<red>⚠</red> <gray>Execution failed: " + safe + "</gray>"));
     }
 }
