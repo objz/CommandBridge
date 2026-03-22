@@ -231,11 +231,16 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     private PluginMessage requirePluginMessage(Envelope env) {
+        PluginMessage message;
         try {
-            return Envelope.MAPPER.treeToValue(env.payload(), PluginMessage.class);
+            message = Envelope.MAPPER.treeToValue(env.payload(), PluginMessage.class);
         } catch (Exception e) {
             throw new CompletionException(e);
         }
+        if (message.error() != null) {
+            throw new CompletionException(new IllegalStateException(message.error()));
+        }
+        return message;
     }
 
     private String localServerId() {

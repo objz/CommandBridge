@@ -43,6 +43,7 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     private final PlayerTracker playerTracker;
     private final String serverId;
     private final EndpointServer endpointServer;
+    private final PluginMessageQueue pluginMessageQueue;
 
     private final ConcurrentHashMap<Class<?>, MessageChannel<?>> channels = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Class<?>> payloadTypesByName = new ConcurrentHashMap<>();
@@ -53,11 +54,13 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     public VelocityCommandBridgeImpl(SessionHub sessions,
             PlayerTracker playerTracker,
             String serverId,
-            EndpointServer endpointServer) {
+            EndpointServer endpointServer,
+            PluginMessageQueue pluginMessageQueue) {
         this.sessions = Objects.requireNonNull(sessions);
         this.playerTracker = Objects.requireNonNull(playerTracker);
         this.serverId = Objects.requireNonNull(serverId);
         this.endpointServer = Objects.requireNonNull(endpointServer);
+        this.pluginMessageQueue = Objects.requireNonNull(pluginMessageQueue);
     }
 
     @Override
@@ -154,6 +157,10 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     public void handlePluginMessageRequest(Endpoint endpoint, Envelope env) {
         String to = env.to();
         if (to != null && !to.equals(serverId) && !"*".equals(to)) {
+            PluginMessage relayMsg = readPluginMessage(env);
+            if (relayMsg != null && !evaluateRelayConditions(env, relayMsg)) {
+                return;
+            }
             relayDirect(env);
             return;
         }
@@ -216,6 +223,18 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
             return CompletableFuture.completedFuture(null);
         }
 
+        if (payload.requirePlayer() != null) {
+            if (!playerTracker.isPlayerOn(payload.requirePlayer(), target.id())) {
+                return CompletableFuture.completedFuture(null);
+            }
+        }
+        if (payload.whenOnline() != null) {
+            if (!playerTracker.isPlayerOn(payload.whenOnline(), target.id())) {
+                pluginMessageQueue.queue(payload.whenOnline(), target, payload, null);
+                return CompletableFuture.completedFuture(null);
+            }
+        }
+
         Optional<ClientSession> session = sessions.findSession(target.id(), toLocation(target.type()));
         if (session.isEmpty()) {
             return CompletableFuture.failedFuture(
@@ -249,6 +268,13 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
                     Envelope.MAPPER.valueToTree(payload));
             dispatchLocal(local, payload);
             return CompletableFuture.completedFuture(payload);
+        }
+
+        if (payload.requirePlayer() != null) {
+            if (!playerTracker.isPlayerOn(payload.requirePlayer(), target.id())) {
+                return CompletableFuture.failedFuture(
+                        new IllegalStateException("Player not on target server: " + target.id()));
+            }
         }
 
         Optional<ClientSession> session = sessions.findSession(target.id(), toLocation(target.type()));
@@ -329,6 +355,43 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
                 return null;
             });
         }
+    }
+
+    private boolean evaluateRelayConditions(Envelope env, PluginMessage message) {
+        String targetId = env.to();
+
+        if (message.requirePlayer() != null) {
+            if (!playerTracker.isPlayerOn(message.requirePlayer(), targetId)) {
+                if (message.expectsResponse()) {
+                    sendErrorResponse(env, "Player not on target server: " + targetId);
+                }
+                return false;
+            }
+        }
+
+        if (message.whenOnline() != null) {
+            if (!playerTracker.isPlayerOn(message.whenOnline(), targetId)) {
+                pluginMessageQueue.queue(message.whenOnline(),
+                        Platform.BACKEND.target(targetId), message, env.from());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void sendErrorResponse(Envelope originalEnv, String error) {
+        Optional<ClientSession> senderSession = sessions.get(originalEnv.from());
+        if (senderSession.isEmpty() || !isRoutable(senderSession.get())) {
+            return;
+        }
+        PluginMessage errorMsg = new PluginMessage("error", null, false, null, null, error);
+        Envelope response = Envelope.reply(originalEnv, MessageType.PLUGIN_MESSAGE_RESPONSE, serverId,
+                Envelope.MAPPER.valueToTree(errorMsg));
+        endpointServer.send(senderSession.get().endpoint(), response).dispatch().exceptionally(ex -> {
+            Log.warn("Failed to send error response: {}", ex.getMessage());
+            return null;
+        });
     }
 
     private PluginMessage readPluginMessage(Envelope env) {

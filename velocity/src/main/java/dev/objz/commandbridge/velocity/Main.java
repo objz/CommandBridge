@@ -32,6 +32,7 @@ import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.api.VelocityCommandBridgeImpl;
 import dev.objz.commandbridge.velocity.api.VelocityPluginMessageHandler;
+import dev.objz.commandbridge.velocity.api.PluginMessageQueue;
 import dev.objz.commandbridge.velocity.cmd.bridge.framework.ArgumentBridge;
 import dev.objz.commandbridge.velocity.cmd.bridge.packetevents.PacketEventsArgumentBridge;
 import dev.objz.commandbridge.velocity.cmd.bridge.types.OfflinePlayerArgumentType;
@@ -85,6 +86,7 @@ public final class Main {
     private VelocityConfig cfg;
     private SessionHub sessions;
     private PlayerTracker playerTracker;
+    private PluginMessageQueue pluginMessageQueue;
     private UserCache userCache;
     private AuthHandler authHandler;
     private CBCommand command;
@@ -155,6 +157,7 @@ public final class Main {
 
         sessions = new SessionHub();
         playerTracker = new PlayerTracker();
+        pluginMessageQueue = new PluginMessageQueue();
         sessions.onRemove(session -> {
             playerTracker.remove(session.id());
             if (api != null) {
@@ -206,7 +209,7 @@ public final class Main {
 
         registrations.load(scriptManager.enabled());
 
-        api = new VelocityCommandBridgeImpl(sessions, playerTracker, cfg.serverId(), endpointServer);
+        api = new VelocityCommandBridgeImpl(sessions, playerTracker, cfg.serverId(), endpointServer, pluginMessageQueue);
 
         installRoutes();
 
