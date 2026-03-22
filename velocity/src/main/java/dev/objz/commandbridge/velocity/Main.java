@@ -160,6 +160,7 @@ public final class Main {
         pluginMessageQueue = new PluginMessageQueue();
         sessions.onRemove(session -> {
             playerTracker.remove(session.id());
+            pluginMessageQueue.removeByServer(session.id());
             if (api != null) {
                 api.onServerDisconnected(session);
             }
@@ -210,6 +211,14 @@ public final class Main {
         registrations.load(scriptManager.enabled());
 
         api = new VelocityCommandBridgeImpl(sessions, playerTracker, cfg.serverId(), endpointServer, pluginMessageQueue);
+
+        playerTracker.onPlayerJoin((clientId, uuid) -> {
+            if (api != null) {
+                for (var msg : pluginMessageQueue.drain(clientId, uuid)) {
+                    api.replayQueuedMessage(msg);
+                }
+            }
+        });
 
         installRoutes();
 

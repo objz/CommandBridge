@@ -394,6 +394,27 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
         });
     }
 
+    public void replayQueuedMessage(PluginMessageQueue.QueuedMessage msg) {
+        if (msg.from() == null) {
+            sendPluginMessage(msg.target(), msg.message()).exceptionally(ex -> {
+                Log.warn("Failed to replay queued plugin message: {}", ex.getMessage());
+                return null;
+            });
+            return;
+        }
+        Optional<ClientSession> targetSession = sessions.findSession(msg.target().id(),
+                toLocation(msg.target().type()));
+        if (targetSession.isEmpty() || !isRoutable(targetSession.get())) {
+            return;
+        }
+        Envelope env = Envelope.make(MessageType.PLUGIN_MESSAGE, msg.from(),
+                msg.target().id(), Envelope.MAPPER.valueToTree(msg.message()));
+        endpointServer.send(targetSession.get().endpoint(), env).dispatch().exceptionally(ex -> {
+            Log.warn("Failed to replay queued plugin message from {}: {}", msg.from(), ex.getMessage());
+            return null;
+        });
+    }
+
     private PluginMessage readPluginMessage(Envelope env) {
         try {
             return Envelope.MAPPER.treeToValue(env.payload(), PluginMessage.class);

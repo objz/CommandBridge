@@ -21,7 +21,7 @@ public final class PluginMessageQueue {
     private static final long TTL_MS = TimeUnit.MINUTES.toMillis(5);
     private static final int MAX_TOTAL = 1000;
 
-    record QueuedMessage(Platform.ServerTarget target, PluginMessage message, String from, long queuedAt) {
+    public record QueuedMessage(Platform.ServerTarget target, PluginMessage message, String from, long queuedAt) {
     }
 
     private final ConcurrentHashMap<UUID, Queue<QueuedMessage>> queues = new ConcurrentHashMap<>();
