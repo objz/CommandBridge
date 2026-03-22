@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.scripting.validation.processor;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.anno.Merge;
 import dev.objz.commandbridge.scripting.bind.BindContext;
 import dev.objz.commandbridge.scripting.bind.RecordBinder;
@@ -89,6 +90,8 @@ public final class MergeProcessor implements PostProcessor {
             try {
                 out.put(rc.getName(), rc.getAccessor().invoke(record));
             } catch (Throwable t) {
+                Log.warn("Failed to read component '{}' from {}: {}",
+                        rc.getName(), record.getClass().getSimpleName(), t.getMessage());
             }
         }
         return out;

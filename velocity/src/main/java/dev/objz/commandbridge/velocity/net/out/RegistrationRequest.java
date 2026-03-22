@@ -39,9 +39,7 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
 
         if (stubs.isEmpty()) {
             Log.warn("No valid command stubs for '{}'", clientId);
-            if (ctx.resultCallback() != null) {
-                ctx.resultCallback().accept(false);
-            }
+            notifyResult(ctx, false);
             throw new IllegalStateException("no stubs");
         }
 
@@ -62,22 +60,14 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
 
                     Summary.feedbackSummary("Feedback", feedback, clientId);
                     Summary.feedbackDetails(feedback, clientId, false);
-
-                    if (ctx.resultCallback() != null) {
-                        ctx.resultCallback().accept(feedback.succeeded() > 0);
-                    }
-
+                    notifyResult(ctx, feedback.succeeded() > 0);
                 } catch (Exception e) {
                     Log.error(e, "Failed to process registration feedback from '{}'",
                             clientId);
-                    if (ctx.resultCallback() != null) {
-                        ctx.resultCallback().accept(false);
-                    }
+                    notifyResult(ctx, false);
                 }
             } else {
-                if (ctx.resultCallback() != null) {
-                    ctx.resultCallback().accept(false);
-                }
+                notifyResult(ctx, false);
             }
             return env;
         }).exceptionally(ex -> {
@@ -88,13 +78,21 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
             } else {
                 Log.error(cause, "Failed to receive feedback from '{}'", clientId);
             }
-            if (ctx.resultCallback() != null) {
-                ctx.resultCallback().accept(false);
-            }
+            notifyResult(ctx, false);
             return null;
         });
 
         return op;
+    }
 
+    private static void notifyResult(RegistrationRequestContext ctx, boolean success) {
+        if (ctx.resultCallback() == null) {
+            return;
+        }
+        try {
+            ctx.resultCallback().accept(success);
+        } catch (Exception e) {
+            Log.warn("Registration result callback threw exception: {}", e.getMessage());
+        }
     }
 }

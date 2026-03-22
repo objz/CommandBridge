@@ -123,7 +123,17 @@ public final class CommandDispatcher {
         Set<String> permissions = new HashSet<>();
         permissions.add("commandbridge.command." + script.name());
 
-        String base = currentCmd.command().split(" ")[0].replace("/", "");
+        String cmd = currentCmd.command();
+        if (cmd == null || cmd.isBlank()) {
+            return permissions;
+        }
+
+        String[] tokens = cmd.trim().split("\\s+");
+        String base = tokens[0].replace("/", "");
+        if (base.isEmpty()) {
+            return permissions;
+        }
+
         permissions.add(base);
         permissions.add(base + ".*");
         return permissions;

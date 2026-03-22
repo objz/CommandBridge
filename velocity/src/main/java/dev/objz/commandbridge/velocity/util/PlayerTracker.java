@@ -1,5 +1,6 @@
 package dev.objz.commandbridge.velocity.util;
 
+import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 
 import java.util.List;
@@ -21,12 +22,13 @@ public final class PlayerTracker {
     public void update(String clientId, Set<UUID> players) {
         if (clientId == null)
             return;
-        Set<UUID> set = playersByClient.computeIfAbsent(clientId, k -> ConcurrentHashMap.newKeySet());
-        Set<UUID> previousPlayers = Set.copyOf(set);
-        set.clear();
-        set.addAll(players);
-        for (UUID uuid : players) {
-            if (!previousPlayers.contains(uuid)) {
+        Set<UUID> snapshot = Set.copyOf(players);
+        Set<UUID> previous = playersByClient.put(clientId, ConcurrentHashMap.newKeySet());
+        Set<UUID> previousSnapshot = previous != null ? Set.copyOf(previous) : Set.of();
+        Set<UUID> current = playersByClient.get(clientId);
+        current.addAll(snapshot);
+        for (UUID uuid : snapshot) {
+            if (!previousSnapshot.contains(uuid)) {
                 fireJoin(clientId, uuid);
             }
         }
@@ -74,7 +76,9 @@ public final class PlayerTracker {
         for (var listener : joinListeners) {
             try {
                 listener.accept(clientId, playerUuid);
-            } catch (Exception ignore) {
+            } catch (Exception e) {
+                Log.warn("Player join listener threw exception for {} on {}: {}",
+                        playerUuid, clientId, e.getMessage());
             }
         }
     }
