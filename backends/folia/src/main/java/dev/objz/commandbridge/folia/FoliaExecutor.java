@@ -98,9 +98,6 @@ public final class FoliaExecutor extends PlatformExecutor {
                     for (String perm : grantedPermissions) {
                         attachment.setPermission(perm, true);
                     }
-                    String baseCommand = command.split(" ")[0];
-                    attachment.setPermission(baseCommand, true);
-                    attachment.setPermission("*", true);
                     sender = currentPlayer;
                 } else if (runAs == RunAs.PLAYER || runAs == RunAs.OPERATOR) {
                     sender = currentPlayer;

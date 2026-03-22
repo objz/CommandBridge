@@ -77,9 +77,6 @@ public abstract class PlatformExecutor implements CommandExecutor {
                 for (String perm : permissions) {
                     attachment.setPermission(perm, true);
                 }
-                String baseCommand = command.split(" ")[0];
-                attachment.setPermission(baseCommand, true);
-                attachment.setPermission("*", true);
 
                 boolean success = Bukkit.dispatchCommand(player, command);
                 if (success) {
@@ -111,41 +108,34 @@ public abstract class PlatformExecutor implements CommandExecutor {
     }
 
     protected CompletableFuture<CommandSender> resolveExecutor(RunAs runAs, UUID playerUuid) {
-        return CompletableFuture.supplyAsync(() -> {
-            switch (runAs) {
-                case CONSOLE:
-                    return Bukkit.getConsoleSender();
-
-                case PLAYER:
-                    if (playerUuid == null) {
-                        Log.warn("RunAs. PLAYER requires a player UUID but none provided");
-                        return null;
-                    }
-                    Player player = Bukkit.getPlayer(playerUuid);
-                    if (player == null || !player.isOnline()) {
-                        Log.warn("Player with UUID {} is not online", playerUuid);
-                        return null;
-                    }
-                    return player;
-
-                case OPERATOR:
-                    if (playerUuid == null) {
-                        Log.warn("RunAs.OPERATOR requires a player UUID but none provided, falling back to console");
-                        return Bukkit.getConsoleSender();
-                    }
-                    Player opPlayer = Bukkit.getPlayer(playerUuid);
-                    if (opPlayer == null || !opPlayer.isOnline()) {
-                        Log.warn("Player with UUID {} is not online for OPERATOR execution",
-                                playerUuid);
-                        return null;
-                    }
-                    return opPlayer;
-
-                default:
-                    Log.warn("Unknown RunAs mode: {}, defaulting to CONSOLE", runAs);
-                    return Bukkit.getConsoleSender();
+        CommandSender sender = switch (runAs) {
+            case CONSOLE -> Bukkit.getConsoleSender();
+            case PLAYER -> {
+                if (playerUuid == null) {
+                    Log.warn("RunAs.PLAYER requires a player UUID but none provided");
+                    yield null;
+                }
+                Player player = Bukkit.getPlayer(playerUuid);
+                if (player == null || !player.isOnline()) {
+                    Log.warn("Player with UUID {} is not online", playerUuid);
+                    yield null;
+                }
+                yield player;
             }
-        });
+            case OPERATOR -> {
+                if (playerUuid == null) {
+                    Log.warn("RunAs.OPERATOR requires a player UUID but none provided, falling back to console");
+                    yield Bukkit.getConsoleSender();
+                }
+                Player opPlayer = Bukkit.getPlayer(playerUuid);
+                if (opPlayer == null || !opPlayer.isOnline()) {
+                    Log.warn("Player with UUID {} is not online for OPERATOR execution", playerUuid);
+                    yield null;
+                }
+                yield opPlayer;
+            }
+        };
+        return CompletableFuture.completedFuture(sender);
     }
 
     /**
