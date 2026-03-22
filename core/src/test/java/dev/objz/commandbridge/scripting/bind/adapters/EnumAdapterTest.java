@@ -30,47 +30,42 @@ class EnumAdapterTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void parsesExactMatch() {
         EnumAdapter adapter = new EnumAdapter();
         YamlNode node = YamlNode.scalar("BACKEND");
-        Location result = (Location) adapter.fromYaml(node, Location.class, ctx());
+        Enum<?> result = adapter.fromYaml(node, Location.class, ctx());
         assertEquals(Location.BACKEND, result);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void parsesLowercase() {
         EnumAdapter adapter = new EnumAdapter();
         YamlNode node = YamlNode.scalar("backend");
-        Location result = (Location) adapter.fromYaml(node, Location.class, ctx());
+        Enum<?> result = adapter.fromYaml(node, Location.class, ctx());
         assertEquals(Location.BACKEND, result);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void parsesUppercase() {
         EnumAdapter adapter = new EnumAdapter();
         YamlNode node = YamlNode.scalar("VELOCITY");
-        Location result = (Location) adapter.fromYaml(node, Location.class, ctx());
+        Enum<?> result = adapter.fromYaml(node, Location.class, ctx());
         assertEquals(Location.VELOCITY, result);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void parsesMixedCase() {
         EnumAdapter adapter = new EnumAdapter();
         YamlNode node = YamlNode.scalar("VeLoCiTy");
-        Location result = (Location) adapter.fromYaml(node, Location.class, ctx());
+        Enum<?> result = adapter.fromYaml(node, Location.class, ctx());
         assertEquals(Location.VELOCITY, result);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void returnsNullForNullValue() {
         EnumAdapter adapter = new EnumAdapter();
         YamlNode node = YamlNode.scalar(null);
-        Location result = (Location) adapter.fromYaml(node, Location.class, ctx());
+        Enum<?> result = adapter.fromYaml(node, Location.class, ctx());
         assertNull(result);
     }
 
