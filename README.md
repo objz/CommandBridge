@@ -8,9 +8,13 @@
 [![Issues][issues-shield]][issues-url]
 [![GPL-3.0 License][license-shield]][license-url]
 
-**Cross-server command execution for Minecraft networks**
+**cross-server command execution for Minecraft networks**
 
-A WebSocket bridge for Velocity and Paper servers to run commands anywhere, anytime.
+define commands in YAML on Velocity, dispatch them across all connected backends over WebSocket or Redis.
+no plugin messaging, no player-online requirements, no limitations.
+
+[![Documentation](https://img.shields.io/badge/Documentation-cb.objz.dev-7c3aed?style=for-the-badge)](https://cb.objz.dev)
+[![Discord](https://img.shields.io/badge/Discord-Join_Server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/QPqBYb44ce)
 
 [Report Bug](https://github.com/objz/CommandBridge/issues) · [Request Feature](https://github.com/objz/CommandBridge/issues)
 
@@ -18,142 +22,230 @@ A WebSocket bridge for Velocity and Paper servers to run commands anywhere, anyt
 
 ---
 
-## About The Project
+## about
 
-CommandBridge connects your Velocity proxy to your backend servers using WebSockets(version 3.1.0 covers redis as alternative). It lets you run commands across your network even if no players are online.
+CommandBridge is a proxy-to-backend command bridge for Minecraft networks running on Velocity. you write commands as YAML scripts on the proxy, CB validates them, registers them on whichever servers you specified, and handles dispatch. a player runs `/lobby` on a backend, the proxy picks it up. an admin runs `/alert` on Velocity, every backend executes it. commands go through instantly.
 
-### The Problem
+the whole reason this exists: plugin messages need a connected player to work. if a server is empty, you can't send commands to it. CB uses persistent WebSocket connections (or Redis) to fix that. commands work regardless of player presence.
 
-Plugin messages need a player to work. If a server is empty, you can't send commands to it. CommandBridge uses persistent connections(or redis) to fix this.
+one jar works everywhere. install the same file on Velocity and all your backends. it auto-detects the platform.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+for the full writeup with visuals check the [documentation](https://cb.objz.dev), the [Modrinth page](https://modrinth.com/plugin/commandbridge), [Hangar](https://hangar.papermc.io/objz/CommandBridge/), or [SpigotMC](https://www.spigotmc.org/resources/commandbridge.133217/).
 
-## Built With
+## features
 
-[![Java][Java]][Java-url]
-[![Undertow][Undertow]][Undertow-url]
-[![Jackson][Jackson]][Jackson-url]
-[![Velocity][Velocity]][Velocity-url]
-[![Paper][Paper]][Paper-url]
-[![Gradle][Gradle]][Gradle-url]
+| | |
+|---|---|
+| **scripting** | YAML command definitions with aliases, permissions, cooldowns, 22 argument types |
+| **transport** | WebSocket (default, TLS built in) or Redis |
+| **execution** | `CONSOLE`, `PLAYER`, `OPERATOR` modes |
+| **security** | HMAC-SHA256 mutual auth, TLS 1.3 (PLAIN / TOFU / STRICT) |
+| **offline queue** | queues commands for offline players, survives restarts |
+| **multi-proxy** | primary + client mode for additional proxies |
+| **player tracking** | network-wide, real-time |
+| **admin CLI** | `/cb help`, `info`, `scripts`, `reload`, `list`, `ping`, `debug`, `dump`, `migrate` |
+| **developer API** | message channels, event subscriptions, player locator, broadcast |
+| **optional integrations** | PlaceholderAPI, PacketEvents |
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+---
 
-## Building from Source
+## how it's built
+
+everything gets shaded into a single fat jar. there are a few modules but you only ever deal with one file.
+
+`core` is the shared library that both sides depend on. networking (WebSocket via Undertow, Redis via Jedis), the YAML scripting engine with validation, security (TLS, auth), config management, and logging. anything that isn't platform-specific lives here.
+
+`velocity` is the proxy-side plugin. command registration, the dispatch pipeline, the admin CLI, and the UI output all live here. this is the "server" side of the bridge.
+
+`backends` is the shared client library for all backend platforms. it handles connecting to the proxy, routing incoming messages, and platform abstraction. underneath it there are platform-specific adapters for Bukkit, Paper, Folia, and Velocity-as-client. the adapters are kept thin on purpose, they only deal with thread dispatch and platform-specific API calls. shared logic stays in the parent module.
+
+`api` is the public developer API for other plugins. channels, events, platform info. more on that below.
+
+`dist` handles shadow JAR packaging and publishing to Modrinth and Hangar.
+
+---
+
+## building from source
+
+requires JDK 21 (Temurin recommended).
 
 ```sh
 git clone https://github.com/objz/CommandBridge.git
 cd CommandBridge
-
 git checkout v3
-
 ./gradlew shadowJar
-
-# Output: dist/build/libs/CommandBridge-all.jar
+# output: dist/build/libs/CommandBridge-<version>-all.jar
 ```
-<p align="right">(<a href="#top">back to top</a>)</p>
 
-## Roadmap
+other useful commands:
 
-### Current Status: Beta (v3.0)
+```sh
+# full build (compile + shadow JAR)
+./gradlew build
 
-- [x] **Backend Platform Support**
+# run checkstyle (this is what CI runs)
+./gradlew check
+
+# checkstyle for a specific module
+./gradlew :core:checkstyleMain
+./gradlew :velocity:checkstyleMain
+
+# clean
+./gradlew clean
+```
+
+---
+
+## developer API
+
+CB has a public API module for other plugins to interact with the bridge network. source is at [`api/`](https://github.com/objz/CommandBridge/tree/v3/api/src/main/java/dev/objz/commandbridge/api), full documentation will be on [cb.objz.dev](https://cb.objz.dev).
+
+```java
+CommandBridgeAPI api = CommandBridgeProvider.get();
+
+// send a command as console to a backend
+CommandChannel commands = api.channel(Channels.COMMAND);
+commands.console(Platform.BACKEND.target("survival-1"), "say hello");
+
+// listen for incoming messages
+Subscription sub = commands.listen((ctx, payload) -> { /* ... */ });
+
+// server events
+api.onServerConnected(server -> { /* ... */ });
+api.onServerDisconnected(server -> { /* ... */ });
+
+// find a player across the network
+api.playerLocator().ifPresent(locator -> locator.locate(playerUuid));
+
+// broadcast to all servers
+api.broadcast(commands, CommandPayload.console("say maintenance in 5 minutes"));
+```
+
+---
+
+## dependencies
+
+### shaded (bundled in the jar)
+
+| Library | What it does |
+|---|---|
+| [Undertow](https://undertow.io/) | WebSocket server |
+| [Jackson](https://github.com/FasterXML/jackson) | JSON serialization |
+| [Jedis](https://github.com/redis/jedis) | Redis client |
+| [OkHttp](https://github.com/square/okhttp) | HTTP client on backends |
+| [Configurate](https://github.com/SpongePowered/Configurate) | YAML config loading |
+| [SnakeYAML](https://bitbucket.org/snakeyaml/snakeyaml) | YAML parsing |
+| [Adventure MiniMessage](https://docs.advntr.dev/minimessage/) | chat formatting |
+| [BouncyCastle](https://www.bouncycastle.org/) | TLS and crypto |
+| [bStats](https://bstats.org/) | anonymous usage metrics |
+
+### runtime (you install these)
+
+| Library | Required | What it does |
+|---|---|---|
+| [CommandAPI](https://modrinth.com/plugin/commandapi) | yes | argument parsing and tab completion on all servers |
+| [PacketEvents](https://modrinth.com/plugin/packetevents) | no | enables extra argument types (like `PLAYERS` and `TIME`) on Velocity |
+| [PlaceholderAPI](https://modrinth.com/plugin/placeholderapi) | no | external placeholder data (stats, economy, etc.) |
+| [PapiProxyBridge](https://modrinth.com/plugin/papiproxybridge) | no | bridges PlaceholderAPI to the proxy side |
+
+---
+
+## roadmap
+
+### current: v3.3.0
+
+- [x] **backend platform support**
   - [x] Bukkit support
   - [x] Paper support
   - [x] Folia support
-  - [x] Velocity(as client) support
-  - [x] Automatic platform detection
+  - [x] Velocity-as-client support (for multi-proxy)
+  - [x] automatic platform detection
 
-- [x] **WebSocket Communication**
+- [x] **WebSocket transport**
   - [x] WebSocket server on Velocity
   - [x] WebSocket client on backends
-  - [x] Session and client management
-  - [x] Rate limiting
-  - [x] Automatic reconnection on disconnect(configurable)
+  - [x] session and client management
+  - [x] rate limiting
+  - [x] automatic reconnection on disconnect (configurable)
 
-- [x] **Alternative Redis Communication**
-  - [x] Extended config for Redis
+- [x] **Redis transport**
+  - [x] Redis config and connection management
   - [x] Redis implementation in core (SendOperation)
-  - [x] Channel mapping alternative on velocity
-  - [x] Sending/Receiving support on all Platforms
+  - [x] channel mapping on Velocity
+  - [x] sending/receiving on all platforms
 
-- [x] **Security**
-  - [x] Mutual authentication (HMAC-SHA256)
+- [x] **security**
+  - [x] mutual authentication (HMAC-SHA256)
   - [x] TLS SPKI key pinning
   - [x] TLS 1.3 encryption
-  - [x] Multiple TLS modes (PLAIN, TOFU, STRICT)
+  - [x] multiple TLS modes (PLAIN, TOFU, STRICT)
 
-- [x] **YAML Scripting**
-  - [x] YAML command definitions
-  - [x] Strict validation
-  - [x] Aliases, permissions, and cooldowns
-  - [x] Argument types (strings, numbers, players, locations, items, etc.)
-  - [x] Custom argument types via PacketEvents
-  - [ ] Duplicate script name detection
-  - [ ] More custom argument types
+- [ ] **YAML scripting**
+  - [x] YAML command definitions with strict validation
+  - [x] aliases, permissions, and cooldowns
+  - [x] 22 argument types (strings, numbers, players, locations, items, entities, etc.)
+  - [x] custom argument types via PacketEvents
+  - [x] script migration tooling (`/cb migrate`)
+  - [x] schema versioning (currently `version: 4`)
+  - [ ] duplicate script name detection
+  - [ ] more custom argument types
 
-- [x] **Cross-Server Command Execution**
-  - [x] Remote and local command execution
-  - [x] Automatic command registration sync to backends
-  - [x] Placeholder and PlaceholderAPI support
-  - [x] Console, player, and operator execution modes
-  - [x] Offline command queue
-  - [ ] Database backend for task queue (currently JSON file) | maybe?
+- [x] **cross-server command execution**
+  - [x] remote and local command dispatch
+  - [x] automatic command registration sync to backends
+  - [x] placeholder and PlaceholderAPI support
+  - [x] console, player, and operator execution modes
+  - [x] offline command queue (persists across restarts)
+  - [x] network-wide player tracking and UUID resolution
 
-- [x] **Admin Commands (`/cb`)**
-  - [x] `/cb help`
-  - [x] `/cb info`
-  - [x] `/cb scripts`
-  - [x] `/cb reload`
-  - [x] `/cb list`
-  - [x] `/cb ping`
-  - [x] `/cb debug`
-    - [x] `/cb dump`
-    - [x] `/cb migrate`
-  - [x] Dual-mode output (chat and console)
-  - [x] Automatic update checker
-  - [x] Dump export to file or paste service
-  - [x] Migration implementation for scripts
-  - [x] bstats
+- [x] **admin CLI (`/cb`)**
+  - [x] `/cb help`, `/cb info`, `/cb scripts`
+  - [x] `/cb reload`, `/cb list`, `/cb ping`
+  - [x] `/cb debug`, `/cb dump`, `/cb migrate`
+  - [x] dual-mode output (chat + console)
+  - [x] dump export to file or paste service
+  - [x] automatic update checker
+  - [x] bStats integration
 
-- [ ] **Web Interface**
+- [ ] **developer API**
+  - [x] public API module (`api/`)
+  - [x] typed message channels with send, request, and listen
+  - [x] command channel with console/player/operator dispatch
+  - [x] server connect/disconnect event subscriptions
+  - [x] connection state tracking
+  - [x] player locator service
+  - [x] broadcast to all connected servers
+  - [ ] more channel types and lifecycle hooks
+
+- [ ] **web interface**
   - [ ] ...
 
-- [ ] **Admin GUI**
+- [ ] **admin GUI**
   - [ ] ...
 
-- [ ] **Developer API**
-  - [ ] ...
+see the [open issues](https://github.com/objz/CommandBridge/issues) for bugs and feature requests.
 
-See the [open issues](https://github.com/objz/CommandBridge/issues) for features and bugs.
+---
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+## requirements
 
-## Contributing
+| | Version |
+|---|---|
+| Java | 21+ |
+| Velocity | 3.4 - 3.5 |
+| Minecraft | 1.20 - 1.21.x |
 
-Contributions are welcome.
+---
 
-- Update documentation
-- Ensure builds pass: `./gradlew shadowJar`
+## contributing
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+contributions are welcome. fork it, branch it, PR it. make sure `./gradlew check` and `./gradlew build` both pass before opening a PR.
 
-## License
+---
 
-Distributed under the GPL-3.0 License. See `LICENSE`.
+## license
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-## Acknowledgments
-
-* [Undertow](https://undertow.io/) 
-* [Jackson](https://github.com/FasterXML/jackson) 
-* [CommandAPI](https://github.com/JorelAli/CommandAPI) 
-* [SnakeYAML](https://bitbucket.org/snakeyaml/snakeyaml) 
-* [Velocity](https://papermc.io/software/velocity) 
-* [Paper](https://papermc.io/software/paper) 
-
-<p align="right">(<a href="#top">back to top</a>)</p>
+GPL-3.0. see [LICENSE](LICENSE).
 
 ---
 
@@ -168,15 +260,3 @@ Distributed under the GPL-3.0 License. See `LICENSE`.
 [license-shield]: https://img.shields.io/github/license/objz/CommandBridge.svg?style=for-the-badge
 [license-url]: https://github.com/objz/CommandBridge/blob/v3/LICENSE
 
-[Java]: https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white
-[Java-url]: https://openjdk.org/projects/jdk/21/
-[Undertow]: https://img.shields.io/badge/Undertow-2.3-red?style=for-the-badge
-[Undertow-url]: https://undertow.io/
-[Jackson]: https://img.shields.io/badge/Jackson-2.18-blue?style=for-the-badge
-[Jackson-url]: https://github.com/FasterXML/jackson
-[Velocity]: https://img.shields.io/badge/Velocity-3.x-00ADD8?style=for-the-badge
-[Velocity-url]: https://papermc.io/software/velocity
-[Paper]: https://img.shields.io/badge/Paper-1.20--1.21-00ADD8?style=for-the-badge
-[Paper-url]: https://papermc.io/software/paper
-[Gradle]: https://img.shields.io/badge/Gradle-8.x-02303A?style=for-the-badge&logo=gradle
-[Gradle-url]: https://gradle.org/
