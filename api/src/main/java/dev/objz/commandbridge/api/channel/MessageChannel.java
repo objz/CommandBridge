@@ -6,6 +6,7 @@ import dev.objz.commandbridge.api.platform.Platform;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -71,5 +72,21 @@ public interface MessageChannel<P extends ChannelPayload> {
          * @return a future containing the response payload
          */
         CompletableFuture<P> request(P payload, Duration timeout);
+
+        default Sender<P> requirePlayer(UUID player) {
+            throw new UnsupportedOperationException("requirePlayer is not supported by this sender");
+        }
+
+        default Sender<P> requirePlayer() {
+            throw new UnsupportedOperationException("requirePlayer is not supported by this sender");
+        }
+
+        default Sender<P> whenOnline(UUID player) {
+            throw new UnsupportedOperationException("whenOnline is not supported by this sender");
+        }
+
+        default Sender<P> whenOnline() {
+            throw new UnsupportedOperationException("whenOnline is not supported by this sender");
+        }
     }
 }
