@@ -39,6 +39,7 @@ dependencies {
     compileOnly("com.github.retrooper:packetevents-velocity:2.11.2")
 
     testImplementation(libs.junit.jupiter)
+    testImplementation("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
