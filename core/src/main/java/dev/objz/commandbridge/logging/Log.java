@@ -476,7 +476,10 @@ public final class Log {
             if (args == null || args.length == 0) {
                 base.error("{}", m, t);
             } else {
-                base.error(m, args, t);
+                Object[] merged = new Object[args.length + 1];
+                System.arraycopy(args, 0, merged, 0, args.length);
+                merged[args.length] = t;
+                base.error(m, merged);
             }
         } else {
             Throwable root = rootCause(t);
@@ -560,7 +563,11 @@ public final class Log {
         var isMain = isMainThread;
         var dispatch = mainThreadDispatch;
         if (isMain != null && dispatch != null && !isMain.getAsBoolean()) {
-            dispatch.accept(() -> sink.accept(base));
+            try {
+                dispatch.accept(() -> sink.accept(base));
+            } catch (Exception e) {
+                sink.accept(base);
+            }
         } else {
             sink.accept(base);
         }

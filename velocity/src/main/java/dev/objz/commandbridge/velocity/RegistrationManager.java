@@ -120,7 +120,8 @@ public final class RegistrationManager {
 
     public void reload() {
         for (ClientSession session : sessions) {
-            if (session.id() != null) {
+            if (session.id() != null
+                    && session.status() == dev.objz.commandbridge.security.AuthStatus.AUTH_OK) {
                 onClientAuthenticated(session);
             }
         }

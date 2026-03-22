@@ -67,7 +67,9 @@ public final class RegistrationHandler extends InboundHandler {
             }
         }
         registeredCommands = List.copyOf(rc.commands());
-        client.setServerId(env.from());
+        if (client.serverId() == null || client.serverId().isBlank()) {
+            client.setServerId(env.from());
+        }
         Feedback f = fc.build();
         Summary.feedbackSummary("Registration", f, env.from());
         Summary.feedbackDetails(f, env.from(), true);

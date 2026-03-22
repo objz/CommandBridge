@@ -68,8 +68,10 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
         if (providerRegistered.compareAndSet(true, false)) {
             CommandBridgeProvider.unregister();
         }
+        polling.set(false);
         if (statePoller != null) {
             statePoller.shutdownNow();
+            statePoller = null;
         }
     }
 
@@ -110,12 +112,14 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
 
     @Override
     public Subscription onServerConnected(ServerEventListener listener) {
-        throw new UnsupportedOperationException("Server events are only available on the proxy");
+        Objects.requireNonNull(listener);
+        return () -> { };
     }
 
     @Override
     public Subscription onServerDisconnected(ServerEventListener listener) {
-        throw new UnsupportedOperationException("Server events are only available on the proxy");
+        Objects.requireNonNull(listener);
+        return () -> { };
     }
 
     @Override
@@ -149,7 +153,7 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     public void handlePluginMessageResponse(Envelope env) {
         String to = env.to();
         if (to != null && !to.equals(localServerId()) && !"*".equals(to)) {
-            Log.debug("Dropping plugin response for mismatched target {}", to);
+            Log.warn("Dropping plugin response for mismatched target {} (local={})", to, localServerId());
         }
     }
 

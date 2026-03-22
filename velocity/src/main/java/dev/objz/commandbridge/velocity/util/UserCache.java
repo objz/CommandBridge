@@ -1,11 +1,11 @@
 package dev.objz.commandbridge.velocity.util;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
+import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthStatus;
@@ -35,7 +35,6 @@ public final class UserCache {
     private final ProxyServer proxy;
     private final SessionHub sessions;
     private final OutNode outNode;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final Path cachePath;
 
@@ -151,7 +150,7 @@ public final class UserCache {
         try {
             Files.createDirectories(cachePath.getParent());
             List<CacheEntry> entries = new ArrayList<>(cache.values());
-            mapper.writeValue(cachePath.toFile(), entries);
+            Envelope.MAPPER.writeValue(cachePath.toFile(), entries);
         } catch (IOException e) {
             Log.error("Failed to save user cache: {}", e.getMessage());
         }
@@ -160,7 +159,7 @@ public final class UserCache {
     private synchronized void load() {
         if (Files.notExists(cachePath)) return;
         try {
-            List<CacheEntry> entries = mapper.readValue(cachePath.toFile(),
+            List<CacheEntry> entries = Envelope.MAPPER.readValue(cachePath.toFile(),
                     new TypeReference<List<CacheEntry>>() {
                     });
             for (CacheEntry entry : entries) {
