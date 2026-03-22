@@ -2,6 +2,7 @@ package dev.objz.commandbridge.net;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -11,7 +12,7 @@ import dev.objz.commandbridge.net.proto.Envelope;
 
 public final class ResponseAwaiter {
 
-    private record Key(String clientId, String id) {
+    private record Key(String clientId, UUID id) {
     }
 
     private record Pending(Predicate<Envelope> match, CompletableFuture<Envelope> fut) {
@@ -20,7 +21,7 @@ public final class ResponseAwaiter {
     private final ConcurrentHashMap<Key, Pending> waiters = new ConcurrentHashMap<>();
 
     public CompletableFuture<Envelope> await(String clientId,
-            String id,
+            UUID id,
             Predicate<Envelope> matcher,
             Duration timeout) {
         Objects.requireNonNull(id);
@@ -34,11 +35,11 @@ public final class ResponseAwaiter {
     }
 
     public boolean signal(Envelope env) {
-        if (env == null)
+        if (env == null || env.id() == null)
             return false;
 
         boolean handled = false;
-        var id = String.valueOf(env.id());
+        UUID id = env.id();
 
         var exactKey = new Key(env.from(), id);
         var pending = waiters.get(exactKey);

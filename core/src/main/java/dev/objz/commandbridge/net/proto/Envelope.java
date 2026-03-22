@@ -17,6 +17,7 @@ public record Envelope(int v, UUID id, MessageType type, String from, String to,
                 payload != null ? payload : MAPPER.nullNode());
     }
 
+    // Reuses req.id() intentionally for request-response correlation in ResponseAwaiter
     public static Envelope reply(Envelope req, MessageType type, String from, JsonNode payload) {
         return new Envelope(req.v(), req.id(), type, from, req.from(), System.currentTimeMillis(),
                 payload != null ? payload : MAPPER.nullNode());

@@ -33,14 +33,24 @@ public final class WsEndpoint implements Endpoint {
 
     @Override
     public CompletableFuture<Void> send(Envelope env) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            WebSockets.sendText(Envelope.MAPPER.writeValueAsString(env), ch, null);
-            return CompletableFuture.completedFuture(null);
+            String text = Envelope.MAPPER.writeValueAsString(env);
+            WebSockets.sendText(text, ch, new io.undertow.websockets.core.WebSocketCallback<Void>() {
+                @Override
+                public void complete(WebSocketChannel channel, Void context) {
+                    future.complete(null);
+                }
+
+                @Override
+                public void onError(WebSocketChannel channel, Void context, Throwable throwable) {
+                    future.completeExceptionally(throwable);
+                }
+            });
         } catch (Exception e) {
-            var cf = new CompletableFuture<Void>();
-            cf.completeExceptionally(e);
-            return cf;
+            future.completeExceptionally(e);
         }
+        return future;
     }
 
 }

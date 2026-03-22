@@ -49,7 +49,7 @@ public final class SendOperation {
                         (expected == null || expected == env.type()));
 
         var clientId = request.to();
-        var fut = awaiter.await(clientId, String.valueOf(request.id()), m, timeout);
+        var fut = awaiter.await(clientId, request.id(), m, timeout);
         endpoint.send(request).whenComplete((v, ex) -> {
             if (ex != null)
                 fut.completeExceptionally(ex);
