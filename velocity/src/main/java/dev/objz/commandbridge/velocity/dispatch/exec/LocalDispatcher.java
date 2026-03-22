@@ -41,13 +41,10 @@ public final class LocalDispatcher {
                 yield fallbackSource instanceof Player p ? p : null;
             }
             case OPERATOR -> {
-                if (playerUuid != null) {
-                    Player player = proxy.getPlayer(playerUuid).orElse(null);
-                    if (player != null) {
-                        yield proxy.getConsoleCommandSource();
-                    }
+                if (playerUuid == null) {
+                    yield null;
                 }
-                yield proxy.getConsoleCommandSource();
+                yield proxy.getPlayer(playerUuid).orElse(null);
             }
         };
 

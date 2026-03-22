@@ -2,7 +2,6 @@ package dev.objz.commandbridge.velocity;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.permission.Tristate;
-import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.logging.Log;
@@ -71,21 +70,21 @@ public final class VelocityExecutor implements CommandExecutor {
     }
 
     private CommandSource resolveSource(RunAs runAs, UUID playerUuid) {
-        switch (runAs) {
-            case CONSOLE:
-                return proxy.getConsoleCommandSource();
-            case PLAYER:
-                if (playerUuid == null)
-                    return null;
-                return proxy.getPlayer(playerUuid).orElse(null);
-            case OPERATOR:
-                if (playerUuid == null)
-                    return proxy.getConsoleCommandSource();
-                Player p = proxy.getPlayer(playerUuid).orElse(null);
-                return p != null ? p : proxy.getConsoleCommandSource();
-            default:
-                return proxy.getConsoleCommandSource();
-        }
+        return switch (runAs) {
+            case CONSOLE -> proxy.getConsoleCommandSource();
+            case PLAYER -> {
+                if (playerUuid == null) {
+                    yield null;
+                }
+                yield proxy.getPlayer(playerUuid).orElse(null);
+            }
+            case OPERATOR -> {
+                if (playerUuid == null) {
+                    yield null;
+                }
+                yield proxy.getPlayer(playerUuid).orElse(null);
+            }
+        };
     }
 
     private static class PermissibleCommandSource implements CommandSource {

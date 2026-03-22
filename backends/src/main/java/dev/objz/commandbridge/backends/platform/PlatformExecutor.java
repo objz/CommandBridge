@@ -124,8 +124,8 @@ public abstract class PlatformExecutor implements CommandExecutor {
             }
             case OPERATOR -> {
                 if (playerUuid == null) {
-                    Log.warn("RunAs.OPERATOR requires a player UUID but none provided, falling back to console");
-                    yield Bukkit.getConsoleSender();
+                    Log.warn("RunAs.OPERATOR requires a player UUID but none provided");
+                    yield null;
                 }
                 Player opPlayer = Bukkit.getPlayer(playerUuid);
                 if (opPlayer == null || !opPlayer.isOnline()) {
