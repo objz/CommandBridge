@@ -3,7 +3,9 @@ package dev.objz.commandbridge.velocity.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.objz.commandbridge.api.message.ServerEventListener;
 import dev.objz.commandbridge.api.platform.Platform;
 import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.net.ResponseAwaiter;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -131,6 +134,73 @@ class VelocityCommandBridgeImplTest {
         assertEquals(0, endpointServer.sendCount());
     }
 
+    @Test
+    void onServerConnectedReturnsPresent() {
+        SessionHub sessions = new SessionHub();
+        PlayerTracker tracker = new PlayerTracker();
+        PluginMessageQueue queue = new PluginMessageQueue();
+        CountingEndpointServer endpointServer = new CountingEndpointServer();
+        VelocityCommandBridgeImpl bridge = new VelocityCommandBridgeImpl(
+                sessions, tracker, "velocity", endpointServer, queue);
+
+        Optional<dev.objz.commandbridge.api.message.Subscription> result =
+                bridge.onServerConnected(server -> { });
+        assertTrue(result.isPresent(), "Expected Optional.of(subscription) on Velocity");
+    }
+
+    @Test
+    void onServerDisconnectedReturnsPresent() {
+        SessionHub sessions = new SessionHub();
+        PlayerTracker tracker = new PlayerTracker();
+        PluginMessageQueue queue = new PluginMessageQueue();
+        CountingEndpointServer endpointServer = new CountingEndpointServer();
+        VelocityCommandBridgeImpl bridge = new VelocityCommandBridgeImpl(
+                sessions, tracker, "velocity", endpointServer, queue);
+
+        Optional<dev.objz.commandbridge.api.message.Subscription> result =
+                bridge.onServerDisconnected(server -> { });
+        assertTrue(result.isPresent(), "Expected Optional.of(subscription) on Velocity");
+    }
+
+    @Test
+    void onServerConnectedRejectsNull() {
+        SessionHub sessions = new SessionHub();
+        PlayerTracker tracker = new PlayerTracker();
+        PluginMessageQueue queue = new PluginMessageQueue();
+        CountingEndpointServer endpointServer = new CountingEndpointServer();
+        VelocityCommandBridgeImpl bridge = new VelocityCommandBridgeImpl(
+                sessions, tracker, "velocity", endpointServer, queue);
+
+        assertThrows(NullPointerException.class, () -> bridge.onServerConnected((ServerEventListener) null));
+    }
+
+    @Test
+    void onServerConnectedSubscriptionCancels() {
+        SessionHub sessions = new SessionHub();
+        PlayerTracker tracker = new PlayerTracker();
+        PluginMessageQueue queue = new PluginMessageQueue();
+        CountingEndpointServer endpointServer = new CountingEndpointServer();
+        VelocityCommandBridgeImpl bridge = new VelocityCommandBridgeImpl(
+                sessions, tracker, "velocity", endpointServer, queue);
+
+        java.util.concurrent.atomic.AtomicInteger callCount = new java.util.concurrent.atomic.AtomicInteger();
+        Optional<dev.objz.commandbridge.api.message.Subscription> sub =
+                bridge.onServerConnected(server -> callCount.incrementAndGet());
+        assertTrue(sub.isPresent());
+
+        // Fire the event — listener should be called
+        ClientSession session = sessions.add("srv-1", new TestEndpoint());
+        session.location(dev.objz.commandbridge.scripting.model.enums.Location.BACKEND);
+        session.status(dev.objz.commandbridge.security.AuthStatus.AUTH_OK);
+        invokeOnServerConnected(bridge, session);
+        assertEquals(1, callCount.get(), "Listener should have fired once");
+
+        // Cancel, then fire again — listener should NOT be called
+        sub.get().cancel();
+        invokeOnServerConnected(bridge, session);
+        assertEquals(1, callCount.get(), "Listener should not fire after cancel");
+    }
+
     @SuppressWarnings("unchecked")
     private static CompletableFuture<Void> invokeSend(
             VelocityCommandBridgeImpl bridge,
@@ -162,6 +232,18 @@ class VelocityCommandBridgeImplTest {
                     Duration.class);
             method.setAccessible(true);
             return (CompletableFuture<PluginMessage>) method.invoke(bridge, target, payload, timeout);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void invokeOnServerConnected(VelocityCommandBridgeImpl bridge, ClientSession session) {
+        try {
+            Method method = VelocityCommandBridgeImpl.class.getDeclaredMethod(
+                    "onServerConnected",
+                    ClientSession.class);
+            method.setAccessible(true);
+            method.invoke(bridge, session);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
