@@ -3,9 +3,7 @@ package dev.objz.commandbridge.backends.api;
 import dev.objz.commandbridge.api.CommandBridgeAPI;
 import dev.objz.commandbridge.api.CommandBridgeProvider;
 import dev.objz.commandbridge.api.channel.ChannelPayload;
-import dev.objz.commandbridge.api.channel.ChannelType;
 import dev.objz.commandbridge.api.channel.MessageChannel;
-import dev.objz.commandbridge.api.channel.command.CommandChannelType;
 import dev.objz.commandbridge.api.message.MessageContext;
 import dev.objz.commandbridge.api.message.MessageListener;
 import dev.objz.commandbridge.api.message.ServerEventListener;
@@ -15,7 +13,6 @@ import dev.objz.commandbridge.api.platform.Platform;
 import dev.objz.commandbridge.api.platform.PlayerLocator;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.net.channel.CommandMessageChannel;
 import dev.objz.commandbridge.net.channel.PluginMessageChannel;
 import dev.objz.commandbridge.net.payloads.PluginMessage;
 import dev.objz.commandbridge.net.proto.Envelope;
@@ -43,7 +40,7 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
 
     private final BackendClient client;
     private final ConcurrentHashMap<Class<?>, MessageChannel<?>> channels = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, ChannelType<?, ?>> channelTypesByName = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Class<?>> payloadTypesByName = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener<?>>> listenersByType = new ConcurrentHashMap<>();
     private final CopyOnWriteArraySet<Consumer<ConnectionState>> stateListeners = new CopyOnWriteArraySet<>();
     private volatile ScheduledExecutorService statePoller;
@@ -76,11 +73,11 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @Override
-    public <T extends ChannelPayload, C extends MessageChannel<T>> C channel(ChannelType<T, C> type) {
+    @SuppressWarnings("unchecked")
+    public <T extends ChannelPayload> MessageChannel<T> channel(Class<T> type) {
         Objects.requireNonNull(type);
-        channelTypesByName.putIfAbsent(type.getClass().getName(), type);
-        MessageChannel<?> channel = channels.computeIfAbsent(type.getClass(), ignored -> createChannel(type));
-        return typeCast(channel);
+        payloadTypesByName.putIfAbsent(type.getName(), type);
+        return (MessageChannel<T>) channels.computeIfAbsent(type, ignored -> createChannel(type));
     }
 
     @Override
@@ -150,25 +147,17 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
         }
     }
 
-    private <T extends ChannelPayload, C extends MessageChannel<T>> MessageChannel<?> createChannel(
-            ChannelType<T, C> type) {
-        if (type instanceof CommandChannelType commandType) {
-            return new CommandMessageChannel(commandType,
-                    this::sendPluginMessage,
-                    this::requestPluginMessage,
-                    listener -> registerListener(commandType, listener));
-        }
-
+    private <T extends ChannelPayload> MessageChannel<T> createChannel(Class<T> type) {
         return new PluginMessageChannel<>(type,
                 this::sendPluginMessage,
                 this::requestPluginMessage,
                 listener -> registerListener(type, listener));
     }
 
-    private <P extends ChannelPayload> Subscription registerListener(ChannelType<P, ? extends MessageChannel<P>> type,
+    private <P extends ChannelPayload> Subscription registerListener(Class<P> type,
             MessageListener<P> listener) {
-        String key = type.getClass().getName();
-        channelTypesByName.putIfAbsent(key, type);
+        String key = type.getName();
+        payloadTypesByName.putIfAbsent(key, type);
         CopyOnWriteArrayList<MessageListener<?>> listeners = listenersByType.computeIfAbsent(key,
                 ignored -> new CopyOnWriteArrayList<>());
         listeners.add(listener);
@@ -195,14 +184,14 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     private void dispatchLocal(Envelope env, PluginMessage message) {
-        ChannelType<?, ?> channelType = channelTypesByName.get(message.channelType());
-        if (channelType == null) {
+        Class<?> payloadType = payloadTypesByName.get(message.channelType());
+        if (payloadType == null) {
             return;
         }
 
         Object payload;
         try {
-            payload = Envelope.MAPPER.treeToValue(message.data(), channelType.type());
+            payload = Envelope.MAPPER.treeToValue(message.data(), payloadType);
         } catch (Exception e) {
             Log.warn("Failed to decode plugin payload for {}: {}", message.channelType(), e.getMessage());
             return;
@@ -219,7 +208,7 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
         }
         Platform.ServerTarget source = Platform.BACKEND.target(env.from());
         MessageContext<ChannelPayload> context = contextCast(new MessageContext<>(
-                typeCast(channelType),
+                typeCast(payloadType),
                 source,
                 env.ts()));
 
@@ -286,8 +275,8 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends ChannelPayload, C extends MessageChannel<T>> C typeCast(Object value) {
-        return (C) value;
+    private static <T extends ChannelPayload> Class<T> typeCast(Object value) {
+        return (Class<T>) value;
     }
 
     @SuppressWarnings("unchecked")

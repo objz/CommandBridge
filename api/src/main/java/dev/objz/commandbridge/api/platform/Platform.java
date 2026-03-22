@@ -17,6 +17,14 @@ public enum Platform {
         return new ServerTarget(id, this);
     }
 
+    public static ServerTarget backend(String id) {
+        return BACKEND.target(id);
+    }
+
+    public static ServerTarget velocity(String id) {
+        return VELOCITY.target(id);
+    }
+
     /**
      * Identifies a specific server in the bridge network.
      *

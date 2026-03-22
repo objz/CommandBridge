@@ -2,9 +2,7 @@ package dev.objz.commandbridge.velocity.api;
 
 import dev.objz.commandbridge.api.CommandBridgeAPI;
 import dev.objz.commandbridge.api.channel.ChannelPayload;
-import dev.objz.commandbridge.api.channel.ChannelType;
 import dev.objz.commandbridge.api.channel.MessageChannel;
-import dev.objz.commandbridge.api.channel.command.CommandChannelType;
 import dev.objz.commandbridge.api.message.MessageContext;
 import dev.objz.commandbridge.api.message.MessageListener;
 import dev.objz.commandbridge.api.message.ServerEventListener;
@@ -14,7 +12,6 @@ import dev.objz.commandbridge.api.platform.Platform;
 import dev.objz.commandbridge.api.platform.PlayerLocator;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.Endpoint;
-import dev.objz.commandbridge.net.channel.CommandMessageChannel;
 import dev.objz.commandbridge.net.channel.PluginMessageChannel;
 import dev.objz.commandbridge.net.payloads.PluginMessage;
 import dev.objz.commandbridge.net.proto.Envelope;
@@ -48,7 +45,7 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     private final EndpointServer endpointServer;
 
     private final ConcurrentHashMap<Class<?>, MessageChannel<?>> channels = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, ChannelType<?, ?>> channelTypesByName = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Class<?>> payloadTypesByName = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener<?>>> listenersByType = new ConcurrentHashMap<>();
     private final CopyOnWriteArraySet<ServerEventListener> connectedListeners = new CopyOnWriteArraySet<>();
     private final CopyOnWriteArraySet<ServerEventListener> disconnectedListeners = new CopyOnWriteArraySet<>();
@@ -64,11 +61,11 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @Override
-    public <T extends ChannelPayload, C extends MessageChannel<T>> C channel(ChannelType<T, C> type) {
+    @SuppressWarnings("unchecked")
+    public <T extends ChannelPayload> MessageChannel<T> channel(Class<T> type) {
         Objects.requireNonNull(type);
-        channelTypesByName.putIfAbsent(type.getClass().getName(), type);
-        MessageChannel<?> channel = channels.computeIfAbsent(type.getClass(), ignored -> createChannel(type));
-        return typeCast(channel);
+        payloadTypesByName.putIfAbsent(type.getName(), type);
+        return (MessageChannel<T>) channels.computeIfAbsent(type, ignored -> createChannel(type));
     }
 
     @Override
@@ -190,24 +187,17 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
         }
     }
 
-    private <T extends ChannelPayload, C extends MessageChannel<T>> MessageChannel<?> createChannel(ChannelType<T, C> type) {
-        if (type instanceof CommandChannelType commandType) {
-            return new CommandMessageChannel(commandType,
-                    this::sendPluginMessage,
-                    this::requestPluginMessage,
-                    listener -> registerListener(commandType, listener));
-        }
-
+    private <T extends ChannelPayload> MessageChannel<T> createChannel(Class<T> type) {
         return new PluginMessageChannel<>(type,
                 this::sendPluginMessage,
                 this::requestPluginMessage,
                 listener -> registerListener(type, listener));
     }
 
-    private <P extends ChannelPayload> Subscription registerListener(ChannelType<P, ? extends MessageChannel<P>> type,
+    private <P extends ChannelPayload> Subscription registerListener(Class<P> type,
             MessageListener<P> listener) {
-        String key = type.getClass().getName();
-        channelTypesByName.putIfAbsent(key, type);
+        String key = type.getName();
+        payloadTypesByName.putIfAbsent(key, type);
         CopyOnWriteArrayList<MessageListener<?>> listeners = listenersByType.computeIfAbsent(key,
                 ignored -> new CopyOnWriteArrayList<>());
         listeners.add(listener);
@@ -277,14 +267,14 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     private void dispatchLocal(Envelope env, PluginMessage message) {
-        ChannelType<?, ?> channelType = channelTypesByName.get(message.channelType());
-        if (channelType == null) {
+        Class<?> payloadType = payloadTypesByName.get(message.channelType());
+        if (payloadType == null) {
             return;
         }
 
         Object payload;
         try {
-            payload = Envelope.MAPPER.treeToValue(message.data(), channelType.type());
+            payload = Envelope.MAPPER.treeToValue(message.data(), payloadType);
         } catch (Exception e) {
             Log.warn("Failed to decode plugin payload for {}: {}", message.channelType(), e.getMessage());
             return;
@@ -297,7 +287,7 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
 
         Platform.ServerTarget source = sourceTarget(env.from());
         MessageContext<ChannelPayload> context = contextCast(new MessageContext<>(
-                typeCast(channelType),
+                typeCast(payloadType),
                 source,
                 env.ts()));
 
@@ -393,8 +383,8 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends ChannelPayload, C extends MessageChannel<T>> C typeCast(Object value) {
-        return (C) value;
+    private static <T extends ChannelPayload> Class<T> typeCast(Object value) {
+        return (Class<T>) value;
     }
 
     @SuppressWarnings("unchecked")

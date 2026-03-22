@@ -21,18 +21,8 @@ public enum ConnectionState {
     /** Authentication failed; no further attempts will be made. */
     AUTH_FAILED;
 
-    /** @return true if the connection is established, even if not yet authenticated */
+    /** @return true if the connection is established and ready for message transport */
     public boolean isActive() {
-        return this == CONNECTED || this == AUTHENTICATED;
-    }
-
-    /** @return true if the connection is ready for message transport */
-    public boolean canSend() {
         return this == AUTHENTICATED;
-    }
-
-    /** @return true if the connection reached a non-recoverable error state */
-    public boolean isTerminal() {
-        return this == AUTH_FAILED;
     }
 }

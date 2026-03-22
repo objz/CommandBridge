@@ -124,7 +124,7 @@ public final class ConnectionHandler {
         }
 
         // only send close frame if authenticated and channel is healthy
-        if (currentState.canSend() && ch.isOpen() && !ch.isCloseFrameSent() && !ch.isCloseFrameReceived()) {
+        if (currentState.isActive() && ch.isOpen() && !ch.isCloseFrameSent() && !ch.isCloseFrameReceived()) {
             try {
                 WebSockets.sendClose(
                         CloseMessage.NORMAL_CLOSURE,

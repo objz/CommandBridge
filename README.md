@@ -44,7 +44,7 @@ for the full writeup with visuals check the [documentation](https://cb.objz.dev)
 | **multi-proxy** | primary + client mode for additional proxies |
 | **player tracking** | network-wide, real-time |
 | **admin CLI** | `/cb help`, `info`, `scripts`, `reload`, `list`, `ping`, `debug`, `dump`, `migrate` |
-| **developer API** | message channels, event subscriptions, player locator, broadcast |
+| **developer API** | typed message channels, event subscriptions, player locator |
 | **optional integrations** | PlaceholderAPI, PacketEvents |
 
 ---
@@ -101,51 +101,36 @@ other useful commands:
 CB has a public API module for other plugins to interact with the bridge network. source is at [`api/`](https://github.com/objz/CommandBridge/tree/v3/api/src/main/java/dev/objz/commandbridge/api), full documentation will be on [cb.objz.dev](https://cb.objz.dev).
 
 ```java
-CommandBridgeAPI api = CommandBridgeProvider.get();
+import static dev.objz.commandbridge.api.platform.Platform.backend;
+import static dev.objz.commandbridge.api.platform.Platform.velocity;
 
-// get a typed message channel
-MessageChannel<CommandPayload> commands = api.channel(Channels.COMMAND);
+CommandBridgeAPI api = CommandBridgeProvider.get();
+MessageChannel<CommandPayload> commands = api.channel(CommandPayload.class);
 
 // send a command as console to a specific backend
-commands.send(Platform.BACKEND.target("survival-1"), CommandPayload.console("say hello"));
+commands.to(List.of(backend("survival-1")))
+        .send(new CommandPayload("say hello", RunAs.CONSOLE));
 
-// send a command as a player
-commands.send(Platform.BACKEND.target("survival-1"), CommandPayload.player("spawn", playerUuid));
+// send to multiple servers
+commands.to(List.of(backend("survival-1"), backend("creative-1")))
+        .send(new CommandPayload("say hello", RunAs.CONSOLE));
 
-// broadcast a command to all connected servers
-commands.broadcast(CommandPayload.console("say maintenance in 5 minutes"));
+// broadcast to all connected servers
+commands.toAll().send(new CommandPayload("say maintenance in 5 minutes", RunAs.CONSOLE));
 
-// request-response (waits for the target to reply)
-commands.request(Platform.BACKEND.target("survival-1"), CommandPayload.console("list"))
-        .thenAccept(response -> { /* handle response */ });
-
-// listen for incoming messages on this channel
+// listen for incoming messages
 Subscription sub = commands.listen((ctx, payload) -> {
     Platform.ServerTarget from = ctx.from();
     String command = payload.command();
 });
-sub.cancel(); // unsubscribe when done
+sub.cancel();
 
-// server lifecycle events
+// server events and state
 api.onServerConnected(server -> { /* server joined the network */ });
 api.onServerDisconnected(server -> { /* server left the network */ });
-
-// connection state monitoring
 api.onConnectionStateChanged(state -> {
     if (state.canSend()) { /* ready to send messages */ }
 });
-
-// current server identity and state
-Platform.ServerTarget self = api.server();
-ConnectionState state = api.connectionState();
-
-// list all connected servers (available on velocity)
-api.connectedServers().ifPresent(servers -> { /* Set<String> of server IDs */ });
-
-// find which server a player is on (available on velocity)
-api.playerLocator().ifPresent(locator ->
-        locator.locate(playerUuid).ifPresent(server -> { /* player is on this server */ })
-);
 ```
 
 ---
@@ -236,12 +221,11 @@ api.playerLocator().ifPresent(locator ->
 
 - [ ] **developer API**
   - [x] public API module (`api/`)
-  - [x] typed message channels with send, request, and listen
-  - [x] command channel with console/player/operator dispatch
+  - [x] typed message channels with target builder, send, request, broadcast, and listen
+  - [x] multi-target and mixed-platform dispatch
   - [x] server connect/disconnect event subscriptions
   - [x] connection state tracking
   - [x] player locator service
-  - [x] broadcast to all connected servers
   - [ ] more channel types and lifecycle hooks
 
 - [ ] **web interface**

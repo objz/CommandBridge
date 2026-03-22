@@ -1,7 +1,6 @@
 package dev.objz.commandbridge.api;
 
 import dev.objz.commandbridge.api.channel.ChannelPayload;
-import dev.objz.commandbridge.api.channel.ChannelType;
 import dev.objz.commandbridge.api.channel.MessageChannel;
 import dev.objz.commandbridge.api.message.ServerEventListener;
 import dev.objz.commandbridge.api.message.Subscription;
@@ -17,14 +16,13 @@ import java.util.function.Consumer;
 public interface CommandBridgeAPI {
 
     /**
-     * Obtains a {@link MessageChannel} for the given {@link ChannelType}.
+     * Obtains a {@link MessageChannel} for the given payload type.
      *
-     * @param type the channel type identity
+     * @param type the payload class that identifies the channel
      * @param <T> the payload type
-     * @param <C> the channel interface type
      * @return the message channel
      */
-    <T extends ChannelPayload, C extends MessageChannel<T>> C channel(ChannelType<T, C> type);
+    <T extends ChannelPayload> MessageChannel<T> channel(Class<T> type);
 
     /** @return the identity of the current server */
     Platform.ServerTarget server();

@@ -5,6 +5,7 @@ import dev.objz.commandbridge.api.message.Subscription;
 import dev.objz.commandbridge.api.platform.Platform;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -15,40 +16,19 @@ import java.util.concurrent.CompletableFuture;
 public interface MessageChannel<P extends ChannelPayload> {
 
     /**
-     * Sends a payload to a target server without expecting a response.
+     * Targets one or more servers for sending.
      *
-     * @param target the destination server
-     * @param payload the data to send
-     * @return a future that completes when the message is sent
+     * @param targets the destination servers
+     * @return a sender scoped to the given targets
      */
-    CompletableFuture<Void> send(Platform.ServerTarget target, P payload);
+    Sender<P> to(Collection<Platform.ServerTarget> targets);
 
     /**
-     * Broadcasts a payload to all connected servers.
+     * Targets all connected servers for sending.
      *
-     * @param payload the data to send
-     * @return a future that completes when the broadcast is dispatched
+     * @return a sender that broadcasts to every connected server
      */
-    CompletableFuture<Void> broadcast(P payload);
-
-    /**
-     * Sends a request to a target server and waits for a response.
-     *
-     * @param target the destination server
-     * @param payload the request data
-     * @return a future containing the response payload
-     */
-    CompletableFuture<P> request(Platform.ServerTarget target, P payload);
-
-    /**
-     * Sends a request to a target server with a custom timeout.
-     *
-     * @param target the destination server
-     * @param payload the request data
-     * @param timeout the maximum time to wait for a response
-     * @return a future containing the response payload
-     */
-    CompletableFuture<P> request(Platform.ServerTarget target, P payload, Duration timeout);
+    Sender<P> toAll();
 
     /**
      * Subscribes a listener to messages received on this channel.
@@ -57,4 +37,39 @@ public interface MessageChannel<P extends ChannelPayload> {
      * @return a subscription handle to cancel the listener
      */
     Subscription listen(MessageListener<P> listener);
+
+    /**
+     * A target-bound sender for dispatching payloads.
+     *
+     * @param <P> the payload type
+     */
+    interface Sender<P extends ChannelPayload> {
+
+        /**
+         * Sends a payload without expecting a response.
+         *
+         * @param payload the data to send
+         * @return a future that completes when the message is dispatched
+         */
+        CompletableFuture<Void> send(P payload);
+
+        /**
+         * Sends a request and waits for a response with the default timeout.
+         * Only supported for single-target senders.
+         *
+         * @param payload the request data
+         * @return a future containing the response payload
+         */
+        CompletableFuture<P> request(P payload);
+
+        /**
+         * Sends a request and waits for a response with a custom timeout.
+         * Only supported for single-target senders.
+         *
+         * @param payload the request data
+         * @param timeout the maximum time to wait for a response
+         * @return a future containing the response payload
+         */
+        CompletableFuture<P> request(P payload, Duration timeout);
+    }
 }
