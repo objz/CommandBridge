@@ -15,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -70,7 +71,7 @@ public final class PluginMessageChannel<P extends ChannelPayload> implements Mes
 
     @Override
     public Sender<P> toAll() {
-        return new SingleTargetSender(Platform.BACKEND.target("*"));
+        return new BroadcastSender();
     }
 
     @Override
@@ -79,9 +80,27 @@ public final class PluginMessageChannel<P extends ChannelPayload> implements Mes
         return listenerRegistrar.listen(listener);
     }
 
-    private PluginMessage toPluginMessage(P payload, boolean expectsResponse) {
+    private PluginMessage toPluginMessage(P payload, boolean expectsResponse, UUID requirePlayer, UUID whenOnline) {
         return new PluginMessage(payloadType.getName(),
-                Envelope.MAPPER.valueToTree(payload), expectsResponse);
+                Envelope.MAPPER.valueToTree(payload), expectsResponse, requirePlayer, whenOnline, null);
+    }
+
+    private PluginMessage toPluginMessage(P payload, boolean expectsResponse) {
+        return toPluginMessage(payload, expectsResponse, null, null);
+    }
+
+    private UUID resolveConditionUuid(P payload, UUID stored, boolean fromPayload) {
+        if (!fromPayload) {
+            return stored;
+        }
+        if (payload instanceof dev.objz.commandbridge.api.channel.command.CommandPayload cp) {
+            UUID uuid = cp.player();
+            if (uuid == null) {
+                throw new IllegalStateException("Payload has no player UUID");
+            }
+            return uuid;
+        }
+        throw new IllegalStateException("No-arg condition requires CommandPayload with a player UUID");
     }
 
     private P toPayload(PluginMessage response) {
@@ -95,15 +114,26 @@ public final class PluginMessageChannel<P extends ChannelPayload> implements Mes
     private final class SingleTargetSender implements Sender<P> {
 
         private final Platform.ServerTarget target;
+        private UUID requirePlayerUuid;
+        private boolean requirePlayerFromPayload;
+        private UUID whenOnlineUuid;
+        private boolean whenOnlineFromPayload;
 
         SingleTargetSender(Platform.ServerTarget target) {
             this.target = target;
         }
 
+        private boolean hasCondition() {
+            return requirePlayerUuid != null || requirePlayerFromPayload || whenOnlineUuid != null || whenOnlineFromPayload;
+        }
+
         @Override
         public CompletableFuture<Void> send(P payload) {
             Objects.requireNonNull(payload);
-            return sendTransport.send(target, toPluginMessage(payload, false));
+            UUID requirePlayer = PluginMessageChannel.this
+                    .resolveConditionUuid(payload, requirePlayerUuid, requirePlayerFromPayload);
+            UUID whenOnline = PluginMessageChannel.this.resolveConditionUuid(payload, whenOnlineUuid, whenOnlineFromPayload);
+            return sendTransport.send(target, toPluginMessage(payload, false, requirePlayer, whenOnline));
         }
 
         @Override
@@ -115,14 +145,65 @@ public final class PluginMessageChannel<P extends ChannelPayload> implements Mes
         public CompletableFuture<P> request(P payload, Duration timeout) {
             Objects.requireNonNull(payload);
             Objects.requireNonNull(timeout);
-            return requestTransport.request(target, toPluginMessage(payload, true), timeout)
+            if (hasCondition() && (whenOnlineUuid != null || whenOnlineFromPayload)) {
+                throw new UnsupportedOperationException("whenOnline is not supported for request");
+            }
+            UUID requirePlayer = PluginMessageChannel.this
+                    .resolveConditionUuid(payload, requirePlayerUuid, requirePlayerFromPayload);
+            return requestTransport.request(target, toPluginMessage(payload, true, requirePlayer, null), timeout)
                     .thenApply(PluginMessageChannel.this::toPayload);
+        }
+
+        @Override
+        public Sender<P> requirePlayer(UUID player) {
+            Objects.requireNonNull(player);
+            if (whenOnlineUuid != null || whenOnlineFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            requirePlayerUuid = player;
+            requirePlayerFromPayload = false;
+            return this;
+        }
+
+        @Override
+        public Sender<P> requirePlayer() {
+            if (whenOnlineUuid != null || whenOnlineFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            requirePlayerFromPayload = true;
+            requirePlayerUuid = null;
+            return this;
+        }
+
+        @Override
+        public Sender<P> whenOnline(UUID player) {
+            Objects.requireNonNull(player);
+            if (requirePlayerUuid != null || requirePlayerFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            whenOnlineUuid = player;
+            whenOnlineFromPayload = false;
+            return this;
+        }
+
+        @Override
+        public Sender<P> whenOnline() {
+            if (requirePlayerUuid != null || requirePlayerFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            whenOnlineFromPayload = true;
+            whenOnlineUuid = null;
+            return this;
         }
     }
 
     private final class MultiTargetSender implements Sender<P> {
 
         private final Set<Platform.ServerTarget> targets;
+        private UUID requirePlayerUuid;
+        private boolean requirePlayerFromPayload;
+        private UUID whenOnlineUuid;
+        private boolean whenOnlineFromPayload;
 
         MultiTargetSender(Set<Platform.ServerTarget> targets) {
             this.targets = targets;
@@ -131,7 +212,10 @@ public final class PluginMessageChannel<P extends ChannelPayload> implements Mes
         @Override
         public CompletableFuture<Void> send(P payload) {
             Objects.requireNonNull(payload);
-            PluginMessage message = toPluginMessage(payload, false);
+            UUID requirePlayer = PluginMessageChannel.this
+                    .resolveConditionUuid(payload, requirePlayerUuid, requirePlayerFromPayload);
+            UUID whenOnline = PluginMessageChannel.this.resolveConditionUuid(payload, whenOnlineUuid, whenOnlineFromPayload);
+            PluginMessage message = toPluginMessage(payload, false, requirePlayer, whenOnline);
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (Platform.ServerTarget target : targets) {
                 futures.add(sendTransport.send(target, message));
@@ -147,6 +231,87 @@ public final class PluginMessageChannel<P extends ChannelPayload> implements Mes
         @Override
         public CompletableFuture<P> request(P payload, Duration timeout) {
             throw new UnsupportedOperationException("Request is only supported for single-target senders");
+        }
+
+        @Override
+        public Sender<P> requirePlayer(UUID player) {
+            Objects.requireNonNull(player);
+            if (whenOnlineUuid != null || whenOnlineFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            requirePlayerUuid = player;
+            requirePlayerFromPayload = false;
+            return this;
+        }
+
+        @Override
+        public Sender<P> requirePlayer() {
+            if (whenOnlineUuid != null || whenOnlineFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            requirePlayerFromPayload = true;
+            requirePlayerUuid = null;
+            return this;
+        }
+
+        @Override
+        public Sender<P> whenOnline(UUID player) {
+            Objects.requireNonNull(player);
+            if (requirePlayerUuid != null || requirePlayerFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            whenOnlineUuid = player;
+            whenOnlineFromPayload = false;
+            return this;
+        }
+
+        @Override
+        public Sender<P> whenOnline() {
+            if (requirePlayerUuid != null || requirePlayerFromPayload) {
+                throw new IllegalStateException("Cannot combine requirePlayer and whenOnline");
+            }
+            whenOnlineFromPayload = true;
+            whenOnlineUuid = null;
+            return this;
+        }
+    }
+
+    private final class BroadcastSender implements Sender<P> {
+
+        @Override
+        public CompletableFuture<Void> send(P payload) {
+            Objects.requireNonNull(payload);
+            return sendTransport.send(Platform.BACKEND.target("*"), toPluginMessage(payload, false));
+        }
+
+        @Override
+        public CompletableFuture<P> request(P payload) {
+            throw new UnsupportedOperationException("Request is not supported for broadcast senders");
+        }
+
+        @Override
+        public CompletableFuture<P> request(P payload, Duration timeout) {
+            throw new UnsupportedOperationException("Request is not supported for broadcast senders");
+        }
+
+        @Override
+        public Sender<P> requirePlayer(UUID player) {
+            throw new UnsupportedOperationException("Delivery conditions are not supported for broadcast senders");
+        }
+
+        @Override
+        public Sender<P> requirePlayer() {
+            throw new UnsupportedOperationException("Delivery conditions are not supported for broadcast senders");
+        }
+
+        @Override
+        public Sender<P> whenOnline(UUID player) {
+            throw new UnsupportedOperationException("Delivery conditions are not supported for broadcast senders");
+        }
+
+        @Override
+        public Sender<P> whenOnline() {
+            throw new UnsupportedOperationException("Delivery conditions are not supported for broadcast senders");
         }
     }
 }
