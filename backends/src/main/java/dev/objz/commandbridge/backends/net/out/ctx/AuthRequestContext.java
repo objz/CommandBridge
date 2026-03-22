@@ -8,7 +8,12 @@ import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 
 public record AuthRequestContext(
         Duration timeout,
-        Consumer<ClientStatus> statusSink) {
+        Consumer<ClientStatus> statusSink,
+        Runnable onAuthFailed) {
+
+    public AuthRequestContext(Duration timeout, Consumer<ClientStatus> statusSink) {
+        this(timeout, statusSink, null);
+    }
 
     public AuthRequestContext {
         Objects.requireNonNull(timeout);

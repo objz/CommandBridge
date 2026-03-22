@@ -42,6 +42,7 @@ public final class WsClient implements BackendClient {
     private final BackendCommandBridgeImpl api;
 
     private final AtomicReference<ConnectionState> stateRef = new AtomicReference<>(ConnectionState.DISCONNECTED);
+    private volatile WsEndpoint cachedEndpoint;
     private Location location = Location.BACKEND;
     private String serverId;
 
@@ -64,6 +65,7 @@ public final class WsClient implements BackendClient {
                 location);
 
         outNode.setClientId(cfg.clientId());
+        authHandler.onAuthFailed(this::onConnectionLost);
         this.api = new BackendCommandBridgeImpl(this);
     }
 
@@ -119,6 +121,7 @@ public final class WsClient implements BackendClient {
         reconnectHandler.shutdown();
         messageRouter.clearTap();
         connectionHandler.forceClose();
+        cachedEndpoint = null;
         stateRef.set(ConnectionState.DISCONNECTED);
         resources.close();
         start();
@@ -135,12 +138,17 @@ public final class WsClient implements BackendClient {
             throw new IllegalStateException("Endpoint not connected or unhealthy");
         }
 
-        WebSocketChannel channel = connectionHandler.getChannel();
-        if (channel == null) {
-            throw new IllegalStateException("Endpoint transport is null");
+        WsEndpoint endpoint = cachedEndpoint;
+        if (endpoint == null || !endpoint.isOpen()) {
+            WebSocketChannel channel = connectionHandler.getChannel();
+            if (channel == null) {
+                throw new IllegalStateException("Endpoint transport is null");
+            }
+            endpoint = new WsEndpoint(channel);
+            cachedEndpoint = endpoint;
         }
 
-        return new SendOperation(new WsEndpoint(channel), request, awaiter);
+        return new SendOperation(endpoint, request, awaiter);
     }
 
     @Override

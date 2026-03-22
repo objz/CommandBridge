@@ -64,6 +64,9 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
             if (!ok) {
                 ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                 Log.error("Authentication failed: invalid server proof");
+                if (ctx.onAuthFailed() != null) {
+                    ctx.onAuthFailed().run();
+                }
             } else {
                 ctx.statusSink().accept(ClientStatus.AUTH_OK);
                 Log.success("Authenticated successfully");

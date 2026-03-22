@@ -97,9 +97,8 @@ public final class AuthHandler extends InboundHandler {
         });
 
         ClientSession s = sessions.add(env.from(), endpoint);
-        s.status(AuthStatus.AUTH_FAIL);
-
         s.location(ap.location() != null ? ap.location() : Location.BACKEND);
+        s.status(AuthStatus.AUTH_OK);
 
         reply(endpoint, env, MessageType.AUTH_OK, new AuthResponsePayload(serverNonce, serverMac))
                 .dispatch()
@@ -107,7 +106,6 @@ public final class AuthHandler extends InboundHandler {
                     Log.warn("Failed to send auth response: {}", ex.toString());
                     return null;
                 });
-        s.status(AuthStatus.AUTH_OK);
         Log.success(true, "Authentication succeeded for '{}' from '{}'", env.from(), endpoint.describe());
 
         var cb = onAuthed;

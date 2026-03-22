@@ -17,6 +17,7 @@ public final class AuthHandler {
     private final OutNode outNode;
     private final AtomicReference<ConnectionState> stateRef;
     private volatile Runnable onAuthed;
+    private volatile Runnable onAuthFailed;
 
     public AuthHandler(BackendsConfig cfg, OutNode outNode, AtomicReference<ConnectionState> stateRef) {
         this.cfg = cfg;
@@ -26,6 +27,10 @@ public final class AuthHandler {
 
     public void onAuthenticated(Runnable callback) {
         this.onAuthed = callback;
+    }
+
+    public void onAuthFailed(Runnable callback) {
+        this.onAuthFailed = callback;
     }
 
     public boolean authenticate() {
@@ -50,7 +55,7 @@ public final class AuthHandler {
         };
 
         Duration timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
-        AuthRequestContext context = new AuthRequestContext(timeout, statusUpdater);
+        AuthRequestContext context = new AuthRequestContext(timeout, statusUpdater, onAuthFailed);
 
         try {
             outNode.send(MessageType.AUTH_REQUEST, context);

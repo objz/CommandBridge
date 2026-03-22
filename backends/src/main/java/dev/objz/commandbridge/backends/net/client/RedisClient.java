@@ -71,6 +71,7 @@ public final class RedisClient implements BackendClient {
                 location);
 
         outNode.setClientId(cfg.clientId());
+        authHandler.onAuthFailed(this::onConnectionLost);
         this.api = new BackendCommandBridgeImpl(this);
     }
 

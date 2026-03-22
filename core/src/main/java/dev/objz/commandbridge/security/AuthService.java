@@ -3,6 +3,7 @@ package dev.objz.commandbridge.security;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Base64;
 
 public final class AuthService {
@@ -17,7 +18,7 @@ public final class AuthService {
     }
 
     public boolean verify(String clientId, String clientNonce, String macB64) {
-        return sign(clientId, clientNonce).equals(macB64);
+        return constantTimeEquals(sign(clientId, clientNonce), macB64);
     }
 
     public String signServerProof(String clientId, String clientNonce, String serverNonce) {
@@ -25,7 +26,14 @@ public final class AuthService {
     }
 
     public boolean verifyServerProof(String clientId, String clientNonce, String serverNonce, String macB64) {
-        return signServerProof(clientId, clientNonce, serverNonce).equals(macB64);
+        return constantTimeEquals(signServerProof(clientId, clientNonce, serverNonce), macB64);
+    }
+
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8));
     }
 
     private String hmac(String data) {
