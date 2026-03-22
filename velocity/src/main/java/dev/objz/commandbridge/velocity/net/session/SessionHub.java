@@ -30,8 +30,11 @@ public final class SessionHub implements Iterable<ClientSession> {
 
         var s = new ClientSession(endpoint, clientId);
         var previous = clientsById.put(clientId, s);
-        if (previous != null && previous.endpoint() != null) {
-            clientsByEndpoint.remove(previous.endpoint());
+        if (previous != null) {
+            if (previous.endpoint() != null) {
+                clientsByEndpoint.remove(previous.endpoint());
+            }
+            notifyRemoval(previous);
         }
         clientsByEndpoint.put(endpoint, s);
         Log.debug("Session created for client '{}' via {}", clientId, endpoint.describe());

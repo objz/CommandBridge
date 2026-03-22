@@ -19,9 +19,9 @@ public final class ScriptManager {
     private final Path scriptsDir;
     private final PlatformFeatures platformFeatures;
 
-    private final List<Script> loaded = new ArrayList<>();
-    private final List<Script> enabled = new ArrayList<>();
-    private final List<Script> disabled = new ArrayList<>();
+    private volatile List<Script> loaded = List.of();
+    private volatile List<Script> enabled = List.of();
+    private volatile List<Script> disabled = List.of();
     private long errors;
 
     public ScriptManager(Path dataDir, PlatformFeatures platformFeatures) {
@@ -36,9 +36,10 @@ public final class ScriptManager {
     }
 
     public void loadAll(boolean logSummary) {
-        loaded.clear();
-        enabled.clear();
-        errors = 0;
+        List<Script> newLoaded = new ArrayList<>();
+        List<Script> newEnabled = new ArrayList<>();
+        List<Script> newDisabled = new ArrayList<>();
+        long newErrors = 0;
 
         try {
             Files.createDirectories(scriptsDir);
@@ -59,28 +60,34 @@ public final class ScriptManager {
             try (var in = Files.newInputStream(p)) {
                 LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
                         platformFeatures);
-                loaded.add(res.value);
+                newLoaded.add(res.value);
                 if (res.ok() && res.value != null) {
                     Log.debug("Loaded script '{}' from '{}' (enabled={}, commands={})",
                             res.value.name(), p.getFileName(), res.value.enabled(),
                             res.value.commands() != null ? res.value.commands().size() : 0);
                     if (res.value.enabled())
-                        enabled.add(res.value);
+                        newEnabled.add(res.value);
                     else
-                        disabled.add(res.value);
+                        newDisabled.add(res.value);
                 } else {
                     String header = "Script '" + p.getFileName() + "' invalid:";
                     Log.error(res.problems.toBulletedList(header));
-                    disabled.add(res.value);
-                    errors = res.problems.count();
+                    newDisabled.add(res.value);
+                    newErrors += res.problems.count();
                 }
             } catch (Exception e) {
                 Log.error(e, "Script '{}' invalid: unexpected error: {}", p.getFileName(), e.getMessage());
             }
         }
 
+        // Atomic swap — readers see a consistent snapshot
+        this.loaded = List.copyOf(newLoaded);
+        this.enabled = List.copyOf(newEnabled);
+        this.disabled = List.copyOf(newDisabled);
+        this.errors = newErrors;
+
         if (logSummary) {
-            Summary.scriptsSummary(loaded.size(), enabled.size(), disabled.size(), errors);
+            Summary.scriptsSummary(newLoaded.size(), newEnabled.size(), newDisabled.size(), newErrors);
         }
     }
 

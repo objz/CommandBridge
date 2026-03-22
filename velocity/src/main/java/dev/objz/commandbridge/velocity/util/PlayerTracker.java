@@ -22,10 +22,13 @@ public final class PlayerTracker {
         if (clientId == null)
             return;
         Set<UUID> set = playersByClient.computeIfAbsent(clientId, k -> ConcurrentHashMap.newKeySet());
+        Set<UUID> previousPlayers = Set.copyOf(set);
         set.clear();
         set.addAll(players);
         for (UUID uuid : players) {
-            fireJoin(clientId, uuid);
+            if (!previousPlayers.contains(uuid)) {
+                fireJoin(clientId, uuid);
+            }
         }
     }
 
