@@ -126,8 +126,14 @@ Subscription sub = commands.listen((ctx, payload) -> {
 sub.cancel();
 
 // server events and state
-api.onServerConnected(server -> { /* server joined the network */ });
-api.onServerDisconnected(server -> { /* server left the network */ });
+api.onServerConnected(server -> {
+    // called when a backend connects
+}).ifPresent(sub -> subscriptions.add(sub));
+
+api.onServerDisconnected(server -> {
+    // called when a backend disconnects
+}).ifPresent(sub -> subscriptions.add(sub));
+
 api.onConnectionStateChanged(state -> {
     if (state.canSend()) { /* ready to send messages */ }
 });
