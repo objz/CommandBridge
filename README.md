@@ -103,22 +103,49 @@ CB has a public API module for other plugins to interact with the bridge network
 ```java
 CommandBridgeAPI api = CommandBridgeProvider.get();
 
-// send a command as console to a backend
-CommandChannel commands = api.channel(Channels.COMMAND);
-commands.console(Platform.BACKEND.target("survival-1"), "say hello");
+// get a typed message channel
+MessageChannel<CommandPayload> commands = api.channel(Channels.COMMAND);
 
-// listen for incoming messages
-Subscription sub = commands.listen((ctx, payload) -> { /* ... */ });
+// send a command as console to a specific backend
+commands.send(Platform.BACKEND.target("survival-1"), CommandPayload.console("say hello"));
 
-// server events
-api.onServerConnected(server -> { /* ... */ });
-api.onServerDisconnected(server -> { /* ... */ });
+// send a command as a player
+commands.send(Platform.BACKEND.target("survival-1"), CommandPayload.player("spawn", playerUuid));
 
-// find a player across the network
-api.playerLocator().ifPresent(locator -> locator.locate(playerUuid));
+// broadcast a command to all connected servers
+commands.broadcast(CommandPayload.console("say maintenance in 5 minutes"));
 
-// broadcast to all servers
-api.broadcast(commands, CommandPayload.console("say maintenance in 5 minutes"));
+// request-response (waits for the target to reply)
+commands.request(Platform.BACKEND.target("survival-1"), CommandPayload.console("list"))
+        .thenAccept(response -> { /* handle response */ });
+
+// listen for incoming messages on this channel
+Subscription sub = commands.listen((ctx, payload) -> {
+    Platform.ServerTarget from = ctx.from();
+    String command = payload.command();
+});
+sub.cancel(); // unsubscribe when done
+
+// server lifecycle events
+api.onServerConnected(server -> { /* server joined the network */ });
+api.onServerDisconnected(server -> { /* server left the network */ });
+
+// connection state monitoring
+api.onConnectionStateChanged(state -> {
+    if (state.canSend()) { /* ready to send messages */ }
+});
+
+// current server identity and state
+Platform.ServerTarget self = api.server();
+ConnectionState state = api.connectionState();
+
+// list all connected servers (available on velocity)
+api.connectedServers().ifPresent(servers -> { /* Set<String> of server IDs */ });
+
+// find which server a player is on (available on velocity)
+api.playerLocator().ifPresent(locator ->
+        locator.locate(playerUuid).ifPresent(server -> { /* player is on this server */ })
+);
 ```
 
 ---

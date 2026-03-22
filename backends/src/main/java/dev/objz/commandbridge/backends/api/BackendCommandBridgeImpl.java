@@ -84,13 +84,6 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @Override
-    public <P extends ChannelPayload> CompletableFuture<Void> broadcast(MessageChannel<P> channel, P payload) {
-        Objects.requireNonNull(channel);
-        Objects.requireNonNull(payload);
-        return channel.send(Platform.BACKEND.target("*"), payload);
-    }
-
-    @Override
     public Platform.ServerTarget server() {
         return Platform.BACKEND.target(localServerId());
     }

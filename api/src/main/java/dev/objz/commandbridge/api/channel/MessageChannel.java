@@ -24,6 +24,14 @@ public interface MessageChannel<P extends ChannelPayload> {
     CompletableFuture<Void> send(Platform.ServerTarget target, P payload);
 
     /**
+     * Broadcasts a payload to all connected servers.
+     *
+     * @param payload the data to send
+     * @return a future that completes when the broadcast is dispatched
+     */
+    CompletableFuture<Void> broadcast(P payload);
+
+    /**
      * Sends a request to a target server and waits for a response.
      *
      * @param target the destination server

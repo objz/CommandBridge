@@ -72,20 +72,6 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @Override
-    public <P extends ChannelPayload> CompletableFuture<Void> broadcast(MessageChannel<P> channel, P payload) {
-        Objects.requireNonNull(channel);
-        Objects.requireNonNull(payload);
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-        for (ClientSession session : sessions) {
-            if (!isRoutable(session)) {
-                continue;
-            }
-            futures.add(channel.send(toPlatform(session.location()).target(session.id()), payload));
-        }
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
-    }
-
-    @Override
     public Platform.ServerTarget server() {
         return Platform.VELOCITY.target(serverId);
     }
@@ -229,6 +215,10 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     private CompletableFuture<Void> sendPluginMessage(Platform.ServerTarget target, PluginMessage payload) {
+        if ("*".equals(target.id())) {
+            return broadcastPluginMessage(payload);
+        }
+
         if (isLocalVelocity(target)) {
             Envelope local = Envelope.make(MessageType.PLUGIN_MESSAGE, serverId, serverId,
                     Envelope.MAPPER.valueToTree(payload));
@@ -245,6 +235,19 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
         Envelope env = Envelope.make(MessageType.PLUGIN_MESSAGE, serverId, target.id(),
                 Envelope.MAPPER.valueToTree(payload));
         return endpointServer.send(session.get().endpoint(), env).dispatch();
+    }
+
+    private CompletableFuture<Void> broadcastPluginMessage(PluginMessage payload) {
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (ClientSession session : sessions) {
+            if (!isRoutable(session)) {
+                continue;
+            }
+            Envelope env = Envelope.make(MessageType.PLUGIN_MESSAGE, serverId, session.id(),
+                    Envelope.MAPPER.valueToTree(payload));
+            futures.add(endpointServer.send(session.endpoint(), env).dispatch());
+        }
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
     }
 
     private CompletableFuture<PluginMessage> requestPluginMessage(Platform.ServerTarget target,

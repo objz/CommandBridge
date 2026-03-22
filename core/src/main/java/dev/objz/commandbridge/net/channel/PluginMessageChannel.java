@@ -54,6 +54,12 @@ public class PluginMessageChannel<P extends ChannelPayload> implements MessageCh
     }
 
     @Override
+    public CompletableFuture<Void> broadcast(P payload) {
+        Objects.requireNonNull(payload);
+        return sendTransport.send(Platform.BACKEND.target("*"), toPluginMessage(payload, false));
+    }
+
+    @Override
     public CompletableFuture<P> request(Platform.ServerTarget target, P payload) {
         return request(target, payload, Duration.ofSeconds(15));
     }

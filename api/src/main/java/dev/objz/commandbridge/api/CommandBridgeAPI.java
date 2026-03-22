@@ -11,7 +11,6 @@ import dev.objz.commandbridge.api.platform.PlayerLocator;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /** Main entry point for interacting with the CommandBridge network. */
@@ -26,15 +25,6 @@ public interface CommandBridgeAPI {
      * @return the message channel
      */
     <T extends ChannelPayload, C extends MessageChannel<T>> C channel(ChannelType<T, C> type);
-
-    /**
-     * Broadcasts a payload to all connected servers on a specific channel.
-     *
-     * @param channel the channel to broadcast on
-     * @param payload the data to send
-     * @return a future that completes when the broadcast is dispatched
-     */
-    <P extends ChannelPayload> CompletableFuture<Void> broadcast(MessageChannel<P> channel, P payload);
 
     /** @return the identity of the current server */
     Platform.ServerTarget server();
