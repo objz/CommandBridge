@@ -3,6 +3,7 @@ package dev.objz.commandbridge.net;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.MessageType;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +21,7 @@ public final class OutNode {
     private String serverId;
 
     public OutNode() {
-        this.handlers = new EnumMap<>(MessageType.class);
+        this.handlers = Collections.synchronizedMap(new EnumMap<>(MessageType.class));
     }
 
     public OutNode setSendOperationFactory(Function<Envelope, SendOperation> factory) {

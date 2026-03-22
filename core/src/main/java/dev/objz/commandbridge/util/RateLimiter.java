@@ -2,11 +2,13 @@ package dev.objz.commandbridge.util;
 
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class RateLimiter<K> {
     private static final class Window {
-        volatile long sec;
-        volatile int count;
+        final AtomicLong sec = new AtomicLong();
+        final AtomicInteger count = new AtomicInteger();
     }
 
     private final int maxPerSec;
@@ -21,10 +23,12 @@ public final class RateLimiter<K> {
     public boolean allow(K key) {
         long now = Instant.now().getEpochSecond();
         Window w = windows.computeIfAbsent(key, k -> new Window());
-        if (w.sec != now) {
-            w.sec = now;
-            w.count = 0;
+        synchronized (w) {
+            if (w.sec.get() != now) {
+                w.sec.set(now);
+                w.count.set(0);
+            }
+            return w.count.incrementAndGet() <= maxPerSec;
         }
-        return ++w.count <= maxPerSec;
     }
 }

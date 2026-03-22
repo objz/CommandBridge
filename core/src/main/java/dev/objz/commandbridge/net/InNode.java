@@ -4,6 +4,7 @@ import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +18,7 @@ public final class InNode {
     private BiFunction<Endpoint, Envelope, SendOperation> sendOperationFactory;
 
     public InNode() {
-        this.handlers = new EnumMap<>(MessageType.class);
+        this.handlers = Collections.synchronizedMap(new EnumMap<>(MessageType.class));
     }
 
     public void setInboundTap(Predicate<Envelope> tap) {

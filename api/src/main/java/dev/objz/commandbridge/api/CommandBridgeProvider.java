@@ -44,7 +44,7 @@ public final class CommandBridgeProvider {
      * @param impl the implementation to register
      * @throws IllegalStateException if an implementation is already registered
      */
-    public static void register(CommandBridgeAPI impl) {
+    public static synchronized void register(CommandBridgeAPI impl) {
         Objects.requireNonNull(impl);
         if (instance != null) {
             throw new IllegalStateException("CommandBridge already registered");
@@ -53,7 +53,7 @@ public final class CommandBridgeProvider {
     }
 
     /** Unregisters the current API implementation. */
-    public static void unregister() {
+    public static synchronized void unregister() {
         instance = null;
     }
 }
