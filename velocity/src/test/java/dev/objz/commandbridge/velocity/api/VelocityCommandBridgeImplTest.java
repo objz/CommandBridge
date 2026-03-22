@@ -16,6 +16,7 @@ import dev.objz.commandbridge.velocity.net.EndpointServer;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -27,6 +28,14 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class VelocityCommandBridgeImplTest {
+
+    @BeforeAll
+    static void installLog() {
+        try {
+            dev.objz.commandbridge.logging.Log.install(java.util.logging.Logger.getLogger("test"));
+        } catch (IllegalStateException ignored) {
+        }
+    }
 
     @Test
     void requirePlayerDropsSendWhenAbsent() {
