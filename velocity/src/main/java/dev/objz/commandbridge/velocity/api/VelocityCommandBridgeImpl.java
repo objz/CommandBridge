@@ -105,17 +105,17 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @Override
-    public Subscription onServerConnected(ServerEventListener listener) {
+    public Optional<Subscription> onServerConnected(ServerEventListener listener) {
         Objects.requireNonNull(listener);
         connectedListeners.add(listener);
-        return () -> connectedListeners.remove(listener);
+        return Optional.of(() -> connectedListeners.remove(listener));
     }
 
     @Override
-    public Subscription onServerDisconnected(ServerEventListener listener) {
+    public Optional<Subscription> onServerDisconnected(ServerEventListener listener) {
         Objects.requireNonNull(listener);
         disconnectedListeners.add(listener);
-        return () -> disconnectedListeners.remove(listener);
+        return Optional.of(() -> disconnectedListeners.remove(listener));
     }
 
     @Override

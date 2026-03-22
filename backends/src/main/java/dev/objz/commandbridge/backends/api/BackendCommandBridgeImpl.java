@@ -101,15 +101,15 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     @Override
-    public Subscription onServerConnected(ServerEventListener listener) {
+    public Optional<Subscription> onServerConnected(ServerEventListener listener) {
         Objects.requireNonNull(listener);
-        return () -> { };
+        return Optional.empty();
     }
 
     @Override
-    public Subscription onServerDisconnected(ServerEventListener listener) {
+    public Optional<Subscription> onServerDisconnected(ServerEventListener listener) {
         Objects.requireNonNull(listener);
-        return () -> { };
+        return Optional.empty();
     }
 
     @Override

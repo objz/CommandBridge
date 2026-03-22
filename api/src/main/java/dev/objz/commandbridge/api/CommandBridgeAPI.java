@@ -42,7 +42,7 @@ public interface CommandBridgeAPI {
      * @param listener the listener to call when a server connects
      * @return a subscription handle to cancel the listener
      */
-    Subscription onServerConnected(ServerEventListener listener);
+    Optional<Subscription> onServerConnected(ServerEventListener listener);
 
     /**
      * Subscribes to server disconnection events.
@@ -50,7 +50,7 @@ public interface CommandBridgeAPI {
      * @param listener the listener to call when a server disconnects
      * @return a subscription handle to cancel the listener
      */
-    Subscription onServerDisconnected(ServerEventListener listener);
+    Optional<Subscription> onServerDisconnected(ServerEventListener listener);
 
     /**
      * Subscribes to connection state changes.
