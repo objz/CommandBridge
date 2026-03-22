@@ -14,7 +14,9 @@
 !gradle/wrapper/gradle-wrapper.jar
 
 kls_database.db
-AGENTS.md
+*AGENTS.md
+/.sisyphus/
+
 
 
 velocity/bin/
