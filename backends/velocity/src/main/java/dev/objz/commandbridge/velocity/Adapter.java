@@ -73,7 +73,7 @@ public final class Adapter implements PlatformAdapter<VelocityMain> {
             this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
 
         if (this.cfg == null) {
-            var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
+            var cfgMgr = new ConfigManager<>(dataDir, env.configName(), BackendsConfig.class);
             if (!cfgMgr.load()) {
                 Log.error("Could not load BackendsConfig");
                 return;
