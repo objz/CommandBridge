@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.objz.commandbridge.api.message.Subscription;
-import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.net.InNode;
