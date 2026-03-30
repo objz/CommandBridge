@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * Tests for {@link ArgumentMappingStage} — verifies argument mapping from invoked
  * arguments to script-defined argument definitions.
  */
-class ArgumentMappingStageTest {
+final class ArgumentMappingStageTest {
 
     @BeforeAll
     static void setUp() {

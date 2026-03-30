@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests for {@link PlayerTracker} — verifies player add/remove, update with join
  * listener firing, unknown player/client lookups, and listener exception isolation.
  */
-class PlayerTrackerTest {
+final class PlayerTrackerTest {
 
     private PlayerTracker tracker;
 

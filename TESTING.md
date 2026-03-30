@@ -18,7 +18,7 @@ the test suite covers the core scripting engine, security, networking primitives
 ./gradlew :core:test --tests "dev.objz.commandbridge.security.AuthServiceTest"
 
 # run a single test method
-./gradlew :core:test --tests "dev.objz.commandbridge.security.AuthServiceTest.rejectsExpiredToken"
+./gradlew :core:test --tests "dev.objz.commandbridge.security.AuthServiceTest.signValidInputReturnsDeterministicOutput"
 
 # run checkstyle + all tests (what CI runs)
 ./gradlew check

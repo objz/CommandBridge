@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests for {@link CooldownManager} — verifies cooldown setting, checking,
  * remaining duration, zero-duration handling, and per-player/per-script isolation.
  */
-class CooldownManagerTest {
+final class CooldownManagerTest {
 
     private CooldownManager manager;
 

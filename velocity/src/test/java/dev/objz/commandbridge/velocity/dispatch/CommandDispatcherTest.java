@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * method via reflection, verifying permission set construction from script names and
  * command strings.
  */
-class CommandDispatcherTest {
+final class CommandDispatcherTest {
 
     private static CommandDispatcher dispatcher;
     private static Method buildOPPermissions;

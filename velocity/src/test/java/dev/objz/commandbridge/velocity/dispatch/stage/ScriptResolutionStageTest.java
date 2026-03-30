@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Tests for {@link ScriptResolutionStage} — verifies script lookup by exact name,
  * alias, and case-insensitive matching.
  */
-class ScriptResolutionStageTest {
+final class ScriptResolutionStageTest {
 
     @BeforeAll
     static void setUp() {

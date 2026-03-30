@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
  * Tests for {@link PermissionCheckStage} — verifies permission gating, disabled
  * permissions bypass, and silent mode behavior.
  */
-class PermissionCheckStageTest {
+final class PermissionCheckStageTest {
 
     private static final String SCRIPT_NAME = "lobby";
     private static final String PERM_NODE = "commandbridge.command." + SCRIPT_NAME;
