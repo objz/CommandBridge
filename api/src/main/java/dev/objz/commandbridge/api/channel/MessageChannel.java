@@ -15,43 +15,36 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>
  * A {@code MessageChannel} is bound to a specific payload type {@code P},
- * providing type-safe
- * message routing. Obtain an instance via
- * {@link dev.objz.commandbridge.api.CommandBridgeAPI#channel(Class)}.
- * Target one or more servers with {@link #to(java.util.Collection)} or
- * broadcast to all connected
- * servers with {@link #toAll()}. Subscribe to incoming messages with
+ * providing type-safe message routing. Target one or more servers with
+ * {@link #to(java.util.Collection)}, broadcast to all connected servers with
+ * {@link #toAll()}, or subscribe to incoming messages with
  * {@link #listen(dev.objz.commandbridge.api.message.MessageListener)}.
  *
  * <p>
- * All send operations return {@link java.util.concurrent.CompletableFuture} and
- * are
- * non-blocking.
+ * All send operations return {@link java.util.concurrent.CompletableFuture}
+ * and are non-blocking.
  *
  * <p>
- * To obtain a channel and send a command to a specific backend server:
+ * To send a payload to a specific server:
  *
  * <pre>{@code
- * CommandBridgeAPI api = CommandBridgeProvider.get();
- * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
  * channel.to(List.of(Platform.backend("survival-1")))
- *         .send(new CommandPayload("say hello", RunAs.CONSOLE));
+ *         .send(payload);
  * }</pre>
  *
  * <p>
- * To broadcast a command to every connected server:
+ * To broadcast to every connected server:
  *
  * <pre>{@code
- * channel.toAll().send(new CommandPayload("say maintenance soon", RunAs.CONSOLE));
+ * channel.toAll().send(payload);
  * }</pre>
  *
  * <p>
- * To receive incoming messages on this channel, register a listener and cancel
- * it when done:
+ * To subscribe to incoming messages and cancel the listener later:
  *
  * <pre>{@code
- * Subscription sub = channel
- *         .listen((ctx, payload) -> System.out.println("Command from " + ctx.from().id() + ": " + payload.command()));
+ * Subscription sub = channel.listen((ctx, payload) ->
+ *         System.out.println("From " + ctx.from().id()));
  * sub.cancel();
  * }</pre>
  *

@@ -8,17 +8,19 @@ import dev.objz.commandbridge.api.platform.Platform;
  *
  * <p>
  * This is a {@code @FunctionalInterface} and may be used as a lambda
- * expression. Register
- * listeners via
+ * expression. Register listeners via
  * {@link dev.objz.commandbridge.api.CommandBridgeAPI#onServerConnected(ServerEventListener)}
  * and
  * {@link dev.objz.commandbridge.api.CommandBridgeAPI#onServerDisconnected(ServerEventListener)}.
  * Both methods return an {@link java.util.Optional} wrapping a
- * {@link dev.objz.commandbridge.api.message.Subscription}
- * on the Velocity proxy, and {@code Optional.empty()} on backend servers.
+ * {@link dev.objz.commandbridge.api.message.Subscription} on the Velocity
+ * proxy, and {@code Optional.empty()} on backend servers.
+ *
+ * <p>
+ * The listener receives the server that triggered the event:
  *
  * <pre>{@code
- * api.onServerConnected(server -> Log.info("Server connected: {}", server.id())).ifPresent(subscriptions::add);
+ * server -> Log.info("Server {}: {}", server.id(), server.type())
  * }</pre>
  *
  * @see dev.objz.commandbridge.api.CommandBridgeAPI#onServerConnected(ServerEventListener)

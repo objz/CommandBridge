@@ -17,59 +17,17 @@ import java.util.function.Consumer;
  * third-party plugin.
  *
  * <p>
- * Use {@link #channel(Class)} to obtain typed message channels for sending and
- * receiving
- * payloads. {@link #server()} and {@link #connectionState()} expose the current
- * server's identity
- * and connection status. {@link #connectedServers()}, {@link #playerLocator()},
- * {@link #onServerConnected(ServerEventListener)}, and
- * {@link #onServerDisconnected(ServerEventListener)} are available only on the
- * Velocity proxy;
- * they return {@code Optional.empty()} on backend servers.
+ * Obtain an instance via {@link CommandBridgeProvider#get()}.
+ * Use {@link #channel(Class)} to obtain typed message channels,
+ * {@link #server()} and {@link #connectionState()} to query the current
+ * server's identity and connection status, and
+ * {@link #onServerConnected(ServerEventListener)} or
+ * {@link #onServerDisconnected(ServerEventListener)} to subscribe to
+ * server lifecycle events on the Velocity proxy.
  *
  * <p>
- * Obtain an instance via {@link CommandBridgeProvider#get()} and use
- * {@link #channel(Class)}
- * to build a typed message channel:
- *
- * <pre>{@code
- * CommandBridgeAPI api = CommandBridgeProvider.get();
- * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
- * }</pre>
- *
- * <p>
- * To send a command to a specific backend server:
- *
- * <pre>{@code
- * channel.to(List.of(Platform.backend("survival-1")))
- *         .send(new CommandPayload("say hello", RunAs.CONSOLE));
- * }</pre>
- *
- * <p>
- * To broadcast a command to every connected server:
- *
- * <pre>{@code
- * channel.toAll().send(new CommandPayload("say maintenance soon", RunAs.CONSOLE));
- * }</pre>
- *
- * <p>
- * To receive a notification when a backend server connects (Velocity proxy
- * only):
- *
- * <pre>{@code
- * api.onServerConnected(server -> System.out.println("Connected: " + server.id())).ifPresent(subscriptions::add);
- * }</pre>
- *
- * <p>
- * To track connection state transitions on any platform:
- *
- * <pre>{@code
- * api.onConnectionStateChanged(state -> {
- *     if (state.isActive()) {
- *         // ready to send
- *     }
- * });
- * }</pre>
+ * Methods returning {@link java.util.Optional} are available only on the
+ * Velocity proxy and return {@code Optional.empty()} on backend servers.
  *
  * @see CommandBridgeProvider
  * @see dev.objz.commandbridge.api.channel.MessageChannel

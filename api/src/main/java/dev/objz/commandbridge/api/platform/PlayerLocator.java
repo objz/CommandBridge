@@ -11,21 +11,14 @@ import java.util.UUID;
  * A {@code PlayerLocator} is available only on the Velocity proxy. Obtain an
  * instance via
  * {@link dev.objz.commandbridge.api.CommandBridgeAPI#playerLocator()}. On
- * backend servers,
- * that method returns {@code Optional.empty()}.
+ * backend servers, that method returns {@code Optional.empty()}.
  *
  * <p>
- * The following example locates a player and sends a command to their current
- * server:
+ * To resolve a player's current server:
  *
  * <pre>{@code
- * api.playerLocator().ifPresent(locator -> {
- *     locator.locate(playerUUID).ifPresent(target -> {
- *         api.channel(CommandPayload.class)
- *                 .to(List.of(target))
- *                 .send(new CommandPayload("home", RunAs.PLAYER, playerUUID));
- *     });
- * });
+ * locator.locate(playerUUID).ifPresent(target ->
+ *         Log.info("Player is on server: {}", target.id()));
  * }</pre>
  *
  * @see dev.objz.commandbridge.api.CommandBridgeAPI#playerLocator()

@@ -8,32 +8,19 @@ import dev.objz.commandbridge.api.channel.ChannelPayload;
  *
  * <p>
  * This is a {@code @FunctionalInterface} and may be used as a lambda
- * expression.
- * Register an instance via
+ * expression. Register an instance via
  * {@link dev.objz.commandbridge.api.channel.MessageChannel#listen(MessageListener)},
  * which returns a {@link dev.objz.commandbridge.api.message.Subscription} that
- * can be
- * used to cancel the listener.
+ * can be used to cancel the listener.
  *
  * <p>
- * To register a listener as a lambda and retain the returned
- * {@link Subscription}:
+ * The listener receives the message metadata and the deserialized payload:
  *
  * <pre>{@code
- * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
- *
- * Subscription sub = channel.listen((ctx, payload) -> {
+ * (ctx, payload) -> {
  *     String from = ctx.from().id();
- *     String command = payload.command();
- * });
- * }</pre>
- *
- * <p>
- * Pass the subscription to {@link Subscription#cancel()} to stop receiving
- * messages:
- *
- * <pre>{@code
- * sub.cancel();
+ *     long sentAt = ctx.timestamp();
+ * }
  * }</pre>
  *
  * @param <T> the type of payload this listener handles;

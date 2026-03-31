@@ -10,13 +10,10 @@ import java.util.UUID;
  *
  * <p>
  * The three components define what to run and how. {@code command} is the
- * command string
- * without a leading slash. {@code runAs} defines the execution context; see
- * {@link RunAs} for
- * available modes. {@code player} is the optional player UUID required when
- * {@code runAs} is
- * {@link RunAs#PLAYER} or {@link RunAs#OPERATOR}; pass {@code null} for
- * {@link RunAs#CONSOLE}.
+ * command string without a leading slash. {@code runAs} defines the execution
+ * context; see {@link RunAs} for available modes. {@code player} is the
+ * optional player UUID required when {@code runAs} is {@link RunAs#PLAYER}
+ * or {@link RunAs#OPERATOR}; pass {@code null} for {@link RunAs#CONSOLE}.
  *
  * <p>
  * Instances are sent through a
@@ -24,28 +21,24 @@ import java.util.UUID;
  * {@link dev.objz.commandbridge.api.CommandBridgeAPI#channel(Class)}.
  *
  * <p>
- * To run a command as the server console on a specific backend server:
+ * To create a console command with no player context:
  *
  * <pre>{@code
- * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
- * channel.to(List.of(Platform.backend("survival-1")))
- *         .send(new CommandPayload("say hello", RunAs.CONSOLE));
+ * new CommandPayload("say hello", RunAs.CONSOLE)
  * }</pre>
  *
  * <p>
- * To run a command as a specific online player with their normal permissions:
+ * To create a command that runs as a specific player:
  *
  * <pre>{@code
- * channel.to(List.of(Platform.backend("survival-1")))
- *         .send(new CommandPayload("home", RunAs.PLAYER, playerUUID));
+ * new CommandPayload("home", RunAs.PLAYER, playerUUID)
  * }</pre>
  *
  * <p>
- * To run a command as a player with temporary operator-level permissions:
+ * To create a command with temporary operator permissions:
  *
  * <pre>{@code
- * channel.to(List.of(Platform.backend("survival-1")))
- *         .send(new CommandPayload("gamemode creative", RunAs.OPERATOR, playerUUID));
+ * new CommandPayload("gamemode creative", RunAs.OPERATOR, playerUUID)
  * }</pre>
  *
  * @param command the command string to execute on the target server; must not
