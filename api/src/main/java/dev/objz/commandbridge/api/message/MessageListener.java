@@ -6,13 +6,18 @@ import dev.objz.commandbridge.api.channel.ChannelPayload;
  * Callback for handling messages received on a typed
  * {@link dev.objz.commandbridge.api.channel.MessageChannel}.
  *
- * <p>This is a {@code @FunctionalInterface} and may be used as a lambda expression.
+ * <p>
+ * This is a {@code @FunctionalInterface} and may be used as a lambda
+ * expression.
  * Register an instance via
  * {@link dev.objz.commandbridge.api.channel.MessageChannel#listen(MessageListener)},
- * which returns a {@link dev.objz.commandbridge.api.message.Subscription} that can be
+ * which returns a {@link dev.objz.commandbridge.api.message.Subscription} that
+ * can be
  * used to cancel the listener.
  *
- * <p>To register a listener as a lambda and retain the returned {@link Subscription}:
+ * <p>
+ * To register a listener as a lambda and retain the returned
+ * {@link Subscription}:
  *
  * <pre>{@code
  * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
@@ -23,14 +28,17 @@ import dev.objz.commandbridge.api.channel.ChannelPayload;
  * });
  * }</pre>
  *
- * <p>Pass the subscription to {@link Subscription#cancel()} to stop receiving messages:
+ * <p>
+ * Pass the subscription to {@link Subscription#cancel()} to stop receiving
+ * messages:
  *
  * <pre>{@code
  * sub.cancel();
  * }</pre>
  *
  * @param <T> the type of payload this listener handles;
- *     must extend {@link dev.objz.commandbridge.api.channel.ChannelPayload}
+ *            must extend
+ *            {@link dev.objz.commandbridge.api.channel.ChannelPayload}
  * @see dev.objz.commandbridge.api.channel.MessageChannel#listen(MessageListener)
  * @see dev.objz.commandbridge.api.message.MessageContext
  * @see dev.objz.commandbridge.api.message.Subscription
@@ -40,9 +48,12 @@ public interface MessageListener<T extends ChannelPayload> {
     /**
      * Invoked when a message matching this listener's payload type is received.
      *
-     * @param ctx the metadata for the received message, including the sending server's identity
-     *     ({@link dev.objz.commandbridge.api.message.MessageContext#from()}) and the send
-     *     timestamp ({@link dev.objz.commandbridge.api.message.MessageContext#timestamp()})
+     * @param ctx     the metadata for the received message, including the sending
+     *                server's identity
+     *                ({@link dev.objz.commandbridge.api.message.MessageContext#from()})
+     *                and the send
+     *                timestamp
+     *                ({@link dev.objz.commandbridge.api.message.MessageContext#timestamp()})
      * @param payload the deserialized message payload
      */
     void accept(MessageContext<T> ctx, T payload);
