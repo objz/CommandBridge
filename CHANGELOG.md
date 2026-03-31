@@ -14,7 +14,8 @@ so whats new:
 - player locator service for resolving which server a player is on (proxy only)
 - `CommandBridgeProvider.get()` and `CommandBridgeProvider.get(Class)` for obtaining the API instance
 - proxy-only methods return `Optional<Subscription>` instead of raw `Subscription`, returning `Optional.empty()` on backends
-- comprehensive JDK-style JavaDocs across all 13 API source files with usage examples, `@param`, `@return`, `@throws`, and cross-references
+- comprehensive JDK-style JavaDocs across all 13 API source files with `@param`, `@return`, `@throws`, and cross-references
+- each type's JavaDoc examples are scoped to its own responsibility, no tutorial-style chains leaking into other types
 - maven central publishing configuration
 
 **security**
@@ -70,4 +71,4 @@ breaking changes:
 - internal `RunAs` and `ConnectionState` enums were removed, use the API types instead
 - `VelocityExecutor` was renamed to `LocalDispatcher`
 
-latest commit: c624383
+latest commit: ad03680
