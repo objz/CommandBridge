@@ -22,26 +22,38 @@ import java.util.function.Consumer;
  * {@link #onServerDisconnected(ServerEventListener)} are available only on the Velocity proxy;
  * they return {@code Optional.empty()} on backend servers.
  *
- * <p>Obtain an instance via {@link CommandBridgeProvider#get()}. The following example shows
- * common usage patterns:
+ * <p>Obtain an instance via {@link CommandBridgeProvider#get()} and use {@link #channel(Class)}
+ * to build a typed message channel:
  *
  * <pre>{@code
  * CommandBridgeAPI api = CommandBridgeProvider.get();
  * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
+ * }</pre>
  *
- * // Send a command to a backend
+ * <p>To send a command to a specific backend server:
+ *
+ * <pre>{@code
  * channel.to(List.of(Platform.backend("survival-1")))
  *        .send(new CommandPayload("say hello", RunAs.CONSOLE));
+ * }</pre>
  *
- * // Broadcast to all connected servers
+ * <p>To broadcast a command to every connected server:
+ *
+ * <pre>{@code
  * channel.toAll().send(new CommandPayload("say maintenance soon", RunAs.CONSOLE));
+ * }</pre>
  *
- * // Subscribe to server connection events (proxy only)
+ * <p>To receive a notification when a backend server connects (Velocity proxy only):
+ *
+ * <pre>{@code
  * api.onServerConnected(server ->
  *     System.out.println("Connected: " + server.id())
  * ).ifPresent(subscriptions::add);
+ * }</pre>
  *
- * // React to connection state changes (all platforms)
+ * <p>To track connection state transitions on any platform:
+ *
+ * <pre>{@code
  * api.onConnectionStateChanged(state -> {
  *     if (state.isActive()) {
  *         // ready to send

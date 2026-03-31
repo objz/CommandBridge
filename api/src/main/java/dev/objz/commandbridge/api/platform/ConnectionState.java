@@ -13,6 +13,7 @@ package dev.objz.commandbridge.api.platform;
  * {@code AUTH_FAILED} and no further connection attempts are made.
  *
  * @see #isActive()
+ * @see dev.objz.commandbridge.api.CommandBridgeAPI#connectionState()
  */
 public enum ConnectionState {
 

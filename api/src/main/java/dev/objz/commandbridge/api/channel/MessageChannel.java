@@ -22,22 +22,27 @@ import java.util.concurrent.CompletableFuture;
  * <p>All send operations return {@link java.util.concurrent.CompletableFuture} and are
  * non-blocking.
  *
+ * <p>To obtain a channel and send a command to a specific backend server:
+ *
  * <pre>{@code
  * CommandBridgeAPI api = CommandBridgeProvider.get();
  * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
- *
- * // Send a command to a specific backend
  * channel.to(List.of(Platform.backend("survival-1")))
  *        .send(new CommandPayload("say hello", RunAs.CONSOLE));
+ * }</pre>
  *
- * // Broadcast to all connected servers
+ * <p>To broadcast a command to every connected server:
+ *
+ * <pre>{@code
  * channel.toAll().send(new CommandPayload("say maintenance soon", RunAs.CONSOLE));
+ * }</pre>
  *
- * // Listen for incoming commands
- * Subscription sub = channel.listen((ctx, payload) -> {
- *     System.out.println("Command from " + ctx.from().id() + ": " + payload.command());
- * });
- * sub.cancel(); // when done
+ * <p>To receive incoming messages on this channel, register a listener and cancel it when done:
+ *
+ * <pre>{@code
+ * Subscription sub = channel.listen((ctx, payload) ->
+ *     System.out.println("Command from " + ctx.from().id() + ": " + payload.command()));
+ * sub.cancel();
  * }</pre>
  *
  * @param <P> the type of payload handled by this channel; must extend
@@ -114,6 +119,7 @@ public interface MessageChannel<P extends ChannelPayload> {
          * @return a {@link java.util.concurrent.CompletableFuture} that completes with the
          *         response payload, or completes exceptionally if the default timeout elapses
          *         before a response is received
+         * @throws UnsupportedOperationException if this sender targets more than one server
          * @see #request(ChannelPayload, java.time.Duration)
          */
         CompletableFuture<P> request(P payload);
@@ -129,6 +135,7 @@ public interface MessageChannel<P extends ChannelPayload> {
          * @param timeout the maximum duration to wait for a response; must not be {@code null}
          * @return a {@link java.util.concurrent.CompletableFuture} that completes with the
          *         response payload, or completes exceptionally if the timeout elapses
+         * @throws UnsupportedOperationException if this sender targets more than one server
          * @see #request(ChannelPayload)
          */
         CompletableFuture<P> request(P payload, Duration timeout);

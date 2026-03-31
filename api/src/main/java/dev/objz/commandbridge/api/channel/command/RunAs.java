@@ -8,15 +8,21 @@ package dev.objz.commandbridge.api.channel.command;
  * commands, user-context commands with normal permissions, and elevated commands that
  * temporarily grant operator status to a specific player.
  *
- * <p>Usage examples:
+ * <p>To run a command as the server console, with full permissions and no player context:
+ *
  * <pre>{@code
- * // Run a command as console
  * new CommandPayload("say hello", RunAs.CONSOLE)
+ * }</pre>
  *
- * // Run a command as a specific player
+ * <p>To run a command as a specific online player, with their normal permissions:
+ *
+ * <pre>{@code
  * new CommandPayload("home", RunAs.PLAYER, playerUUID)
+ * }</pre>
  *
- * // Run a command as a player with operator permissions
+ * <p>To run a command as a player with temporary operator-level permissions:
+ *
+ * <pre>{@code
  * new CommandPayload("gamemode creative", RunAs.OPERATOR, playerUUID)
  * }</pre>
  *

@@ -11,17 +11,22 @@ package dev.objz.commandbridge.api.message;
  *
  * <p>Calling {@link #cancel()} is idempotent: invoking it more than once has no effect.
  *
+ * <p>To register a listener on a channel and retain the subscription:
+ *
  * <pre>{@code
- * // Register a listener and store the subscription
  * Subscription sub = api.channel(CommandPayload.class)
  *     .listen((ctx, payload) -> handleCommand(ctx, payload));
+ * }</pre>
  *
- * // Later, during shutdown:
+ * <p>To cancel the listener, for example during plugin shutdown:
+ *
+ * <pre>{@code
  * sub.cancel();
  * }</pre>
  *
  * @see dev.objz.commandbridge.api.channel.MessageChannel#listen(dev.objz.commandbridge.api.message.MessageListener)
  * @see dev.objz.commandbridge.api.CommandBridgeAPI#onServerConnected(dev.objz.commandbridge.api.message.ServerEventListener)
+ * @see dev.objz.commandbridge.api.message.MessageListener
  */
 @FunctionalInterface
 public interface Subscription {

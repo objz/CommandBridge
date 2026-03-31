@@ -16,18 +16,24 @@ import java.util.UUID;
  * {@link dev.objz.commandbridge.api.channel.MessageChannel} obtained from
  * {@link dev.objz.commandbridge.api.CommandBridgeAPI#channel(Class)}.
  *
+ * <p>To run a command as the server console on a specific backend server:
+ *
  * <pre>{@code
  * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
- *
- * // Execute a command as console
  * channel.to(List.of(Platform.backend("survival-1")))
  *        .send(new CommandPayload("say hello", RunAs.CONSOLE));
+ * }</pre>
  *
- * // Execute as a specific player
+ * <p>To run a command as a specific online player with their normal permissions:
+ *
+ * <pre>{@code
  * channel.to(List.of(Platform.backend("survival-1")))
  *        .send(new CommandPayload("home", RunAs.PLAYER, playerUUID));
+ * }</pre>
  *
- * // Execute as a player with temporary operator permissions
+ * <p>To run a command as a player with temporary operator-level permissions:
+ *
+ * <pre>{@code
  * channel.to(List.of(Platform.backend("survival-1")))
  *        .send(new CommandPayload("gamemode creative", RunAs.OPERATOR, playerUUID));
  * }</pre>

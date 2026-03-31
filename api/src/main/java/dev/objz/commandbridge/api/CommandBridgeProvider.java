@@ -11,14 +11,13 @@ import java.util.Objects;
  *
  * <p>This class cannot be instantiated. All access is through static methods.
  *
- * <pre>{@code
- * // Basic usage — obtain the API
- * CommandBridgeAPI api = CommandBridgeProvider.get();
+ * <p>To obtain the API instance:
  *
- * // Platform-specific usage (Velocity proxy only):
- * // VelocityCommandBridgeAPI velocityApi =
- * //     CommandBridgeProvider.get(VelocityCommandBridgeAPI.class);
+ * <pre>{@code
+ * CommandBridgeAPI api = CommandBridgeProvider.get();
  * }</pre>
+ *
+ * <p>To access a platform-specific subtype, pass the expected class to {@link #get(Class)}.
  *
  * @see CommandBridgeAPI
  */

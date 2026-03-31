@@ -12,16 +12,20 @@ import dev.objz.commandbridge.api.channel.ChannelPayload;
  * which returns a {@link dev.objz.commandbridge.api.message.Subscription} that can be
  * used to cancel the listener.
  *
+ * <p>To register a listener as a lambda and retain the returned {@link Subscription}:
+ *
  * <pre>{@code
  * MessageChannel<CommandPayload> channel = api.channel(CommandPayload.class);
  *
  * Subscription sub = channel.listen((ctx, payload) -> {
  *     String from = ctx.from().id();
  *     String command = payload.command();
- *     // handle the incoming command
  * });
+ * }</pre>
  *
- * // To stop receiving messages:
+ * <p>Pass the subscription to {@link Subscription#cancel()} to stop receiving messages:
+ *
+ * <pre>{@code
  * sub.cancel();
  * }</pre>
  *

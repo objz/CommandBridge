@@ -23,6 +23,7 @@ import java.util.UUID;
  * }</pre>
  *
  * @see dev.objz.commandbridge.api.CommandBridgeAPI#playerLocator()
+ * @see dev.objz.commandbridge.api.platform.Platform.ServerTarget
  */
 @FunctionalInterface
 public interface PlayerLocator {
