@@ -170,7 +170,7 @@ api.onConnectionStateChanged(state -> {
 
 ## roadmap
 
-### current: v3.3.0
+### current: v3.3.2
 
 - [x] **backend platform support**
   - [x] Bukkit support
@@ -256,7 +256,7 @@ see the [open issues](https://github.com/objz/CommandBridge/issues) for bugs and
 
 ## contributing
 
-contributions are welcome. fork it, branch it, PR it. make sure `./gradlew check` and `./gradlew build` both pass before opening a PR.
+contributions are welcome. fork it, branch it, PR it. make sure `./gradlew check`, `./gradlew test` and `./gradlew build` pass before opening a PR.
 
 ---
 
