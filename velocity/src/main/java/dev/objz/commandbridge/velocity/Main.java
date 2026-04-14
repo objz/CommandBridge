@@ -331,6 +331,12 @@ public final class Main {
         Path oldFolder = dataDir.getParent().resolve("CommandBridge");
         if (!Files.isDirectory(oldFolder)) return;
 
+        try {
+            if (Files.isSameFile(oldFolder, dataDir)) return;
+        } catch (IOException ignored) {
+            return;
+        }
+
         legacyDetected = true;
         Log.warn("Detected old CommandBridge installation at '{}'. Please view the migration guide: https://cb.objz.dev/docs/migration/", oldFolder);
     }
