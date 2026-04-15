@@ -20,7 +20,7 @@ public final class PlayersArgument extends Argument<List<EntityRef>> {
     private final ProxyServer proxy;
 
     public PlayersArgument(String nodeName, ProxyServer proxy) {
-        super(nodeName, StringArgumentType.word());
+        super(nodeName, StringArgumentType::word);
         this.proxy = proxy;
     }
 

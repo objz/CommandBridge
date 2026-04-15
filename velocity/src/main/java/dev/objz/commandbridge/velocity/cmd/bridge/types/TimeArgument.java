@@ -13,7 +13,7 @@ import dev.jorel.commandapi.executors.CommandArguments;
 public final class TimeArgument extends Argument<Integer> {
 
     public TimeArgument(String nodeName) {
-        super(nodeName, StringArgumentType.word());
+        super(nodeName, StringArgumentType::word);
 
         replaceSuggestions(ArgumentSuggestions.strings(info -> {
             String input = info.currentArg().toLowerCase();

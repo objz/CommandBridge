@@ -19,7 +19,7 @@ public final class OfflinePlayerArgument extends Argument<String> {
     private final UserCache userCache;
 
     public OfflinePlayerArgument(String nodeName, ProxyServer proxy, UserCache userCache) {
-        super(nodeName, StringArgumentType.word());
+        super(nodeName, StringArgumentType::word);
         this.proxy = proxy;
         this.userCache = userCache;
 
