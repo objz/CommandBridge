@@ -29,7 +29,7 @@ dependencies {
 
     compileOnly("org.spongepowered:configurate-yaml:4.2.0")
     compileOnly("org.spongepowered:configurate-core:4.2.0")
-    compileOnly("dev.jorel:commandapi-velocity-core:11.1.0")
+    compileOnly("dev.jorel:commandapi-velocity-core:11.2.0")
 
     compileOnly("org.bstats:bstats-velocity:3.2.0")
 
