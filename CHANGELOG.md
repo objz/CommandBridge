@@ -1,6 +1,3 @@
-there are no big changes here:
+This update includes a small fix for an issue where the version was saved incorrectly, causing the launcher to always ask for an update.
 
-- fix(velocity): deprecation warning was broken on NTFS systems
-- feature: added support for the latest minecraft versions(26.1, 26.2 and below)
-
-latest commit: d7f43a1
+latest commit: 9563e3c
