@@ -7,10 +7,15 @@ import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -88,6 +93,173 @@ public final class DebugPrinter {
         String title = formatTitle(script, theme);
         int panelWidth = calculatePanelWidth(contentLines);
         return renderPanel(title, contentLines, panelWidth, theme);
+    }
+
+    /**
+     * Generic YAML-card renderer for any record. Walks the record graph
+     * recursively, using {@code @Setting} (Configurate) on accessors if
+     * present, otherwise falling back to camelCase → kebab-case.
+     */
+    public static String printRecord(Object record, String title) {
+        SyntaxTheme theme = SyntaxTheme.create();
+        ContentBuilder builder = new ContentBuilder(theme);
+        walkRecord(builder, record, true);
+        List<String> content = builder.getLines();
+        int width = calculatePanelWidth(content);
+        String coloredTitle = theme.section + (title != null ? title : "") + theme.reset;
+        return renderPanel(coloredTitle, content, width, theme);
+    }
+
+    /**
+     * Renders a list of records (or primitives) as a YAML-card panel. Each
+     * record item appears as a {@code - key: value} block.
+     */
+    public static String printList(List<?> items, String title) {
+        SyntaxTheme theme = SyntaxTheme.create();
+        ContentBuilder builder = new ContentBuilder(theme);
+
+        if (items == null || items.isEmpty()) {
+            builder.addNoneValue();
+        } else if (items.get(0) != null && items.get(0).getClass().isRecord()) {
+            for (Object item : items) {
+                builder.startListItem();
+                walkRecord(builder, item, false);
+            }
+        } else {
+            builder.addPropertyList("value", items);
+        }
+
+        List<String> content = builder.getLines();
+        int width = calculatePanelWidth(content);
+        String coloredTitle = theme.section + (title != null ? title : "") + theme.reset;
+        return renderPanel(coloredTitle, content, width, theme);
+    }
+
+    /**
+     * Single-level overview card. Leaves are shown as kv pairs; nested records
+     * are shown as section names only (no recursion). Suitable for "click into
+     * a section" navigators.
+     */
+    public static String printRecordOverview(Object record, String title) {
+        SyntaxTheme theme = SyntaxTheme.create();
+        ContentBuilder builder = new ContentBuilder(theme);
+
+        if (record == null || !record.getClass().isRecord()) {
+            builder.addNoneValue();
+        } else {
+            RecordComponent[] comps = record.getClass().getRecordComponents();
+            // leaves first
+            boolean wroteLeaf = false;
+            for (RecordComponent rc : comps) {
+                Object value = accessorValue(record, rc);
+                if (value != null && value.getClass().isRecord()) {
+                    continue;
+                }
+                if (value instanceof List<?> list && !list.isEmpty()
+                        && list.get(0) != null && list.get(0).getClass().isRecord()) {
+                    continue;
+                }
+                builder.addPropertyNoIndent(resolveYamlKey(rc), value);
+                wroteLeaf = true;
+            }
+            // then section names
+            boolean wroteSectionSep = false;
+            for (RecordComponent rc : comps) {
+                Object value = accessorValue(record, rc);
+                boolean isNested = (value != null && value.getClass().isRecord())
+                        || (value instanceof List<?> list && !list.isEmpty()
+                                && list.get(0) != null && list.get(0).getClass().isRecord());
+                if (!isNested) {
+                    continue;
+                }
+                if (wroteLeaf && !wroteSectionSep) {
+                    builder.addBlankLine();
+                    wroteSectionSep = true;
+                }
+                builder.addSection(resolveYamlKey(rc));
+            }
+        }
+
+        List<String> content = builder.getLines();
+        int width = calculatePanelWidth(content);
+        String coloredTitle = theme.section + (title != null ? title : "") + theme.reset;
+        return renderPanel(coloredTitle, content, width, theme);
+    }
+
+    private static void walkRecord(ContentBuilder builder, Object record, boolean root) {
+        if (record == null) {
+            builder.addNoneValue();
+            return;
+        }
+        if (!record.getClass().isRecord()) {
+            builder.addProperty("value", record);
+            return;
+        }
+
+        RecordComponent[] comps = record.getClass().getRecordComponents();
+        for (int i = 0; i < comps.length; i++) {
+            RecordComponent rc = comps[i];
+            String key = resolveYamlKey(rc);
+            Object value = accessorValue(record, rc);
+
+            if (value != null && value.getClass().isRecord()) {
+                if (i > 0 && root) {
+                    builder.addBlankLine();
+                }
+                builder.addSection(key);
+                builder.increaseIndent();
+                walkRecord(builder, value, false);
+                builder.decreaseIndent();
+            } else if (value instanceof List<?> list) {
+                if (list.isEmpty()) {
+                    builder.addPropertyList(key, list);
+                } else if (list.get(0) != null && list.get(0).getClass().isRecord()) {
+                    builder.addPropertyLabel(key);
+                    builder.increaseIndent();
+                    for (Object item : list) {
+                        builder.startListItem();
+                        if (item != null && item.getClass().isRecord()) {
+                            walkRecord(builder, item, false);
+                        } else {
+                            builder.addProperty("value", item);
+                        }
+                    }
+                    builder.decreaseIndent();
+                } else {
+                    builder.addPropertyList(key, list);
+                }
+            } else if (root) {
+                builder.addPropertyNoIndent(key, value);
+            } else {
+                builder.addProperty(key, value);
+            }
+        }
+    }
+
+    private static String resolveYamlKey(RecordComponent rc) {
+        for (Annotation ann : rc.getAnnotations()) {
+            if ("Setting".equals(ann.annotationType().getSimpleName())) {
+                try {
+                    Method m = ann.annotationType().getMethod("value");
+                    Object v = m.invoke(ann);
+                    if (v instanceof String s && !s.isBlank()) {
+                        return s;
+                    }
+                } catch (NoSuchMethodException | IllegalAccessException
+                        | InvocationTargetException ignored) {
+                    // fall through to default
+                }
+            }
+        }
+        return rc.getName().replaceAll("(?<!^)([A-Z])", "-$1").toLowerCase(Locale.ROOT);
+    }
+
+    private static Object accessorValue(Object record, RecordComponent rc) {
+        try {
+            return rc.getAccessor().invoke(record);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            return "<error>";
+        }
     }
 
     public static String printGrid(List<Script> scripts) {

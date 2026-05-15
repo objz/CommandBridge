@@ -23,7 +23,7 @@ public final class ConfigKeys {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private static String yamlKeyFor(Class<?> recordType, RecordComponent rc) {
+    public static String yamlKeyFor(Class<?> recordType, RecordComponent rc) {
         try {
             Method m = recordType.getMethod(rc.getName());
             Setting s = m.getAnnotation(Setting.class);

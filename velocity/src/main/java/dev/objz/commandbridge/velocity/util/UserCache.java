@@ -70,6 +70,17 @@ public final class UserCache {
         return Optional.empty();
     }
 
+    public String displayName(UUID uuid) {
+        if (uuid == null) {
+            return "unknown";
+        }
+        Player online = proxy.getPlayer(uuid).orElse(null);
+        if (online != null) {
+            return online.getUsername();
+        }
+        return nameOf(uuid).orElseGet(() -> uuid.toString().substring(0, 8));
+    }
+
     public CompletableFuture<UUID> resolve(String name) {
         if (name == null || name.isBlank()) {
             return CompletableFuture.completedFuture(null);

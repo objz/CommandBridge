@@ -63,6 +63,13 @@ public final class PlayerTracker {
         return players != null && players.contains(playerUuid);
     }
 
+    public Set<UUID> playersOn(String clientId) {
+        if (clientId == null)
+            return Set.of();
+        Set<UUID> players = playersByClient.get(clientId);
+        return players == null ? Set.of() : Set.copyOf(players);
+    }
+
     public boolean isPlayerOnTarget(UUID playerUuid, String targetId,
             Location targetLocation, String localVelocityId) {
         return switch (targetLocation) {

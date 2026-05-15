@@ -5,7 +5,9 @@ import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthStatus;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -93,6 +95,18 @@ public final class SessionHub implements Iterable<ClientSession> {
     @Override
     public Iterator<ClientSession> iterator() {
         return clientsById.values().iterator();
+    }
+
+    public List<ClientSession> authenticated() {
+        List<ClientSession> result = new ArrayList<>();
+        for (ClientSession s : clientsById.values()) {
+            if (s.status() == AuthStatus.AUTH_OK
+                    && s.endpoint() != null
+                    && s.endpoint().isOpen()) {
+                result.add(s);
+            }
+        }
+        return result;
     }
 
     private void notifyRemoval(ClientSession session) {
