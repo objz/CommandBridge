@@ -3,6 +3,7 @@ package dev.objz.commandbridge.velocity.dispatch.stage;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
+import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatureKeys;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
@@ -12,6 +13,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.william278.papiproxybridge.api.PlaceholderAPI;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,49 +45,35 @@ public final class PlaceholderStage implements Pipeline {
         }
 
         String rawCommand = currentCmd.command();
-        if (rawCommand == null || rawCommand.isBlank()) {
+        List<IdMapping> rawExecute = currentCmd.execute();
+
+        boolean commandHasPlaceholder = rawCommand != null && !rawCommand.isBlank()
+                && PATTERN.matcher(rawCommand).find();
+        boolean executeHasPlaceholder = rawExecute != null && rawExecute.stream()
+                .anyMatch(t -> t != null && t.id() != null && PATTERN.matcher(t.id()).find());
+
+        if (!commandHasPlaceholder && !executeHasPlaceholder) {
             next.accept(ExecutionResult.ok(context));
             return;
         }
 
-        Matcher checkMatcher = PATTERN.matcher(rawCommand);
-        if (!checkMatcher.find()) {
-            next.accept(ExecutionResult.ok(context));
-            return;
+        Map<String, Object> args = Optional.ofNullable(context.arguments()).orElse(Map.of());
+
+        String resolvedCommand = commandHasPlaceholder ? substitute(rawCommand, args) : rawCommand;
+        List<IdMapping> resolvedExecute = executeHasPlaceholder
+                ? rawExecute.stream()
+                        .map(t -> new IdMapping(substitute(t.id(), args), t.location()))
+                        .toList()
+                : rawExecute;
+
+        if (commandHasPlaceholder) {
+            Log.debug("Placeholder resolution: '{}' -> '{}'", rawCommand, resolvedCommand);
+        }
+        if (executeHasPlaceholder) {
+            Log.debug("Execute target resolution: '{}' -> '{}'", rawExecute, resolvedExecute);
         }
 
-        Map<String, Object> args = context.arguments();
-        if (args == null) {
-            args = Map.of();
-        }
-
-        Matcher matcher = PATTERN.matcher(rawCommand);
-        StringBuilder sb = new StringBuilder();
-
-        while (matcher.find()) {
-            String key = matcher.group(1);
-            if (key == null || key.isBlank()) {
-                matcher.appendReplacement(sb, Matcher.quoteReplacement("${}"));
-                continue;
-            }
-
-            Object value = args.get(key);
-            String replacement;
-
-            if (value == null) {
-                replacement = "";
-            } else {
-                replacement = convertToString(value);
-            }
-
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-        }
-        matcher.appendTail(sb);
-
-        String resolvedCommand = sb.toString();
-        Log.debug("Placeholder resolution: '{}' -> '{}'", rawCommand, resolvedCommand);
-
-        Optional<UUID> papiUuid = parsePAPI(context.source());
+        Optional<UUID> papiUuid = commandHasPlaceholder ? parsePAPI(context.source()) : Optional.empty();
 
         CompletionStage<String> commandStage;
 
@@ -116,7 +104,7 @@ public final class PlaceholderStage implements Pipeline {
             CmdMapping resolvedCmd = new CmdMapping(
                     finalCommand,
                     currentCmd.runAs(),
-                    currentCmd.execute(),
+                    resolvedExecute,
                     currentCmd.server(),
                     currentCmd.delay(),
                     currentCmd.cooldown());
@@ -124,6 +112,24 @@ public final class PlaceholderStage implements Pipeline {
             next.accept(ExecutionResult.ok(
                     context.nextCommand(resolvedCmd, context.commandIndex())));
         });
+    }
+
+    private String substitute(String input, Map<String, Object> args) {
+        Matcher matcher = PATTERN.matcher(input);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String key = matcher.group(1);
+            if (key == null || key.isBlank()) {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement("${}"));
+                continue;
+            }
+
+            Object value = args.get(key);
+            String replacement = value == null ? "" : convertToString(value);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     private Optional<UUID> parsePAPI(CommandSource source) {
