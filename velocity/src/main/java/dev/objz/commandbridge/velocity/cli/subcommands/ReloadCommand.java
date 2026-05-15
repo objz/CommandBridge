@@ -6,20 +6,15 @@ import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.proto.MessageType;
-import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.RegistrationManager;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.net.out.ctx.RegistrationRequestContext;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
-import net.kyori.adventure.text.Component;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -75,7 +70,7 @@ public final class ReloadCommand extends AbstractCliCommand {
 
             registrationManager.load(scriptManager.enabled());
 
-            List<ClientSession> activeClients = getActiveClients();
+            List<ClientSession> activeClients = sessionHub.authenticated();
             int clientsWithScripts = (int) activeClients.stream().filter(
                     s -> !registrationManager.getScriptsForSession(s).isEmpty())
                     .count();
@@ -217,44 +212,24 @@ public final class ReloadCommand extends AbstractCliCommand {
     }
 
     private void renderChatSuccess(RenderContext ctx, int loaded, int enabled, int disabled) {
-        List<Component> lines = new ArrayList<>();
-        Component success = MM.parse("<" + Theme.C_SUCCESS + "><bold>Config and scripts reloaded</bold></" + Theme.C_SUCCESS + ">");
-        lines.add(success);
-        lines.add(Component.empty());
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Loaded:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + loaded + "</" + Theme.C_ACCENT + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Enabled:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + enabled + "</" + Theme.C_SUCCESS + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Disabled:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + disabled + "</" + Theme.C_WARN + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">0</" + Theme.C_ERROR + ">"));
-        lines.add(Component.empty());
-        Component action = MM.parse("<" + Theme.C_ACCENT + "><bold>View scripts</bold></" + Theme.C_ACCENT + ">")
-                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/cb scripts"))
-                .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
-                        MM.parse("<" + Theme.C_MUTED + ">Open script list</" + Theme.C_MUTED + ">")));
-        lines.add(action);
-
-        ChatFrame frame = new ChatFrame("Reload");
-        frame.lines(lines);
-        frame.send(ctx.source());
+        dev.objz.commandbridge.velocity.ui.Report.of("Reload")
+                .success("Config and scripts reloaded")
+                .blank()
+                .summary("Loaded", loaded, dev.objz.commandbridge.velocity.ui.Report.Status.ACCENT)
+                .summary("Enabled", enabled, dev.objz.commandbridge.velocity.ui.Report.Status.SUCCESS)
+                .summary("Disabled", disabled, dev.objz.commandbridge.velocity.ui.Report.Status.WARN)
+                .summary("Errors", 0, dev.objz.commandbridge.velocity.ui.Report.Status.ERROR)
+                .blank()
+                .actions(dev.objz.commandbridge.velocity.ui.Report.Action.of(
+                        "Scripts", "/cb script list", "view loaded scripts"))
+                .sendChatOnly(ctx.source());
     }
 
     private void renderChatError(RenderContext ctx, String error, String details) {
-        Component err = MM.error(error);
-        Component detail = MM.muted(details);
-        ChatFrame frame = new ChatFrame("Reload");
-        frame.line(err);
-        frame.line(detail);
-        frame.send(ctx.source());
-    }
-
-    private List<ClientSession> getActiveClients() {
-        List<ClientSession> activeClients = new ArrayList<>();
-        for (ClientSession session : sessionHub) {
-            if (session.status() == AuthStatus.AUTH_OK && session.endpoint() != null
-                    && session.endpoint().isOpen()) {
-                activeClients.add(session);
-            }
-        }
-        return activeClients;
+        dev.objz.commandbridge.velocity.ui.Report.of("Reload")
+                .error(error)
+                .muted(details)
+                .sendChatOnly(ctx.source());
     }
 
     private void displayResults(CommandSource sender,
@@ -295,49 +270,56 @@ public final class ReloadCommand extends AbstractCliCommand {
             return a.id.compareTo(b.id);
         });
 
-        List<Component> lines = new ArrayList<>();
-        Component success = MM.parse("<" + Theme.C_SUCCESS + "><bold>Config and scripts reloaded</bold></" + Theme.C_SUCCESS + ">");
-        lines.add(success);
-        lines.add(Component.empty());
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Loaded:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + loaded + "</" + Theme.C_ACCENT + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Enabled:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + enabled + "</" + Theme.C_SUCCESS + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Disabled:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + disabled + "</" + Theme.C_WARN + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">0</" + Theme.C_ERROR + ">"));
-        lines.add(Component.empty());
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Responses:</" + Theme.C_MUTED + "> <" + Theme.C_ACCENT + ">" + results.size() + "</" + Theme.C_ACCENT + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Successful:</" + Theme.C_MUTED + "> <" + Theme.C_SUCCESS + ">" + successful + "</" + Theme.C_SUCCESS + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Failed:</" + Theme.C_MUTED + "> <" + Theme.C_ERROR + ">" + failed + "</" + Theme.C_ERROR + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Timeout:</" + Theme.C_MUTED + "> <" + Theme.C_WARN + ">" + timeout + "</" + Theme.C_WARN + ">"));
-        lines.add(Component.empty());
+        var report = dev.objz.commandbridge.velocity.ui.Report.of("Reload")
+                .success("Config and scripts reloaded")
+                .section("Scripts")
+                .summary("Loaded", loaded, dev.objz.commandbridge.velocity.ui.Report.Status.ACCENT)
+                .summary("Enabled", enabled, dev.objz.commandbridge.velocity.ui.Report.Status.SUCCESS)
+                .summary("Disabled", disabled, dev.objz.commandbridge.velocity.ui.Report.Status.WARN)
+                .summary("Errors", 0, dev.objz.commandbridge.velocity.ui.Report.Status.ERROR)
+                .section("Registration")
+                .summary("Responses", results.size(),
+                        dev.objz.commandbridge.velocity.ui.Report.Status.ACCENT)
+                .summary("Successful", successful,
+                        dev.objz.commandbridge.velocity.ui.Report.Status.SUCCESS)
+                .summary("Failed", failed,
+                        dev.objz.commandbridge.velocity.ui.Report.Status.ERROR)
+                .summary("Timeout", timeout,
+                        dev.objz.commandbridge.velocity.ui.Report.Status.WARN);
 
-        int idx = 0;
-        for (ReloadEntry entry : entries) {
-            String status;
-            String color;
-            switch (entry.status) {
-                case SUCCESS -> { status = "OK"; color = Theme.C_SUCCESS; }
-                case FAILED -> { status = "FAILED"; color = Theme.C_ERROR; }
-                case TIMEOUT -> { status = "TIMEOUT"; color = Theme.C_WARN; }
-                default -> { status = "UNKNOWN"; color = Theme.C_MUTED; }
+        if (!entries.isEmpty()) {
+            report.section("Clients");
+            for (ReloadEntry entry : entries) {
+                dev.objz.commandbridge.velocity.ui.Report.Status status;
+                String label;
+                switch (entry.status) {
+                    case SUCCESS -> {
+                        status = dev.objz.commandbridge.velocity.ui.Report.Status.SUCCESS;
+                        label = "OK";
+                    }
+                    case FAILED -> {
+                        status = dev.objz.commandbridge.velocity.ui.Report.Status.ERROR;
+                        label = "FAILED";
+                    }
+                    case TIMEOUT -> {
+                        status = dev.objz.commandbridge.velocity.ui.Report.Status.WARN;
+                        label = "TIMEOUT";
+                    }
+                    default -> {
+                        status = dev.objz.commandbridge.velocity.ui.Report.Status.NEUTRAL;
+                        label = "UNKNOWN";
+                    }
+                }
+                String subline = entry.address + " · " + label
+                        + (entry.errorMessage != null && !entry.errorMessage.isBlank()
+                                ? " · " + entry.errorMessage
+                                : "");
+                report.listItem(entry.id, subline, status,
+                        "/cb client show " + entry.id);
             }
-            Component header = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ")
-                    .append(MM.parse("<gradient:" + Theme.C_PRIMARY + ":" + Theme.C_ACCENT + "><bold>" + entry.id + "</bold></gradient>"))
-                    .append(MM.parse(" <" + color + ">" + status + "</" + color + ">"));
-            Component address = MM.parse("<" + Theme.C_MUTED + ">  Address:</" + Theme.C_MUTED + "> <white>" + entry.address + "</white>");
-            lines.add(header);
-            lines.add(address);
-            if (entry.errorMessage != null && !entry.errorMessage.isBlank()) {
-                lines.add(MM.parse("<" + Theme.C_MUTED + ">  Detail:</" + Theme.C_MUTED + "> <white>" + entry.errorMessage + "</white>"));
-            }
-            if (idx < entries.size() - 1) {
-                lines.add(Component.empty());
-            }
-            idx++;
         }
 
-        ChatFrame frame = new ChatFrame("Reload");
-        frame.lines(lines);
-        frame.send(ctx.source());
+        report.sendChatOnly(ctx.source());
     }
 
     private void displayConsoleResults(ConcurrentHashMap<String, ReloadResult> results,

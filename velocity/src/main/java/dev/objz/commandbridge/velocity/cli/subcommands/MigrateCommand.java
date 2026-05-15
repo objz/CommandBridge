@@ -4,14 +4,10 @@ import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.scripting.migration.MigrationResult;
 import dev.objz.commandbridge.scripting.migration.YamlMigrator;
-import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
-import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
-import net.kyori.adventure.text.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -209,99 +205,68 @@ public final class MigrateCommand extends AbstractCliCommand {
             }
         }
 
-        List<Component> lines = new ArrayList<>();
+        var report = dev.objz.commandbridge.velocity.ui.Report.of("Migrate");
 
         if (errors > 0) {
-            lines.add(MM.parse("<" + Theme.C_WARN + "><bold>Migration completed with "
-                    + errors + " error(s)</bold></" + Theme.C_WARN + ">"));
+            report.warn("Migration completed with " + errors + " error(s)");
         } else if (migrated > 0) {
-            lines.add(MM.parse("<" + Theme.C_SUCCESS + "><bold>Migration completed</bold></"
-                    + Theme.C_SUCCESS + ">"));
+            report.success("Migration completed");
         } else {
-            lines.add(MM.parse("<" + Theme.C_MUTED
-                    + ">All scripts are already at version " + targetVersion
-                    + "</" + Theme.C_MUTED + ">"));
+            report.muted("All scripts are already at version " + targetVersion);
         }
 
-        lines.add(Component.empty());
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Total:</" + Theme.C_MUTED + "> <"
-                + Theme.C_ACCENT + ">" + results.size() + "</" + Theme.C_ACCENT + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Migrated:</" + Theme.C_MUTED + "> <"
-                + Theme.C_SUCCESS + ">" + migrated + "</" + Theme.C_SUCCESS + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Skipped:</" + Theme.C_MUTED + "> <"
-                + Theme.C_MUTED + ">" + skipped + "</" + Theme.C_MUTED + ">"));
-        lines.add(MM.parse("<" + Theme.C_MUTED + ">Errors:</" + Theme.C_MUTED + "> <"
-                + Theme.C_ERROR + ">" + errors + "</" + Theme.C_ERROR + ">"));
+        report.section("Summary")
+                .summary("Total", results.size(),
+                        dev.objz.commandbridge.velocity.ui.Report.Status.ACCENT)
+                .summary("Migrated", migrated,
+                        dev.objz.commandbridge.velocity.ui.Report.Status.SUCCESS)
+                .summary("Skipped", skipped,
+                        dev.objz.commandbridge.velocity.ui.Report.Status.NEUTRAL)
+                .summary("Errors", errors,
+                        dev.objz.commandbridge.velocity.ui.Report.Status.ERROR);
 
         if (migrated > 0 || errors > 0) {
-            lines.add(Component.empty());
-
+            report.section("Files");
             for (FileResult r : results) {
                 if (r.status == FileStatus.SKIPPED) {
                     continue;
                 }
-
-                String statusText;
-                String color;
+                dev.objz.commandbridge.velocity.ui.Report.Status status;
                 switch (r.status) {
-                    case MIGRATED -> {
-                        statusText = "OK";
-                        color = Theme.C_SUCCESS;
-                    }
-                    case ERROR -> {
-                        statusText = "ERROR";
-                        color = Theme.C_ERROR;
-                    }
-                    default -> {
-                        statusText = "UNKNOWN";
-                        color = Theme.C_MUTED;
-                    }
+                    case MIGRATED -> status =
+                            dev.objz.commandbridge.velocity.ui.Report.Status.SUCCESS;
+                    case ERROR -> status =
+                            dev.objz.commandbridge.velocity.ui.Report.Status.ERROR;
+                    default -> status =
+                            dev.objz.commandbridge.velocity.ui.Report.Status.NEUTRAL;
                 }
-
                 String version = r.from > 0 && r.to > 0
-                        ? "v" + r.from + " -> v" + r.to
+                        ? "v" + r.from + " → v" + r.to
                         : "";
-
-                Component header = MM.parse("<" + Theme.C_ACCENT + ">" + Theme.SYMBOL_BULLET
-                        + "</" + Theme.C_ACCENT + "> ")
-                        .append(MM.parse("<white>" + r.filename + "</white>"))
-                        .append(MM.parse(" <" + color + ">" + statusText + "</" + color + ">"));
-                lines.add(header);
-
-                if (!version.isEmpty()) {
-                    lines.add(MM.parse("<" + Theme.C_MUTED + ">  " + version + "</"
-                            + Theme.C_MUTED + ">"));
-                }
+                String subline = version;
                 if (r.error != null && !r.error.isBlank()) {
-                    lines.add(MM.parse("<" + Theme.C_ERROR + ">  " + r.error + "</"
-                            + Theme.C_ERROR + ">"));
+                    subline = subline.isEmpty() ? r.error : subline + " · " + r.error;
                 }
+                report.listItem(r.filename, subline, status, null);
             }
         }
 
         if (migrated > 0) {
-            lines.add(Component.empty());
-            Component reloadHint = MM.parse("<" + Theme.C_MUTED + ">Run </"
-                    + Theme.C_MUTED + ">")
-                    .append(MM.cmd("/cb reload"))
-                    .append(MM.parse("<" + Theme.C_MUTED + "> to apply changes</"
-                            + Theme.C_MUTED + ">"));
-            lines.add(reloadHint);
+            report.blank()
+                    .actions(dev.objz.commandbridge.velocity.ui.Report.Action.of(
+                            "Reload", "/cb reload", "apply changes"));
         }
 
-        ChatFrame frame = new ChatFrame("Migrate");
-        frame.lines(lines);
-        frame.send(ctx.source());
+        report.sendChatOnly(ctx.source());
     }
 
     // -- Helpers -----------------------------------------------------------
 
     private void sendError(RenderContext ctx, String message, long startNs) {
         if (ctx.isPlayer()) {
-            Component err = MM.error(message);
-            ChatFrame frame = new ChatFrame("Migrate");
-            frame.line(err);
-            frame.send(ctx.source());
+            dev.objz.commandbridge.velocity.ui.Report.of("Migrate")
+                    .error(message)
+                    .sendChatOnly(ctx.source());
         } else {
             CliOutput output = cli("Migrate");
             output.error(message);
@@ -312,10 +277,9 @@ public final class MigrateCommand extends AbstractCliCommand {
 
     private void sendEmpty(RenderContext ctx, long startNs) {
         if (ctx.isPlayer()) {
-            Component msg = MM.muted("No scripts found in scripts directory");
-            ChatFrame frame = new ChatFrame("Migrate");
-            frame.line(msg);
-            frame.send(ctx.source());
+            dev.objz.commandbridge.velocity.ui.Report.of("Migrate")
+                    .muted("No scripts found in scripts directory")
+                    .sendChatOnly(ctx.source());
         } else {
             CliOutput output = cli("Migrate");
             output.muted("No scripts found in scripts directory");

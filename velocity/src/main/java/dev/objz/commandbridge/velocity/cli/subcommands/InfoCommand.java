@@ -2,17 +2,12 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.cli.CliTable;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Theme;
 import dev.objz.commandbridge.velocity.ui.components.ProgressBarComponent;
 import net.kyori.adventure.text.Component;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import java.lang.management.ManagementFactory;
 
@@ -33,27 +28,28 @@ public final class InfoCommand extends AbstractCliCommand {
         long memUsed = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024;
         long memTotal = Runtime.getRuntime().totalMemory() / 1024 / 1024;
 
-        List<Component> lines = new ArrayList<>();
-        lines.add(MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> <" + Theme.C_MUTED + ">OS:</" + Theme.C_MUTED + "> <white>" + System.getProperty("os.name") + " (" + System.getProperty("os.arch") + ")</white>"));
-        lines.add(MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> <" + Theme.C_MUTED + ">Java:</" + Theme.C_MUTED + "> <white>" + System.getProperty("java.version") + "</white>"));
-        lines.add(MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> <" + Theme.C_MUTED + ">Uptime:</" + Theme.C_MUTED + "> <white>" + formatDuration(uptime) + "</white>"));
-        lines.add(MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> <" + Theme.C_MUTED + ">Memory:</" + Theme.C_MUTED + "> <white>" + memUsed + "MB / " + memTotal + "MB</white>"));
-        lines.add(MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> <" + Theme.C_MUTED + ">Cores:</" + Theme.C_MUTED + "> <white>" + Runtime.getRuntime().availableProcessors() + "</white>"));
-
         double ratio = memTotal == 0 ? 0 : (double) memUsed / (double) memTotal;
-        String barColor = ratio > 0.85 ? Theme.C_ERROR : (ratio > 0.65 ? Theme.C_WARN : Theme.C_SUCCESS);
+        String barColor = ratio > 0.85 ? Theme.C_ERROR
+                : (ratio > 0.65 ? Theme.C_WARN : Theme.C_SUCCESS);
         ProgressBarComponent bar = new ProgressBarComponent(ratio, 18, barColor);
         int percent = (int) (ratio * 100);
-        var barLine = MM.parse("<" + Theme.C_MUTED + ">Memory Load</" + Theme.C_MUTED + "> ")
-                .append(bar.renderChat(ctx))
-                .append(MM.parse(" <" + Theme.C_MUTED + ">" + memUsed + "MB / " + memTotal + "MB (" + percent + "%)</" + Theme.C_MUTED + ">"));
 
-        ChatFrame frame = new ChatFrame("System Info")
-                .hint(MM.parse("<" + Theme.C_MUTED + "><italic>Snapshot from this proxy</italic></" + Theme.C_MUTED + ">"));
-        frame.lines(lines);
-        frame.space();
-        frame.line(barLine);
-        frame.send(sender);
+        Component barLine = MM.parse("<" + Theme.C_MUTED + ">Memory Load:</"
+                + Theme.C_MUTED + "> ")
+                .append(bar.renderChat(ctx))
+                .append(MM.parse(" <" + Theme.C_MUTED + ">" + memUsed + "MB / "
+                        + memTotal + "MB (" + percent + "%)</" + Theme.C_MUTED + ">"));
+        String barConsole = "Memory Load: " + memUsed + "MB / " + memTotal + "MB (" + percent + "%)";
+
+        dev.objz.commandbridge.velocity.ui.Report.of("System Info")
+                .kv("OS", System.getProperty("os.name") + " (" + System.getProperty("os.arch") + ")")
+                .kv("Java", System.getProperty("java.version"))
+                .kv("Uptime", formatDuration(uptime))
+                .kv("Memory", memUsed + "MB / " + memTotal + "MB")
+                .kv("Cores", String.valueOf(Runtime.getRuntime().availableProcessors()))
+                .blank()
+                .line(barLine, barConsole)
+                .sendChatOnly(sender);
     }
 
     private void renderConsole() {

@@ -11,17 +11,11 @@ import dev.objz.commandbridge.velocity.dump.DumpExporter;
 import dev.objz.commandbridge.velocity.dump.RemoteDumpCollector;
 import dev.objz.commandbridge.velocity.dump.SupportDumpBuilder;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
-import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-
 import dev.objz.commandbridge.velocity.ui.cli.CliOutput;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
-import dev.objz.commandbridge.velocity.ui.Theme;
-import net.kyori.adventure.text.Component;
 
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 
 public final class DumpCommand extends AbstractCliCommand {
@@ -96,56 +90,37 @@ public final class DumpCommand extends AbstractCliCommand {
         String kb = String.format("%.1f KB", result.bytes() / 1024.0d);
         String snapshots = remoteCollected + " ok, " + remoteFailed + " failed";
 
-        List<Component> lines = new ArrayList<>();
-        lines.add(chatBullet("Clients", String.valueOf(clientCount)));
-        lines.add(chatBullet("Snapshots", snapshots));
-        lines.add(chatBullet("Size", kb));
+        var report = dev.objz.commandbridge.velocity.ui.Report.of("Dump")
+                .success("Dump created")
+                .blank()
+                .kv("Clients", String.valueOf(clientCount),
+                        dev.objz.commandbridge.velocity.ui.Report.Status.ACCENT)
+                .kv("Snapshots", snapshots)
+                .kv("Size", kb);
 
         if (result.uploaded()) {
-            String url = result.upload().url();
-            Component linkLine = MM.parse(
-                    "<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT
-                            + "> <" + Theme.C_MUTED + ">Viewer:</" + Theme.C_MUTED + "> ")
-                    .append(MM.parse(
-                            "<" + Theme.C_ACCENT + "><underlined>"
-                                    + url + "</underlined></" + Theme.C_ACCENT + ">")
-                            .clickEvent(net.kyori.adventure.text.event.ClickEvent.openUrl(url))
-                            .hoverEvent(net.kyori.adventure.text.event.HoverEvent.showText(
-                                    MM.parse("<" + Theme.C_MUTED
-                                            + ">Click to open</" + Theme.C_MUTED + ">"))));
-            lines.add(linkLine);
-
+            report.link("Viewer", result.upload().url(), "Click to open");
             if (result.upload().id() != null && !result.upload().id().isBlank()) {
-                lines.add(chatBullet("Dump ID", result.upload().id()));
+                report.kv("Dump ID", result.upload().id());
             }
             if (result.upload().expiresAt() != null
                     && !result.upload().expiresAt().isBlank()) {
-                lines.add(chatBullet("Expires", result.upload().expiresAt()));
+                report.kv("Expires", result.upload().expiresAt());
             }
         } else {
-            lines.add(MM.warn("Upload failed — use local file."));
+            report.warn("Upload failed — use local file");
             if (result.uploadError() != null) {
-                lines.add(MM.parse("<" + Theme.C_ERROR + ">"
-                        + safeMessage(result.uploadError()) + "</" + Theme.C_ERROR + ">"));
+                report.error(safeMessage(result.uploadError()));
             }
         }
 
         if (result.localPath() != null) {
-            lines.add(chatBullet("Local copy", result.localPath().toString()));
+            report.kv("Local copy", result.localPath().toString());
         } else if (result.localError() != null) {
-            lines.add(MM.parse("<" + Theme.C_ERROR + ">Local save failed: "
-                    + safeMessage(result.localError()) + "</" + Theme.C_ERROR + ">"));
+            report.error("Local save failed: " + safeMessage(result.localError()));
         }
 
-        ChatFrame frame = new ChatFrame("Dump");
-        frame.lines(lines);
-        frame.send(ctx.source());
-    }
-
-    private static Component chatBullet(String label, String value) {
-        return MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT
-                + "> <" + Theme.C_MUTED + ">" + label + ":</" + Theme.C_MUTED
-                + "> <white>" + value + "</white>");
+        report.sendChatOnly(ctx.source());
     }
 
     private void renderConsoleSuccess(int clientCount, int remoteCollected, int remoteFailed, DumpExportResult result) {
@@ -179,10 +154,9 @@ public final class DumpCommand extends AbstractCliCommand {
     }
 
     private void renderChatError(RenderContext ctx, Exception ex) {
-        Component line = MM.error("Failed to build dump: " + safeMessage(ex));
-        ChatFrame frame = new ChatFrame("Dump");
-        frame.line(line);
-        frame.send(ctx.source());
+        dev.objz.commandbridge.velocity.ui.Report.of("Dump")
+                .error("Failed to build dump: " + safeMessage(ex))
+                .sendChatOnly(ctx.source());
     }
 
     private void renderConsoleError(Exception ex) {
