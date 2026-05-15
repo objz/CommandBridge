@@ -68,7 +68,8 @@ public final class CommandEntry {
             Path dataDir,
             PlayerTracker playerTracker,
             UserCache userCache,
-            PlatformFeatures platformFeatures) {
+            PlatformFeatures platformFeatures,
+            Duration scheduledTaskExpiry) {
 
         this.proxy = Objects.requireNonNull(proxy);
         this.plugin = Objects.requireNonNull(plugin);
@@ -79,7 +80,7 @@ public final class CommandEntry {
         this.velocityExecutor = new LocalDispatcher(proxy, Objects.requireNonNull(localServerId));
 
         this.scheduler = new ScheduleManager(proxy, plugin, dataDir, scriptManager,
-                playerTracker, localServerId);
+                playerTracker, localServerId, Objects.requireNonNull(scheduledTaskExpiry));
         this.scheduler.setExecutionCallback(this::resumeTask);
 
         this.dispatcher = new CommandDispatcher(sessions, outNode, velocityExecutor, playerTracker);

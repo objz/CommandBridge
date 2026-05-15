@@ -107,6 +107,18 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
 
         VelocityConfig.Timeouts toOut = new VelocityConfig.Timeouts(registerTimeout, pingTimeout);
 
+        VelocityConfig.Tasks tasksDefaults = d.tasks();
+        VelocityConfig.Tasks tasksIn = in.tasks() != null ? in.tasks() : tasksDefaults;
+
+        int expireAfter = tasksIn.expireAfter();
+        if (expireAfter < 0) {
+            Log.error("'tasks.expire-after' must be >= 0 (0 disables expiry)");
+            expireAfter = tasksDefaults.expireAfter();
+            ok = false;
+        }
+
+        VelocityConfig.Tasks tasksOut = new VelocityConfig.Tasks(expireAfter);
+
         VelocityConfig.Security securityDefaults = d.security();
         VelocityConfig.Security secIn = in.security() != null ? in.security() : securityDefaults;
 
@@ -155,6 +167,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
                 endpointsOut,
                 secOut,
                 toOut,
+                tasksOut,
                 in.debug());
         return new Result<>(out, ok);
     }

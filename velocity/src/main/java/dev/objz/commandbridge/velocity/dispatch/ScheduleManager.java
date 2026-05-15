@@ -16,20 +16,26 @@ import dev.objz.commandbridge.velocity.util.PlayerTracker;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 public final class ScheduleManager {
+
+    private static final Pattern UNRESOLVED_PLACEHOLDER = Pattern.compile("\\$\\{[^}]+}");
 
     private final ProxyServer proxy;
     private final ScriptManager scriptManager;
     private final String localVelocityId;
+    private final Duration expireAfter;
 
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
     private final Path storagePath;
@@ -38,15 +44,19 @@ public final class ScheduleManager {
 
     public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir,
             ScriptManager scriptManager, PlayerTracker playerTracker,
-            String localVelocityId) {
+            String localVelocityId, Duration expireAfter) {
         this.proxy = proxy;
         this.scriptManager = scriptManager;
         this.localVelocityId = localVelocityId;
+        this.expireAfter = Objects.requireNonNull(expireAfter);
         this.storagePath = dataDir.resolve("data").resolve("tasks.json");
 
         loadTasks();
 
-        proxy.getScheduler().buildTask(plugin, this::saveTasks)
+        proxy.getScheduler().buildTask(plugin, () -> {
+            pruneExpired();
+            saveTasks();
+        })
                 .repeat(5, TimeUnit.MINUTES)
                 .schedule();
 
@@ -159,8 +169,25 @@ public final class ScheduleManager {
             List<ScheduledTask> loaded = Envelope.MAPPER.readValue(storagePath.toFile(),
                     new TypeReference<List<ScheduledTask>>() {
                     });
+            int expired = 0;
+            int unresolved = 0;
             for (ScheduledTask t : loaded) {
+                if (isExpired(t)) {
+                    expired++;
+                    continue;
+                }
+                if (hasUnresolvedTargets(t)) {
+                    Log.warn("Dropping scheduled task '{}' with unresolved placeholder in execute target",
+                            t.id());
+                    unresolved++;
+                    continue;
+                }
                 tasks.put(t.id(), t);
+            }
+            int dropped = expired + unresolved;
+            if (dropped > 0) {
+                Log.info("Dropped '{}' stale scheduled tasks during load (expired={}, unresolved={})",
+                        dropped, expired, unresolved);
             }
             Log.success(true, "Loaded '{}' pending tasks", tasks.size());
         } catch (IOException e) {
@@ -175,5 +202,34 @@ public final class ScheduleManager {
         } catch (IOException e) {
             Log.error("Failed to save scheduled tasks: {}", e.getMessage());
         }
+    }
+
+    private void pruneExpired() {
+        if (expireAfter.isZero() || expireAfter.isNegative()) {
+            return;
+        }
+        int before = tasks.size();
+        tasks.values().removeIf(this::isExpired);
+        int removed = before - tasks.size();
+        if (removed > 0) {
+            Log.debug("Pruned '{}' expired scheduled tasks", removed);
+        }
+    }
+
+    private boolean isExpired(ScheduledTask task) {
+        if (expireAfter.isZero() || expireAfter.isNegative()) {
+            return false;
+        }
+        return System.currentTimeMillis() - task.timestamp() > expireAfter.toMillis();
+    }
+
+    private static boolean hasUnresolvedTargets(ScheduledTask task) {
+        CmdMapping cmd = task.commandMapping();
+        if (cmd == null || cmd.execute() == null) {
+            return false;
+        }
+        return cmd.execute().stream()
+                .anyMatch(t -> t != null && t.id() != null
+                        && UNRESOLVED_PLACEHOLDER.matcher(t.id()).find());
     }
 }

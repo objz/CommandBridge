@@ -64,6 +64,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "unknown", url = "https://cb.objz.dev", description = "I did it!", authors = {
@@ -204,7 +205,8 @@ public final class Main {
                 .schedule();
 
         commandEntry = new CommandEntry(proxy, pluginInstance, scriptManager, sessions, outNode,
-                cfg.serverId(), dataDir, playerTracker, userCache, platformFeatures);
+                cfg.serverId(), dataDir, playerTracker, userCache, platformFeatures,
+                Duration.ofSeconds(cfg.tasks().expireAfter()));
 
         registrations.setCommandEntry(commandEntry);
 

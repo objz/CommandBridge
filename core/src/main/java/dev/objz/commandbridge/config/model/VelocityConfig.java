@@ -11,6 +11,7 @@ public record VelocityConfig(
         @Setting("endpoints") Endpoints endpoints,
         @Setting("security") Security security,
         @Setting("timeouts") Timeouts timeouts,
+        @Setting("tasks") Tasks tasks,
         @Setting("debug") boolean debug) {
 
     @ConfigSerializable
@@ -50,6 +51,11 @@ public record VelocityConfig(
             @Setting("ping-timeout") int pingTimeout) {
     }
 
+    @ConfigSerializable
+    public static record Tasks(
+            @Setting("expire-after") int expireAfter) {
+    }
+
 
     public static VelocityConfig defaults() {
         return new VelocityConfig(
@@ -61,6 +67,7 @@ public record VelocityConfig(
                         new Endpoints.Redis("127.0.0.1", 6379, "", "")),
                 new Security(TlsMode.TOFU, "", "", "PKCS12"),
                 new Timeouts(5, 5),
+                new Tasks(86400),
                 false);
     }
 }
