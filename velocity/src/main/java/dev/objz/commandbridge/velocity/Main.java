@@ -225,13 +225,16 @@ public final class Main {
         installRoutes();
 
         command = new CBCommand(
+                proxy,
                 configManager,
                 scriptManager,
                 registrations,
                 sessions,
                 outNode,
                 cfg,
-                dataDir);
+                dataDir,
+                commandEntry,
+                userCache);
         command.register();
 
         CommandBridgeProvider.register(api);

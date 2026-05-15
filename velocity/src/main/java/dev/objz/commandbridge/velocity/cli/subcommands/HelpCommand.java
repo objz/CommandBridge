@@ -20,6 +20,7 @@ public final class HelpCommand extends AbstractCliCommand {
         {"/cb help", "Shows this help menu"},
         {"/cb list", "List connected proxy clients"},
         {"/cb scripts", "Manage and view scripts"},
+        {"/cb tasks", "List or clear pending scheduled tasks"},
         {"/cb ping", "Check latency of clients"},
         {"/cb info", "System & Plugin Information"},
         {"/cb dump", "Dump configuration for support"},

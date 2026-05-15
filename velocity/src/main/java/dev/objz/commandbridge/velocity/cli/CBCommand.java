@@ -8,6 +8,7 @@ import dev.jorel.commandapi.executors.CommandExecutor;
 import dev.jorel.commandapi.executors.ResultingCommandExecutor;
 
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.VelocityConfig;
@@ -23,8 +24,12 @@ import dev.objz.commandbridge.velocity.cli.subcommands.MigrateCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.PingCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.ReloadCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.ScriptsCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.TasksCommand;
+import dev.objz.commandbridge.velocity.cmd.bridge.types.OfflinePlayerArgument;
+import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.util.UserCache;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,6 +37,7 @@ import java.util.List;
 
 public final class CBCommand {
 
+    private final ProxyServer proxy;
     private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
     private final RegistrationManager registrationManager;
@@ -39,16 +45,22 @@ public final class CBCommand {
     private final OutNode outNode;
     private final VelocityConfig config;
     private final Path dataDir;
+    private final CommandEntry commandEntry;
+    private final UserCache userCache;
 
     public CBCommand(
+            ProxyServer proxy,
             ConfigManager<VelocityConfig> configManager,
             ScriptManager scriptManager,
             RegistrationManager registrationManager,
             SessionHub sessionHub,
             OutNode outNode,
             VelocityConfig config,
-            Path dataDir) {
+            Path dataDir,
+            CommandEntry commandEntry,
+            UserCache userCache) {
 
+        this.proxy = proxy;
         this.configManager = configManager;
         this.scriptManager = scriptManager;
         this.registrationManager = registrationManager;
@@ -56,6 +68,8 @@ public final class CBCommand {
         this.outNode = outNode;
         this.config = config;
         this.dataDir = dataDir;
+        this.commandEntry = commandEntry;
+        this.userCache = userCache;
     }
 
     public void register() {
@@ -79,6 +93,7 @@ public final class CBCommand {
         var dump = new DumpCommand(registrationManager, sessionHub, outNode, scriptManager, config, dataDir);
         var migrate = new MigrateCommand(scriptManager.scriptsDir());
         var infoCmd = new InfoCommand();
+        var tasks = new TasksCommand(proxy, commandEntry.scheduler(), userCache);
 
         new CommandAPICommand("commandbridge")
                 .withAliases("cb")
@@ -151,6 +166,35 @@ public final class CBCommand {
                         .executes((CommandExecutor) (sender, args) -> {
                             migrate.execute(sender);
                         }))
+
+                // /cb tasks (list page 1 by default)
+                .withSubcommand(new CommandAPICommand("tasks")
+                        .executes((CommandExecutor) (sender, args) -> {
+                            tasks.list(sender, 1);
+                        })
+
+                        // /cb tasks list [page]
+                        .withSubcommand(new CommandAPICommand("list")
+                                .withOptionalArguments(new IntegerArgument("page"))
+                                .executes((CommandExecutor) (sender, args) -> {
+                                    int page = 1;
+                                    if (args.get("page") != null) {
+                                        page = (int) args.get("page");
+                                    }
+                                    tasks.list(sender, page);
+                                }))
+
+                        // /cb tasks clear [player]
+                        .withSubcommand(new CommandAPICommand("clear")
+                                .withOptionalArguments(new OfflinePlayerArgument("player", proxy, userCache))
+                                .executes((CommandExecutor) (sender, args) -> {
+                                    String player = (String) args.get("player");
+                                    if (player == null) {
+                                        tasks.clearAll(sender);
+                                    } else {
+                                        tasks.clearByPlayer(sender, player);
+                                    }
+                                })))
 
                 .register();
     }

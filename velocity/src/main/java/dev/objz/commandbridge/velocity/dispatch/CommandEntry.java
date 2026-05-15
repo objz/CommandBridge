@@ -97,6 +97,10 @@ public final class CommandEntry {
         return velocityExecutor;
     }
 
+    public ScheduleManager scheduler() {
+        return scheduler;
+    }
+
     public void execute(InvokedCommand invoked, ClientSession originSession) {
         resolveSource(invoked.sender())
                 .ifPresentOrElse(

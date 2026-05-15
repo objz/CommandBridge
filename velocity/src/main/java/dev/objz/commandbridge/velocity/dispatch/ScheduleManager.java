@@ -18,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +67,37 @@ public final class ScheduleManager {
 
     public void setExecutionCallback(Consumer<ExecutionContext> callback) {
         this.executionCallback = callback;
+    }
+
+    public Collection<ScheduledTask> tasks() {
+        return Collections.unmodifiableCollection(new ArrayList<>(tasks.values()));
+    }
+
+    public int size() {
+        return tasks.size();
+    }
+
+    public int clearAll() {
+        int removed = tasks.size();
+        if (removed == 0) {
+            return 0;
+        }
+        tasks.clear();
+        saveTasks();
+        return removed;
+    }
+
+    public int clearByPlayer(UUID playerUuid) {
+        if (playerUuid == null) {
+            return 0;
+        }
+        int before = tasks.size();
+        tasks.values().removeIf(t -> playerUuid.equals(t.playerUuid()));
+        int removed = before - tasks.size();
+        if (removed > 0) {
+            saveTasks();
+        }
+        return removed;
     }
 
     public void queueTask(ExecutionContext ctx, CmdMapping cmd, int index) {

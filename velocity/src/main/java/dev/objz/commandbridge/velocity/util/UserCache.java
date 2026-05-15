@@ -57,6 +57,19 @@ public final class UserCache {
                 .toList();
     }
 
+    public Optional<String> nameOf(UUID uuid) {
+        if (uuid == null) {
+            return Optional.empty();
+        }
+        String target = uuid.toString();
+        for (CacheEntry entry : cache.values()) {
+            if (target.equalsIgnoreCase(entry.uuid())) {
+                return Optional.of(entry.name());
+            }
+        }
+        return Optional.empty();
+    }
+
     public CompletableFuture<UUID> resolve(String name) {
         if (name == null || name.isBlank()) {
             return CompletableFuture.completedFuture(null);
