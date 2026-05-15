@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -87,17 +88,22 @@ public final class ScheduleManager {
         return removed;
     }
 
-    public int clearByPlayer(UUID playerUuid) {
-        if (playerUuid == null) {
-            return 0;
+    public Optional<ScheduledTask> findById(UUID id) {
+        if (id == null) {
+            return Optional.empty();
         }
-        int before = tasks.size();
-        tasks.values().removeIf(t -> playerUuid.equals(t.playerUuid()));
-        int removed = before - tasks.size();
-        if (removed > 0) {
+        return Optional.ofNullable(tasks.get(id));
+    }
+
+    public boolean removeById(UUID id) {
+        if (id == null) {
+            return false;
+        }
+        if (tasks.remove(id) != null) {
             saveTasks();
+            return true;
         }
-        return removed;
+        return false;
     }
 
     public void queueTask(ExecutionContext ctx, CmdMapping cmd, int index) {

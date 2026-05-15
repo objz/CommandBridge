@@ -234,7 +234,8 @@ public final class Main {
                 cfg,
                 dataDir,
                 commandEntry,
-                userCache);
+                userCache,
+                playerTracker);
         command.register();
 
         CommandBridgeProvider.register(api);

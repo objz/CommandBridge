@@ -2,10 +2,6 @@ package dev.objz.commandbridge.velocity.cli.subcommands;
 
 import com.velocitypowered.api.command.CommandSource;
 import dev.objz.commandbridge.util.MM;
-import dev.objz.commandbridge.velocity.ui.chat.ChatFrame;
-
-import java.util.ArrayList;
-import java.util.List;
 import dev.objz.commandbridge.velocity.ui.cli.BoxDrawing;
 import dev.objz.commandbridge.velocity.ui.cli.CliLayout;
 import dev.objz.commandbridge.velocity.ui.RenderContext;
@@ -18,15 +14,22 @@ public final class HelpCommand extends AbstractCliCommand {
 
     private static final String[][] COMMANDS = {
         {"/cb help", "Shows this help menu"},
-        {"/cb list", "List connected proxy clients"},
-        {"/cb scripts", "Manage and view scripts"},
-        {"/cb tasks", "List or clear pending scheduled tasks"},
-        {"/cb ping", "Check latency of clients"},
-        {"/cb info", "System & Plugin Information"},
-        {"/cb dump", "Dump configuration for support"},
+        {"/cb info", "System & Plugin information"},
         {"/cb reload", "Reload configuration & scripts"},
+        {"/cb debug", "Toggle debug mode"},
+        {"/cb dump", "Dump configuration for support"},
         {"/cb migrate", "Migrate scripts to latest version"},
-        {"/cb debug", "Toggle debug mode"}
+        {"/cb script list", "List loaded scripts"},
+        {"/cb script show", "Show a script (optionally a group)"},
+        {"/cb script enable", "Enable a script"},
+        {"/cb script disable", "Disable a script"},
+        {"/cb task list", "List pending scheduled tasks"},
+        {"/cb task clear", "Clear a pending task"},
+        {"/cb client list", "List connected clients"},
+        {"/cb client ping", "Ping client(s)"},
+        {"/cb client players", "Players on a client"},
+        {"/cb config show", "Show config (optionally a section)"},
+        {"/cb config reload", "Reload only config"}
     };
 
     public void execute(CommandSource sender) {
@@ -40,24 +43,18 @@ public final class HelpCommand extends AbstractCliCommand {
     }
 
     private void renderChatHelp(CommandSource sender) {
-        List<Component> lines = new ArrayList<>();
+        dev.objz.commandbridge.velocity.ui.Report report =
+                dev.objz.commandbridge.velocity.ui.Report.of("CommandBridge Help");
         for (String[] cmd : COMMANDS) {
             String command = cmd[0];
             String description = cmd[1];
-
-            Component commandComp = MM.cmd(command)
-                    .hoverEvent(HoverEvent.showText(MM.parse("<" + Theme.C_MUTED + ">Run command</" + Theme.C_MUTED + ">")))
-                    .clickEvent(ClickEvent.runCommand(command));
-            Component line = MM.parse("<" + Theme.C_ACCENT + ">•</" + Theme.C_ACCENT + "> ").append(commandComp);
-            Component desc = MM.parse("<" + Theme.C_MUTED + ">  " + description + "</" + Theme.C_MUTED + ">");
-
-            lines.add(line);
-            lines.add(desc);
+            Component clickable = MM.cmd(command)
+                    .clickEvent(ClickEvent.suggestCommand(command))
+                    .hoverEvent(HoverEvent.showText(MM.muted("Click to insert")));
+            report.bullet(clickable, command);
+            report.line(MM.muted("  " + description), "  " + description);
         }
-
-        ChatFrame frame = new ChatFrame("CommandBridge Help");
-        frame.lines(lines);
-        frame.send(sender);
+        report.sendChatOnly(sender);
     }
 
     private void renderConsoleHelp() {
