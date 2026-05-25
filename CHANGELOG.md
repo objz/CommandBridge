@@ -2,7 +2,7 @@ this update fixes a placeholder bug that prevented some scheduled tasks from
 ever resuming, adds a configurable task-expiry timer, and redesigns the admin
 CLI around resources with consistent rendering across console and in-game chat.
 
-so whats new:
+so whats new or fixed:
 
 **scheduled tasks**
 
@@ -43,9 +43,9 @@ so whats new:
 
 **removed**
 
-- `/cb scripts`, `/cb tasks`, `/cb list`, `/cb ping` — replaced by the
+- `/cb scripts`, `/cb tasks`, `/cb list`, `/cb ping` - replaced by the
   resource-scoped forms above (no backwards-compat aliases on v3)
-- `/cb task show <id>` and `/cb client show <id>` — their list views already
+- `/cb task show <id>` and `/cb client show <id>` - their list views already
   show everything useful, no point duplicating
 
 latest commit: 76edfda
