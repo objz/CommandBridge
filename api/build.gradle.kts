@@ -1,3 +1,4 @@
+import org.gradle.plugins.signing.SigningExtension
 plugins {
     `java-library`
     `checkstyle`
@@ -18,6 +19,12 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+plugins.withId("signing") {
+    extensions.configure<SigningExtension>("signing") {
+        useGpgCmd()
+    }
 }
 
 mavenPublishing {

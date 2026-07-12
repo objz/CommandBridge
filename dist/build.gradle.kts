@@ -171,6 +171,7 @@ tasks {
         relocate("org.xnio", "dev.objz.libs.xnio")
         relocate("org.jboss.threads", "dev.objz.libs.jboss.threads")
         relocate("org.spongepowered.configurate", "dev.objz.libs.configurate")
+        relocate("net.kyori.option", "dev.objz.libs.kyori.option")
         relocate("org.yaml.snakeyaml", "dev.objz.libs.snakeyaml")
         relocate("org.bstats", "dev.objz.libs.bstats")
         mergeServiceFiles()
@@ -184,14 +185,14 @@ tasks {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
         // into("/home/consti/code-test/Paper/plugins")
-        into("/mnt/storage/Server-TEST/CB-v2/Paper/plugins")
+        into("/home/consti/servers/dev/paper/plugins")
     }
 
     val copyToVelocityPlugins by registering(Copy::class) {
         dependsOn(shadowJar)
         from(shadowJar.get().outputs.files)
         // into("/home/consti/code-test/Velocity/plugins")
-        into("/mnt/storage/Server-TEST/CB-v2/Velocity/plugins")
+        into("/home/consti/servers/dev/velocity/plugins")
     }
 
     register("dev") { dependsOn(copyToVelocityPlugins, copyToPaperPlugins) }
