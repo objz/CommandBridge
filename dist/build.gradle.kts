@@ -2,7 +2,7 @@ import io.papermc.hangarpublishplugin.model.Platforms
 import java.net.URI
 
 plugins {
-    id("com.gradleup.shadow") version "9.2.2"
+    id("com.gradleup.shadow") version "9.3.1"
     id("com.modrinth.minotaur") version "2.+"
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
     java
