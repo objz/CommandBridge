@@ -134,6 +134,7 @@ tasks {
 
     val processPluginResources by registering(Copy::class) {
         val version = pluginVersion
+        inputs.property("pluginVersion", version)
         from(project(":backends").layout.projectDirectory.dir("src/main/resources")) {
             include("plugin.yml", "paper-plugin.yml")
         }
@@ -146,6 +147,7 @@ tasks {
 
     val generateVersionFile by registering {
         val version = pluginVersion
+        inputs.property("pluginVersion", version)
         val outputDir = layout.buildDirectory.dir("plugin-resources")
         val versionFile = outputDir.map { it.file("version") }
         outputs.file(versionFile)
