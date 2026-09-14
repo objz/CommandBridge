@@ -8,6 +8,7 @@ import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.endpoints.RedisEndpoint;
 import dev.objz.commandbridge.net.proto.Envelope;
+import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.net.redis.RedisChannels;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import redis.clients.jedis.DefaultJedisClientConfig;
@@ -130,6 +131,11 @@ public final class RedisServer implements EndpointServer {
             try (Jedis jedis = pool.getResource()) {
                 JedisPubSub localSubscriber = new JedisPubSub() {
                     @Override
+                    public void onSubscribe(String channel, int subscribedChannels) {
+                        requestAuthentication();
+                    }
+
+                    @Override
                     public void onMessage(String channel, String message) {
                         handleInbound(message);
                     }
@@ -187,6 +193,17 @@ public final class RedisServer implements EndpointServer {
             CompletableFuture<Void> failed = new CompletableFuture<>();
             failed.completeExceptionally(e);
             return failed;
+        }
+    }
+
+    private void requestAuthentication() {
+        try {
+            Envelope env = Envelope.make(MessageType.AUTH_REQUIRED, "proxy-auth", "*", null);
+            try (Jedis jedis = pool.getResource()) {
+                jedis.publish(RedisChannels.CLIENT_CONTROL, Envelope.MAPPER.writeValueAsString(env));
+            }
+        } catch (Exception e) {
+            Log.warn("Failed to request Redis client authentication: {}", e.getMessage());
         }
     }
 

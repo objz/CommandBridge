@@ -81,6 +81,9 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
                     } else {
                         Log.error(cause, "Authentication error");
                     }
+                    if (ctx.onAuthFailed() != null) {
+                        ctx.onAuthFailed().run();
+                    }
                     return null;
                 });
 

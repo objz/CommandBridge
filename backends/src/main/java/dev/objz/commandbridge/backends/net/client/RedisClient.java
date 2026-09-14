@@ -72,6 +72,7 @@ public final class RedisClient implements BackendClient {
 
         outNode.setClientId(cfg.clientId());
         authHandler.onAuthFailed(this::onConnectionLost);
+        messageRouter.onAuthenticationRequired(authHandler::authenticate);
         this.api = new BackendCommandBridgeImpl(this);
     }
 
@@ -235,7 +236,9 @@ public final class RedisClient implements BackendClient {
             };
 
             subscriber = localSubscriber;
-            jedis.subscribe(localSubscriber, RedisChannels.clientInbound(cfg.clientId()));
+            jedis.subscribe(localSubscriber,
+                    RedisChannels.clientInbound(cfg.clientId()),
+                    RedisChannels.CLIENT_CONTROL);
         } catch (Exception e) {
             subscribed.countDown();
             if (running) {

@@ -25,6 +25,7 @@ public final class RedisMessageRouter {
     private final AtomicReference<ConnectionState> stateRef;
     private final String secret;
     private volatile Location location;
+    private volatile Runnable onAuthenticationRequired;
 
     public RedisMessageRouter(
             InNode inNode,
@@ -45,6 +46,10 @@ public final class RedisMessageRouter {
         this.location = location;
     }
 
+    public void onAuthenticationRequired(Runnable callback) {
+        this.onAuthenticationRequired = callback;
+    }
+
     public void setupEndpoint(Endpoint endpoint) {
         inNode.setSendOperationFactory((ep, envelope) -> new SendOperation(ep, envelope, awaiter));
         outNode.setSendOperationFactory(envelope -> new SendOperation(endpoint, envelope, awaiter));
@@ -57,6 +62,15 @@ public final class RedisMessageRouter {
             }
 
             ConnectionState state = stateRef.get();
+            if (env.type() == MessageType.AUTH_REQUIRED) {
+                if (stateRef.compareAndSet(ConnectionState.AUTHENTICATED, ConnectionState.CONNECTED)) {
+                    Runnable callback = onAuthenticationRequired;
+                    if (callback != null) {
+                        callback.run();
+                    }
+                }
+                return true;
+            }
             if (state != ConnectionState.AUTHENTICATED) {
                 switch (env.type()) {
                     case AUTH_OK:

@@ -187,8 +187,6 @@ public final class Main {
                             true, tls.context())
                     : new WsServer(wsCfg.bindHost(), wsCfg.bindPort(), sessions, inNode);
         }
-        endpointServer.start();
-
         scriptManager = new ScriptManager(dataDir, platformFeatures);
         scriptManager.loadAll();
 
@@ -243,6 +241,7 @@ public final class Main {
             registrations.onClientAuthenticated(session);
             api.onServerConnected(session);
         });
+        endpointServer.start();
 
         checkForUpdate();
     }
