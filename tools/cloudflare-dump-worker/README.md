@@ -13,6 +13,12 @@ This worker stores `/cb dump` payloads in Cloudflare D1 and serves them back to 
 - `GET /api/dump/view/:id`
   - Compatibility redirect to `/dump/?id=<id>`
 
+- `GET /api/editor/:id/ws?role=proxy|editor` (WebSocket)
+  - Live editor relay, one Durable Object per session
+  - `proxy` requires the same bearer token; `editor` can only join while the proxy is connected
+  - One connection per role, forwarded as-is; sessions close after 1 hour or when the proxy leaves
+  - Messages are signed end to end (`HMAC-SHA256(secret, role \n seq \n body)`), the relay never sees the secret
+
 ## Database
 
 Apply schema to D1:

@@ -1,7 +1,10 @@
 interface Env {
   DUMP_DB: D1Database;
   DUMP_AUTH_TOKEN?: string;
+  EDITOR_RELAY: DurableObjectNamespace;
 }
+
+const EDITOR_SESSION_TTL_MS = 60 * 60 * 1000;
 
 const DEFAULT_RETENTION_DAYS = 14;
 const MAX_RETENTION_DAYS = 30;
@@ -51,6 +54,11 @@ export default {
     if (url.pathname.startsWith("/api/dump/")) {
       const id = url.pathname.substring("/api/dump/".length).trim();
       return handleFetch(id, env);
+    }
+
+    const editorMatch = url.pathname.match(/^\/api\/editor\/([0-9a-f]{32})\/ws$/);
+    if (editorMatch) {
+      return handleEditorSocket(request, env, editorMatch[1], url.searchParams.get("role"));
     }
 
     if (url.pathname === "/api/health") {
@@ -150,6 +158,93 @@ async function handleFetch(id: string, env: Env): Promise<Response> {
     expiresAt: new Date(row.expires_at * 1000).toISOString(),
     data: parsed,
   });
+}
+
+async function handleEditorSocket(
+  request: Request,
+  env: Env,
+  id: string,
+  role: string | null
+): Promise<Response> {
+  if (request.headers.get("Upgrade") !== "websocket") {
+    return json(426, { error: "Expected WebSocket upgrade" });
+  }
+  if (role !== "proxy" && role !== "editor") {
+    return json(400, { error: "Invalid role" });
+  }
+  if (role === "proxy") {
+    const expectedToken = env.DUMP_AUTH_TOKEN || "cb-dump-upload-v1";
+    if (request.headers.get("Authorization") !== `Bearer ${expectedToken}`) {
+      return json(401, { error: "Unauthorized" });
+    }
+  }
+  return env.EDITOR_RELAY.get(env.EDITOR_RELAY.idFromName(id)).fetch(request);
+}
+
+/**
+ * Relays messages between one proxy and one editor. It never reads them: both
+ * ends sign every message with a secret the relay never sees.
+ */
+export class EditorRelay implements DurableObject {
+  constructor(private state: DurableObjectState) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const role = new URL(request.url).searchParams.get("role") as "proxy" | "editor";
+
+    if (this.state.getWebSockets(role).length > 0) {
+      return json(409, { error: `An ${role} is already connected to this session` });
+    }
+    if (role === "editor" && this.state.getWebSockets("proxy").length === 0) {
+      return json(404, { error: "Editor session not found or expired" });
+    }
+    const pair = new WebSocketPair();
+    this.state.acceptWebSocket(pair[1], [role]);
+    if (role === "proxy") {
+      await this.state.storage.setAlarm(Date.now() + EDITOR_SESSION_TTL_MS);
+    }
+    return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const other = this.roleOf(ws) === "proxy" ? "editor" : "proxy";
+    for (const peer of this.state.getWebSockets(other)) {
+      peer.send(message);
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+    if (this.roleOf(ws) === "proxy") {
+      this.closeAll(1000, "Proxy closed the session");
+    } else {
+      safeClose(ws, code, reason);
+    }
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    await this.webSocketClose(ws, 1011, "Socket error");
+  }
+
+  async alarm(): Promise<void> {
+    this.closeAll(1000, "Editor session expired");
+  }
+
+  private roleOf(ws: WebSocket): string {
+    return this.state.getTags(ws)[0];
+  }
+
+  private closeAll(code: number, reason: string): void {
+    for (const ws of this.state.getWebSockets()) {
+      safeClose(ws, code, reason);
+    }
+  }
+}
+
+function safeClose(ws: WebSocket, code: number, reason: string): void {
+  try {
+    ws.close(code, reason);
+  } catch {
+    // already closed
+  }
 }
 
 function redirectToPublicDump(id: string): Response {

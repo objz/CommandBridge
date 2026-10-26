@@ -8,7 +8,6 @@ import dev.jorel.commandapi.executors.CommandExecutor;
 import dev.jorel.commandapi.executors.ResultingCommandExecutor;
 
 import com.velocitypowered.api.command.CommandSource;
-import com.velocitypowered.api.proxy.ProxyServer;
 
 import dev.objz.commandbridge.config.ConfigKeys;
 import dev.objz.commandbridge.config.ConfigManager;
@@ -21,6 +20,7 @@ import dev.objz.commandbridge.velocity.cli.subcommands.ClientCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.ConfigCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.DebugCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.DumpCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.EditorCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.HelpCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.InfoCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.MigrateCommand;
@@ -40,7 +40,6 @@ import java.util.List;
 
 public final class CBCommand {
 
-    private final ProxyServer proxy;
     private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
     private final RegistrationManager registrationManager;
@@ -53,7 +52,6 @@ public final class CBCommand {
     private final PlayerTracker playerTracker;
 
     public CBCommand(
-            ProxyServer proxy,
             ConfigManager<VelocityConfig> configManager,
             ScriptManager scriptManager,
             RegistrationManager registrationManager,
@@ -65,7 +63,6 @@ public final class CBCommand {
             UserCache userCache,
             PlayerTracker playerTracker) {
 
-        this.proxy = proxy;
         this.configManager = configManager;
         this.scriptManager = scriptManager;
         this.registrationManager = registrationManager;
@@ -91,6 +88,7 @@ public final class CBCommand {
         var task = new TaskCommand(commandEntry.scheduler(), userCache);
         var client = new ClientCommand(sessionHub, outNode, playerTracker, userCache, config);
         var configCmd = new ConfigCommand(configManager);
+        var editor = new EditorCommand(scriptManager, reload, sessionHub, config.serverId(), dataDir);
 
         ArgumentSuggestions<CommandSource> clientIds = ArgumentSuggestions
                 .<CommandSource>strings(info0 -> namesOf(sessionHub));
@@ -141,6 +139,17 @@ public final class CBCommand {
 
                 .withSubcommand(new CommandAPICommand("migrate")
                         .executes((CommandExecutor) (sender, args) -> migrate.execute(sender)))
+
+                // /cb editor [close | list | confirm <code>]
+                .withSubcommand(new CommandAPICommand("editor")
+                        .executes((CommandExecutor) (sender, args) -> editor.open(sender))
+                        .withSubcommand(new CommandAPICommand("close")
+                                .executes((CommandExecutor) (sender, args) -> editor.close(sender)))
+                        .withSubcommand(new CommandAPICommand("list")
+                                .executes((CommandExecutor) (sender, args) -> editor.list(sender)))
+                        .withSubcommand(new CommandAPICommand("confirm")
+                                .withArguments(new StringArgument("code"))
+                                .executes((CommandExecutor) (sender, args) -> editor.confirm(sender, (String) args.get("code")))))
 
                 // /cb script ...
                 .withSubcommand(new CommandAPICommand("script")

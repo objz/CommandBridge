@@ -234,11 +234,12 @@ api.onConnectionStateChanged(state -> {
   - [x] player locator service
   - [ ] more channel types and lifecycle hooks
 
-- [ ] **web interface**
-  - [ ] ...
-
-- [ ] **admin GUI**
-  - [ ] ...
+- [ ] **web editor (`/cb editor`)**
+  - [x] live session over a Cloudflare relay (no open ports, no self-hosting)
+  - [x] signed messages, secret only in the editor link
+  - [x] create, edit and delete scripts with inline validation errors
+  - [ ] config editing (without secrets and transport settings)
+  - [ ] backend config editing
 
 see the [open issues](https://github.com/objz/CommandBridge/issues) for bugs and feature requests.
 

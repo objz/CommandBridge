@@ -5,6 +5,14 @@ compatibility_date = "2026-03-10"
 [vars]
 DUMP_AUTH_TOKEN = "cb-dump-upload-v1"
 
+[[durable_objects.bindings]]
+name = "EDITOR_RELAY"
+class_name = "EditorRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["EditorRelay"]
+
 [[d1_databases]]
 binding = "DUMP_DB"
 database_name = "commandbridge-dumps"

@@ -223,7 +223,6 @@ public final class Main {
         installRoutes();
 
         command = new CBCommand(
-                proxy,
                 configManager,
                 scriptManager,
                 registrations,

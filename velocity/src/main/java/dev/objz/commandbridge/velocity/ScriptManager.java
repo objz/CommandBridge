@@ -204,6 +204,75 @@ public final class ScriptManager {
         return ToggleResult.changed();
     }
 
+    public List<String> save(String fileName, String yaml) {
+        List<String> problems = validate(fileName, yaml);
+        if (!problems.isEmpty()) {
+            return problems;
+        }
+        Path file = resolveScriptFile(fileName);
+        try {
+            Files.createDirectories(scriptsDir);
+            Path tmp = scriptsDir.resolve(file.getFileName() + ".tmp");
+            Files.writeString(tmp, yaml, StandardCharsets.UTF_8);
+            Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            Log.error(e, "Failed to write script file '{}': {}", file, e.getMessage());
+            return List.of("Failed to write file: " + e.getMessage());
+        }
+        return List.of();
+    }
+
+    /** What would keep {@code yaml} from being saved as {@code fileName}; empty when it can be. */
+    public List<String> validate(String fileName, String yaml) {
+        Path file = resolveScriptFile(fileName);
+        if (file == null) {
+            return List.of("Invalid file name '" + fileName + "' (use letters, digits, '-' or '_' and .yml)");
+        }
+
+        LoadResult<Script> res;
+        try (var in = new java.io.ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))) {
+            res = ScriptLoader.loadResult(Script.class, in, platformFeatures);
+        } catch (Exception e) {
+            return List.of("Unexpected error: " + e.getMessage());
+        }
+        if (!res.ok() || res.value == null) {
+            return res.problems.problems().stream().map(Object::toString).toList();
+        }
+
+        Optional<Path> owner = filePathOf(res.value.name());
+        if (owner.isPresent() && !owner.get().equals(file)) {
+            return List.of("Script name '" + res.value.name() + "' is already used by "
+                    + owner.get().getFileName());
+        }
+        return List.of();
+    }
+
+    public boolean delete(String fileName) throws IOException {
+        Path file = resolveScriptFile(fileName);
+        return file != null && Files.deleteIfExists(file);
+    }
+
+    public Map<String, String> readSources() throws IOException {
+        Map<String, String> out = new java.util.TreeMap<>();
+        Files.createDirectories(scriptsDir);
+        try (Stream<Path> files = Files.list(scriptsDir)) {
+            for (Path p : files.filter(ScriptManager::isYaml).toList()) {
+                out.put(p.getFileName().toString(), Files.readString(p, StandardCharsets.UTF_8));
+            }
+        }
+        return out;
+    }
+
+    private static final Pattern SCRIPT_FILE = Pattern.compile("[A-Za-z0-9_-]{1,64}\\.ya?ml");
+
+    private Path resolveScriptFile(String fileName) {
+        if (fileName == null || !SCRIPT_FILE.matcher(fileName).matches()) {
+            return null;
+        }
+        return scriptsDir.resolve(fileName);
+    }
+
     public enum ToggleStatus {
         CHANGED, UNCHANGED, NOT_FOUND, IO_ERROR
     }

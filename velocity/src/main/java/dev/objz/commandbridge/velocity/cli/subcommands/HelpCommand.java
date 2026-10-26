@@ -19,6 +19,10 @@ public final class HelpCommand extends AbstractCliCommand {
         {"/cb debug", "Toggle debug mode"},
         {"/cb dump", "Dump configuration for support"},
         {"/cb migrate", "Migrate scripts to latest version"},
+        {"/cb editor", "Open the live web editor"},
+        {"/cb editor close", "Close the web editor session"},
+        {"/cb editor list", "Show the open web editor session"},
+        {"/cb editor confirm <code>", "Save the changes the web editor is waiting with"},
         {"/cb script list", "List loaded scripts"},
         {"/cb script show", "Show a script (optionally a group)"},
         {"/cb script enable", "Enable a script"},
@@ -89,7 +93,6 @@ public final class HelpCommand extends AbstractCliCommand {
         sb.append(BoxDrawing.DOUBLE_T_LEFT);
         sb.append(Theme.ANSI_RESET).append("\n");
         
-        // Commands - calculate max content for proper alignment
         int maxCmdLen = 0;
         for (String[] cmd : COMMANDS) {
             maxCmdLen = Math.max(maxCmdLen, cmd[0].length());
