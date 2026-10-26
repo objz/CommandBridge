@@ -33,6 +33,7 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation("org.spongepowered:configurate-yaml:4.2.0")
     testImplementation("org.snakeyaml:snakeyaml-engine:2.10")
+    testImplementation("dev.jorel:commandapi-spigot-core:11.2.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

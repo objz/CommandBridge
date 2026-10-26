@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongSupplier;
 
 public final class PluginMessageQueue {
 
@@ -26,6 +27,15 @@ public final class PluginMessageQueue {
 
     private final ConcurrentHashMap<UUID, Queue<QueuedMessage>> queues = new ConcurrentHashMap<>();
     private final AtomicInteger totalSize = new AtomicInteger(0);
+    private final LongSupplier clock;
+
+    public PluginMessageQueue() {
+        this(System::currentTimeMillis);
+    }
+
+    PluginMessageQueue(LongSupplier clock) {
+        this.clock = Objects.requireNonNull(clock);
+    }
 
     public void queue(UUID playerUuid, Platform.ServerTarget target, PluginMessage message, String from) {
         Objects.requireNonNull(playerUuid);
@@ -39,7 +49,7 @@ public final class PluginMessageQueue {
         PluginMessage stored = new PluginMessage(message.channelType(), message.data(),
                 message.expectsResponse(), message.requirePlayer(), null, message.error());
         queues.computeIfAbsent(playerUuid, k -> new ConcurrentLinkedQueue<>())
-                .add(new QueuedMessage(target, stored, from, System.currentTimeMillis()));
+                .add(new QueuedMessage(target, stored, from, clock.getAsLong()));
         totalSize.incrementAndGet();
     }
 
@@ -50,7 +60,7 @@ public final class PluginMessageQueue {
         if (queue == null || queue.isEmpty()) {
             return List.of();
         }
-        long now = System.currentTimeMillis();
+        long now = clock.getAsLong();
         List<QueuedMessage> result = new ArrayList<>();
         Iterator<QueuedMessage> it = queue.iterator();
         while (it.hasNext()) {

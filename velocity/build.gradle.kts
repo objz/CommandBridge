@@ -43,6 +43,7 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     testImplementation("org.snakeyaml:snakeyaml-engine:2.10")
+    testImplementation("dev.jorel:commandapi-velocity-core:11.2.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

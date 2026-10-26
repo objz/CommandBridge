@@ -3,6 +3,7 @@ package dev.objz.commandbridge.backends.net.in;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.backends.platform.cmd.ArgumentMapper;
 import dev.objz.commandbridge.backends.platform.cmd.CommandRegistry;
+import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.net.Endpoint;
@@ -19,12 +20,16 @@ import java.util.Objects;
 
 public final class RegistrationHandler extends InboundHandler {
     private final BackendClient client;
-    private final CommandRegistry registry;
+    private final CommandRegistryInterface registry;
     private volatile List<CommandStub> registeredCommands = List.of();
 
     public RegistrationHandler(BackendClient client) {
+        this(client, new CommandRegistry(new ArgumentMapper(), client.outboundRouter()));
+    }
+
+    RegistrationHandler(BackendClient client, CommandRegistryInterface registry) {
         this.client = Objects.requireNonNull(client);
-        this.registry = new CommandRegistry(new ArgumentMapper(), client.outboundRouter());
+        this.registry = Objects.requireNonNull(registry);
     }
 
     /** Drops the commands this handler registered, before a new client takes over. */
