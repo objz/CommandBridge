@@ -60,6 +60,8 @@ public final class SetupSession {
     private volatile SetupPlan plan;
     private volatile JsonNode planJson;
     private volatile String staged;
+    // set once applied: the page that saw it can still open the editor, a page coming back finds the setup over
+    private volatile boolean done;
     private volatile RelayChannel channel;
 
     private SetupSession(ProxyServer proxy, ConfigManager<VelocityConfig> configManager, SessionHub sessionHub,
@@ -111,6 +113,7 @@ public final class SetupSession {
             return null;
         }
         staged = null;
+        done = true;
         VelocityConfig current = configManager.current();
         boolean restart = applier.needsRestart(current, p);
         List<String> errors = new ArrayList<>(applier.apply(current, p));
@@ -145,6 +148,10 @@ public final class SetupSession {
     private synchronized void handle(JsonNode msg) throws Exception {
         switch (msg.path("type").asText("")) {
             case "hello" -> {
+                if (done) {
+                    close();
+                    return;
+                }
                 Log.info("The setup page is open");
                 sendState();
             }
