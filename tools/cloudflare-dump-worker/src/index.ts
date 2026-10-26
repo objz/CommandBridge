@@ -198,11 +198,17 @@ export class EditorRelay implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     const role = new URL(request.url).searchParams.get("role") as "proxy" | "editor";
 
-    if (this.state.getWebSockets(role).length > 0) {
-      return json(409, { error: `An ${role} is already connected to this session` });
-    }
+    // pages are accepted and then closed with a reason instead of refused, so they can say why;
+    // browsers also slow down new connections after refused ones
     if (role === "editor" && this.state.getWebSockets("proxy").length === 0) {
-      return json(404, { error: "Editor session not found or expired" });
+      return closedWith(4404, "This link has ended. Run the command on your proxy again for a new one.");
+    }
+    if (role === "proxy" && this.state.getWebSockets("proxy").length > 0) {
+      return json(409, { error: "A proxy is already connected to this session" });
+    }
+    // a reload or a second tab takes over; the old page is told where it went
+    for (const old of this.state.getWebSockets("editor")) {
+      safeClose(old, 4001, "Opened in another tab");
     }
     const pair = new WebSocketPair();
     this.state.acceptWebSocket(pair[1], [role]);
@@ -316,6 +322,13 @@ export class PairRelay implements DurableObject {
       safeClose(ws, code, reason);
     }
   }
+}
+
+function closedWith(code: number, reason: string): Response {
+  const pair = new WebSocketPair();
+  pair[1].accept();
+  pair[1].close(code, reason);
+  return new Response(null, { status: 101, webSocket: pair[0] });
 }
 
 function safeClose(ws: WebSocket, code: number, reason: string): void {
