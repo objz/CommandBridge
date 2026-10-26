@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import ipaddress
 import json
+import math
 import os
 from pathlib import Path
 import queue
@@ -235,6 +236,7 @@ class Process:
     def __init__(self, name, cwd, command, hidden=()):
         self.name, self.cwd, self.hidden = name, cwd, hidden
         self.lines = []
+        self.events = []
         self.output = (cwd / "console.redacted.log").open("w")
         self.proc = subprocess.Popen(command, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, text=True, bufsize=1, start_new_session=True)
@@ -243,7 +245,9 @@ class Process:
 
     def read(self):
         for line in self.proc.stdout:
-            self.lines.append(ANSI.sub("", line))
+            clean = ANSI.sub("", line)
+            self.events.append((time.monotonic(), clean))
+            self.lines.append(clean)
             self.output.write(redact(line, self.hidden))
             self.output.flush()
 
@@ -360,6 +364,100 @@ def assert_loopback(process):
             assert address.is_loopback, f"{process.name} opened a non-loopback listener"
             listeners += 1
     assert listeners, f"{process.name} has no listening sockets"
+
+
+def load_statistics(sent, arrivals, dispatched, elapsed):
+    latencies = sorted((times[0] - sent[marker][1]) * 1000 for marker, times in arrivals.items()
+                       if marker in sent and times)
+    def percentile(fraction):
+        return round(latencies[min(len(latencies) - 1, math.ceil(len(latencies) * fraction) - 1)], 2) if latencies else None
+    return {
+        "sent": len(sent), "executed": sum(len(times) for times in arrivals.values()),
+        "missing": sum(not arrivals.get(marker) for marker in sent),
+        "duplicates": sum(max(0, len(times) - 1) for times in arrivals.values()),
+        "dispatch_failures": sum(dispatched.get(marker) != [True] for marker in sent),
+        "elapsed_seconds": round(elapsed, 3),
+        "completed_per_second": round(len(latencies) / elapsed, 2),
+        "latency_ms": {"p50": percentile(.5), "p95": percentile(.95), "p99": percentile(.99),
+                       "max": round(latencies[-1], 2) if latencies else None},
+    }
+
+
+def sustained_load(processes, run_dir, seconds):
+    rate = 20
+    prefix = "CBLIVE_" + secrets.token_hex(8) + "_LOAD_"
+    token = re.escape(prefix) + r"\d+"
+    received = {"paper": re.compile(r"\[Server\] (" + token + r")\s*$"),
+                "secondary": re.compile(r"LIVE_MARK (" + token + r") sender=console")}
+    dispatched_pattern = re.compile(r"LIVE_API_DISPATCH (" + token + r") ok=(true|false)")
+    offsets = {name: len(process.events) for name, process in processes.items()}
+    sent, arrivals, dispatched = {}, {}, {}
+    unexpected = wrong_target = server_errors = 0
+    memory = {}
+
+    def sample_memory():
+        for name, process in processes.items():
+            assert process.proc.poll() is None, f"{name} exited during load"
+            status = Path(f"/proc/{process.proc.pid}/status").read_text()
+            rss = int(re.search(r"(?m)^VmRSS:\s+(\d+)", status).group(1))
+            item = memory.setdefault(name, {"start_kib": rss, "peak_kib": rss, "end_kib": rss})
+            item["peak_kib"] = max(item["peak_kib"], rss)
+            item["end_kib"] = rss
+
+    def collect():
+        nonlocal unexpected, wrong_target, server_errors
+        for name, process in processes.items():
+            batch = process.events[offsets[name]:]
+            offsets[name] += len(batch)
+            for at, line in batch:
+                if re.search(r"\bERROR\b|OutOfMemoryError|Exception in thread", line):
+                    server_errors += 1
+                match = dispatched_pattern.search(line) if name == "primary" else received[name].search(line)
+                if not match:
+                    continue
+                marker = match.group(1)
+                if marker not in sent:
+                    unexpected += 1
+                elif name == "primary":
+                    dispatched.setdefault(marker, []).append(match.group(2) == "true")
+                elif sent[marker][0] != name:
+                    wrong_target += 1
+                else:
+                    arrivals.setdefault(marker, []).append(at)
+
+    sample_memory()
+    started = time.monotonic()
+    next_sample = started + 5
+    for index in range(seconds * rate):
+        time.sleep(max(0, started + index / rate - time.monotonic()))
+        assert time.monotonic() - started - index / rate < 5, "Load sender fell more than five seconds behind schedule"
+        target = "paper" if index % 2 == 0 else "secondary"
+        marker = prefix + str(index)
+        sent[marker] = (target, time.monotonic())
+        processes["primary"].send(f"liveprobe api {target} {marker}")
+        collect()
+        if time.monotonic() >= next_sample:
+            sample_memory()
+            next_sample = time.monotonic() + 5
+    time.sleep(max(0, started + seconds - time.monotonic()))
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        collect()
+        if len(arrivals) == len(sent) and len(dispatched) == len(sent):
+            break
+        time.sleep(.05)
+    time.sleep(1)
+    collect()
+    sample_memory()
+    stats = load_statistics(sent, arrivals, dispatched, time.monotonic() - started)
+    stats.update({"duration_seconds": seconds, "target_commands_per_second": rate,
+                  "wrong_target": wrong_target, "unexpected": unexpected, "server_errors": server_errors,
+                  "rss": memory, "measurement": "console send to destination log receipt, including tick scheduling"})
+    write(run_dir / "load.json", json.dumps(stats, indent=2) + "\n")
+    print("Load result: " + json.dumps(stats), flush=True)
+    assert not any(stats[key] for key in ["missing", "duplicates", "dispatch_failures", "wrong_target", "unexpected", "server_errors"]), "Sustained delivery check failed; inspect load.json"
+    assert stats["executed"] == stats["sent"] == seconds * rate
+    return stats
 
 
 def relay_and_hold(processes, run_dir, args):
@@ -594,6 +692,9 @@ pause-when-empty-seconds=-1
         clients.send("chat", name="CBAllowed", command=f"/liveproxy {value}")
         observed("paper", value + "_RELOADED")
         passed("builtin reconnect reauthenticated and command delivery resumed")
+        if args.load_seconds:
+            summary["load"] = sustained_load(processes, run_dir, args.load_seconds)
+            passed("sustained API command delivery without loss, duplicates or server errors")
         relay_and_hold(processes, run_dir, args)
         if args.relay_smoke:
             cases.append("Java setup/editor relay sessions opened; parent checks not included in automated result")
@@ -616,6 +717,15 @@ pause-when-empty-seconds=-1
 
 
 class SelfTest(unittest.TestCase):
+    def test_load_statistics_detects_missing_duplicate_and_failed_dispatch(self):
+        sent = {"a": ("paper", 1), "b": ("secondary", 2)}
+        result = load_statistics(sent, {"a": [1.1, 1.2]}, {"a": [True], "b": [False]}, 3)
+        self.assertEqual(result["missing"], 1)
+        self.assertEqual(result["duplicates"], 1)
+        self.assertEqual(result["dispatch_failures"], 1)
+        self.assertEqual(result["latency_ms"]["p95"], 100)
+        self.assertIsNone(load_statistics({}, {}, {}, 1)["latency_ms"]["p99"])
+
     def test_redaction(self):
         output = redact("\x1b[31mhttps://local/editor/#id:SECRET sha256/abc123 secret: hidden cb editor confirm abcd\x1b[0m", ["SECRET"])
         for value in ("SECRET", "abc123", "hidden", "abcd", "\x1b", "https://"):
@@ -648,6 +758,8 @@ class SelfTest(unittest.TestCase):
         finally:
             process.close()
         self.assertIsNotNone(process.proc.poll())
+        self.assertTrue(process.events)
+        self.assertLessEqual(process.events[0][0], time.monotonic())
         output = (folder / "console.redacted.log").read_text()
         self.assertNotIn("hidden", output)
         self.assertNotIn("#secret", output)
@@ -677,8 +789,11 @@ def main():
     parser.add_argument("--relay-smoke", action="store_true", help="Open Java sessions against existing local relay8787/wiki8080")
     parser.add_argument("--hold", type=int, default=0, help="Keep isolated servers up for parent control/browser checks, maximum 1800s")
     parser.add_argument("--fresh-paper", action="store_true", help="Start unpaired Paper for parent setup/pairing checks instead of the automated suite")
+    parser.add_argument("--load-seconds", type=int, default=0, help="Sustain 20 benign API commands/second after functional checks, maximum 600s")
     args = parser.parse_args()
     assert 0 <= args.hold <= 1800
+    assert 0 <= args.load_seconds <= 600
+    assert not (args.fresh_paper and args.load_seconds), "Load requires the configured automated lab"
     assert not args.fresh_paper or (args.relay_smoke and args.hold), "Fresh Paper mode needs --relay-smoke and a bounded --hold"
     if args.action == "prepare":
         prepare()

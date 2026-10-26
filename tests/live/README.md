@@ -103,3 +103,17 @@ These are intended assertions, not claims that live execution has passed. Only a
 | `lastcommands` | Not automated | No matching command/symbol found in the inspected Java source; do not claim coverage |
 
 “Exactly once” means one unique marker in the target process's captured console over the bounded observation window. It is not a durable-delivery or load-test guarantee. The harness uses unique `say` markers and a test-only console marker command; it does not issue grant, ban, or operator commands.
+
+## Sustained delivery check
+
+After committing the test changes, set `CB_LIVE_AFTER_COMMIT` to the current commit and run:
+
+```sh
+CB_LIVE_AFTER_COMMIT="$(git rev-parse HEAD)" python3 tests/live/harness.py run --transport tls --load-seconds 300
+```
+
+For Redis, use the same flags with `--transport redis`, `CB_LIVE_REDIS_ISOLATED=1`, and `CB_LIVE_REDIS_PORT` pointing to a dedicated loopback Redis instance. Never use an existing shared Redis service.
+
+After the functional checks, the harness sends 20 benign public-API commands per second, alternating between Paper and the secondary proxy. It checks actual destination execution, dispatch acknowledgements, missing/duplicate messages, unexpected server errors and RSS memory samples. Results are in each run's `load.json` and `result.json` under `build/live-validation/`.
+
+Latency measures console submission to destination log receipt, including JVM logging and Paper tick scheduling. This is a bounded workload test, not a maximum-capacity or production-network guarantee. `--load-seconds` is limited to 600 seconds.
