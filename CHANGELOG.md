@@ -20,10 +20,3 @@
 
 - **Redis networks: update and restart every connected proxy and backend together.** Older unsigned Redis messages are rejected by this version. Keep system clocks within two minutes of each other.
 - Back up your configuration and scripts before updating. Keep editor/setup links and pairing codes private, and verify the destination before confirming a backend pairing.
-- The browser editor and setup require the updated website and relay worker. The worker is maintained separately in the wiki repository.
-
-## Validation
-
-- Five-minute local TLS and Redis runs each delivered 6,000/6,000 API commands at 20 commands/second, with no observed loss, duplicates or server errors.
-- A five-minute local relay run delivered 30,000/30,000 encrypted round trips across 10 sessions.
-- These bounded tests do not establish production capacity or long-term memory stability. One earlier TLS functional preflight timed out on a backend-to-secondary-proxy route; later runs passed, but the cause remains unresolved.
