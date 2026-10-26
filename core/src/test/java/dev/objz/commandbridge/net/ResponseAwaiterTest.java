@@ -9,10 +9,14 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -90,5 +94,35 @@ final class ResponseAwaiterTest {
         ResponseAwaiter awaiter = new ResponseAwaiter();
         boolean handled = awaiter.signal(envelope(UUID.randomUUID(), "server1"));
         assertFalse(handled, "Signal with no pending awaiter should return false");
+    }
+
+    @Test
+    void timeoutFailsFutureAndRemovesWaiter() throws Exception {
+        ResponseAwaiter awaiter = new ResponseAwaiter();
+        UUID id = UUID.randomUUID();
+        CompletableFuture<Envelope> future = awaiter.await(
+                "server1", id, e -> true, Duration.ofMillis(50));
+
+        var ex = assertThrows(ExecutionException.class, () -> future.get(2, TimeUnit.SECONDS));
+        assertInstanceOf(TimeoutException.class, ex.getCause());
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+        boolean handled = true;
+        while (handled && System.nanoTime() < deadline) {
+            handled = awaiter.signal(envelope(id, "server1"));
+        }
+        assertFalse(handled, "Timed-out waiter should be removed");
+    }
+
+    @Test
+    void rejectedMatchKeepsWaiterPending() throws Exception {
+        ResponseAwaiter awaiter = new ResponseAwaiter();
+        UUID id = UUID.randomUUID();
+        CompletableFuture<Envelope> future = awaiter.await(
+                null, id, e -> "server2".equals(e.from()), Duration.ofSeconds(5));
+
+        assertFalse(awaiter.signal(envelope(id, "server1")));
+        assertTrue(awaiter.signal(envelope(id, "server2")));
+        assertEquals("server2", future.get(1, TimeUnit.SECONDS).from());
     }
 }
