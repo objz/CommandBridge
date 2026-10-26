@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 
 import dev.objz.commandbridge.cmd.ref.Location3D;
+import java.util.Set;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
@@ -17,7 +18,14 @@ public sealed interface SenderContext permits
         SenderContext.Player, SenderContext.Console, SenderContext.Block, SenderContext.Other {
 
     @JsonTypeName("PLAYER")
-    record Player(String name, String uuid) implements SenderContext {
+    record Player(String name, String uuid, Set<String> permissions) implements SenderContext {
+        public Player {
+            permissions = permissions == null ? Set.of() : Set.copyOf(permissions);
+        }
+
+        public Player(String name, String uuid) {
+            this(name, uuid, Set.of());
+        }
     }
 
     @JsonTypeName("CONSOLE")

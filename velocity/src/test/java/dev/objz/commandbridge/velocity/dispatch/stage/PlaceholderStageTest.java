@@ -1,5 +1,8 @@
 package dev.objz.commandbridge.velocity.dispatch.stage;
 
+import dev.objz.commandbridge.cmd.ref.EntityRef;
+import dev.objz.commandbridge.cmd.ref.Location2D;
+import dev.objz.commandbridge.cmd.ref.Location3D;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
 import dev.objz.commandbridge.scripting.model.enums.Location;
@@ -34,6 +37,22 @@ final class PlaceholderStageTest {
     @BeforeAll
     static void setUp() {
         TestFixtures.ensureLog();
+    }
+
+    @Test
+    void standaloneAndCollectionReferencesUseCommandSyntax() {
+        var entity = new EntityRef("PLAYER", "uuid", "Alex");
+        var location = new Location3D("world", 1, 2, 3);
+        var location2d = new Location2D("world", 4, 5);
+        var ctx = contextWithCommand("${entity}|${location}|${location2d}|${all}", Map.of(
+                "entity", entity, "location", location, "location2d", location2d,
+                "all", List.of(entity, location, location2d)));
+        var result = new AtomicReference<ExecutionResult>();
+
+        stage.process(ctx, result::set);
+
+        var cont = assertInstanceOf(ExecutionResult.Continue.class, result.get());
+        assertEquals("Alex|1.0 2.0 3.0|4.0 5.0|Alex 1.0 2.0 3.0 4.0 5.0", cont.context().currentCommand().command());
     }
 
     @Test

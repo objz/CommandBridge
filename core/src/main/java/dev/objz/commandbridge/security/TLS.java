@@ -203,6 +203,24 @@ public final class TLS {
         }
     }
 
+    public static String keystoreSpkiPin(String path, String type, String password) {
+        try {
+            KeyStore ks = KeyStore.getInstance((type == null || type.isBlank()) ? STORE_TYPE : type);
+            try (InputStream in = Files.newInputStream(Path.of(path))) {
+                ks.load(in, password.toCharArray());
+            }
+            var aliases = ks.aliases();
+            while (aliases.hasMoreElements()) {
+                String alias = aliases.nextElement();
+                if (ks.isKeyEntry(alias) && ks.getCertificate(alias) instanceof X509Certificate x)
+                    return spkiPin(x);
+            }
+            throw new IllegalStateException("no key entry");
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not read the keystore: " + e.getMessage(), e);
+        }
+    }
+
     private static String spkiPinFromKeystore(KeyStore ks, String password) throws Exception {
         Certificate c = ks.getCertificate(ALIAS);
         if (c instanceof X509Certificate x) {

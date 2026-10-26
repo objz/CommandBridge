@@ -13,6 +13,8 @@ import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.ScheduleHandle;
 import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
+import dev.objz.commandbridge.backends.platform.cmd.PairCommand;
+import dev.objz.commandbridge.backends.setup.PairClient;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.EndpointType;
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
 
 public final class Adapter implements PlatformAdapter<JavaPlugin> {
     private BackendClient client;
+    private RegistrationHandler registrationHandler;
     private BackendsConfig cfg;
     private Path dataDir;
     private JavaPlugin plugin;
@@ -53,6 +56,13 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
         this.cfg = cfgMgr.current();
         if (!ok || cfg == null) {
             configOk = false;
+            Log.info(PairClient.UNPAIRED_HINT);
+            return;
+        }
+        // the shipped config can't authenticate anywhere, so don't keep trying
+        if (PairClient.isUnpaired(cfg)) {
+            configOk = false;
+            Log.info(PairClient.UNPAIRED_HINT);
             return;
         }
 
@@ -66,11 +76,14 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
 
     @Override
     public void start(PlatformEnv env) throws Exception {
+        if (this.dataDir == null)
+            this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
+        // register /cbc pair even when the config is fresh or broken, since that's when it's needed
+        ClientCommands.register(() -> client,
+                PairCommand.subcommand(this, dataDir, Bukkit.getBukkitVersion().split("-")[0]));
         if (!configOk) {
             return;
         }
-        if (this.dataDir == null)
-            this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
         if (this.cfg == null) {
             var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
             if (!cfgMgr.load()) {
@@ -89,6 +102,11 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
                 Bukkit::isPrimaryThread,
                 task -> Bukkit.getScheduler().runTask(plugin, task));
 
+        startClient();
+        Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
+    }
+
+    private void startClient() {
         this.client = cfg.endpointType() == EndpointType.REDIS
                 ? new RedisClient(cfg, dataDir, this)
                 : new WsClient(cfg, dataDir, this);
@@ -100,9 +118,7 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
             client.scheduleReconnection();
         }
 
-        ClientCommands.register(client);
-
-        RegistrationHandler registrationHandler = new RegistrationHandler(client);
+        registrationHandler = new RegistrationHandler(client);
         client.inboundRouter().register(MessageType.REGISTER_COMMANDS, registrationHandler);
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
@@ -115,7 +131,37 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
                         Location.BACKEND));
 
         client.onAuthenticated(this::sendPlayerList);
-        Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
+    }
+
+    @Override
+    public void applyNewConfig() {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            try {
+                if (registrationHandler != null)
+                    registrationHandler.unregisterAll();
+                if (client != null)
+                    client.close();
+                var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
+                if (!cfgMgr.load()) {
+                    Log.error("The paired config.yml is not valid");
+                    return;
+                }
+                this.cfg = cfgMgr.current();
+                Log.setDebug(cfg.debug());
+                if (commandExecutor == null)
+                    commandExecutor = new PaperExecutor(plugin);
+                if (!configOk) {
+                    configOk = true;
+                    Log.installThreadMarshalling(
+                            Bukkit::isPrimaryThread,
+                            task -> Bukkit.getScheduler().runTask(plugin, task));
+                    Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
+                }
+                startClient();
+            } catch (Exception e) {
+                Log.error(e, "Could not connect with the new config: {}", e.getMessage());
+            }
+        });
     }
 
     @Override

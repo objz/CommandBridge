@@ -44,4 +44,12 @@ public interface PlatformAdapter<P> {
      * @return A handle for early cancellation.
      */
     ScheduleHandle runSchedule(Runnable task, Duration timeout, Duration interval);
+
+    /**
+     * Stops the current client, loads config.yml again and connects with it, after /cbc pair wrote it.
+     * Commands are not registered a second time.
+     */
+    default void applyNewConfig() {
+        throw new UnsupportedOperationException("This platform can't switch to a new config without a restart");
+    }
 }

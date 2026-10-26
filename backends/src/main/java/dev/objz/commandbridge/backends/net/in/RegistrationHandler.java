@@ -3,6 +3,7 @@ package dev.objz.commandbridge.backends.net.in;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
 import dev.objz.commandbridge.backends.platform.cmd.ArgumentMapper;
 import dev.objz.commandbridge.backends.platform.cmd.CommandRegistry;
+import dev.objz.commandbridge.cmd.CommandRegistryInterface;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.logging.Summary;
 import dev.objz.commandbridge.net.Endpoint;
@@ -19,12 +20,26 @@ import java.util.Objects;
 
 public final class RegistrationHandler extends InboundHandler {
     private final BackendClient client;
-    private final CommandRegistry registry;
+    private final CommandRegistryInterface registry;
     private volatile List<CommandStub> registeredCommands = List.of();
 
     public RegistrationHandler(BackendClient client) {
+        this(client, new CommandRegistry(new ArgumentMapper(), client.outboundRouter()));
+    }
+
+    RegistrationHandler(BackendClient client, CommandRegistryInterface registry) {
         this.client = Objects.requireNonNull(client);
-        this.registry = new CommandRegistry(new ArgumentMapper(), client.outboundRouter());
+        this.registry = Objects.requireNonNull(registry);
+    }
+
+    /** Drops the commands this handler registered, before a new client takes over. */
+    public void unregisterAll() {
+        try {
+            registry.unregisterAll();
+        } catch (Exception e) {
+            Log.warn("Failed to unregister previous commands: {}", e.getMessage());
+        }
+        registeredCommands = List.of();
     }
 
     @Override
@@ -43,7 +58,10 @@ public final class RegistrationHandler extends InboundHandler {
         }
 
         if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
-            Log.warn("Received empty or malformed REGISTER_COMMANDS. All commands unregistered");
+            if (rc == null || rc.commands() == null)
+                Log.warn("Received malformed REGISTER_COMMANDS. All commands unregistered");
+            else
+                Log.debug("The proxy has no commands for this server");
             registeredCommands = List.of();
             Feedback f = new Feedback(0, 0, 0,
                     List.of("Received empty registration request"),

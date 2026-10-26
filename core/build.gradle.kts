@@ -29,13 +29,15 @@ dependencies {
     testImplementation("org.spongepowered:configurate-yaml:4.2.0")
     testImplementation("org.snakeyaml:snakeyaml-engine:2.10")
     api("org.slf4j:slf4j-api:2.0.17")
-    api("io.undertow:undertow-core:2.3.12.Final")
-    api("io.undertow:undertow-websockets-jsr:2.3.12.Final")
+    api("io.undertow:undertow-core:2.3.21.Final")
+    api("io.undertow:undertow-websockets-jsr:2.3.21.Final")
 
     compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
     
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.82")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.82")
+    testImplementation("org.bouncycastle:bcprov-jdk18on:1.82")
+    testImplementation("org.bouncycastle:bcpkix-jdk18on:1.82")
 
     compileOnly("com.google.code.gson:gson:2.13.2")
 

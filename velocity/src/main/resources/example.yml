@@ -30,7 +30,7 @@ defaults:
 args:
   - name: player
     required: true
-    type: PLAYERS
+    type: OFFLINE_PLAYER # works on the proxy without extra plugins
     suggestions: []
 
   - name: message

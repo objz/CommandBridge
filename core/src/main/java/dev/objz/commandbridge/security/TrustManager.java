@@ -58,7 +58,7 @@ public final class TrustManager implements X509TrustManager {
         Log.debug("TLS STRICT validation succeeded with pin '{}'", expectedPin);
     }
 
-    private void handleTofu(String spki) throws CertificateException {
+    private synchronized void handleTofu(String spki) throws CertificateException {
         if (configuredPin != null && !configuredPin.isBlank()) {
             if (!configuredPin.equals(spki)) {
                 Log.error("TLS pin mismatch (TOFU configured): expected '{}' but got '{}'",

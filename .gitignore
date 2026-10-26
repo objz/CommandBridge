@@ -31,3 +31,7 @@ dist/bin/
 *.tmp
 *.bak
 *.swp
+
+# wrangler dev
+node_modules/
+.wrangler/

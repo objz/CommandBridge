@@ -4,6 +4,8 @@ import dev.objz.commandbridge.api.CommandBridgeAPI;
 import dev.objz.commandbridge.api.CommandBridgeProvider;
 import dev.objz.commandbridge.api.channel.ChannelPayload;
 import dev.objz.commandbridge.api.channel.MessageChannel;
+import dev.objz.commandbridge.api.channel.command.CommandPayload;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.api.message.MessageContext;
 import dev.objz.commandbridge.api.message.MessageListener;
 import dev.objz.commandbridge.api.message.ServerEventListener;
@@ -12,9 +14,11 @@ import dev.objz.commandbridge.api.platform.ConnectionState;
 import dev.objz.commandbridge.api.platform.Platform;
 import dev.objz.commandbridge.api.platform.PlayerLocator;
 import dev.objz.commandbridge.backends.net.client.BackendClient;
+import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.channel.PluginMessageChannel;
 import dev.objz.commandbridge.net.payloads.PluginMessage;
+import dev.objz.commandbridge.net.payloads.cmd.ExecuteCommand;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 
@@ -39,6 +43,8 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final BackendClient client;
+    private final String localServerId;
+    private final PlatformAdapter<?> adapter;
     private final ConcurrentHashMap<Class<?>, MessageChannel<?>> channels = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Class<?>> payloadTypesByName = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<MessageListener<?>>> listenersByType = new ConcurrentHashMap<>();
@@ -48,8 +54,11 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     private final AtomicBoolean polling = new AtomicBoolean(false);
     private final AtomicBoolean providerRegistered = new AtomicBoolean(false);
 
-    public BackendCommandBridgeImpl(BackendClient client) {
+    public BackendCommandBridgeImpl(BackendClient client, String localServerId, PlatformAdapter<?> adapter) {
         this.client = Objects.requireNonNull(client);
+        this.localServerId = Objects.requireNonNull(localServerId);
+        this.adapter = Objects.requireNonNull(adapter);
+        channel(CommandPayload.class).listen((context, payload) -> executeCommand(payload));
     }
 
     public void bootstrap() {
@@ -244,8 +253,24 @@ public final class BackendCommandBridgeImpl implements CommandBridgeAPI {
     }
 
     private String localServerId() {
-        String id = client.serverId();
-        return (id == null || id.isBlank()) ? "backend" : id;
+        return localServerId;
+    }
+
+    private void executeCommand(CommandPayload payload) {
+        if (payload == null || payload.command() == null || payload.command().isBlank()
+                || payload.command().stripLeading().startsWith("/") || payload.runAs() == null
+                || (payload.runAs() != RunAs.CONSOLE && payload.player() == null)) {
+            throw new IllegalArgumentException("Invalid command payload or missing player context");
+        }
+        adapter.getCommandExecutor()
+                .execute(new ExecuteCommand(payload.command(), payload.runAs(), payload.player(), null))
+                .whenComplete((result, error) -> {
+                    if (error != null) {
+                        Log.error(error, "API command execution failed");
+                    } else if (!result.isSuccess()) {
+                        Log.warn("API command execution failed: {}", result.message());
+                    }
+                });
     }
 
     private void startStatePolling() {

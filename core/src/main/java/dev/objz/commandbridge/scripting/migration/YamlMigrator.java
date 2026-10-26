@@ -82,7 +82,9 @@ public final class YamlMigrator {
      */
     public MigrationResult migrate(String yaml, int from, int to) {
         List<MigrationRule> merged = mergeRules(from, to);
-        List<String> lines = new ArrayList<>(List.of(yaml.split("\n", -1)));
+        // keep the file's own line endings: split on either, join with the one it uses
+        String nl = yaml.contains("\r\n") ? "\r\n" : "\n";
+        List<String> lines = new ArrayList<>(List.of(yaml.split("\r?\n", -1)));
 
         List<TargetAction> modifyActions = new ArrayList<>();
         for (MigrationRule rule : merged) {
@@ -134,6 +136,10 @@ public final class YamlMigrator {
                 int childrenStart = parent[0] >= 0 ? parent[0] + 1 : 0;
                 int childrenEnd = parent[1];
 
+                // a key the block has already (written by hand, or by a newer plugin) stays as it is
+                if (hasChildKey(lines, childrenStart, childrenEnd, leafKey))
+                    continue;
+
                 int childIndent = detectChildKeyIndent(lines, childrenStart, childrenEnd);
                 if (childIndent < 0) {
                     childIndent = (parent[0] >= 0 ? leadingSpaces(lines.get(parent[0])) : 0) + 2;
@@ -151,7 +157,7 @@ public final class YamlMigrator {
         }
 
         updateVersionLine(lines, to);
-        return MigrationResult.success(from, to, String.join("\n", lines), merged.size());
+        return MigrationResult.success(from, to, String.join(nl, lines), merged.size());
     }
 
     /**
@@ -294,6 +300,23 @@ public final class YamlMigrator {
      * block.
      * Otherwise returns the end of the children range (appends as the last child).
      */
+    private boolean hasChildKey(List<String> lines, int start, int end, String key) {
+        int childIndent = detectChildKeyIndent(lines, start, end);
+        if (childIndent < 0)
+            return false;
+        for (int i = start; i < end; i++) {
+            String line = lines.get(i);
+            if (isBlankOrComment(line))
+                continue;
+            int indent = keyIndent(line);
+            if (indent < childIndent)
+                break;
+            if (indent == childIndent && key.equals(extractKey(line)))
+                return true;
+        }
+        return false;
+    }
+
     private int findInsertionPoint(List<String> lines, int childrenStart, int childrenEnd,
             String afterKey) {
         if (afterKey != null) {

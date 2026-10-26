@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongSupplier;
 
 public final class PluginMessageQueue {
 
@@ -26,11 +27,23 @@ public final class PluginMessageQueue {
 
     private final ConcurrentHashMap<UUID, Queue<QueuedMessage>> queues = new ConcurrentHashMap<>();
     private final AtomicInteger totalSize = new AtomicInteger(0);
+    private final LongSupplier clock;
+
+    public PluginMessageQueue() {
+        this(System::currentTimeMillis);
+    }
+
+    PluginMessageQueue(LongSupplier clock) {
+        this.clock = Objects.requireNonNull(clock);
+    }
 
     public void queue(UUID playerUuid, Platform.ServerTarget target, PluginMessage message, String from) {
         Objects.requireNonNull(playerUuid);
         Objects.requireNonNull(target);
         Objects.requireNonNull(message);
+        // expired messages of players who never came back would otherwise keep the queue full for good
+        if (totalSize.get() >= MAX_TOTAL)
+            pruneExpired(clock.getAsLong());
         if (totalSize.get() >= MAX_TOTAL) {
             Log.warn("PluginMessageQueue is full ({} entries). Dropping message for player {}", MAX_TOTAL, playerUuid);
             return;
@@ -39,7 +52,7 @@ public final class PluginMessageQueue {
         PluginMessage stored = new PluginMessage(message.channelType(), message.data(),
                 message.expectsResponse(), message.requirePlayer(), null, message.error());
         queues.computeIfAbsent(playerUuid, k -> new ConcurrentLinkedQueue<>())
-                .add(new QueuedMessage(target, stored, from, System.currentTimeMillis()));
+                .add(new QueuedMessage(target, stored, from, clock.getAsLong()));
         totalSize.incrementAndGet();
     }
 
@@ -50,7 +63,7 @@ public final class PluginMessageQueue {
         if (queue == null || queue.isEmpty()) {
             return List.of();
         }
-        long now = System.currentTimeMillis();
+        long now = clock.getAsLong();
         List<QueuedMessage> result = new ArrayList<>();
         Iterator<QueuedMessage> it = queue.iterator();
         while (it.hasNext()) {
@@ -70,6 +83,18 @@ public final class PluginMessageQueue {
             queues.remove(playerUuid, queue);
         }
         return List.copyOf(result);
+    }
+
+    private void pruneExpired(long now) {
+        for (Map.Entry<UUID, Queue<QueuedMessage>> entry : queues.entrySet()) {
+            Queue<QueuedMessage> queue = entry.getValue();
+            if (queue.removeIf(m -> now - m.queuedAt() > TTL_MS)) {
+                totalSize.set(queues.values().stream().mapToInt(Queue::size).sum());
+            }
+            if (queue.isEmpty()) {
+                queues.remove(entry.getKey(), queue);
+            }
+        }
     }
 
     public void removeByServer(String serverId) {

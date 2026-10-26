@@ -21,11 +21,13 @@ import dev.objz.commandbridge.velocity.cli.subcommands.ClientCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.ConfigCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.DebugCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.DumpCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.EditorCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.HelpCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.InfoCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.MigrateCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.ReloadCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.ScriptCommand;
+import dev.objz.commandbridge.velocity.cli.subcommands.SetupCommand;
 import dev.objz.commandbridge.velocity.cli.subcommands.TaskCommand;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.dispatch.model.ScheduledTask;
@@ -37,10 +39,16 @@ import dev.objz.commandbridge.velocity.util.UserCache;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public final class CBCommand {
 
     private final ProxyServer proxy;
+    private final Runnable restart;
+    private final Function<CommandSource, CompletableFuture<String>> openEditor;
+    private EditorCommand editor;
+    private SetupCommand setup;
     private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
     private final RegistrationManager registrationManager;
@@ -54,6 +62,8 @@ public final class CBCommand {
 
     public CBCommand(
             ProxyServer proxy,
+            Runnable restart,
+            Function<CommandSource, CompletableFuture<String>> openEditor,
             ConfigManager<VelocityConfig> configManager,
             ScriptManager scriptManager,
             RegistrationManager registrationManager,
@@ -66,6 +76,8 @@ public final class CBCommand {
             PlayerTracker playerTracker) {
 
         this.proxy = proxy;
+        this.restart = restart;
+        this.openEditor = openEditor;
         this.configManager = configManager;
         this.scriptManager = scriptManager;
         this.registrationManager = registrationManager;
@@ -76,6 +88,16 @@ public final class CBCommand {
         this.commandEntry = commandEntry;
         this.userCache = userCache;
         this.playerTracker = playerTracker;
+    }
+
+    /** Set by {@link #register()}. */
+    public SetupCommand setup() {
+        return setup;
+    }
+
+    /** Set by {@link #register()}. */
+    public EditorCommand editor() {
+        return editor;
     }
 
     public void register() {
@@ -91,6 +113,8 @@ public final class CBCommand {
         var task = new TaskCommand(commandEntry.scheduler(), userCache);
         var client = new ClientCommand(sessionHub, outNode, playerTracker, userCache, config);
         var configCmd = new ConfigCommand(configManager);
+        editor = new EditorCommand(scriptManager, reload, sessionHub, config.serverId(), dataDir);
+        setup = new SetupCommand(proxy, configManager, sessionHub, dataDir, restart, openEditor);
 
         ArgumentSuggestions<CommandSource> clientIds = ArgumentSuggestions
                 .<CommandSource>strings(info0 -> namesOf(sessionHub));
@@ -141,6 +165,22 @@ public final class CBCommand {
 
                 .withSubcommand(new CommandAPICommand("migrate")
                         .executes((CommandExecutor) (sender, args) -> migrate.execute(sender)))
+
+                .withSubcommand(new CommandAPICommand("editor")
+                        .executes((CommandExecutor) (sender, args) -> editor.open(sender))
+                        .withSubcommand(new CommandAPICommand("close")
+                                .executes((CommandExecutor) (sender, args) -> editor.close(sender)))
+                        .withSubcommand(new CommandAPICommand("list")
+                                .executes((CommandExecutor) (sender, args) -> editor.list(sender)))
+                        .withSubcommand(new CommandAPICommand("confirm")
+                                .withArguments(new StringArgument("code"))
+                                .executes((CommandExecutor) (sender, args) -> editor.confirm(sender, (String) args.get("code")))))
+
+                .withSubcommand(new CommandAPICommand("setup")
+                        .executes((CommandExecutor) (sender, args) -> setup.open(sender))
+                        .withSubcommand(new CommandAPICommand("confirm")
+                                .withArguments(new StringArgument("code"))
+                                .executes((CommandExecutor) (sender, args) -> setup.confirm(sender, (String) args.get("code")))))
 
                 // /cb script ...
                 .withSubcommand(new CommandAPICommand("script")

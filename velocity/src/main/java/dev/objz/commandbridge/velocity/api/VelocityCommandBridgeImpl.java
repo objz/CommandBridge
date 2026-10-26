@@ -3,6 +3,8 @@ package dev.objz.commandbridge.velocity.api;
 import dev.objz.commandbridge.api.CommandBridgeAPI;
 import dev.objz.commandbridge.api.channel.ChannelPayload;
 import dev.objz.commandbridge.api.channel.MessageChannel;
+import dev.objz.commandbridge.api.channel.command.CommandPayload;
+import dev.objz.commandbridge.api.channel.command.RunAs;
 import dev.objz.commandbridge.api.message.MessageContext;
 import dev.objz.commandbridge.api.message.MessageListener;
 import dev.objz.commandbridge.api.message.ServerEventListener;
@@ -19,6 +21,7 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.net.EndpointServer;
+import dev.objz.commandbridge.velocity.dispatch.exec.LocalDispatcher;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
@@ -44,6 +47,7 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
     private final String serverId;
     private final EndpointServer endpointServer;
     private final PluginMessageQueue pluginMessageQueue;
+    private final LocalDispatcher commandExecutor;
 
     private final ConcurrentHashMap<Class<?>, MessageChannel<?>> channels = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Class<?>> payloadTypesByName = new ConcurrentHashMap<>();
@@ -55,12 +59,15 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
             PlayerTracker playerTracker,
             String serverId,
             EndpointServer endpointServer,
-            PluginMessageQueue pluginMessageQueue) {
+            PluginMessageQueue pluginMessageQueue,
+            LocalDispatcher commandExecutor) {
         this.sessions = Objects.requireNonNull(sessions);
         this.playerTracker = Objects.requireNonNull(playerTracker);
         this.serverId = Objects.requireNonNull(serverId);
         this.endpointServer = Objects.requireNonNull(endpointServer);
         this.pluginMessageQueue = Objects.requireNonNull(pluginMessageQueue);
+        this.commandExecutor = Objects.requireNonNull(commandExecutor);
+        channel(CommandPayload.class).listen((context, payload) -> executeCommand(payload));
     }
 
     @Override
@@ -324,6 +331,22 @@ public final class VelocityCommandBridgeImpl implements CommandBridgeAPI {
                 Log.warn("Plugin message listener failed for {}: {}", message.channelType(), e.getMessage());
             }
         }
+    }
+
+    private void executeCommand(CommandPayload payload) {
+        if (payload == null || payload.command() == null || payload.command().isBlank()
+                || payload.command().stripLeading().startsWith("/") || payload.runAs() == null
+                || (payload.runAs() != RunAs.CONSOLE && payload.player() == null)) {
+            throw new IllegalArgumentException("Invalid command payload or missing player context");
+        }
+        commandExecutor.execute(payload.command(), payload.runAs(), payload.player(), null)
+                .whenComplete((success, error) -> {
+                    if (error != null) {
+                        Log.error(error, "API command execution failed");
+                    } else if (!Boolean.TRUE.equals(success)) {
+                        Log.warn("API command execution failed");
+                    }
+                });
     }
 
     private void relayDirect(Envelope env) {

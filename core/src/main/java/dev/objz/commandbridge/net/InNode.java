@@ -9,12 +9,14 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 public final class InNode {
 
     private final Map<MessageType, InboundHandler> handlers;
     private Predicate<Envelope> inboundTap;
+    private volatile BiPredicate<Endpoint, Envelope> gate;
     private BiFunction<Endpoint, Envelope, SendOperation> sendOperationFactory;
 
     public InNode() {
@@ -25,16 +27,26 @@ public final class InNode {
         this.inboundTap = tap;
     }
 
+    /** Decides per message whether it may be handled at all, before the tap; e.g. nothing but auth until authenticated. */
+    public void setGate(BiPredicate<Endpoint, Envelope> gate) {
+        this.gate = gate;
+    }
+
     public InNode setSendOperationFactory(BiFunction<Endpoint, Envelope, SendOperation> factory) {
-        this.sendOperationFactory = factory;
+        synchronized (handlers) {
+            this.sendOperationFactory = factory;
+            handlers.values().forEach(handler -> handler.setSendOperationFactory(factory));
+        }
         return this;
     }
 
     public InNode register(MessageType type, InboundHandler handler) {
         Objects.requireNonNull(type);
         Objects.requireNonNull(handler);
-        handler.setSendOperationFactory(sendOperationFactory);
-        handlers.put(type, handler);
+        synchronized (handlers) {
+            handler.setSendOperationFactory(sendOperationFactory);
+            handlers.put(type, handler);
+        }
         return this;
     }
 
@@ -48,7 +60,17 @@ public final class InNode {
             return;
         }
 
+        if (env == null || env.type() == null) {
+            Log.warn("Dropped an envelope without a message type from {}", endpoint != null ? endpoint.describe() : "unknown");
+            return;
+        }
+
         Log.debug("Inbound message type={} id={} from={}", env.type(), env.id(), env.from());
+
+        if (gate != null && !gate.test(endpoint, env)) {
+            Log.debug("Dropped {} from {}: not authenticated", env.type(), endpoint != null ? endpoint.describe() : "unknown");
+            return;
+        }
 
         if (inboundTap != null) {
             try {

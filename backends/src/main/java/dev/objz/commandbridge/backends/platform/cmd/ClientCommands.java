@@ -8,19 +8,31 @@ import dev.objz.commandbridge.util.MM;
 import net.kyori.adventure.audience.Audience;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 public final class ClientCommands {
 
     private ClientCommands() {
     }
 
-    public static void register(BackendClient client) {
+    /** {@code client} is null until config.yml is valid; {@code pair} works without it. */
+    public static void register(Supplier<BackendClient> clients, CommandAPICommand pair) {
         new CommandAPICommand("commandbridgeclient")
                 .withAliases("cbc")
                 .withPermission("commandbridge.admin")
+                .withSubcommand(pair)
                 .withSubcommand(new CommandAPICommand("reconnect")
                         .executes((CommandExecutor) (sender, args) -> {
                             Audience src = (Audience) sender;
+                            BackendClient client = clients.get();
+                            if (client == null) {
+                                MM.msg()
+                                        .space()
+                                        .line(MM.error("Not connected: config.yml is not valid"))
+                                        .line(MM.muted("Run /cbc pair <code> from /cb setup on the proxy"))
+                                        .send(src);
+                                return;
+                            }
 
                             MM.msg()
                                     .space()

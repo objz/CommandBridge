@@ -108,12 +108,13 @@ public final class RegistrationManager {
         Set<Script> scripts = remoteScripts.get(key);
 
         if (scripts == null || scripts.isEmpty()) {
+            // still sent, empty: after a reload that removed the last script for it, the server drops the old commands
             Log.debug("Client '{}' ({}) connected, but no scripts are targeted for it",
                     session.id(), session.location());
-            return;
+            scripts = Set.of();
+        } else {
+            Log.info("Syncing '{}' {} to client '{}' ({})", scripts.size(), Log.plural(scripts.size(), "client", "clients"), session.id(), session.location());
         }
-
-        Log.info("Syncing '{}' {} to client '{}' ({})", scripts.size(), Log.plural(scripts.size(), "client", "clients"), session.id(), session.location());
         outNode.send(MessageType.REGISTER_COMMANDS,
                 new RegistrationRequestContext(session, scripts, registerTimeout));
     }

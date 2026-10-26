@@ -13,6 +13,7 @@ public final class ReconnectHandler {
     private final PlatformAdapter<?> adapter;
     private final AtomicBoolean isReconnecting = new AtomicBoolean(false);
     private volatile ScheduleHandle reconnectionTask;
+    private volatile long deadline;
     private final Runnable reconnectCallback;
 
     public ReconnectHandler(BackendsConfig cfg, PlatformAdapter<?> adapter, Runnable reconnectCallback) {
@@ -22,6 +23,13 @@ public final class ReconnectHandler {
     }
 
     public synchronized void scheduleReconnect() {
+        // a platform task can end itself when its time is up without running the last attempt,
+        // which would leave this stuck "in progress" for good; past the window, start over
+        if (reconnectionTask != null && System.currentTimeMillis() >= deadline) {
+            Log.debug("The last reconnect ran out without a result, starting a new one");
+            stopReconnect();
+        }
+
         if (isReconnecting.get()) {
             Log.debug("Reconnect already in progress, skipping");
             return;
@@ -42,6 +50,7 @@ public final class ReconnectHandler {
                 interval.getSeconds());
 
         long startTime = System.currentTimeMillis();
+        deadline = startTime + totalTimeout.toMillis() + interval.toMillis();
 
         Runnable task = () -> {
             if (!isReconnecting.get()) {

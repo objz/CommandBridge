@@ -3,6 +3,7 @@ package dev.objz.commandbridge.scripting.bind.adapters;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import dev.objz.commandbridge.scripting.bind.ConvertContext;
@@ -49,7 +50,8 @@ public final class ListAdapter implements TypeAdapter<List<?>> {
             }
             idx++;
         }
-        return List.copyOf(out);
+        // a failed element stays as null next to its recorded problem; List.copyOf would throw on it
+        return Collections.unmodifiableList(out);
     }
 
     @Override

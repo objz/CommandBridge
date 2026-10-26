@@ -10,6 +10,7 @@ import dev.objz.commandbridge.net.endpoints.RedisEndpoint;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.net.redis.RedisChannels;
+import dev.objz.commandbridge.security.RedisSeal;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
@@ -33,6 +34,7 @@ public final class RedisServer implements EndpointServer {
 
     private volatile boolean running;
     private volatile JedisPool pool;
+    private final RedisSeal seal;
     private volatile JedisPubSub subscriber;
     private volatile Thread subscriberThread;
 
@@ -42,7 +44,9 @@ public final class RedisServer implements EndpointServer {
             String username,
             String password,
             SessionHub sessions,
-            InNode inNode) {
+            InNode inNode,
+            String secret) {
+        this.seal = new RedisSeal(secret);
         this.host = host;
         this.port = port;
         this.username = username;
@@ -159,7 +163,12 @@ public final class RedisServer implements EndpointServer {
         }
     }
 
-    private void handleInbound(String message) {
+    private void handleInbound(String sealed) {
+        String message = seal.open(RedisChannels.PROXY_INBOUND, sealed);
+        if (message == null) {
+            Log.debug("Dropped an invalid, expired, or replayed Redis message");
+            return;
+        }
         String clientId = parseFrom(message);
         if (clientId == null || clientId.isBlank()) {
             Log.warn("Dropping Redis message without a valid 'from' client id");
@@ -175,7 +184,7 @@ public final class RedisServer implements EndpointServer {
         try {
             JsonNode node = Envelope.MAPPER.readTree(text);
             JsonNode from = node.get("from");
-            return from != null ? from.asText() : null;
+            return from != null && from.isTextual() ? from.textValue() : null;
         } catch (Exception e) {
             Log.warn("Bad JSON from Redis: {}", e.getMessage());
             return null;
@@ -186,7 +195,8 @@ public final class RedisServer implements EndpointServer {
         try {
             String payload = Envelope.MAPPER.writeValueAsString(env);
             try (Jedis jedis = pool.getResource()) {
-                jedis.publish(RedisChannels.clientInbound(clientId), payload);
+                String channel = RedisChannels.clientInbound(clientId);
+                jedis.publish(channel, seal.seal(channel, payload));
             }
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
@@ -200,7 +210,8 @@ public final class RedisServer implements EndpointServer {
         try {
             Envelope env = Envelope.make(MessageType.AUTH_REQUIRED, "proxy-auth", "*", null);
             try (Jedis jedis = pool.getResource()) {
-                jedis.publish(RedisChannels.CLIENT_CONTROL, Envelope.MAPPER.writeValueAsString(env));
+                jedis.publish(RedisChannels.CLIENT_CONTROL,
+                        seal.seal(RedisChannels.CLIENT_CONTROL, Envelope.MAPPER.writeValueAsString(env)));
             }
         } catch (Exception e) {
             Log.warn("Failed to request Redis client authentication: {}", e.getMessage());

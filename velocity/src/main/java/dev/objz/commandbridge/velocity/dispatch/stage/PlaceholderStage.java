@@ -164,7 +164,7 @@ public final class PlaceholderStage implements Pipeline {
             return result.toString();
         }
 
-        return String.valueOf(value);
+        return itemToString(value);
     }
 
     private String itemToString(Object item) {
@@ -173,7 +173,7 @@ public final class PlaceholderStage implements Pipeline {
         }
 
         if (item instanceof dev.objz.commandbridge.cmd.ref.EntityRef ref) {
-            return ref.name() != null ? ref.name() : ref.uuid();
+            return ref.name() != null ? ref.name() : Objects.toString(ref.uuid(), "");
         }
 
         if (item instanceof dev.objz.commandbridge.cmd.ref.Location3D loc) {

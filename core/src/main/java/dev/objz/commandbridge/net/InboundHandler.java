@@ -7,7 +7,7 @@ import java.util.function.BiFunction;
 
 public abstract class InboundHandler {
 
-    private BiFunction<Endpoint, Envelope, SendOperation> sendOperationFactory;
+    private volatile BiFunction<Endpoint, Envelope, SendOperation> sendOperationFactory;
 
     public void setSendOperationFactory(BiFunction<Endpoint, Envelope, SendOperation> factory) {
         this.sendOperationFactory = factory;

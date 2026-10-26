@@ -1,29 +1,27 @@
 package dev.objz.commandbridge.backends.platform;
 
-public final class PlatformDetector {
+import dev.objz.commandbridge.scripting.model.enums.ServerPlatform;
 
-    public enum Platform {
-        FOLIA, PAPER, BUKKIT, FORGE, FABRIC, UNKNOWN
-    }
+public final class PlatformDetector {
 
     private PlatformDetector() {
     }
 
-    public static Platform detectPlatform() {
-        Platform p;
+    public static ServerPlatform detectPlatform() {
+        ServerPlatform p;
         if (classExists("io.papermc.paper.threadedregions.RegionizedServer")) {
-            p = Platform.FOLIA;
+            p = ServerPlatform.FOLIA;
         } else if (classExists("com.destroystokyo.paper.PaperConfig")
                 || classExists("io.papermc.paper.configuration.Configuration")) {
-            p = Platform.PAPER;
+            p = ServerPlatform.PAPER;
         } else if (classExists("org.bukkit.Bukkit")) {
-            p = Platform.BUKKIT;
+            p = ServerPlatform.BUKKIT;
         } else if (classExists("net.minecraftforge.fml.common.Mod")) {
-            p = Platform.FORGE;
+            p = ServerPlatform.FORGE;
         } else if (classExists("net.fabricmc.loader.api.FabricLoader")) {
-            p = Platform.FABRIC;
+            p = ServerPlatform.FABRIC;
         } else {
-            p = Platform.UNKNOWN;
+            p = ServerPlatform.UNKNOWN;
         }
         return p;
     }

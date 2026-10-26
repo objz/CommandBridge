@@ -12,12 +12,15 @@ import org.spongepowered.configurate.objectmapping.meta.Setting;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Locale;
@@ -43,11 +46,29 @@ public final class ConfigManager<T> {
     }
 
     private YamlConfigurationLoader loader() {
+        return loader(filePath);
+    }
+
+    private static YamlConfigurationLoader loader(Path path) {
         return YamlConfigurationLoader.builder()
-                .path(filePath)
+                .path(path)
                 .indent(2)
                 .nodeStyle(NodeStyle.BLOCK)
                 .build();
+    }
+
+    /** The YAML {@link #save} would write for {@code config}. */
+    public static <T> String render(Class<T> modelClass, T config) throws IOException {
+        StringWriter out = new StringWriter();
+        var loader = YamlConfigurationLoader.builder()
+                .sink(() -> new BufferedWriter(out))
+                .indent(2)
+                .nodeStyle(NodeStyle.BLOCK)
+                .build();
+        ConfigurationNode root = loader.createNode();
+        root.set(modelClass, config);
+        loader.save(root);
+        return out.toString();
     }
 
     public boolean load() {
@@ -80,29 +101,39 @@ public final class ConfigManager<T> {
 
             boolean enumOk = validateEnumValues(root, modelClass, "");
             if (!enumOk) {
-                this.current = defaults;
+                if (current == null)
+                    this.current = defaults;
                 Log.error("Invalid config.yml");
                 return false;
             }
 
+            // keys the file leaves out take their defaults; without this a missing section maps to 0/null
+            ConfigurationNode defaultsNode = loader.createNode();
+            defaultsNode.set(modelClass, defaults);
+            root.mergeFrom(defaultsNode);
             T loaded = root.get(modelClass, defaults);
 
             var result = profile.normalize(loaded);
-            this.current = result.config();
             Log.debug("Config loaded from '{}' for model {} (valid={})", filePath, modelClass.getSimpleName(), result.ok());
 
             if (!result.ok()) {
+                if (current == null)
+                    this.current = defaults;
                 Log.error("Invalid config.yml");
+                return false;
             }
-            return result.ok();
+            this.current = result.config();
+            return true;
 
         } catch (SerializationException e) {
             Log.error("Invalid config.yml: {}", e.getMessage());
-            this.current = profileOf(modelClass).defaults();
+            if (current == null)
+                this.current = profileOf(modelClass).defaults();
             return false;
         } catch (Exception e) {
             Log.error(e, "Error loading config.yml: {}", e.getMessage());
-            this.current = profileOf(modelClass).defaults();
+            if (current == null)
+                this.current = profileOf(modelClass).defaults();
             return false;
         }
     }
@@ -113,6 +144,27 @@ public final class ConfigManager<T> {
 
     public T current() {
         return current;
+    }
+
+    public boolean save(T config) {
+        ensureDir();
+        Path tmp = filePath.resolveSibling(filePath.getFileName() + ".tmp");
+        try {
+            var loader = loader(tmp);
+            ConfigurationNode root = loader.createNode();
+            root.set(modelClass, config);
+            loader.save(root);
+            Files.move(tmp, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            this.current = config;
+            return true;
+        } catch (Exception e) {
+            Log.error(e, "Failed to save {}: {}", filePath.getFileName(), e.getMessage());
+            try {
+                Files.deleteIfExists(tmp);
+            } catch (IOException ignored) {
+            }
+            return false;
+        }
     }
 
     private void ensureDir() {

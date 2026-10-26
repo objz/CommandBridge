@@ -1,0 +1,7 @@
+{
+  "name": "commandbridge-live-tests",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "dependencies": { "mineflayer": "4.39.0" }
+}

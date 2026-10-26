@@ -34,7 +34,12 @@ public final class ArgumentMappingStage implements Pipeline {
             Object value = null;
 
             if (invokedArgs != null && i < invokedArgs.size()) {
-                value = invokedArgs.get(i).value();
+                try {
+                    value = InvokedCommand.normalizeValue(def.type(), invokedArgs.get(i).value());
+                } catch (IllegalArgumentException e) {
+                    next.accept(ExecutionResult.error("Invalid argument: " + def.name()));
+                    return;
+                }
             }
 
             if (value == null && def.required()) {

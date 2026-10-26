@@ -2,7 +2,7 @@ package dev.objz.commandbridge.backends.platform.bootstrap;
 
 import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.PlatformDetector;
-import dev.objz.commandbridge.backends.platform.PlatformDetector.Platform;
+import dev.objz.commandbridge.scripting.model.enums.ServerPlatform;
 import dev.objz.commandbridge.logging.Log;
 
 import org.bstats.bukkit.Metrics;
@@ -23,7 +23,7 @@ public final class BukkitMain extends JavaPlugin {
 
         Log.info("Initializing CommandBridge (Bukkit family)");
 
-        Platform platform = PlatformDetector.detectPlatform();
+        ServerPlatform platform = PlatformDetector.detectPlatform();
         Log.info("Detected platform: {}", platform);
         try {
             adapter = switch (platform) {

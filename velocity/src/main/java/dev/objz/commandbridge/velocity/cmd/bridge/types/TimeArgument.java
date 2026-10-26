@@ -58,59 +58,10 @@ public final class TimeArgument extends Argument<Integer> {
     @Override
     public <Source> Integer parseArgument(CommandContext<Source> cmdCtx, String key,
             CommandArguments previousArgs) throws CommandSyntaxException {
-        String rawInput = cmdCtx.getArgument(key, String.class);
-
-        if (rawInput == null || rawInput.isBlank()) {
-            throw new SimpleCommandExceptionType(
-                    (Message) () -> "Time value cannot be empty").create();
-        }
-
-        final String input = rawInput.toLowerCase().trim();
-
-        if (input.matches("\\d+")) {
-            try {
-                int value = Integer.parseInt(input);
-                if (value < 0) {
-                    throw new SimpleCommandExceptionType(
-                            (Message) () -> "Time value must be non-negative").create();
-                }
-                return value;
-            } catch (NumberFormatException e) {
-                final String errorInput = input;
-                throw new SimpleCommandExceptionType(
-                        (Message) () -> "Invalid number: " + errorInput).create();
-            }
-        }
-
-        if (!input.matches("\\d+[dst]")) {
-            throw new SimpleCommandExceptionType(
-                    (Message) () -> "Invalid time format.")
-                    .create();
-        }
-
-        char unit = input.charAt(input.length() - 1);
-        String numericPart = input.substring(0, input.length() - 1);
-
-        int value;
         try {
-            value = Integer.parseInt(numericPart);
-        } catch (NumberFormatException e) {
-            final String errorPart = numericPart;
-            throw new SimpleCommandExceptionType(
-                    (Message) () -> "Invalid number: " + errorPart).create();
+            return TimeParser.ticks(cmdCtx.getArgument(key, String.class));
+        } catch (IllegalArgumentException e) {
+            throw new SimpleCommandExceptionType((Message) e::getMessage).create();
         }
-
-        if (value < 0) {
-            throw new SimpleCommandExceptionType(
-                    (Message) () -> "Time value must be non negative").create();
-        }
-
-        return switch (unit) {
-            case 'd' -> value * 24000;
-            case 's' -> value * 20;
-            case 't' -> value;
-            default -> throw new SimpleCommandExceptionType(
-                    (Message) () -> "Unknown time unit: " + unit).create();
-        };
     }
 }

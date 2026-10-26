@@ -37,7 +37,8 @@ public final class RegistrationRequest extends OutboundHandler<RegistrationReque
             }
         }).filter(Objects::nonNull).collect(toList());
 
-        if (stubs.isEmpty()) {
+        // no scripts at all is a real answer (the server drops its old commands); scripts that all failed to export aren't
+        if (stubs.isEmpty() && !ctx.scripts().isEmpty()) {
             Log.warn("No valid command stubs for '{}'", clientId);
             notifyResult(ctx, false);
             throw new IllegalStateException("no stubs");

@@ -12,12 +12,11 @@ import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.endpoints.WsEndpoint;
+import dev.objz.commandbridge.net.endpoints.BoundedReceiveListener;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.security.AuthService;
-import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedBinaryMessage;
-import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketChannel;
 
@@ -32,6 +31,7 @@ public final class MessageRouter {
     private final Runnable reconnectCallback;
     private final String secret;
     private volatile Location location;
+    private volatile WsEndpoint activeEndpoint;
 
     public MessageRouter(
             InNode inNode,
@@ -55,7 +55,12 @@ public final class MessageRouter {
     }
 
     public void setupChannel(WebSocketChannel channel) {
+        setupChannel(channel, reconnectCallback);
+    }
+
+    public void setupChannel(WebSocketChannel channel, Runnable connectionLost) {
         var endpoint = new WsEndpoint(channel);
+        activeEndpoint = endpoint;
 
         inNode.setSendOperationFactory((ep, envelope) -> new SendOperation(ep, envelope, awaiter));
         outNode.setSendOperationFactory(envelope -> new SendOperation(endpoint, envelope, awaiter));
@@ -82,11 +87,24 @@ public final class MessageRouter {
             return matched;
         });
 
-        channel.getReceiveSetter().set(new AbstractReceiveListener() {
+        channel.getReceiveSetter().set(new BoundedReceiveListener() {
             @Override
-            protected void onFullTextMessage(WebSocketChannel ch, BufferedTextMessage message) {
+            protected void onError(WebSocketChannel ch, Throwable error) {
+                super.onError(ch, error);
+                if (activeEndpoint != endpoint) {
+                    return;
+                }
+                Log.warn("WebSocket receive failed: {}", error.getMessage());
+                connectionLost.run();
+            }
+
+            @Override
+            protected void onTextMessage(WebSocketChannel ch, String message) {
+                if (activeEndpoint != endpoint) {
+                    return;
+                }
                 try {
-                    inNode.onText(endpoint, message.getData());
+                    inNode.onText(endpoint, message);
                 } catch (Throwable t) {
                     Log.error(t, "Inbound message handling failed");
                 }
@@ -111,9 +129,11 @@ public final class MessageRouter {
                 }
 
                 try {
+                    if (activeEndpoint != endpoint) {
+                        return;
+                    }
                     Log.warn("Connection lost - attempting to reconnect");
-                    stateRef.set(ConnectionState.RECONNECTING);
-                    reconnectCallback.run();
+                    connectionLost.run();
                 } catch (Throwable ignore) {
                 }
             }
@@ -131,6 +151,7 @@ public final class MessageRouter {
     }
 
     public void clearTap() {
+        activeEndpoint = null;
         if (inNode != null) {
             inNode.setInboundTap(null);
         }
