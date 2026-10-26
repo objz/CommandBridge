@@ -683,7 +683,8 @@ pause-when-empty-seconds=-1
         value = marker("reload")
         clients.send("chat", name="CBAllowed", command=f"/liveproxy {value}")
         observed("paper", value + "_RELOADED")
-        assert sum(value in line for line in processes["paper"].lines) == 1, "Reload dispatched old and new handlers"
+        assert sum(bool(re.search(r"\[Server\] " + re.escape(value) + r"(?:_RELOADED)?\s*$", line))
+                   for line in processes["paper"].lines) == 1, "Reload dispatched old and new handlers"
         passed("reload replaced script behavior without duplicate execution")
         start = len(processes["paper"].lines)
         processes["paper"].send("cbc reconnect")
