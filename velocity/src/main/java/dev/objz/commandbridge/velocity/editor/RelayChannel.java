@@ -3,14 +3,13 @@ package dev.objz.commandbridge.velocity.editor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.logging.Log;
+import dev.objz.commandbridge.security.RelayCrypto;
 
-import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
@@ -26,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * A channel between the proxy and a page on cb.objz.dev. The proxy connects out to the relay,
- * the page joins the same channel, and every message is signed with a secret that only lives
- * in the link's #fragment, so the relay can't forge messages.
+ * the page joins the same channel, and every message is encrypted with a key from the secret that only lives
+ * in the link's #fragment ({@link RelayCrypto}), so the relay can neither read nor forge messages.
  */
 public final class RelayChannel implements WebSocket.Listener {
 
@@ -35,6 +34,7 @@ public final class RelayChannel implements WebSocket.Listener {
     private static final String WEB_URL = System.getProperty("commandbridge.web.url", "https://cb.objz.dev/");
     public static final String AUTH_TOKEN = "cb-dump-upload-v1";
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final int MAX_FRAME = 4 * 1024 * 1024;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     // the page pings every minute; a tab gone this long, or a link nobody opened, ends the session
@@ -60,6 +60,7 @@ public final class RelayChannel implements WebSocket.Listener {
     private volatile ScheduledFuture<?> watch;
     private final String id;
     private final byte[] secret;
+    private final SecretKeySpec key;
 
     private final StringBuilder partial = new StringBuilder();
     private volatile WebSocket ws;
@@ -78,6 +79,11 @@ public final class RelayChannel implements WebSocket.Listener {
         this.id = HexFormat.of().formatHex(idBytes);
         this.secret = new byte[32];
         RANDOM.nextBytes(secret);
+        try {
+            this.key = RelayCrypto.key(secret);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** {@code name} is how logs call the session ("Editor", "Setup"); {@code pagePath} is the page under the web url. */
@@ -140,6 +146,13 @@ public final class RelayChannel implements WebSocket.Listener {
     @Override
     public CompletionStage<?> onText(WebSocket socket, CharSequence data, boolean last) {
         partial.append(data);
+        if (partial.length() > MAX_FRAME) {
+            // nothing the page sends comes close; a frame this big is dropped without parsing
+            Log.warn("{} session {} dropped a message over {} characters", name, id, MAX_FRAME);
+            partial.setLength(0);
+            socket.request(1);
+            return null;
+        }
         if (last) {
             String frame = partial.toString();
             partial.setLength(0);
@@ -176,12 +189,18 @@ public final class RelayChannel implements WebSocket.Listener {
     private void handle(String frame) throws Exception {
         JsonNode envelope = MAPPER.readTree(frame);
         String from = envelope.path("conn").asText("");
-        long seq = envelope.path("seq").asLong(-1);
-        String body = envelope.path("body").asText(null);
-        String mac = envelope.path("mac").asText("");
-        if (body == null || from.isEmpty() || seq <= recvSeqByConn.getOrDefault(from, 0L)
-                || !verify("editor", from, seq, body, mac)) {
-            Log.warn("{} session {} dropped an unsigned or replayed message", name, id);
+        JsonNode seqNode = envelope.path("seq");
+        long seq = seqNode.isIntegralNumber() ? seqNode.asLong() : -1;
+        String body = null;
+        if (!from.isEmpty() && seq > recvSeqByConn.getOrDefault(from, 0L)) {
+            try {
+                body = RelayCrypto.open(key, "editor", from, seq, envelope.path("iv").asText(""), envelope.path("box").asText(""));
+            } catch (GeneralSecurityException e) {
+                body = null;
+            }
+        }
+        if (body == null) {
+            Log.warn("{} session {} dropped a message it could not open or had already seen", name, id);
             return;
         }
         recvSeqByConn.put(from, seq);
@@ -200,21 +219,8 @@ public final class RelayChannel implements WebSocket.Listener {
         }
         String body = MAPPER.writeValueAsString(message);
         long seq = ++sendSeq;
-        Map<String, Object> envelope = Map.of("conn", conn, "seq", seq, "body", body,
-                "mac", sign("proxy", conn, seq, body));
+        RelayCrypto.Sealed sealed = RelayCrypto.seal(key, "proxy", conn, seq, body);
+        Map<String, Object> envelope = Map.of("conn", conn, "seq", seq, "iv", sealed.iv(), "box", sealed.box());
         ws.sendText(MAPPER.writeValueAsString(envelope), true).join();
-    }
-
-    private String sign(String role, String connId, long seq, String body) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(secret, "HmacSHA256"));
-        byte[] out = mac.doFinal((role + "\n" + connId + "\n" + seq + "\n" + body).getBytes(StandardCharsets.UTF_8));
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(out);
-    }
-
-    private boolean verify(String role, String connId, long seq, String body, String macB64) throws Exception {
-        return MessageDigest.isEqual(
-                sign(role, connId, seq, body).getBytes(StandardCharsets.US_ASCII),
-                macB64.getBytes(StandardCharsets.US_ASCII));
     }
 }

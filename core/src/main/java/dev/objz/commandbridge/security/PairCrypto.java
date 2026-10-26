@@ -80,14 +80,18 @@ public final class PairCrypto {
         return cipher.doFinal(all, NONCE, all.length - NONCE);
     }
 
-    // HKDF-SHA256 (RFC 5869), one expand block is enough for a 32-byte key.
     private static SecretKeySpec key(String code) throws GeneralSecurityException {
+        return new SecretKeySpec(hkdf32(normalize(code).getBytes(StandardCharsets.UTF_8), SALT, INFO), "AES");
+    }
+
+    // HKDF-SHA256 (RFC 5869), one expand block is enough for a 32-byte key.
+    static byte[] hkdf32(byte[] ikm, byte[] salt, byte[] info) throws GeneralSecurityException {
         Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(SALT, "HmacSHA256"));
-        byte[] prk = mac.doFinal(normalize(code).getBytes(StandardCharsets.UTF_8));
+        mac.init(new SecretKeySpec(salt, "HmacSHA256"));
+        byte[] prk = mac.doFinal(ikm);
         mac.init(new SecretKeySpec(prk, "HmacSHA256"));
-        mac.update(INFO);
+        mac.update(info);
         mac.update((byte) 1);
-        return new SecretKeySpec(mac.doFinal(), "AES");
+        return mac.doFinal();
     }
 }
