@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 public final class UserCache {
 
@@ -37,12 +38,19 @@ public final class UserCache {
     private final OutNode outNode;
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
     private final Path cachePath;
+    private final Function<String, UUID> mojangLookup;
 
     public UserCache(ProxyServer proxy, SessionHub sessions, OutNode outNode, Path cachePath) {
+        this(proxy, sessions, outNode, cachePath, MojangAPI::getUuid);
+    }
+
+    UserCache(ProxyServer proxy, SessionHub sessions, OutNode outNode, Path cachePath,
+            Function<String, UUID> mojangLookup) {
         this.proxy = Objects.requireNonNull(proxy);
         this.sessions = Objects.requireNonNull(sessions);
         this.outNode = Objects.requireNonNull(outNode);
         this.cachePath = Objects.requireNonNull(cachePath);
+        this.mojangLookup = Objects.requireNonNull(mojangLookup);
         load();
     }
 
@@ -113,7 +121,7 @@ public final class UserCache {
 
             // 4. Mojang HTTP API
             return CompletableFuture.supplyAsync(() -> {
-                UUID mojangUuid = MojangAPI.getUuid(name);
+                UUID mojangUuid = mojangLookup.apply(name);
                 if (mojangUuid != null) {
                     cachePlayer(name, mojangUuid);
                     save();
