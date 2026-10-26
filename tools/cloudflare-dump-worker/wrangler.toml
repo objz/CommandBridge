@@ -9,9 +9,17 @@ DUMP_AUTH_TOKEN = "cb-dump-upload-v1"
 name = "EDITOR_RELAY"
 class_name = "EditorRelay"
 
+[[durable_objects.bindings]]
+name = "PAIR_RELAY"
+class_name = "PairRelay"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["EditorRelay"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["PairRelay"]
 
 [[d1_databases]]
 binding = "DUMP_DB"

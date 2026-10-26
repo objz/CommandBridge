@@ -2,9 +2,11 @@ interface Env {
   DUMP_DB: D1Database;
   DUMP_AUTH_TOKEN?: string;
   EDITOR_RELAY: DurableObjectNamespace;
+  PAIR_RELAY: DurableObjectNamespace;
 }
 
 const EDITOR_SESSION_TTL_MS = 60 * 60 * 1000;
+const PAIR_CODE_TTL_MS = 30 * 60 * 1000;
 
 const DEFAULT_RETENTION_DAYS = 14;
 const MAX_RETENTION_DAYS = 30;
@@ -59,6 +61,11 @@ export default {
     const editorMatch = url.pathname.match(/^\/api\/editor\/([0-9a-f]{32})\/ws$/);
     if (editorMatch) {
       return handleEditorSocket(request, env, editorMatch[1], url.searchParams.get("role"));
+    }
+
+    const pairMatch = url.pathname.match(/^\/api\/pair\/([0-9a-f]{64})\/ws$/);
+    if (pairMatch) {
+      return handlePairSocket(request, env, pairMatch[1], url.searchParams.get("role"));
     }
 
     if (url.pathname === "/api/health") {
@@ -230,6 +237,78 @@ export class EditorRelay implements DurableObject {
 
   private roleOf(ws: WebSocket): string {
     return this.state.getTags(ws)[0];
+  }
+
+  private closeAll(code: number, reason: string): void {
+    for (const ws of this.state.getWebSockets()) {
+      safeClose(ws, code, reason);
+    }
+  }
+}
+
+async function handlePairSocket(
+  request: Request,
+  env: Env,
+  id: string,
+  role: string | null
+): Promise<Response> {
+  if (request.headers.get("Upgrade") !== "websocket") {
+    return json(426, { error: "Expected WebSocket upgrade" });
+  }
+  if (role !== "proxy" && role !== "server") {
+    return json(400, { error: "Invalid role" });
+  }
+  if (role === "proxy") {
+    const expectedToken = env.DUMP_AUTH_TOKEN || "cb-dump-upload-v1";
+    if (request.headers.get("Authorization") !== `Bearer ${expectedToken}`) {
+      return json(401, { error: "Unauthorized" });
+    }
+  }
+  return env.PAIR_RELAY.get(env.PAIR_RELAY.idFromName(id)).fetch(request);
+}
+
+/**
+ * Joins the proxy holding a pairing code with the server that runs /cbc pair.
+ * The channel is named by a hash of the code and the config is sealed with a
+ * key derived from it, so the relay only ever forwards ciphertext.
+ */
+export class PairRelay implements DurableObject {
+  constructor(private state: DurableObjectState) {}
+
+  async fetch(request: Request): Promise<Response> {
+    const role = new URL(request.url).searchParams.get("role") as "proxy" | "server";
+
+    if (this.state.getWebSockets(role).length > 0) {
+      return json(409, { error: `A ${role} is already on this code` });
+    }
+    if (role === "server" && this.state.getWebSockets("proxy").length === 0) {
+      return json(404, { error: "No setup is waiting for this code" });
+    }
+    const pair = new WebSocketPair();
+    this.state.acceptWebSocket(pair[1], [role]);
+    if (role === "proxy") {
+      await this.state.storage.setAlarm(Date.now() + PAIR_CODE_TTL_MS);
+    }
+    return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const other = this.state.getTags(ws)[0] === "proxy" ? "server" : "proxy";
+    for (const peer of this.state.getWebSockets(other)) {
+      peer.send(message);
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
+    this.closeAll(1000, "The other side left");
+  }
+
+  async webSocketError(ws: WebSocket): Promise<void> {
+    this.closeAll(1011, "Socket error");
+  }
+
+  async alarm(): Promise<void> {
+    this.closeAll(1000, "Pairing code expired");
   }
 
   private closeAll(code: number, reason: string): void {
