@@ -14,6 +14,7 @@ import dev.objz.commandbridge.api.CommandBridgeProvider;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.config.model.VelocityConfig;
+import dev.objz.commandbridge.config.profile.VelocityConfigProfile;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.OutNode;
@@ -244,7 +245,8 @@ public final class Main {
         endpointServer.start();
 
         // an untouched default config and no setup yet: point new users at the setup
-        if (cfg.equals(VelocityConfig.defaults()) && !Files.exists(dataDir.resolve("data").resolve("setup.json"))) {
+        if (cfg.equals(new VelocityConfigProfile().normalize(VelocityConfig.defaults()).config())
+                && !Files.exists(dataDir.resolve("data").resolve("setup.json"))) {
             Log.info("Run /cb setup to set up your network.");
         }
 

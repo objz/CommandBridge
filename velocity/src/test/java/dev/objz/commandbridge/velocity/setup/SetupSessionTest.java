@@ -127,4 +127,16 @@ class SetupSessionTest {
         var c = dev.objz.commandbridge.config.model.BackendsConfig.defaults();
         assertEquals(c, MAPPER.readValue(MAPPER.writeValueAsBytes(c), dev.objz.commandbridge.config.model.BackendsConfig.class));
     }
+
+    @Test
+    void currentSettingsSurviveANormalizedConfig() {
+        // normalize turns an empty keystore path into null
+        var cfg = new dev.objz.commandbridge.config.profile.VelocityConfigProfile()
+                .normalize(dev.objz.commandbridge.config.model.VelocityConfig.defaults()).config();
+
+        var current = SetupSession.current(cfg);
+
+        assertEquals("proxy-1", current.get("serverId"));
+        assertEquals(java.util.Map.of("path", "", "type", "PKCS12"), current.get("keystore"));
+    }
 }

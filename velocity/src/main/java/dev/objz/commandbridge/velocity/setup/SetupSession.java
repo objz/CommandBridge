@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -239,17 +240,6 @@ public final class SetupSession {
     }
 
     private void sendState() throws Exception {
-        VelocityConfig c = configManager.current();
-        Map<String, Object> current = new LinkedHashMap<>();
-        current.put("serverId", c.serverId());
-        current.put("endpointType", c.endpointType().name());
-        current.put("port", c.endpoints().webSocket().bindPort());
-        current.put("bindHost", c.endpoints().webSocket().bindHost());
-        var r = c.endpoints().redis();
-        current.put("redis", Map.of("host", r.host(), "port", r.port(), "username", r.username()));
-        current.put("tlsMode", c.security().tlsMode().name());
-        current.put("keystore", Map.of("path", c.security().keystorePath(), "type", c.security().keystoreType()));
-
         Map<String, ClientSession> connected = new HashMap<>();
         sessionHub.authenticated().forEach(s -> connected.put(s.id(), s));
         List<Map<String, Object>> servers = new ArrayList<>();
@@ -273,7 +263,7 @@ public final class SetupSession {
 
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("type", "state");
-        state.put("current", current);
+        state.put("current", current(configManager.current()));
         state.put("servers", servers);
         state.put("saved", saved());
         state.put("plan", planJson);
@@ -281,6 +271,22 @@ public final class SetupSession {
         state.put("paired", paired);
         state.put("staged", staged);
         channel.send(state);
+    }
+
+    /** The proxy's settings as the page shows them; passwords stay on the proxy. */
+    static Map<String, Object> current(VelocityConfig c) {
+        Map<String, Object> current = new LinkedHashMap<>();
+        current.put("serverId", c.serverId());
+        current.put("endpointType", c.endpointType().name());
+        current.put("port", c.endpoints().webSocket().bindPort());
+        current.put("bindHost", c.endpoints().webSocket().bindHost());
+        var r = c.endpoints().redis();
+        current.put("redis", Map.of("host", r.host(), "port", r.port(), "username", r.username()));
+        current.put("tlsMode", c.security().tlsMode().name());
+        // normalize leaves an unset keystore path null
+        current.put("keystore", Map.of("path", Objects.requireNonNullElse(c.security().keystorePath(), ""),
+                "type", c.security().keystoreType()));
+        return current;
     }
 
     private JsonNode saved() {
@@ -305,8 +311,8 @@ public final class SetupSession {
 
     private static boolean sameConnection(SetupPlan a, SetupPlan b) {
         return a.endpointType() == b.endpointType() && a.port() == b.port() && a.address().equals(b.address())
-                && java.util.Objects.equals(a.redis(), b.redis()) && a.tlsMode() == b.tlsMode()
-                && java.util.Objects.equals(a.keystore(), b.keystore());
+                && Objects.equals(a.redis(), b.redis()) && a.tlsMode() == b.tlsMode()
+                && Objects.equals(a.keystore(), b.keystore());
     }
 
     private static Map<String, String> platform(String platform, String version) {
