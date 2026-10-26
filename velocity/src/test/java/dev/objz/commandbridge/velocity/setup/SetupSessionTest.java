@@ -139,4 +139,17 @@ class SetupSessionTest {
         assertEquals("proxy-1", current.get("serverId"));
         assertEquals(java.util.Map.of("path", "", "type", "PKCS12"), current.get("keystore"));
     }
+
+    @Test
+    void firstUsePinIsTheProxysOwnCertificate(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        // the proxy keeps its TOFU keystore in data/, where TlsResolver creates it
+        dev.objz.commandbridge.security.TLS.ensure(dir.resolve("data"), "localhost");
+        var plan = new SetupPlan("main-proxy", dev.objz.commandbridge.config.model.EndpointType.WEBSOCKET, 8765,
+                "play.example.net", null, dev.objz.commandbridge.config.model.TlsMode.TOFU, null, List.of());
+
+        String pin = SetupSession.pin(plan, dir);
+
+        assertTrue(pin.startsWith("sha256/"), pin);
+        assertEquals(dev.objz.commandbridge.security.TLS.readServerSpkiPin(dir.resolve("data")), pin);
+    }
 }

@@ -157,7 +157,7 @@ public final class SetupSession {
         String pin = "";
         if (problems.isEmpty()) {
             try {
-                pin = pin(next);
+                pin = pin(next, dataDir);
             } catch (IllegalStateException e) {
                 problems.add(e.getMessage());
             }
@@ -299,11 +299,12 @@ public final class SetupSession {
         }
     }
 
-    private String pin(SetupPlan p) {
+    static String pin(SetupPlan p, Path dataDir) {
         if (p.tlsMode() == TlsMode.STRICT)
             return TLS.keystoreSpkiPin(p.keystore().path(), p.keystore().type(), p.keystore().password());
         if (p.tlsMode() == TlsMode.TOFU) {
-            String pin = TLS.readServerSpkiPin(dataDir);
+            // the TOFU keystore lives in data/, see TlsResolver
+            String pin = TLS.readServerSpkiPin(dataDir.resolve("data"));
             return pin == null ? "" : pin;
         }
         return "";
