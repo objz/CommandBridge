@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** What the setup page answered. {@code redis} and {@code keystore} are null when they don't apply. */
 public record SetupPlan(String serverId, EndpointType endpointType, int port, String address, Redis redis,
@@ -71,22 +72,56 @@ public record SetupPlan(String serverId, EndpointType endpointType, int port, St
                 out.add("Enter the address servers use to reach the proxy.");
             else if (address.trim().equals("0.0.0.0"))
                 out.add("Servers can't reach 0.0.0.0. Use the address they connect to.");
+            else if (!isHost(address.trim()))
+                out.add("The proxy address must be an IP address or a host name, without a port.");
         }
         if (endpointType == EndpointType.REDIS
-                && (redis == null || redis.host().isBlank() || redis.port() < 1 || redis.port() > 65535))
+                && (redis == null || !isHost(redis.host().trim()) || redis.port() < 1 || redis.port() > 65535))
             out.add("Enter the Redis host and a port between 1 and 65535.");
         if (tlsMode == null)
             out.add("Pick an encryption mode.");
         if (tlsMode == TlsMode.STRICT && (keystore == null || keystore.path().isBlank()))
             out.add("Strict encryption needs a keystore path.");
+        if (servers.size() > MAX_SERVERS)
+            out.add("A setup can have up to " + MAX_SERVERS + " servers.");
         Set<String> seen = new HashSet<>();
         for (Server s : servers) {
-            if (s.id().isBlank() || s.address().isBlank())
-                out.add("Every server needs a name and an address.");
+            if (!SERVER_NAME.matcher(s.id()).matches())
+                out.add("A server name can use letters, digits, dots, dashes and underscores, up to 32 characters.");
+            else if (!isServerAddress(s.address()))
+                out.add("The address of " + s.id() + " must be host:port, like 10.0.0.13:25565.");
             else if (!seen.add(s.id()))
                 out.add("Two servers are named " + s.id() + ".");
         }
         return out;
+    }
+
+    // the same rules as the page (setup.js), checked again here since the page can't be trusted
+    private static final int MAX_SERVERS = 64;
+    private static final Pattern SERVER_NAME = Pattern.compile("^[A-Za-z0-9._-]{1,32}$");
+    private static final Pattern IPV4 = Pattern.compile("^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$");
+    private static final Pattern HOSTNAME = Pattern.compile(
+            "^(?=.{1,253}$)[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$");
+    private static final Pattern IPV6 = Pattern.compile("^\\[?[0-9a-fA-F:]+\\]?$");
+
+    static boolean isHost(String h) {
+        if (h.equals("0.0.0.0"))
+            return false;
+        if (h.chars().filter(c -> c == ':').count() >= 2)
+            return IPV6.matcher(h).matches();
+        if (h.matches("[\\d.]+"))
+            return IPV4.matcher(h).matches();
+        return HOSTNAME.matcher(h).matches();
+    }
+
+    static boolean isServerAddress(String address) {
+        int colon = address.lastIndexOf(':');
+        if (colon < 1)
+            return false;
+        String port = address.substring(colon + 1);
+        if (!port.matches("\\d{1,5}") || Integer.parseInt(port) < 1 || Integer.parseInt(port) > 65535)
+            return false;
+        return isHost(address.substring(0, colon));
     }
 
     private static <E extends Enum<E>> E parse(Class<E> type, String raw) {

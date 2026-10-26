@@ -136,4 +136,41 @@ class SetupApplierTest {
         assertEquals(List.of(new SetupPlan.Server("creative", "10.0.0.13:25565", true)), p.servers());
         assertEquals(List.of(), p.problems());
     }
+
+    private static SetupPlan withServers(String address, List<SetupPlan.Server> servers) {
+        return new SetupPlan("main-proxy", EndpointType.WEBSOCKET, 8765, address, null, TlsMode.TOFU, null, servers);
+    }
+
+    @Test
+    void serverNamesCanNotBreakVelocityToml() {
+        var plan = withServers("play.example.net", List.of(new SetupPlan.Server("evil\ntry = []", "10.0.0.1:25565", true)));
+        assertTrue(plan.problems().stream().anyMatch(p -> p.contains("letters, digits")), plan.problems().toString());
+    }
+
+    @Test
+    void serverAddressesMustBeHostAndPort() {
+        for (String bad : List.of("10.0.0.1", "10.0.0.1:0", "10.0.0.1:70000", "a b:25565", "\"x\":25565", "999.1.1.1:25565")) {
+            var plan = withServers("play.example.net", List.of(new SetupPlan.Server("creative", bad, true)));
+            assertFalse(plan.problems().isEmpty(), bad);
+        }
+        var ok = withServers("play.example.net", List.of(new SetupPlan.Server("creative", "10.0.0.1:25565", true),
+                new SetupPlan.Server("lobby", "mc.example.net:30066", false)));
+        assertEquals(List.of(), ok.problems());
+    }
+
+    @Test
+    void theProxyAddressMustBeAHost() {
+        for (String bad : List.of("ws://play.example.net", "play.example.net:8765", "play example", "999.1.1.1"))
+            assertFalse(withServers(bad, List.of()).problems().isEmpty(), bad);
+        assertEquals(List.of(), withServers("localhost", List.of()).problems());
+        assertEquals(List.of(), withServers("::1", List.of()).problems());
+    }
+
+    @Test
+    void atMostSixtyFourServers() {
+        List<SetupPlan.Server> many = new java.util.ArrayList<>();
+        for (int i = 0; i < 65; i++)
+            many.add(new SetupPlan.Server("s" + i, "10.0.0.1:" + (20000 + i), false));
+        assertFalse(withServers("play.example.net", many).problems().isEmpty());
+    }
 }

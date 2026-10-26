@@ -6,7 +6,6 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import dev.objz.commandbridge.config.ConfigManager;
-import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.config.model.VelocityConfig;
 import dev.objz.commandbridge.config.profile.VelocityConfigProfile;
@@ -56,12 +55,12 @@ public final class SetupSession {
     private final Supplier<CompletableFuture<String>> openEditor;
     private final Map<String, PairOffer> offers = new LinkedHashMap<>();
     private final Map<String, Map<String, String>> paired = new LinkedHashMap<>();
-    private final Map<String, byte[]> clientConfigs = new HashMap<>();
     private volatile SetupPlan plan;
     private volatile JsonNode planJson;
     private volatile String staged;
-    // set once applied: the page that saw it can still open the editor, a page coming back finds the setup over
-    private volatile boolean done;
+    // applied: confirmed in the console, codes exist; finished: the page left for good, a page coming back finds it over
+    private volatile boolean applied;
+    private volatile boolean finished;
     private volatile RelayChannel channel;
 
     private SetupSession(ProxyServer proxy, ConfigManager<VelocityConfig> configManager, SessionHub sessionHub,
@@ -104,7 +103,10 @@ public final class SetupSession {
         offers.clear();
     }
 
-    /** Writes the plan staged under {@code code}; null when no plan waits for that code. */
+    /**
+     * Writes the plan staged under {@code code}, then hands out the pairing codes; null when no plan waits for that code.
+     * Codes, and with them the shared secret, only exist after someone at the proxy console confirmed.
+     */
     public synchronized Result confirm(String code) throws Exception {
         String s = staged;
         SetupPlan p = plan;
@@ -112,8 +114,16 @@ public final class SetupSession {
                 code.trim().toLowerCase(Locale.ROOT).getBytes(StandardCharsets.US_ASCII))) {
             return null;
         }
+        String pin;
+        try {
+            pin = pin(p, dataDir);
+        } catch (IllegalStateException e) {
+            // which part failed stays in the console; the page only learns that it did
+            Log.warn("The keystore of the setup could not be read: {}", e.getMessage());
+            return new Result(false, List.of("Could not open the keystore with that path and password"));
+        }
         staged = null;
-        done = true;
+        applied = true;
         VelocityConfig current = configManager.current();
         boolean restart = applier.needsRestart(current, p);
         List<String> errors = new ArrayList<>(applier.apply(current, p));
@@ -128,27 +138,40 @@ public final class SetupSession {
         }
         if (!restart)
             configManager.reload();
+        offerCodes(p, pin);
 
-        Map<String, String> configs = new LinkedHashMap<>();
-        for (SetupPlan.Server server : p.servers()) {
-            if (!paired.containsKey(server.id()) && clientConfigs.containsKey(server.id())) {
-                BackendsConfig c = MAPPER.readValue(clientConfigs.get(server.id()), BackendsConfig.class);
-                configs.put(server.id(), ConfigManager.render(BackendsConfig.class, c));
-            }
-        }
-        Map<String, Object> applied = new LinkedHashMap<>();
-        applied.put("type", "applied");
-        applied.put("restartNeeded", restart);
-        applied.put("errors", errors);
-        applied.put("configs", configs);
-        channel.send(applied);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("type", "applied");
+        result.put("restartNeeded", restart);
+        result.put("errors", errors);
+        channel.send(result);
+        sendState();
         return new Result(restart, errors);
+    }
+
+    /** A code for every server that isn't connected with these settings already. */
+    private void offerCodes(SetupPlan p, String pin) throws Exception {
+        offers.values().forEach(PairOffer::close);
+        offers.clear();
+        String secret = new SecretLoader(dataDir).loadOrCreate();
+        for (SetupPlan.Server server : p.servers()) {
+            if (paired.containsKey(server.id()))
+                continue;
+            byte[] config = MAPPER.writeValueAsBytes(applier.clientConfig(p, server, secret, pin));
+            PairOffer offer = new PairOffer(server.id(), p.serverId(), PairCrypto.newCode(), config,
+                    hello -> onPaired(server.id(), hello));
+            offers.put(server.id(), offer);
+            offer.start().exceptionally(e -> {
+                Log.warn("Could not offer a pairing code for {}: {}", server.id(), e.getMessage());
+                return null;
+            });
+        }
     }
 
     private synchronized void handle(JsonNode msg) throws Exception {
         switch (msg.path("type").asText("")) {
             case "hello" -> {
-                if (done) {
+                if (finished) {
                     close();
                     return;
                 }
@@ -157,14 +180,22 @@ public final class SetupSession {
             }
             case "plan" -> plan(msg.path("plan"));
             case "stage" -> stage();
-            case "editor" -> openEditor.get().whenComplete((url, error) -> {
+            case "finish" -> finished = applied;
+            case "editor" -> {
+                if (!applied) {
+                    channel.send(Map.of("type", "editor-error", "error", "apply the setup first"));
+                    return;
+                }
+                finished = true;
+                openEditor.get().whenComplete((url, error) -> {
                 try {
                     channel.send(error == null ? Map.of("type", "editor", "url", url)
                             : Map.of("type", "editor-error", "error", String.valueOf(error.getMessage())));
                 } catch (Exception e) {
                     Log.warn("Setup session could not send the editor link: {}", e.getMessage());
                 }
-            });
+                });
+            }
             case "unstage" -> {
                 staged = null;
                 sendState();
@@ -174,60 +205,30 @@ public final class SetupSession {
     }
 
     private void plan(JsonNode json) throws Exception {
+        if (applied) {
+            channel.send(Map.of("type", "plan-error", "problems", List.of("This setup is applied already. Run /cb setup for a new one.")));
+            return;
+        }
         VelocityConfig current = configManager.current();
         SetupPlan next = SetupPlan.fromJson(json).withCurrentPasswords(current);
-        List<String> problems = new ArrayList<>(next.problems());
-        String pin = "";
-        if (problems.isEmpty()) {
-            try {
-                pin = pin(next, dataDir);
-            } catch (IllegalStateException e) {
-                problems.add(e.getMessage());
-            }
-        }
+        List<String> problems = next.problems();
         if (!problems.isEmpty()) {
             channel.send(Map.of("type", "plan-error", "problems", problems));
             return;
         }
-
-        SetupPlan before = plan;
-        boolean sameConnection = before != null && sameConnection(before, next);
         plan = next;
         planJson = json;
         staged = null;
-        String secret = new SecretLoader(dataDir).loadOrCreate();
-        boolean restart = applier.needsRestart(current, next);
-        Map<String, ClientSession> connected = new HashMap<>();
-        sessionHub.authenticated().forEach(s -> connected.put(s.id(), s));
-
-        List<String> wanted = next.servers().stream().map(SetupPlan.Server::id).toList();
-        offers.keySet().removeIf(id -> {
-            boolean drop = !wanted.contains(id) || !sameConnection;
-            if (drop)
-                offers.get(id).close();
-            return drop;
-        });
-        if (!sameConnection)
-            paired.clear();
-        paired.keySet().retainAll(wanted);
-
-        for (SetupPlan.Server server : next.servers()) {
-            BackendsConfig config = applier.clientConfig(next, server, secret, pin);
-            clientConfigs.put(server.id(), MAPPER.writeValueAsBytes(config));
-            ClientSession live = connected.get(server.id());
-            if (!restart && live != null) {
-                paired.put(server.id(), platform(live.platform().name(), null));
-                continue;
+        // connected servers keep working if the connection stays the same; the others pair after the confirm
+        paired.clear();
+        if (!applier.needsRestart(current, next)) {
+            Map<String, ClientSession> connected = new HashMap<>();
+            sessionHub.authenticated().forEach(c -> connected.put(c.id(), c));
+            for (SetupPlan.Server server : next.servers()) {
+                ClientSession live = connected.get(server.id());
+                if (live != null)
+                    paired.put(server.id(), platform(live.platform().name(), null));
             }
-            if (paired.containsKey(server.id()) || offers.containsKey(server.id()))
-                continue;
-            PairOffer offer = new PairOffer(server.id(), next.serverId(), PairCrypto.newCode(),
-                    clientConfigs.get(server.id()), hello -> onPaired(server.id(), hello));
-            offers.put(server.id(), offer);
-            offer.start().exceptionally(e -> {
-                Log.warn("Could not offer a pairing code for {}: {}", server.id(), e.getMessage());
-                return null;
-            });
         }
         sendState();
     }
@@ -250,7 +251,7 @@ public final class SetupSession {
     }
 
     private void stage() throws Exception {
-        if (plan == null) {
+        if (plan == null || applied) {
             channel.send(Map.of("type", "plan-error", "problems", List.of("Finish the questions first.")));
             return;
         }
@@ -258,7 +259,24 @@ public final class SetupSession {
         for (int i = 0; i < 6; i++)
             code.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
         staged = code.toString();
+        // what the confirm would apply, so the console doesn't confirm blind
+        Log.info("Planned setup: {}", summary(plan));
         channel.send(Map.of("type", "staged", "code", staged));
+    }
+
+    static String summary(SetupPlan p) {
+        String connection = p.endpointType() == dev.objz.commandbridge.config.model.EndpointType.REDIS
+                ? "Redis at " + p.redis().host() + ":" + p.redis().port()
+                : "WebSocket at " + p.address() + ":" + p.port();
+        String encryption = switch (p.tlsMode()) {
+            case TOFU -> "encrypted on first use";
+            case PLAIN -> "not encrypted";
+            case STRICT -> "strict encryption with " + p.keystore().path();
+        };
+        String servers = p.servers().stream()
+                .map(s -> s.addToVelocity() ? s.id() + " (new, " + s.address() + ")" : s.id())
+                .collect(java.util.stream.Collectors.joining(", "));
+        return "proxy " + p.serverId() + ", " + connection + ", " + encryption + ", servers " + (servers.isEmpty() ? "none" : servers);
     }
 
     private void sendState() throws Exception {
@@ -292,6 +310,7 @@ public final class SetupSession {
         state.put("codes", codes);
         state.put("paired", paired);
         state.put("staged", staged);
+        state.put("applied", applied);
         channel.send(state);
     }
 
@@ -336,12 +355,6 @@ public final class SetupSession {
             return pin == null ? "" : pin;
         }
         return "";
-    }
-
-    private static boolean sameConnection(SetupPlan a, SetupPlan b) {
-        return a.endpointType() == b.endpointType() && a.port() == b.port() && a.address().equals(b.address())
-                && Objects.equals(a.redis(), b.redis()) && a.tlsMode() == b.tlsMode()
-                && Objects.equals(a.keystore(), b.keystore());
     }
 
     private static Map<String, String> platform(String platform, String version) {

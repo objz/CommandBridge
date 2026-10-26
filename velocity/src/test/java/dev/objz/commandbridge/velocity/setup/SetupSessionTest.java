@@ -173,4 +173,14 @@ class SetupSessionTest {
 
         assertTrue(SetupSession.isConfigured(cfg, dir));
     }
+
+    @Test
+    void theConsoleSummaryNamesWhatChanges() {
+        var plan = new SetupPlan("main", dev.objz.commandbridge.config.model.EndpointType.WEBSOCKET, 8765, "play.example.net", null,
+                dev.objz.commandbridge.config.model.TlsMode.TOFU, null,
+                List.of(new SetupPlan.Server("lobby", "127.0.0.1:30066", false), new SetupPlan.Server("creative", "10.0.0.13:25565", true)));
+
+        assertEquals("proxy main, WebSocket at play.example.net:8765, encrypted on first use, servers lobby, creative (new, 10.0.0.13:25565)",
+                SetupSession.summary(plan));
+    }
 }
