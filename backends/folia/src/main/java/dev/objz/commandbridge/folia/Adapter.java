@@ -14,6 +14,7 @@ import dev.objz.commandbridge.backends.platform.ScheduleHandle;
 import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
 import dev.objz.commandbridge.backends.platform.cmd.PairCommand;
+import dev.objz.commandbridge.backends.setup.PairClient;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.EndpointType;
@@ -56,6 +57,13 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
         this.cfg = cfgMgr.current();
         if (!ok || cfg == null) {
             configOk = false;
+            Log.info(PairClient.UNPAIRED_HINT);
+            return;
+        }
+        // the shipped config can't authenticate anywhere, so don't keep trying
+        if (PairClient.isUnpaired(cfg)) {
+            configOk = false;
+            Log.info(PairClient.UNPAIRED_HINT);
             return;
         }
 

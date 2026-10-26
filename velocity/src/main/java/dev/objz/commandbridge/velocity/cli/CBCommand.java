@@ -43,6 +43,7 @@ import java.util.List;
 public final class CBCommand {
 
     private final ProxyServer proxy;
+    private SetupCommand setup;
     private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
     private final RegistrationManager registrationManager;
@@ -80,6 +81,11 @@ public final class CBCommand {
         this.playerTracker = playerTracker;
     }
 
+    /** Set by {@link #register()}. */
+    public SetupCommand setup() {
+        return setup;
+    }
+
     public void register() {
         var help = new HelpCommand();
         var info = new InfoCommand();
@@ -94,7 +100,7 @@ public final class CBCommand {
         var client = new ClientCommand(sessionHub, outNode, playerTracker, userCache, config);
         var configCmd = new ConfigCommand(configManager);
         var editor = new EditorCommand(scriptManager, reload, sessionHub, config.serverId(), dataDir);
-        var setup = new SetupCommand(proxy, configManager, sessionHub, dataDir);
+        setup = new SetupCommand(proxy, configManager, sessionHub, dataDir);
 
         ArgumentSuggestions<CommandSource> clientIds = ArgumentSuggestions
                 .<CommandSource>strings(info0 -> namesOf(sessionHub));

@@ -152,4 +152,25 @@ class SetupSessionTest {
         assertTrue(pin.startsWith("sha256/"), pin);
         assertEquals(dev.objz.commandbridge.security.TLS.readServerSpkiPin(dir.resolve("data")), pin);
     }
+
+    @Test
+    void aDefaultProxyWithoutSetupIsNotConfigured(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        var manager = new dev.objz.commandbridge.config.ConfigManager<>(dir, dev.objz.commandbridge.config.model.VelocityConfig.class);
+        manager.load();
+
+        assertTrue(!SetupSession.isConfigured(manager.current(), dir));
+
+        java.nio.file.Files.createDirectories(dir.resolve("data"));
+        java.nio.file.Files.writeString(dir.resolve("data").resolve("setup.json"), "{}");
+        assertTrue(SetupSession.isConfigured(manager.current(), dir));
+    }
+
+    @Test
+    void aChangedConfigCountsAsConfigured(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        var d = dev.objz.commandbridge.config.model.VelocityConfig.defaults();
+        var cfg = new dev.objz.commandbridge.config.model.VelocityConfig(d.actAsClient(), "main-proxy", d.endpointType(),
+                d.endpoints(), d.security(), d.timeouts(), d.tasks(), d.debug());
+
+        assertTrue(SetupSession.isConfigured(cfg, dir));
+    }
 }

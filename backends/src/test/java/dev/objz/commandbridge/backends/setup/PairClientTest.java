@@ -233,4 +233,13 @@ class PairClientTest {
             return HttpClient.Version.HTTP_1_1;
         }
     }
+
+    @Test
+    void aFreshConfigIsUnpaired(@TempDir Path dir) {
+        var manager = new ConfigManager<>(dir, BackendsConfig.class);
+        manager.load();
+
+        assertTrue(PairClient.isUnpaired(manager.current()));
+        assertFalse(PairClient.isUnpaired(paired()));
+    }
 }

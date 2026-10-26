@@ -19,7 +19,9 @@ public final class SetupCommand extends AbstractCliCommand {
     private final ConfigManager<VelocityConfig> configManager;
     private final SessionHub sessionHub;
     private final Path dataDir;
+    private static final long CONFIRM_WITHIN_MS = 60_000;
     private volatile SetupSession active;
+    private volatile long warnedAt;
 
     public SetupCommand(ProxyServer proxy, ConfigManager<VelocityConfig> configManager, SessionHub sessionHub,
             Path dataDir) {
@@ -29,7 +31,29 @@ public final class SetupCommand extends AbstractCliCommand {
         this.dataDir = dataDir;
     }
 
+    /** On a proxy that's set up already, the first /cb setup only warns; a second one within a minute opens it. */
     public void open(CommandSource sender) {
+        long now = System.currentTimeMillis();
+        if (SetupSession.isConfigured(configManager.current(), dataDir) && now - warnedAt > CONFIRM_WITHIN_MS) {
+            warnedAt = now;
+            Report.of("Setup")
+                    .warn("CommandBridge is already set up")
+                    .muted("Running the setup again can replace config.yml and pair your servers again.")
+                    .muted("Run /cb setup again within a minute to continue.")
+                    .send(sender);
+            return;
+        }
+        warnedAt = 0;
+        start(sender, "Setup opened", "Anyone with this link can plan changes. Nothing is applied until /cb setup confirm");
+    }
+
+    /** A fresh install: open the setup without being asked and print the link in the console. */
+    public void openOnFirstStart() {
+        start(proxy.getConsoleCommandSource(), "CommandBridge isn't set up yet. Open this link to set up your network:",
+                "The link stops working after 15 minutes unopened. Run /cb setup for a new one.");
+    }
+
+    private void start(CommandSource sender, String message, String note) {
         SetupSession current = active;
         if (current != null) {
             current.closeOffers();
@@ -51,9 +75,9 @@ public final class SetupCommand extends AbstractCliCommand {
             }
             active = session;
             Report.of("Setup")
-                    .success("Setup opened")
+                    .success(message)
                     .link("Setup", session.url(), "Click to open")
-                    .muted("Anyone with this link can plan changes. Nothing is applied until /cb setup confirm")
+                    .muted(note)
                     .send(sender);
         });
     }

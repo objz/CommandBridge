@@ -9,6 +9,7 @@ import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.TlsMode;
 import dev.objz.commandbridge.config.model.VelocityConfig;
+import dev.objz.commandbridge.config.profile.VelocityConfigProfile;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.security.PairCrypto;
 import dev.objz.commandbridge.security.SecretLoader;
@@ -139,7 +140,10 @@ public final class SetupSession {
 
     private synchronized void handle(JsonNode msg) throws Exception {
         switch (msg.path("type").asText("")) {
-            case "hello" -> sendState();
+            case "hello" -> {
+                Log.info("The setup page is open");
+                sendState();
+            }
             case "plan" -> plan(msg.path("plan"));
             case "stage" -> stage();
             case "unstage" -> {
@@ -271,6 +275,12 @@ public final class SetupSession {
         state.put("paired", paired);
         state.put("staged", staged);
         channel.send(state);
+    }
+
+    /** A proxy still on its default config that never ran the setup is not set up yet. */
+    public static boolean isConfigured(VelocityConfig cfg, Path dataDir) {
+        return Files.exists(dataDir.resolve("data").resolve("setup.json"))
+                || !cfg.equals(new VelocityConfigProfile().normalize(VelocityConfig.defaults()).config());
     }
 
     /** The proxy's settings as the page shows them; passwords stay on the proxy. */

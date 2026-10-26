@@ -14,7 +14,6 @@ import dev.objz.commandbridge.api.CommandBridgeProvider;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.EndpointType;
 import dev.objz.commandbridge.config.model.VelocityConfig;
-import dev.objz.commandbridge.config.profile.VelocityConfigProfile;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.OutNode;
@@ -30,6 +29,7 @@ import dev.objz.commandbridge.util.BuildMeta;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.util.ModrinthAPI;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
+import dev.objz.commandbridge.velocity.setup.SetupSession;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.api.VelocityCommandBridgeImpl;
 import dev.objz.commandbridge.velocity.api.VelocityPluginMessageHandler;
@@ -244,10 +244,9 @@ public final class Main {
         });
         endpointServer.start();
 
-        // an untouched default config and no setup yet: point new users at the setup
-        if (cfg.equals(new VelocityConfigProfile().normalize(VelocityConfig.defaults()).config())
-                && !Files.exists(dataDir.resolve("data").resolve("setup.json"))) {
-            Log.info("Run /cb setup to set up your network.");
+        // a fresh install: open the setup right away so the console shows its link
+        if (!SetupSession.isConfigured(cfg, dataDir)) {
+            command.setup().openOnFirstStart();
         }
 
         checkForUpdate();
