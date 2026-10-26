@@ -201,7 +201,7 @@ export class EditorRelay implements DurableObject {
     // pages are accepted and then closed with a reason instead of refused, so they can say why;
     // browsers also slow down new connections after refused ones
     if (role === "editor" && this.state.getWebSockets("proxy").length === 0) {
-      return closedWith(4404, "This link has ended. Run the command on your proxy again for a new one.");
+      return closedWith(4404, "No proxy is waiting on this link anymore. Run the command on your proxy again for a new one.");
     }
     if (role === "proxy" && this.state.getWebSockets("proxy").length > 0) {
       return json(409, { error: "A proxy is already connected to this session" });
