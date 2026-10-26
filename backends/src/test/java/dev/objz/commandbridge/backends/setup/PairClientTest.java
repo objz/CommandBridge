@@ -141,10 +141,14 @@ class PairClientTest {
         FakeProxy proxy = new FakeProxy(code);
         var client = new PairClient(dir, "ws://relay.test/", proxy::connect);
 
-        PairClient.Paired result = client.pair(code.toLowerCase().replace("-", " "), "PAPER", "1.21.4")
+        PairClient.Pending pending = client.pair(code.toLowerCase().replace("-", " "), "PAPER", "1.21.4")
                 .get(5, TimeUnit.SECONDS);
 
-        assertEquals("main-proxy", result.proxyId());
+        assertEquals("main-proxy", pending.proxyId());
+        assertEquals("play.example.net:8765", pending.where());
+        assertEquals("client-id: old\n", Files.readString(dir.resolve("config.yml")), "nothing is written before the confirm");
+        pending.confirm().get(5, TimeUnit.SECONDS);
+
         assertEquals(URI.create("ws://relay.test/api/pair/" + PairCrypto.channelId(code) + "/ws?role=server"), proxy.uri);
         assertEquals("hello", proxy.received.get(0).path("type").asText());
         assertEquals("PAPER", proxy.received.get(0).path("platform").asText());
@@ -189,7 +193,8 @@ class PairClientTest {
         try {
             String code = PairCrypto.newCode();
             FakeProxy proxy = new FakeProxy(code);
-            new PairClient(dir, "ws://relay.test/", proxy::connect).pair(code, "PAPER", "1.21.4").get(5, TimeUnit.SECONDS);
+            new PairClient(dir, "ws://relay.test/", proxy::connect).pair(code, "PAPER", "1.21.4").get(5, TimeUnit.SECONDS)
+                    .confirm().get(5, TimeUnit.SECONDS);
         } finally {
             Logger.getLogger("test").removeHandler(capture);
         }
@@ -241,5 +246,20 @@ class PairClientTest {
 
         assertTrue(PairClient.isUnpaired(manager.current()));
         assertFalse(PairClient.isUnpaired(paired()));
+    }
+
+    @Test
+    void cancellingWritesNothingAndTellsTheProxy(@TempDir Path dir) throws Exception {
+        Files.writeString(dir.resolve("config.yml"), "client-id: old\n");
+        String code = PairCrypto.newCode();
+        FakeProxy proxy = new FakeProxy(code);
+        PairClient.Pending pending = new PairClient(dir, "ws://relay.test/", proxy::connect).pair(code, "PAPER", "1.21.4")
+                .get(5, TimeUnit.SECONDS);
+
+        pending.cancel();
+
+        assertEquals("client-id: old\n", Files.readString(dir.resolve("config.yml")));
+        assertFalse(Files.exists(dir.resolve("config.yml.bak")));
+        assertEquals("error", proxy.received.get(proxy.received.size() - 1).path("type").asText());
     }
 }

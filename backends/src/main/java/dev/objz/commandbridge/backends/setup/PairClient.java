@@ -29,6 +29,7 @@ public final class PairClient {
     public static final String RELAY_URL = System.getProperty("commandbridge.relay.url", "wss://cb.objz.dev/");
     static final String NO_SETUP = "No setup is waiting for this code. Check it, or run /cb setup again on the proxy";
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final int MAX_FRAME = 64 * 1024;
 
     public static final String UNPAIRED_HINT =
             "CommandBridge isn't paired with a proxy yet. Run /cb setup on the proxy, then /cbc pair <code> here";
@@ -42,7 +43,70 @@ public final class PairClient {
         CompletableFuture<WebSocket> connect(URI uri, WebSocket.Listener listener);
     }
 
-    public record Paired(String proxyId, BackendsConfig config) {
+    /**
+     * A config the proxy sent and nothing written yet. Whoever runs /cbc pair sees where it would connect and
+     * confirms or cancels, so a code from someone else's setup page can't quietly move the server to their proxy.
+     */
+    public final class Pending {
+        private final String proxyId;
+        private final BackendsConfig config;
+        private final WebSocket ws;
+        private final java.util.concurrent.atomic.AtomicBoolean settled = new java.util.concurrent.atomic.AtomicBoolean();
+
+        Pending(String proxyId, BackendsConfig config, WebSocket ws) {
+            this.proxyId = proxyId;
+            this.config = config;
+            this.ws = ws;
+        }
+
+        public String proxyId() {
+            return proxyId;
+        }
+
+        public BackendsConfig config() {
+            return config;
+        }
+
+        /** Where the server would connect to. */
+        public String where() {
+            if (config.endpointType() == dev.objz.commandbridge.config.model.EndpointType.REDIS)
+                return "Redis at " + config.endpoints().redis().host() + ":" + config.endpoints().redis().port();
+            return config.endpoints().websocket().host() + ":" + config.endpoints().websocket().port();
+        }
+
+        /** Saves the config (the old one kept as config.yml.bak) and tells the proxy. */
+        public CompletableFuture<BackendsConfig> confirm() {
+            if (!settled.compareAndSet(false, true))
+                return CompletableFuture.failedFuture(new IllegalStateException("This pairing is over"));
+            try {
+                Path file = dataDir.resolve("config.yml");
+                if (Files.exists(file)) {
+                    Log.warn("Replacing config.yml, the old one is kept as config.yml.bak");
+                    Files.copy(file, dataDir.resolve("config.yml.bak"), StandardCopyOption.REPLACE_EXISTING);
+                }
+                if (!new ConfigManager<>(dataDir, BackendsConfig.class).save(config))
+                    throw new IllegalStateException("Could not write config.yml");
+                ws.sendText(MAPPER.writeValueAsString(Map.of("type", "done")), true);
+                ws.sendClose(WebSocket.NORMAL_CLOSURE, "paired");
+                return CompletableFuture.completedFuture(config);
+            } catch (Exception e) {
+                cancelWith(String.valueOf(e.getMessage()));
+                return CompletableFuture.failedFuture(new IllegalStateException("Pairing failed: " + e.getMessage(), e));
+            }
+        }
+
+        public void cancel() {
+            if (settled.compareAndSet(false, true))
+                cancelWith("cancelled on the server");
+        }
+
+        private void cancelWith(String reason) {
+            try {
+                ws.sendText(MAPPER.writeValueAsString(Map.of("type", "error", "message", reason)), true);
+            } catch (Exception ignored) {
+            }
+            ws.sendClose(WebSocket.NORMAL_CLOSURE, "pairing cancelled");
+        }
     }
 
     private final Path dataDir;
@@ -62,7 +126,7 @@ public final class PairClient {
                 .buildAsync(uri, listener));
     }
 
-    public CompletableFuture<Paired> pair(String typedCode, String platform, String version) {
+    public CompletableFuture<Pending> pair(String typedCode, String platform, String version) {
         String code;
         try {
             code = PairCrypto.normalize(typedCode);
@@ -86,7 +150,7 @@ public final class PairClient {
     }
 
     private final class Session implements WebSocket.Listener {
-        final CompletableFuture<Paired> result = new CompletableFuture<>();
+        final CompletableFuture<Pending> result = new CompletableFuture<>();
         private final String code;
         private final String platform;
         private final String version;
@@ -107,6 +171,11 @@ public final class PairClient {
         @Override
         public CompletionStage<?> onText(WebSocket ws, CharSequence data, boolean last) {
             partial.append(data);
+            if (partial.length() > MAX_FRAME) {
+                result.completeExceptionally(new IllegalStateException("The proxy sent more than a config"));
+                ws.abort();
+                return null;
+            }
             if (last) {
                 String frame = partial.toString();
                 partial.setLength(0);
@@ -125,16 +194,7 @@ public final class PairClient {
                     return;
                 BackendsConfig config = MAPPER.readValue(PairCrypto.open(code, msg.path("sealed").asText("")),
                         BackendsConfig.class);
-                Path file = dataDir.resolve("config.yml");
-                if (Files.exists(file)) {
-                    Log.warn("Replacing config.yml, the old one is kept as config.yml.bak");
-                    Files.copy(file, dataDir.resolve("config.yml.bak"), StandardCopyOption.REPLACE_EXISTING);
-                }
-                if (!new ConfigManager<>(dataDir, BackendsConfig.class).save(config))
-                    throw new IllegalStateException("Could not write config.yml");
-                send(ws, Map.of("type", "done"));
-                ws.sendClose(WebSocket.NORMAL_CLOSURE, "paired");
-                result.complete(new Paired(msg.path("proxy").asText(""), config));
+                result.complete(new Pending(msg.path("proxy").asText(""), config, ws));
             } catch (Exception e) {
                 send(ws, Map.of("type", "error", "message", String.valueOf(e.getMessage())));
                 ws.sendClose(WebSocket.NORMAL_CLOSURE, "pairing failed");
