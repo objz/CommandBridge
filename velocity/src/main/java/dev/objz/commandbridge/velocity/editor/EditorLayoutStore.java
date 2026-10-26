@@ -12,7 +12,7 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * A JSON object the web editor keeps on the proxy: node positions and groups, or the draft of unsaved
- * changes. Kept out of the scripts so they run unchanged; the proxy only stores it, it never acts on it.
+ * changes. Kept out of the scripts so they run unchanged; the proxy stores it and never acts on it.
  */
 public final class EditorLayoutStore {
 

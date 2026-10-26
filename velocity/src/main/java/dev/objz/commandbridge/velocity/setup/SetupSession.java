@@ -58,7 +58,7 @@ public final class SetupSession {
     private volatile SetupPlan plan;
     private volatile JsonNode planJson;
     private volatile String staged;
-    // applied: confirmed in the console, codes exist; finished: the page left for good, a page coming back finds it over
+    // applied: confirmed in the console and the codes exist; finished: the page left for good, so a page coming back finds the session over
     private volatile boolean applied;
     private volatile boolean finished;
     private volatile RelayChannel channel;

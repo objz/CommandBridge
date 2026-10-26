@@ -16,7 +16,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Tests for the editor layout file. */
 final class EditorLayoutStoreTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

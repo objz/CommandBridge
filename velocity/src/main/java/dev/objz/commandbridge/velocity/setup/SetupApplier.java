@@ -14,8 +14,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Turns a {@link SetupPlan} into the proxy's config, each server's config, and the files written on confirm. */
-/** Expects a plan already passed through {@link SetupPlan#withCurrentPasswords}. */
+/**
+ * Turns a {@link SetupPlan} into the proxy's config, each server's config, and the files written on confirm.
+ * Expects a plan already passed through {@link SetupPlan#withCurrentPasswords}.
+ */
 public final class SetupApplier {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

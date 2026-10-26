@@ -19,7 +19,7 @@ final class TimeParser {
         String digits = hasUnit ? input.substring(0, input.length() - 1) : input;
         int factor = !hasUnit || last == 't' ? 1 : last == 's' ? 20 : 24000;
         try {
-            // a time too large to count in ticks is an error, not a negative number
+            // multiplyExact reports overflow, which would otherwise wrap to a negative tick count
             return Math.multiplyExact(Integer.parseInt(digits), factor);
         } catch (NumberFormatException | ArithmeticException e) {
             throw new IllegalArgumentException("Time value is too large: " + input);

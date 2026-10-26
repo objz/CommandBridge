@@ -166,7 +166,6 @@ public final class CBCommand {
                 .withSubcommand(new CommandAPICommand("migrate")
                         .executes((CommandExecutor) (sender, args) -> migrate.execute(sender)))
 
-                // /cb editor [close | list | confirm <code>]
                 .withSubcommand(new CommandAPICommand("editor")
                         .executes((CommandExecutor) (sender, args) -> editor.open(sender))
                         .withSubcommand(new CommandAPICommand("close")
@@ -177,7 +176,6 @@ public final class CBCommand {
                                 .withArguments(new StringArgument("code"))
                                 .executes((CommandExecutor) (sender, args) -> editor.confirm(sender, (String) args.get("code")))))
 
-                // /cb setup [confirm <code>]
                 .withSubcommand(new CommandAPICommand("setup")
                         .executes((CommandExecutor) (sender, args) -> setup.open(sender))
                         .withSubcommand(new CommandAPICommand("confirm")

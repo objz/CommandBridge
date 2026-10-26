@@ -62,7 +62,7 @@ public final class ExecuteCommandHandler extends InboundHandler {
         try {
             running = executor.execute(exec, finalPermissions);
         } catch (Exception ex) {
-            // a platform executor that throws right away instead of failing its future: the proxy still gets an answer
+            // if the platform executor throws instead of failing its future, the proxy still gets an answer
             running = CompletableFuture.failedFuture(ex);
         }
         running

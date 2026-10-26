@@ -198,8 +198,8 @@ export class EditorRelay implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     const role = new URL(request.url).searchParams.get("role") as "proxy" | "editor";
 
-    // pages are accepted and then closed with a reason instead of refused, so they can say why;
-    // browsers also slow down new connections after refused ones
+    // the relay accepts a page and then closes it with a reason, so the page can show why;
+    // browsers also throttle new connections after refused ones
     if (role === "editor" && this.state.getWebSockets("proxy").length === 0) {
       return closedWith(4404, "No proxy is waiting on this link anymore. Run the command on your proxy again for a new one.");
     }

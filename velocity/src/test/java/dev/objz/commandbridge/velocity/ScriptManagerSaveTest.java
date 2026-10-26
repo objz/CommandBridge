@@ -14,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Tests for ScriptManager save and delete used by the web editor. */
 final class ScriptManagerSaveTest {
 
     @TempDir

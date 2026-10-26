@@ -78,7 +78,7 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
     public void start(PlatformEnv env) throws Exception {
         if (this.dataDir == null)
             this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
-        // /cbc pair has to exist on a fresh or broken config, that's when it's needed
+        // register /cbc pair even when the config is fresh or broken, since that's when it's needed
         ClientCommands.register(() -> client,
                 PairCommand.subcommand(this, dataDir, Bukkit.getBukkitVersion().split("-")[0]));
         if (!configOk) {

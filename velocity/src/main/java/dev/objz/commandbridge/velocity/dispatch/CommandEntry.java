@@ -269,8 +269,8 @@ public final class CommandEntry {
             }
             return ctx.withPlayerUuid(resolved);
         }).exceptionally(e -> {
-            // a failed lookup (e.g. Mojang unreachable) is treated like a player that wasn't found,
-            // instead of silently stopping this command and every one after it
+            // a failed lookup (e.g. Mojang unreachable) goes on like a player that wasn't found;
+            // a failed future would stop this command and every one after it
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             Log.warn("Could not look up the player for player-arg '{}': {}", playerArgName, cause.getMessage());
             return ctx;

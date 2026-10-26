@@ -57,7 +57,7 @@ public final class EditorCommand extends AbstractCliCommand {
                         Report.of("Editor").error("Could not open editor: " + rootMessage(error)).send(sender);
                         return;
                     }
-                    // two opens can overlap; the one that finishes last wins and the other is closed, not orphaned
+                    // two opens can overlap: the one that finishes last wins and the other gets closed
                     EditorSession previous = active;
                     active = session;
                     if (previous != null && previous != session && previous.isOpen()) {

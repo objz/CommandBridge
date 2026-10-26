@@ -158,7 +158,7 @@ public final class VelocityConfigProfile implements ConfigProfile<VelocityConfig
             }
         }
 
-        // unset stays "" rather than null, the same as the defaults
+        // unset stays "", matching the defaults
         VelocityConfig.Security secOut = new VelocityConfig.Security(tlsMode, keystorePath == null ? "" : keystorePath,
                 keystorePassword == null ? "" : keystorePassword, keystoreType);
 

@@ -128,7 +128,7 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         };
     }
 
-    // an optional argument that wasn't given stays empty (null), it doesn't turn into 0 in the placeholder
+    // a missing optional argument stays null, which leaves its placeholder empty
     private Integer toInt(Object raw) {
         if (raw instanceof Number number) {
             return number.intValue();
