@@ -57,7 +57,12 @@ public final class EditorCommand extends AbstractCliCommand {
                         Report.of("Editor").error("Could not open editor: " + rootMessage(error)).send(sender);
                         return;
                     }
+                    // two opens can overlap; the one that finishes last wins and the other is closed, not orphaned
+                    EditorSession previous = active;
                     active = session;
+                    if (previous != null && previous != session && previous.isOpen()) {
+                        previous.close();
+                    }
                     sendLink(sender, session, "Editor session opened");
                 })
                 .thenApply(EditorSession::url);
@@ -91,6 +96,14 @@ public final class EditorCommand extends AbstractCliCommand {
             return;
         }
         Report.of("Editor").bullet(current.describe()).send(sender);
+    }
+
+    /** Closes the open session without a message, e.g. when CommandBridge restarts. */
+    public void closeSession() {
+        EditorSession current = active;
+        if (current != null && current.isOpen()) {
+            current.close();
+        }
     }
 
     public void close(CommandSource sender) {

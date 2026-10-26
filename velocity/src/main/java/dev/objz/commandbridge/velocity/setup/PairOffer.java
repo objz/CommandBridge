@@ -28,6 +28,7 @@ public final class PairOffer implements WebSocket.Listener {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final HttpClient HTTP = HttpClient.newHttpClient();
     private static final long VALID_MINUTES = 30;
+    private static final int MAX_FRAME = 64 * 1024;
     private static final ScheduledExecutorService EXPIRY = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "CommandBridge-pair-expiry");
         t.setDaemon(true);
@@ -90,6 +91,13 @@ public final class PairOffer implements WebSocket.Listener {
     public CompletionStage<?> onText(WebSocket socket, CharSequence data, boolean last) {
         ws = socket;
         partial.append(data);
+        if (partial.length() > MAX_FRAME) {
+            // a hello is a few bytes; anything this big is not a server pairing
+            Log.warn("Pairing {} got an oversized message and stopped", serverId);
+            partial.setLength(0);
+            close();
+            return null;
+        }
         if (last) {
             String frame = partial.toString();
             partial.setLength(0);

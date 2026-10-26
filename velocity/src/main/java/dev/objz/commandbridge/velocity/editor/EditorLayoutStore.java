@@ -63,7 +63,8 @@ public final class EditorLayoutStore {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return null;
         } catch (IOException e) {
-            return "Failed to write layout: " + e.getMessage();
+            Log.error(e, "Failed to write the editor layout '{}': {}", file, e.getMessage());
+            return "Could not save the layout, the proxy console has the details";
         }
     }
 }

@@ -80,7 +80,7 @@ public final class EditorSession {
      * Saves the changes the editor staged under {@code code}, then reloads once.
      * Returns what went wrong; empty when everything was saved.
      */
-    public List<String> confirm(String code) throws Exception {
+    public synchronized List<String> confirm(String code) throws Exception {
         Pending p = pending;
         if (p == null || code == null || !MessageDigest.isEqual(p.code().getBytes(StandardCharsets.US_ASCII),
                 code.trim().toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII))) {
@@ -121,7 +121,7 @@ public final class EditorSession {
         channel.close();
     }
 
-    private void handle(JsonNode msg) throws Exception {
+    private synchronized void handle(JsonNode msg) throws Exception {
         switch (msg.path("type").asText("")) {
             case "hello" -> sendState();
             case "stage" -> stage(msg);

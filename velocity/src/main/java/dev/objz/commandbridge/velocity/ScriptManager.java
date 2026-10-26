@@ -218,7 +218,8 @@ public final class ScriptManager {
                     java.nio.file.StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             Log.error(e, "Failed to write script file '{}': {}", file, e.getMessage());
-            return List.of("Failed to write file: " + e.getMessage());
+            // the page only learns that it failed; the path and the cause stay in the console
+            return List.of("Could not write the file, the proxy console has the details");
         }
         return List.of();
     }
@@ -234,7 +235,8 @@ public final class ScriptManager {
         try (var in = new java.io.ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8))) {
             res = ScriptLoader.loadResult(Script.class, in, platformFeatures);
         } catch (Exception e) {
-            return List.of("Unexpected error: " + e.getMessage());
+            Log.error(e, "Could not check script '{}': {}", fileName, e.getMessage());
+            return List.of("Could not check the script, the proxy console has the details");
         }
         if (!res.ok() || res.value == null) {
             return res.problems.problems().stream().map(Object::toString).toList();

@@ -135,12 +135,21 @@ public final class Main {
         // not a proxy task: stop() cancels every task of this plugin
         CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS).execute(() -> {
             Log.info("Restarting CommandBridge with the new settings");
-            stop();
-            start(false);
+            try {
+                stop();
+                start(false);
+            } catch (Exception e) {
+                Log.error(e, "CommandBridge could not restart: {}", e.getMessage());
+            }
+            if (command == null || configManager.current() == null || endpointServer == null) {
+                Log.error("CommandBridge is not running. Fix config.yml, then restart the proxy");
+            }
         });
     }
 
     private void start(boolean firstStart) {
+        command = null;
+        endpointServer = null;
         copyExampleScript();
 
         configManager = new ConfigManager<>(dataDir, VelocityConfig.class);
@@ -284,6 +293,10 @@ public final class Main {
 
     /** Undoes {@link #start}: script commands and /cb go away, the endpoint closes, tasks stop. */
     private void stop() {
+        // an open editor would keep working on the old scripts; the setup session stays, its page is still pairing
+        if (command != null && command.editor() != null) {
+            command.editor().closeSession();
+        }
         if (registrations != null) {
             registrations.reset();
         }
