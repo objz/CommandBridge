@@ -31,6 +31,7 @@ tasks.jar {
 
 dependencies {
     testImplementation(libs.junit.jupiter)
+    testImplementation("dev.jorel:commandapi-spigot-core:11.2.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
