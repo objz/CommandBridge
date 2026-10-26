@@ -31,6 +31,7 @@ import dev.objz.commandbridge.util.BuildMeta;
 import dev.objz.commandbridge.util.MM;
 import dev.objz.commandbridge.util.ModrinthAPI;
 import dev.objz.commandbridge.velocity.cli.CBCommand;
+import dev.objz.commandbridge.velocity.net.AuthGate;
 import dev.objz.commandbridge.velocity.setup.SetupSession;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
 import dev.objz.commandbridge.velocity.api.VelocityCommandBridgeImpl;
@@ -322,6 +323,7 @@ public final class Main {
         var auth = new AuthService(secret);
         authHandler = new AuthHandler(auth, sessions, endpointServer);
         authHandler.register(inNode);
+        inNode.setGate((endpoint, env) -> AuthGate.allows(sessions, endpoint, env));
 
         inNode.register(MessageType.INVOKED_COMMAND, new InvokedCommandHandler(sessions, commandEntry));
         inNode.register(MessageType.EXECUTE_COMMAND_RESULT, new ExecuteCommandHandler(proxy));
