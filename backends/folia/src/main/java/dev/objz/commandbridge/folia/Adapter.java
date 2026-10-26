@@ -13,6 +13,7 @@ import dev.objz.commandbridge.backends.platform.PlatformAdapter;
 import dev.objz.commandbridge.backends.platform.ScheduleHandle;
 import dev.objz.commandbridge.backends.platform.cmd.ClientCommands;
 import dev.objz.commandbridge.backends.platform.cmd.CommandExecutor;
+import dev.objz.commandbridge.backends.platform.cmd.PairCommand;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
 import dev.objz.commandbridge.config.model.EndpointType;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 
 public final class Adapter implements PlatformAdapter<JavaPlugin> {
     private BackendClient client;
+    private RegistrationHandler registrationHandler;
     private BackendsConfig cfg;
     private Path dataDir;
     private JavaPlugin plugin;
@@ -67,11 +69,14 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
 
     @Override
     public void start(PlatformEnv env) throws Exception {
+        if (this.dataDir == null)
+            this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
+        // /cbc pair has to exist on a fresh or broken config, that's when it's needed
+        ClientCommands.register(() -> client,
+                PairCommand.subcommand(this, dataDir, Bukkit.getBukkitVersion().split("-")[0]));
         if (!configOk) {
             return;
         }
-        if (this.dataDir == null)
-            this.dataDir = PathsUtil.normalizeDataDir(env.dataDir());
         if (this.cfg == null) {
             var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
             if (!cfgMgr.load()) {
@@ -86,6 +91,11 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
             this.commandExecutor = new FoliaExecutor(plugin);
         }
 
+        startClient();
+        Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
+    }
+
+    private void startClient() {
         this.client = cfg.endpointType() == EndpointType.REDIS
                 ? new RedisClient(cfg, dataDir, this)
                 : new WsClient(cfg, dataDir, this);
@@ -97,9 +107,7 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
             client.scheduleReconnection();
         }
 
-        ClientCommands.register(client);
-
-        RegistrationHandler registrationHandler = new RegistrationHandler(client);
+        registrationHandler = new RegistrationHandler(client);
         client.inboundRouter().register(MessageType.REGISTER_COMMANDS, registrationHandler);
         client.inboundRouter().register(MessageType.EXECUTE_COMMAND,
                 new ExecuteCommandHandler(commandExecutor));
@@ -112,7 +120,34 @@ public final class Adapter implements PlatformAdapter<JavaPlugin> {
                         Location.BACKEND));
 
         client.onAuthenticated(this::sendPlayerList);
-        Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
+    }
+
+    @Override
+    public void applyNewConfig() {
+        Bukkit.getGlobalRegionScheduler().execute(plugin, () -> {
+            try {
+                if (registrationHandler != null)
+                    registrationHandler.unregisterAll();
+                if (client != null)
+                    client.close();
+                var cfgMgr = new ConfigManager<>(dataDir, BackendsConfig.class);
+                if (!cfgMgr.load()) {
+                    Log.error("The paired config.yml is not valid");
+                    return;
+                }
+                this.cfg = cfgMgr.current();
+                Log.setDebug(cfg.debug());
+                if (commandExecutor == null)
+                    commandExecutor = new FoliaExecutor(plugin);
+                if (!configOk) {
+                    configOk = true;
+                    Bukkit.getPluginManager().registerEvents(new PlayerListener(), plugin);
+                }
+                startClient();
+            } catch (Exception e) {
+                Log.error(e, "Could not connect with the new config: {}", e.getMessage());
+            }
+        });
     }
 
     @Override

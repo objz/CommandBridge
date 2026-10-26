@@ -27,6 +27,16 @@ public final class RegistrationHandler extends InboundHandler {
         this.registry = new CommandRegistry(new ArgumentMapper(), client.outboundRouter());
     }
 
+    /** Drops the commands this handler registered, before a new client takes over. */
+    public void unregisterAll() {
+        try {
+            registry.unregisterAll();
+        } catch (Exception e) {
+            Log.warn("Failed to unregister previous commands: {}", e.getMessage());
+        }
+        registeredCommands = List.of();
+    }
+
     @Override
     public void accept(Endpoint endpoint, Envelope env) {
         RegisterCommands rc = null;
