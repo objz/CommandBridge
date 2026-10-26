@@ -163,7 +163,7 @@ class PairClientTest {
 
         var e = assertThrows(ExecutionException.class,
                 () -> client.pair("7KQM-4XR2-9W", "PAPER", "1.21.4").get(5, TimeUnit.SECONDS));
-        assertEquals("No setup is waiting for this code. Check it, or run /cb setup again on the proxy.",
+        assertEquals("No setup is waiting for this code. Check it, or run /cb setup again on the proxy",
                 e.getCause().getMessage());
         assertFalse(Files.exists(dir.resolve("config.yml.bak")));
     }

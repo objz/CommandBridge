@@ -32,6 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /**
  * The setup page's session: it hands the page what the proxy knows, makes a pairing code per
@@ -52,6 +53,7 @@ public final class SetupSession {
     private final SessionHub sessionHub;
     private final Path dataDir;
     private final SetupApplier applier;
+    private final Supplier<CompletableFuture<String>> openEditor;
     private final Map<String, PairOffer> offers = new LinkedHashMap<>();
     private final Map<String, Map<String, String>> paired = new LinkedHashMap<>();
     private final Map<String, byte[]> clientConfigs = new HashMap<>();
@@ -61,8 +63,9 @@ public final class SetupSession {
     private volatile RelayChannel channel;
 
     private SetupSession(ProxyServer proxy, ConfigManager<VelocityConfig> configManager, SessionHub sessionHub,
-            Path dataDir, Path velocityToml) {
+            Path dataDir, Path velocityToml, Supplier<CompletableFuture<String>> openEditor) {
         this.proxy = proxy;
+        this.openEditor = openEditor;
         this.configManager = configManager;
         this.sessionHub = sessionHub;
         this.dataDir = dataDir;
@@ -70,8 +73,9 @@ public final class SetupSession {
     }
 
     public static CompletableFuture<SetupSession> open(ProxyServer proxy, ConfigManager<VelocityConfig> configManager,
-            SessionHub sessionHub, Path dataDir, Path velocityToml, Runnable onClosed) {
-        SetupSession session = new SetupSession(proxy, configManager, sessionHub, dataDir, velocityToml);
+            SessionHub sessionHub, Path dataDir, Path velocityToml, Supplier<CompletableFuture<String>> openEditor,
+            Runnable onClosed) {
+        SetupSession session = new SetupSession(proxy, configManager, sessionHub, dataDir, velocityToml, openEditor);
         return RelayChannel.open("Setup", "setup/", session::handle, onClosed)
                 .thenApply(channel -> {
                     session.channel = channel;
@@ -146,6 +150,14 @@ public final class SetupSession {
             }
             case "plan" -> plan(msg.path("plan"));
             case "stage" -> stage();
+            case "editor" -> openEditor.get().whenComplete((url, error) -> {
+                try {
+                    channel.send(error == null ? Map.of("type", "editor", "url", url)
+                            : Map.of("type", "editor-error", "error", String.valueOf(error.getMessage())));
+                } catch (Exception e) {
+                    Log.warn("Setup session could not send the editor link: {}", e.getMessage());
+                }
+            });
             case "unstage" -> {
                 staged = null;
                 sendState();
@@ -239,7 +251,6 @@ public final class SetupSession {
         for (int i = 0; i < 6; i++)
             code.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
         staged = code.toString();
-        Log.info("The setup is waiting: run /cb setup confirm {} to apply it", staged);
         channel.send(Map.of("type", "staged", "code", staged));
     }
 

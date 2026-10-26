@@ -27,11 +27,11 @@ import java.util.concurrent.CompletionStage;
 public final class PairClient {
 
     public static final String RELAY_URL = System.getProperty("commandbridge.relay.url", "wss://cb.objz.dev/");
-    static final String NO_SETUP = "No setup is waiting for this code. Check it, or run /cb setup again on the proxy.";
+    static final String NO_SETUP = "No setup is waiting for this code. Check it, or run /cb setup again on the proxy";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static final String UNPAIRED_HINT =
-            "CommandBridge isn't paired with a proxy yet. Run /cb setup on the proxy, then /cbc pair <code> here.";
+            "CommandBridge isn't paired with a proxy yet. Run /cb setup on the proxy, then /cbc pair <code> here";
 
     /** A config nobody changed can't reach a proxy: its secret is the placeholder. */
     public static boolean isUnpaired(BackendsConfig cfg) {

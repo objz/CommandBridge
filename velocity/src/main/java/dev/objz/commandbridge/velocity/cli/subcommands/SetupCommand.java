@@ -12,6 +12,8 @@ import dev.objz.commandbridge.velocity.ui.RenderContext;
 import dev.objz.commandbridge.velocity.ui.Report;
 
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public final class SetupCommand extends AbstractCliCommand {
 
@@ -19,16 +21,20 @@ public final class SetupCommand extends AbstractCliCommand {
     private final ConfigManager<VelocityConfig> configManager;
     private final SessionHub sessionHub;
     private final Path dataDir;
+    private final Runnable restart;
+    private final Function<CommandSource, CompletableFuture<String>> openEditor;
     private static final long CONFIRM_WITHIN_MS = 60_000;
     private volatile SetupSession active;
     private volatile long warnedAt;
 
     public SetupCommand(ProxyServer proxy, ConfigManager<VelocityConfig> configManager, SessionHub sessionHub,
-            Path dataDir) {
+            Path dataDir, Runnable restart, Function<CommandSource, CompletableFuture<String>> openEditor) {
         this.proxy = proxy;
         this.configManager = configManager;
         this.sessionHub = sessionHub;
         this.dataDir = dataDir;
+        this.restart = restart;
+        this.openEditor = openEditor;
     }
 
     /** On a proxy that's set up already, the first /cb setup only warns; a second one within a minute opens it. */
@@ -38,8 +44,8 @@ public final class SetupCommand extends AbstractCliCommand {
             warnedAt = now;
             Report.of("Setup")
                     .warn("CommandBridge is already set up")
-                    .muted("Running the setup again can replace config.yml and pair your servers again.")
-                    .muted("Run /cb setup again within a minute to continue.")
+                    .muted("Running the setup again can replace config.yml and pair your servers again")
+                    .muted("Run /cb setup again within a minute to continue")
                     .send(sender);
             return;
         }
@@ -50,7 +56,7 @@ public final class SetupCommand extends AbstractCliCommand {
     /** A fresh install: open the setup without being asked and print the link in the console. */
     public void openOnFirstStart() {
         start(proxy.getConsoleCommandSource(), "CommandBridge isn't set up yet. Open this link to set up your network:",
-                "The link stops working after 15 minutes unopened. Run /cb setup for a new one.");
+                "The link stops working after 15 minutes unopened, run /cb setup for a new one");
     }
 
     private void start(CommandSource sender, String message, String note) {
@@ -67,7 +73,8 @@ public final class SetupCommand extends AbstractCliCommand {
             Log.info("Connecting to the setup relay...");
         }
         // Velocity reads velocity.toml from its working directory
-        SetupSession.open(proxy, configManager, sessionHub, dataDir, Path.of("velocity.toml"), () -> {
+        SetupSession.open(proxy, configManager, sessionHub, dataDir, Path.of("velocity.toml"),
+                () -> openEditor.apply(sender), () -> {
         }).whenComplete((session, error) -> {
             if (error != null) {
                 Report.of("Setup").error("Could not open the setup: " + rootMessage(error)).send(sender);
@@ -94,15 +101,27 @@ public final class SetupCommand extends AbstractCliCommand {
                 Report.of("Setup").warn("No setup is waiting for that code").send(sender);
                 return;
             }
-            Report report = result.errors().isEmpty()
-                    ? Report.of("Setup").success("Applied the setup")
-                    : Report.of("Setup").error("Not everything was applied");
-            result.errors().forEach(report::bullet);
+            if (result.errors().isEmpty()) {
+                say(sender, true, "Applied the setup");
+            } else {
+                say(sender, false, "Not everything was applied");
+                result.errors().forEach(e -> say(sender, false, e));
+            }
+            // new connection settings: CommandBridge starts again with them, the proxy keeps running
             if (result.restartNeeded())
-                report.warn("Restart the proxy to switch to the new connection settings.");
-            report.send(sender);
+                restart.run();
         } catch (Exception e) {
             Report.of("Setup").error("Could not apply the setup: " + rootMessage(e)).send(sender);
+        }
+    }
+
+    private static void say(CommandSource sender, boolean ok, String text) {
+        if (new RenderContext(sender).isPlayer()) {
+            sender.sendMessage(ok ? MM.ok(text) : MM.error(text));
+        } else if (ok) {
+            Log.success(text);
+        } else {
+            Log.error(text);
         }
     }
 

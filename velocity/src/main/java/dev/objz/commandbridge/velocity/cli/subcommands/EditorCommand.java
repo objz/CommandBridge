@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 
 public final class EditorCommand extends AbstractCliCommand {
 
@@ -35,6 +36,11 @@ public final class EditorCommand extends AbstractCliCommand {
     }
 
     public void open(CommandSource sender) {
+        openFor(sender);
+    }
+
+    /** Opens a new editor session for {@code sender}, prints its link, and hands back the link. */
+    public CompletableFuture<String> openFor(CommandSource sender) {
         EditorSession current = active;
         if (current != null && current.isOpen()) {
             current.close();
@@ -45,7 +51,7 @@ public final class EditorCommand extends AbstractCliCommand {
         } else {
             Log.info("Connecting to the editor relay...");
         }
-        EditorSession.open(scriptManager, reload, sender, this::servers, layout, () -> active = null)
+        return EditorSession.open(scriptManager, reload, sender, this::servers, layout, () -> active = null)
                 .whenComplete((session, error) -> {
                     if (error != null) {
                         Report.of("Editor").error("Could not open editor: " + rootMessage(error)).send(sender);
@@ -53,7 +59,8 @@ public final class EditorCommand extends AbstractCliCommand {
                     }
                     active = session;
                     sendLink(sender, session, "Editor session opened");
-                });
+                })
+                .thenApply(EditorSession::url);
     }
 
     /** Saves the changes the web editor is waiting with; the code is shown in the editor after Save. */

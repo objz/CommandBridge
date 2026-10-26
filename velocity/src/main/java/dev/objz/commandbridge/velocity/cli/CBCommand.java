@@ -39,10 +39,15 @@ import dev.objz.commandbridge.velocity.util.UserCache;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 public final class CBCommand {
 
     private final ProxyServer proxy;
+    private final Runnable restart;
+    private final Function<CommandSource, CompletableFuture<String>> openEditor;
+    private EditorCommand editor;
     private SetupCommand setup;
     private final ConfigManager<VelocityConfig> configManager;
     private final ScriptManager scriptManager;
@@ -57,6 +62,8 @@ public final class CBCommand {
 
     public CBCommand(
             ProxyServer proxy,
+            Runnable restart,
+            Function<CommandSource, CompletableFuture<String>> openEditor,
             ConfigManager<VelocityConfig> configManager,
             ScriptManager scriptManager,
             RegistrationManager registrationManager,
@@ -69,6 +76,8 @@ public final class CBCommand {
             PlayerTracker playerTracker) {
 
         this.proxy = proxy;
+        this.restart = restart;
+        this.openEditor = openEditor;
         this.configManager = configManager;
         this.scriptManager = scriptManager;
         this.registrationManager = registrationManager;
@@ -86,6 +95,11 @@ public final class CBCommand {
         return setup;
     }
 
+    /** Set by {@link #register()}. */
+    public EditorCommand editor() {
+        return editor;
+    }
+
     public void register() {
         var help = new HelpCommand();
         var info = new InfoCommand();
@@ -99,8 +113,8 @@ public final class CBCommand {
         var task = new TaskCommand(commandEntry.scheduler(), userCache);
         var client = new ClientCommand(sessionHub, outNode, playerTracker, userCache, config);
         var configCmd = new ConfigCommand(configManager);
-        var editor = new EditorCommand(scriptManager, reload, sessionHub, config.serverId(), dataDir);
-        setup = new SetupCommand(proxy, configManager, sessionHub, dataDir);
+        editor = new EditorCommand(scriptManager, reload, sessionHub, config.serverId(), dataDir);
+        setup = new SetupCommand(proxy, configManager, sessionHub, dataDir, restart, openEditor);
 
         ArgumentSuggestions<CommandSource> clientIds = ArgumentSuggestions
                 .<CommandSource>strings(info0 -> namesOf(sessionHub));

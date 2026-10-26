@@ -2,6 +2,8 @@ package dev.objz.commandbridge.velocity;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.scheduler.ScheduledTask;
+import dev.jorel.commandapi.CommandAPI;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -66,6 +68,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(id = "commandbridge", name = "CommandBridge", version = "unknown", url = "https://cb.objz.dev", description = "I did it!", authors = {
@@ -119,8 +122,25 @@ public final class Main {
         metrics.make(this, pluginID);
         Log.info("Initializing CommandBridge");
 
-        copyExampleScript();
         checkLegacyInstallation();
+        start(true);
+    }
+
+    /**
+     * Stops CommandBridge and starts it again from config.yml, without restarting the proxy.
+     * Connected servers drop and reconnect on their own.
+     */
+    public void restart() {
+        // not a proxy task: stop() cancels every task of this plugin
+        CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS).execute(() -> {
+            Log.info("Restarting CommandBridge with the new settings");
+            stop();
+            start(false);
+        });
+    }
+
+    private void start(boolean firstStart) {
+        copyExampleScript();
 
         configManager = new ConfigManager<>(dataDir, VelocityConfig.class);
         boolean ok = configManager.load();
@@ -138,23 +158,26 @@ public final class Main {
         boolean hasPapi = proxy.getPluginManager().getPlugin("papiproxybridge").isPresent();
         boolean hasPacketEvents = proxy.getPluginManager().getPlugin("packetevents").isPresent();
 
-        var featuresBuilder = PlatformFeatureSet.builder();
-        if (hasPapi) {
-            Log.success("Hooked into PapiProxyBridge. PlaceholderAPI is now enabled");
-            featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PAPI);
-        } else {
-            Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
-        }
-        if (hasPacketEvents) {
-            featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PACKET_EVENTS);
-        } else {
-            Log.warn("PacketEvents not found. Some placeholder may not be available on velocity");
-        }
-        platformFeatures = featuresBuilder.build();
+        // hooks into other plugins happen once; a restart keeps them
+        if (argumentBridge == null) {
+            var featuresBuilder = PlatformFeatureSet.builder();
+            if (hasPapi) {
+                Log.success("Hooked into PapiProxyBridge. PlaceholderAPI is now enabled");
+                featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PAPI);
+            } else {
+                Log.warn("PapiProxyBridge not found. PlaceholderAPI will not be used");
+            }
+            if (hasPacketEvents) {
+                featuresBuilder.add(Location.VELOCITY, PlatformFeatureKeys.PACKET_EVENTS);
+            } else {
+                Log.warn("PacketEvents not found. Some placeholder may not be available on velocity");
+            }
+            platformFeatures = featuresBuilder.build();
 
-        argumentBridge = new ArgumentBridge(proxy, platformFeatures);
-        if (hasPacketEvents) {
-            new PacketEventsArgumentBridge(argumentBridge.registry()).install();
+            argumentBridge = new ArgumentBridge(proxy, platformFeatures);
+            if (hasPacketEvents) {
+                new PacketEventsArgumentBridge(argumentBridge.registry()).install();
+            }
         }
 
         sessions = new SessionHub();
@@ -225,6 +248,9 @@ public final class Main {
 
         command = new CBCommand(
                 proxy,
+                this::restart,
+                // resolved when used, so it's the editor of whatever CommandBridge runs by then
+                source -> command.editor().openFor(source),
                 configManager,
                 scriptManager,
                 registrations,
@@ -244,12 +270,32 @@ public final class Main {
         });
         endpointServer.start();
 
+        if (!firstStart) {
+            return;
+        }
         // a fresh install: open the setup right away so the console shows its link
         if (!SetupSession.isConfigured(cfg, dataDir)) {
             command.setup().openOnFirstStart();
         }
 
         checkForUpdate();
+    }
+
+    /** Undoes {@link #start}: script commands and /cb go away, the endpoint closes, tasks stop. */
+    private void stop() {
+        if (registrations != null) {
+            registrations.reset();
+        }
+        CommandAPI.unregister("commandbridge", true);
+        CommandAPI.unregister("cb", true);
+        if (userCache != null) {
+            userCache.save();
+        }
+        if (endpointServer != null) {
+            endpointServer.stop();
+        }
+        CommandBridgeProvider.unregister();
+        proxy.getScheduler().tasksByPlugin(pluginInstance).forEach(ScheduledTask::cancel);
     }
 
     @Subscribe
