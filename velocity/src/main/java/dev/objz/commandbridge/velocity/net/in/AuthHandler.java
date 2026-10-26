@@ -11,6 +11,7 @@ import dev.objz.commandbridge.net.payloads.util.AuthResponsePayload;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
+import dev.objz.commandbridge.scripting.model.enums.ServerPlatform;
 import dev.objz.commandbridge.velocity.net.EndpointServer;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
@@ -98,6 +99,8 @@ public final class AuthHandler extends InboundHandler {
 
         ClientSession s = sessions.add(env.from(), endpoint);
         s.location(ap.location() != null ? ap.location() : Location.BACKEND);
+        // clients older than this field send none
+        s.platform(ap.platform() != null ? ap.platform() : ServerPlatform.UNKNOWN);
         s.status(AuthStatus.AUTH_OK);
 
         reply(endpoint, env, MessageType.AUTH_OK, new AuthResponsePayload(serverNonce, serverMac))

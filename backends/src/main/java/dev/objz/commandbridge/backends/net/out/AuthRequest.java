@@ -2,6 +2,7 @@ package dev.objz.commandbridge.backends.net.out;
 
 import dev.objz.commandbridge.backends.net.connection.ClientStatus;
 import dev.objz.commandbridge.backends.net.out.ctx.AuthRequestContext;
+import dev.objz.commandbridge.backends.platform.PlatformDetector;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.net.OutboundHandler;
 import dev.objz.commandbridge.net.SendOperation;
@@ -30,7 +31,7 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
         final String clientNonce = UUID.randomUUID().toString();
         final String mac = auth.sign(clientId, clientNonce);
 
-        var payload = Envelope.MAPPER.valueToTree(new AuthRequestPayload(location, clientNonce, mac));
+        var payload = Envelope.MAPPER.valueToTree(new AuthRequestPayload(location, PlatformDetector.detectPlatform(), clientNonce, mac));
         Envelope env = Envelope.make(MessageType.AUTH_REQUEST, clientId, "proxy-auth", payload);
 
         SendOperation op = send(env)

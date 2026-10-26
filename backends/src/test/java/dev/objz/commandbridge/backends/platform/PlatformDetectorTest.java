@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.backends.platform;
 
 import dev.objz.commandbridge.backends.TestFixtures;
+import dev.objz.commandbridge.scripting.model.enums.ServerPlatform;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -23,21 +24,21 @@ final class PlatformDetectorTest {
 
     @Test
     void detectReturnsNonNull() {
-        PlatformDetector.Platform result = PlatformDetector.detectPlatform();
+        ServerPlatform result = PlatformDetector.detectPlatform();
         assertNotNull(result, "detectPlatform() must never return null");
     }
 
     @Test
     void detectReturnsConsistentResult() {
-        PlatformDetector.Platform first = PlatformDetector.detectPlatform();
-        PlatformDetector.Platform second = PlatformDetector.detectPlatform();
+        ServerPlatform first = PlatformDetector.detectPlatform();
+        ServerPlatform second = PlatformDetector.detectPlatform();
         assertEquals(first, second, "consecutive calls must return the same platform");
     }
 
     @Test
     void detectResultIsValidPlatform() {
-        PlatformDetector.Platform result = PlatformDetector.detectPlatform();
-        Set<PlatformDetector.Platform> valid = Set.of(PlatformDetector.Platform.values());
+        ServerPlatform result = PlatformDetector.detectPlatform();
+        Set<ServerPlatform> valid = Set.of(ServerPlatform.values());
         assertTrue(valid.contains(result),
                 "result must be one of the defined Platform enum values");
     }

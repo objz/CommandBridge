@@ -2,6 +2,7 @@ package dev.objz.commandbridge.velocity.net.session;
 
 import dev.objz.commandbridge.net.Endpoint;
 import dev.objz.commandbridge.scripting.model.enums.Location;
+import dev.objz.commandbridge.scripting.model.enums.ServerPlatform;
 import dev.objz.commandbridge.security.AuthStatus;
 
 public final class ClientSession {
@@ -9,6 +10,7 @@ public final class ClientSession {
     private volatile String id;
     private volatile AuthStatus status = AuthStatus.AUTH_FAIL;
     private volatile Location location = Location.BACKEND;
+    private volatile ServerPlatform platform = ServerPlatform.UNKNOWN;
 
     public ClientSession(Endpoint endpoint, String clientId) {
         this.endpoint = endpoint;
@@ -42,5 +44,13 @@ public final class ClientSession {
     public void location(Location location) {
         this.location = location;
 
+    }
+
+    public ServerPlatform platform() {
+        return platform;
+    }
+
+    public void platform(ServerPlatform platform) {
+        this.platform = platform;
     }
 }
