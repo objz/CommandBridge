@@ -1,10 +1,8 @@
 package dev.objz.commandbridge.velocity.dispatch;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.objz.commandbridge.logging.Log;
-import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.scripting.model.Script;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
@@ -13,7 +11,6 @@ import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
 import dev.objz.commandbridge.velocity.dispatch.model.ScheduledTask;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -204,10 +201,8 @@ public final class ScheduleManager {
         Log.debug("Loading scheduled tasks from '{}'", storagePath);
         if (Files.notExists(storagePath))
             return;
-        try {
-            List<ScheduledTask> loaded = Envelope.MAPPER.readValue(storagePath.toFile(),
-                    new TypeReference<List<ScheduledTask>>() {
-                    });
+        {
+            List<ScheduledTask> loaded = TaskStore.load(storagePath);
             int expired = 0;
             int unresolved = 0;
             for (ScheduledTask t : loaded) {
@@ -229,18 +224,11 @@ public final class ScheduleManager {
                         dropped, expired, unresolved);
             }
             Log.success(true, "Loaded '{}' pending tasks", tasks.size());
-        } catch (IOException e) {
-            Log.error("Failed to load scheduled tasks: {}", e.getMessage());
         }
     }
 
     private synchronized void saveTasks() {
-        try {
-            Files.createDirectories(storagePath.getParent());
-            Envelope.MAPPER.writeValue(storagePath.toFile(), new ArrayList<>(tasks.values()));
-        } catch (IOException e) {
-            Log.error("Failed to save scheduled tasks: {}", e.getMessage());
-        }
+        TaskStore.save(storagePath, tasks.values());
     }
 
     private void pruneExpired() {
