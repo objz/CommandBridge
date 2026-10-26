@@ -53,7 +53,10 @@ public final class RegistrationHandler extends InboundHandler {
         }
 
         if (rc == null || rc.commands() == null || rc.commands().isEmpty()) {
-            Log.warn("Received empty or malformed REGISTER_COMMANDS. All commands unregistered");
+            if (rc == null || rc.commands() == null)
+                Log.warn("Received malformed REGISTER_COMMANDS. All commands unregistered");
+            else
+                Log.debug("The proxy has no commands for this server");
             registeredCommands = List.of();
             Feedback f = new Feedback(0, 0, 0,
                     List.of("Received empty registration request"),
