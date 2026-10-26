@@ -59,4 +59,12 @@ class ConfigManagerSaveTest {
         assertFalse(Files.exists(dir.resolve("config.yml.tmp")));
         assertTrue(Files.exists(dir.resolve("config.yml")));
     }
+
+    @Test
+    void renderMatchesWhatSaveWrites(@TempDir Path dir) throws Exception {
+        var manager = new ConfigManager<>(dir, BackendsConfig.class);
+        manager.save(sample());
+
+        assertEquals(Files.readString(dir.resolve("config.yml")), ConfigManager.render(BackendsConfig.class, sample()));
+    }
 }

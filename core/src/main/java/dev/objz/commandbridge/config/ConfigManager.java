@@ -12,7 +12,9 @@ import org.spongepowered.configurate.objectmapping.meta.Setting;
 import org.spongepowered.configurate.yaml.NodeStyle;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
@@ -44,11 +46,29 @@ public final class ConfigManager<T> {
     }
 
     private YamlConfigurationLoader loader() {
+        return loader(filePath);
+    }
+
+    private static YamlConfigurationLoader loader(Path path) {
         return YamlConfigurationLoader.builder()
-                .path(filePath)
+                .path(path)
                 .indent(2)
                 .nodeStyle(NodeStyle.BLOCK)
                 .build();
+    }
+
+    /** The YAML {@link #save} would write for {@code config}. */
+    public static <T> String render(Class<T> modelClass, T config) throws IOException {
+        StringWriter out = new StringWriter();
+        var loader = YamlConfigurationLoader.builder()
+                .sink(() -> new BufferedWriter(out))
+                .indent(2)
+                .nodeStyle(NodeStyle.BLOCK)
+                .build();
+        ConfigurationNode root = loader.createNode();
+        root.set(modelClass, config);
+        loader.save(root);
+        return out.toString();
     }
 
     public boolean load() {
@@ -120,11 +140,7 @@ public final class ConfigManager<T> {
         ensureDir();
         Path tmp = filePath.resolveSibling(filePath.getFileName() + ".tmp");
         try {
-            var loader = YamlConfigurationLoader.builder()
-                    .path(tmp)
-                    .indent(2)
-                    .nodeStyle(NodeStyle.BLOCK)
-                    .build();
+            var loader = loader(tmp);
             ConfigurationNode root = loader.createNode();
             root.set(modelClass, config);
             loader.save(root);

@@ -223,6 +223,7 @@ public final class Main {
         installRoutes();
 
         command = new CBCommand(
+                proxy,
                 configManager,
                 scriptManager,
                 registrations,
@@ -241,6 +242,11 @@ public final class Main {
             api.onServerConnected(session);
         });
         endpointServer.start();
+
+        // an untouched default config and no setup yet: point new users at the setup
+        if (cfg.equals(VelocityConfig.defaults()) && !Files.exists(dataDir.resolve("data").resolve("setup.json"))) {
+            Log.info("Run /cb setup to set up your network.");
+        }
 
         checkForUpdate();
     }

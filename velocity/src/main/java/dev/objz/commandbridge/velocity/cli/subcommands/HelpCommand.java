@@ -23,6 +23,8 @@ public final class HelpCommand extends AbstractCliCommand {
         {"/cb editor close", "Close the web editor session"},
         {"/cb editor list", "Show the open web editor session"},
         {"/cb editor confirm <code>", "Save the changes the web editor is waiting with"},
+        {"/cb setup", "Set up your network in the browser"},
+        {"/cb setup confirm <code>", "Apply what the setup page planned"},
         {"/cb script list", "List loaded scripts"},
         {"/cb script show", "Show a script (optionally a group)"},
         {"/cb script enable", "Enable a script"},
