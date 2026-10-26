@@ -18,6 +18,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Locale;
@@ -113,6 +114,31 @@ public final class ConfigManager<T> {
 
     public T current() {
         return current;
+    }
+
+    public boolean save(T config) {
+        ensureDir();
+        Path tmp = filePath.resolveSibling(filePath.getFileName() + ".tmp");
+        try {
+            var loader = YamlConfigurationLoader.builder()
+                    .path(tmp)
+                    .indent(2)
+                    .nodeStyle(NodeStyle.BLOCK)
+                    .build();
+            ConfigurationNode root = loader.createNode();
+            root.set(modelClass, config);
+            loader.save(root);
+            Files.move(tmp, filePath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            this.current = config;
+            return true;
+        } catch (Exception e) {
+            Log.error(e, "Failed to save {}: {}", filePath.getFileName(), e.getMessage());
+            try {
+                Files.deleteIfExists(tmp);
+            } catch (IOException ignored) {
+            }
+            return false;
+        }
     }
 
     private void ensureDir() {
