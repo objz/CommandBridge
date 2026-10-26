@@ -41,6 +41,9 @@ public final class PluginMessageQueue {
         Objects.requireNonNull(playerUuid);
         Objects.requireNonNull(target);
         Objects.requireNonNull(message);
+        // expired messages of players who never came back would otherwise keep the queue full for good
+        if (totalSize.get() >= MAX_TOTAL)
+            pruneExpired(clock.getAsLong());
         if (totalSize.get() >= MAX_TOTAL) {
             Log.warn("PluginMessageQueue is full ({} entries). Dropping message for player {}", MAX_TOTAL, playerUuid);
             return;
@@ -80,6 +83,18 @@ public final class PluginMessageQueue {
             queues.remove(playerUuid, queue);
         }
         return List.copyOf(result);
+    }
+
+    private void pruneExpired(long now) {
+        for (Map.Entry<UUID, Queue<QueuedMessage>> entry : queues.entrySet()) {
+            Queue<QueuedMessage> queue = entry.getValue();
+            if (queue.removeIf(m -> now - m.queuedAt() > TTL_MS)) {
+                totalSize.set(queues.values().stream().mapToInt(Queue::size).sum());
+            }
+            if (queue.isEmpty()) {
+                queues.remove(entry.getKey(), queue);
+            }
+        }
     }
 
     public void removeByServer(String serverId) {

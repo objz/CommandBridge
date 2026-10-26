@@ -11,6 +11,7 @@ import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.api.channel.command.RunAs;
 
 import java.util.HashSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.Objects;
 import java.util.Set;
 
@@ -57,7 +58,14 @@ public final class ExecuteCommandHandler extends InboundHandler {
 
         final Set<String> finalPermissions = grantedPermissions;
 
-        executor.execute(exec, finalPermissions)
+        CompletableFuture<CommandExecutor.ExecutionResult> running;
+        try {
+            running = executor.execute(exec, finalPermissions);
+        } catch (Exception ex) {
+            // a platform executor that throws right away instead of failing its future: the proxy still gets an answer
+            running = CompletableFuture.failedFuture(ex);
+        }
+        running
                 .thenAccept(result -> {
                     if (result.isSuccess()) {
                         Log.debug("Command '{}' executed successfully", exec.command());

@@ -128,12 +128,13 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         };
     }
 
-    private int toInt(Object raw) {
+    // an optional argument that wasn't given stays empty (null), it doesn't turn into 0 in the placeholder
+    private Integer toInt(Object raw) {
         if (raw instanceof Number number) {
             return number.intValue();
         }
         if (raw == null) {
-            return 0;
+            return null;
         }
         try {
             return Integer.parseInt(raw.toString());
@@ -142,12 +143,12 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         }
     }
 
-    private double toDouble(Object raw) {
+    private Double toDouble(Object raw) {
         if (raw instanceof Number number) {
             return number.doubleValue();
         }
         if (raw == null) {
-            return 0.0;
+            return null;
         }
         try {
             return Double.parseDouble(raw.toString());
@@ -156,11 +157,11 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         }
     }
 
-    private boolean toBoolean(Object raw) {
+    private Boolean toBoolean(Object raw) {
         if (raw instanceof Boolean value) {
             return value;
         }
-        return raw != null && Boolean.parseBoolean(raw.toString());
+        return raw == null ? null : Boolean.parseBoolean(raw.toString());
     }
 
     private Location3D toLocation3D(Object raw) {

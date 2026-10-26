@@ -106,6 +106,10 @@ public final class ConfigManager<T> {
                 return false;
             }
 
+            // keys the file leaves out take their defaults; without this a missing section maps to 0/null
+            ConfigurationNode defaultsNode = loader.createNode();
+            defaultsNode.set(modelClass, defaults);
+            root.mergeFrom(defaultsNode);
             T loaded = root.get(modelClass, defaults);
 
             var result = profile.normalize(loaded);

@@ -268,6 +268,12 @@ public final class CommandEntry {
                 return ctx;
             }
             return ctx.withPlayerUuid(resolved);
+        }).exceptionally(e -> {
+            // a failed lookup (e.g. Mojang unreachable) is treated like a player that wasn't found,
+            // instead of silently stopping this command and every one after it
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            Log.warn("Could not look up the player for player-arg '{}': {}", playerArgName, cause.getMessage());
+            return ctx;
         });
     }
 

@@ -49,7 +49,7 @@ public final class DumpSanitizer {
         }
 
         String lower = key.toLowerCase(Locale.ROOT);
-        return lower.equals("secret")
+        return lower.contains("secret")
                 || lower.contains("password")
                 || lower.contains("token")
                 || lower.equals("tls-pin")

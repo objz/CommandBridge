@@ -44,6 +44,10 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
             if (reply.type() == MessageType.AUTH_FAIL) {
                 ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                 Log.error("Authentication rejected by server");
+                // like every other failed login: over Redis nothing else would start the retry
+                if (ctx.onAuthFailed() != null) {
+                    ctx.onAuthFailed().run();
+                }
                 return reply;
             }
 
@@ -54,6 +58,9 @@ public final class AuthRequest extends OutboundHandler<AuthRequestContext> {
             } catch (Exception e) {
                 ctx.statusSink().accept(ClientStatus.AUTH_FAILED);
                 Log.error(e, "Authentication response malformed");
+                if (ctx.onAuthFailed() != null) {
+                    ctx.onAuthFailed().run();
+                }
                 return reply;
             }
 
