@@ -185,6 +185,7 @@ enable-player-address-logging = false
 [servers]
 paper = "127.0.0.1:{paper_port}"
 try = ["paper"]
+[forced-hosts]
 [advanced]
 login-ratelimit = 0
 connection-timeout = 10000
