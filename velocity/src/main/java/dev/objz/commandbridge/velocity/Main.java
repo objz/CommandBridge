@@ -34,6 +34,7 @@ import dev.objz.commandbridge.velocity.cli.CBCommand;
 import dev.objz.commandbridge.velocity.net.AuthGate;
 import dev.objz.commandbridge.velocity.setup.SetupSession;
 import dev.objz.commandbridge.velocity.dispatch.CommandEntry;
+import dev.objz.commandbridge.velocity.dispatch.exec.LocalDispatcher;
 import dev.objz.commandbridge.velocity.api.VelocityCommandBridgeImpl;
 import dev.objz.commandbridge.velocity.api.VelocityPluginMessageHandler;
 import dev.objz.commandbridge.velocity.api.PluginMessageQueue;
@@ -212,7 +213,8 @@ public final class Main {
                     redis.username(),
                     redis.password(),
                     sessions,
-                    inNode);
+                    inNode,
+                    new SecretLoader(dataDir).loadOrCreate());
         } else {
             var wsCfg = cfg.endpoints().webSocket();
             var tls = TlsResolver.resolveServer(dataDir, cfg.security());
@@ -244,7 +246,8 @@ public final class Main {
 
         registrations.load(scriptManager.enabled());
 
-        api = new VelocityCommandBridgeImpl(sessions, playerTracker, cfg.serverId(), endpointServer, pluginMessageQueue);
+        api = new VelocityCommandBridgeImpl(sessions, playerTracker, cfg.serverId(), endpointServer, pluginMessageQueue,
+                new LocalDispatcher(proxy, cfg.serverId()));
 
         playerTracker.onPlayerJoin((clientId, uuid) -> {
             if (api != null) {

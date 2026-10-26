@@ -15,7 +15,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 public final class EditorCommand extends AbstractCliCommand {
 
@@ -24,7 +27,8 @@ public final class EditorCommand extends AbstractCliCommand {
     private final SessionHub sessionHub;
     private final String serverId;
     private final EditorLayoutStore layout;
-    private volatile EditorSession active;
+    private final AtomicReference<EditorSession> active = new AtomicReference<>();
+    private long openingGeneration;
 
     public EditorCommand(ScriptManager scriptManager, ReloadCommand reload, SessionHub sessionHub,
             String serverId, Path dataDir) {
@@ -41,36 +45,53 @@ public final class EditorCommand extends AbstractCliCommand {
 
     /** Opens a new editor session for {@code sender}, prints its link, and hands back the link. */
     public CompletableFuture<String> openFor(CommandSource sender) {
-        EditorSession current = active;
-        if (current != null && current.isOpen()) {
-            current.close();
-        }
+        return openFor(sender, () -> EditorSession.open(scriptManager, reload, sender, this::servers, layout,
+                this::sessionClosed));
+    }
+
+    synchronized CompletableFuture<String> openFor(CommandSource sender,
+            Supplier<CompletableFuture<EditorSession>> opener) {
+        closeSession();
+        long generation = openingGeneration;
 
         if (new RenderContext(sender).isPlayer()) {
             sender.sendMessage(MM.muted("Connecting to the editor relay..."));
         } else {
             Log.info("Connecting to the editor relay...");
         }
-        return EditorSession.open(scriptManager, reload, sender, this::servers, layout, () -> active = null)
+        return opener.get()
                 .whenComplete((session, error) -> {
-                    if (error != null) {
-                        Report.of("Editor").error("Could not open editor: " + rootMessage(error)).send(sender);
-                        return;
+                    synchronized (this) {
+                        if (generation != openingGeneration) {
+                            if (session != null)
+                                session.close();
+                            throw new CancellationException("Editor opening was superseded or closed");
+                        }
+                        if (error != null) {
+                            Report.of("Editor").error("Could not open editor: " + rootMessage(error)).send(sender);
+                            return;
+                        }
+                        sessionOpened(session);
+                        sendLink(sender, session, "Editor session opened");
                     }
-                    // two opens can overlap: the one that finishes last wins and the other gets closed
-                    EditorSession previous = active;
-                    active = session;
-                    if (previous != null && previous != session && previous.isOpen()) {
-                        previous.close();
-                    }
-                    sendLink(sender, session, "Editor session opened");
                 })
                 .thenApply(EditorSession::url);
     }
 
+    private synchronized void sessionOpened(EditorSession session) {
+        EditorSession previous = active.getAndSet(session);
+        if (previous != null && previous != session && previous.isOpen()) {
+            previous.close();
+        }
+    }
+
+    private void sessionClosed(EditorSession session) {
+        active.compareAndSet(session, null);
+    }
+
     /** Saves the changes the web editor is waiting with; the code is shown in the editor after Save. */
     public void confirm(CommandSource sender, String code) {
-        EditorSession current = active;
+        EditorSession current = active.get();
         if (current == null || !current.isOpen()) {
             Report.of("Editor").warn("No editor session is open").send(sender);
             return;
@@ -90,7 +111,7 @@ public final class EditorCommand extends AbstractCliCommand {
     }
 
     public void list(CommandSource sender) {
-        EditorSession current = active;
+        EditorSession current = active.get();
         if (current == null || !current.isOpen()) {
             Report.of("Editor").muted("No editor session is open").send(sender);
             return;
@@ -99,20 +120,22 @@ public final class EditorCommand extends AbstractCliCommand {
     }
 
     /** Closes the open session without a message, e.g. when CommandBridge restarts. */
-    public void closeSession() {
-        EditorSession current = active;
+    public synchronized void closeSession() {
+        openingGeneration++;
+        EditorSession current = active.getAndSet(null);
         if (current != null && current.isOpen()) {
             current.close();
         }
     }
 
-    public void close(CommandSource sender) {
-        EditorSession current = active;
-        if (current == null || !current.isOpen()) {
+    public synchronized void close(CommandSource sender) {
+        EditorSession current = active.get();
+        boolean wasOpen = current != null && current.isOpen();
+        closeSession();
+        if (!wasOpen) {
             Report.of("Editor").warn("No editor session is open").send(sender);
             return;
         }
-        current.close();
         Report.of("Editor").success("Editor session closed").send(sender);
     }
 

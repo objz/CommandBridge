@@ -75,4 +75,18 @@ class InNodeGateTest {
 
         assertEquals(List.of(MessageType.AUTH_REQUEST), handled);
     }
+
+    @Test
+    void nullAndIncompleteEnvelopesAreRejectedBeforeTheGateOrTap() {
+        InNode node = new InNode();
+        node.setGate((endpoint, env) -> {
+            throw new AssertionError("Malformed envelope reached the gate");
+        });
+        node.setInboundTap(env -> {
+            throw new AssertionError("Malformed envelope reached the tap");
+        });
+
+        for (String json : List.of("null", "{}", "{\"type\":null}"))
+            node.onText(STRANGER, json);
+    }
 }

@@ -17,7 +17,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -40,7 +39,7 @@ public final class ScheduleManager {
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
     private final Path storagePath;
 
-    private Consumer<ExecutionContext> executionCallback;
+    private volatile Consumer<ExecutionContext> executionCallback;
 
     public ScheduleManager(ProxyServer proxy, Object plugin, Path dataDir,
             ScriptManager scriptManager, PlayerTracker playerTracker,
@@ -118,7 +117,8 @@ public final class ScheduleManager {
                 cmd,
                 ctx.arguments(),
                 index,
-                System.currentTimeMillis());
+                System.currentTimeMillis(),
+                ctx.script());
 
         tasks.put(taskId, task);
         saveTasks();
@@ -132,11 +132,11 @@ public final class ScheduleManager {
     }
 
     private void processQueue(String clientId, UUID playerUuid) {
-        Iterator<Map.Entry<UUID, ScheduledTask>> it = tasks.entrySet().iterator();
-
-        while (it.hasNext()) {
-            Map.Entry<UUID, ScheduledTask> entry = it.next();
-            ScheduledTask task = entry.getValue();
+        Consumer<ExecutionContext> callback = executionCallback;
+        if (callback == null) {
+            return;
+        }
+        for (ScheduledTask task : tasks.values()) {
 
             if (!task.playerUuid().equals(playerUuid)) {
                 continue;
@@ -146,21 +146,28 @@ public final class ScheduleManager {
                 continue;
             }
 
+            if (!tasks.remove(task.id(), task)) {
+                continue;
+            }
+            // Consume before dispatch: a synchronous failure may already have executed part of the chain.
+            saveTasks();
+
             Log.debug("Resuming task {} for player {} on client {}",
                     task.id(), playerUuid, clientId);
 
-            ExecutionContext ctx = reconstructContext(playerUuid, task);
-            if (ctx != null && executionCallback != null) {
-                executionCallback.accept(ctx);
+            try {
+                ExecutionContext ctx = isExpired(task) ? null : reconstructContext(playerUuid, task);
+                if (ctx != null) {
+                    callback.accept(ctx);
+                }
+            } catch (Exception e) {
+                Log.error(e, "Scheduled task '{}' failed and was consumed; it will not be retried", task.id());
             }
-
-            it.remove();
         }
-        saveTasks();
     }
 
     private boolean isTargetingClient(CmdMapping mapping, String clientId) {
-        if (mapping.execute() == null)
+        if (mapping == null || mapping.execute() == null)
             return false;
 
         return mapping.execute().stream().anyMatch(target -> {
@@ -174,13 +181,20 @@ public final class ScheduleManager {
     }
 
     private ExecutionContext reconstructContext(UUID playerUuid, ScheduledTask task) {
-        Script script = scriptManager.loaded().stream()
-                .filter(s -> s.name().equals(task.scriptName()))
+        // The continuation was authorized at enqueue; never splice in a revised script.
+        Script script = scriptManager.enabled().stream()
+                .filter(s -> s.enabled() && s.name().equals(task.scriptName()) && s.equals(task.authorizedScript()))
                 .findFirst()
                 .orElse(null);
 
         if (script == null) {
-            Log.warn("Script '{}' for scheduled task missing, discarding task", task.scriptName());
+            Log.warn("Script '{}' for scheduled task changed, disabled, invalid or lacks an authorized revision; discarding task",
+                    task.scriptName());
+            return null;
+        }
+
+        if (task.commandIndex() < 0 || task.commandIndex() >= script.commands().size()) {
+            Log.warn("Scheduled task '{}' has an invalid command index; discarding task", task.id());
             return null;
         }
 

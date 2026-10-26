@@ -65,6 +65,8 @@ public final class PairOffer implements WebSocket.Listener {
                 .thenApply(socket -> {
                     ws = socket;
                     expiry = EXPIRY.schedule(this::close, VALID_MINUTES, TimeUnit.MINUTES);
+                    if (closed)
+                        close();
                     return this;
                 });
     }
@@ -89,6 +91,8 @@ public final class PairOffer implements WebSocket.Listener {
 
     @Override
     public CompletionStage<?> onText(WebSocket socket, CharSequence data, boolean last) {
+        if (closed)
+            return null;
         ws = socket;
         partial.append(data);
         if (partial.length() > MAX_FRAME) {
@@ -112,6 +116,8 @@ public final class PairOffer implements WebSocket.Listener {
     }
 
     private synchronized void handle(WebSocket socket, JsonNode msg) throws Exception {
+        if (closed)
+            return;
         switch (msg.path("type").asText("")) {
             case "hello" -> {
                 if (answered)
@@ -147,5 +153,8 @@ public final class PairOffer implements WebSocket.Listener {
     public void onError(WebSocket socket, Throwable error) {
         Log.warn("Pairing {} lost the relay: {}", serverId, error.getMessage());
         closed = true;
+        ScheduledFuture<?> e = expiry;
+        if (e != null)
+            e.cancel(false);
     }
 }

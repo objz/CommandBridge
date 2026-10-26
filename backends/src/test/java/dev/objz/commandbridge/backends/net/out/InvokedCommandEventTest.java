@@ -9,6 +9,11 @@ import dev.objz.commandbridge.net.OutNode;
 import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
+import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
+import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
+import dev.objz.commandbridge.cmd.ref.EntityRef;
+import dev.objz.commandbridge.cmd.ref.Location2D;
+import dev.objz.commandbridge.cmd.ref.Location3D;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
 import dev.objz.commandbridge.scripting.model.enums.ArgType;
@@ -22,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,6 +60,10 @@ final class InvokedCommandEventTest {
 
         public FakeType getType() {
             return FakeType.PLAYER;
+        }
+
+        public boolean hasPermission(String node) {
+            return node.equals("commandbridge.command.test");
         }
     }
 
@@ -143,6 +153,39 @@ final class InvokedCommandEventTest {
         JsonNode arg = invoke(new FakeConsoleCommandSender(), values, arg("value", type)).get("args").get(0);
         assertEquals(type.name(), arg.get("type").asText());
         return arg.get("value");
+    }
+
+    @Test
+    void playerPermissionAssertionIsScopedToTheRegisteredCommand() throws Exception {
+        JsonNode payload = invoke(new FakePlayer(STEVE, "Steve"), Map.of());
+        var invoked = Envelope.MAPPER.treeToValue(payload, InvokedCommand.class);
+        assertEquals(Set.of("commandbridge.command.test"), ((SenderContext.Player) invoked.sender()).permissions());
+    }
+
+    public static final class PlayerWithoutPermissionMethod {
+        public UUID getUniqueId() { return STEVE; }
+        public String getName() { return "Steve"; }
+    }
+
+    @Test
+    void missingPermissionMethodFailsClosed() throws Exception {
+        var payload = invoke(new PlayerWithoutPermissionMethod(), Map.of());
+        var invoked = Envelope.MAPPER.treeToValue(payload, InvokedCommand.class);
+        assertEquals(Set.of(), ((SenderContext.Player) invoked.sender()).permissions());
+    }
+
+    @Test
+    void alreadyMappedReferencesSurviveOutboundAndInboundSerialization() throws Exception {
+        var entity = new EntityRef("PLAYER", STEVE.toString(), "Steve");
+        var location = new Location3D("world", 1, 2, 3);
+        var location2d = new Location2D("world", 4, 5);
+        var payload = invoke(new FakePlayer(STEVE, "Steve"), Map.of("player", entity, "loc", location, "loc2", location2d),
+                arg("player", ArgType.PLAYERS), arg("loc", ArgType.LOCATION), arg("loc2", ArgType.LOCATION_2D));
+        var invoked = Envelope.MAPPER.treeToValue(payload, InvokedCommand.class);
+
+        assertEquals(List.of(entity), invoked.args().get(0).value());
+        assertEquals(location, invoked.args().get(1).value());
+        assertEquals(location2d, invoked.args().get(2).value());
     }
 
     @Test

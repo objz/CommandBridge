@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.objz.commandbridge.config.ConfigManager;
 import dev.objz.commandbridge.config.model.BackendsConfig;
+import dev.objz.commandbridge.config.profile.BackendsConfigProfile;
 import dev.objz.commandbridge.logging.Log;
 import dev.objz.commandbridge.security.PairCrypto;
 
@@ -90,7 +91,7 @@ public final class PairClient {
                 ws.sendClose(WebSocket.NORMAL_CLOSURE, "paired");
                 return CompletableFuture.completedFuture(config);
             } catch (Exception e) {
-                cancelWith(String.valueOf(e.getMessage()));
+                cancelWith("Could not save the config on the server");
                 return CompletableFuture.failedFuture(new IllegalStateException("Pairing failed: " + e.getMessage(), e));
             }
         }
@@ -194,11 +195,20 @@ public final class PairClient {
                     return;
                 BackendsConfig config = MAPPER.readValue(PairCrypto.open(code, msg.path("sealed").asText("")),
                         BackendsConfig.class);
-                result.complete(new Pending(msg.path("proxy").asText(""), config, ws));
+                if (config == null || config.endpoints() == null || config.endpoints().websocket() == null
+                        || config.endpoints().redis() == null || config.security() == null || config.timeouts() == null)
+                    throw new IllegalArgumentException("Incomplete config");
+                var normalized = new BackendsConfigProfile().normalize(config);
+                if (!normalized.ok())
+                    throw new IllegalArgumentException("Invalid config");
+                result.complete(new Pending(msg.path("proxy").asText(""), normalized.config(), ws));
             } catch (Exception e) {
-                send(ws, Map.of("type", "error", "message", String.valueOf(e.getMessage())));
+                // Parser errors can quote decrypted values; never send them back over the unencrypted relay.
+                Log.warn("Pairing rejected an unreadable or invalid config ({})", e.getClass().getSimpleName());
+                String message = "The proxy sent an unreadable or invalid config";
+                send(ws, Map.of("type", "error", "message", message));
                 ws.sendClose(WebSocket.NORMAL_CLOSURE, "pairing failed");
-                result.completeExceptionally(new IllegalStateException("Pairing failed: " + e.getMessage(), e));
+                result.completeExceptionally(new IllegalStateException(message));
             }
         }
 

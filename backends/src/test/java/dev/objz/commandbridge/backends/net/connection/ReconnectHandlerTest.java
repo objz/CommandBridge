@@ -23,7 +23,7 @@ class ReconnectHandlerTest {
         TestFixtures.ensureLog();
     }
 
-    /** Records schedules and never runs them, like a platform task that ends itself once its time is up. */
+    /** Records tasks without running them, so the reconnect window expires without a callback. */
     static final class SilentScheduler implements PlatformAdapter<Object> {
         final List<Runnable> scheduled = new ArrayList<>();
 

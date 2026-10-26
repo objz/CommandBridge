@@ -148,6 +148,14 @@ class SetupApplierTest {
     }
 
     @Test
+    void tryIsReservedEvenForAnExistingServer() {
+        for (boolean add : List.of(true, false)) {
+            var plan = withServers("play.example.net", List.of(new SetupPlan.Server("try", "localhost:25565", add)));
+            assertTrue(plan.problems().stream().anyMatch(p -> p.contains("reserved")));
+        }
+    }
+
+    @Test
     void serverAddressesMustBeHostAndPort() {
         for (String bad : List.of("10.0.0.1", "10.0.0.1:0", "10.0.0.1:70000", "a b:25565", "\"x\":25565", "999.1.1.1:25565")) {
             var plan = withServers("play.example.net", List.of(new SetupPlan.Server("creative", bad, true)));
@@ -172,5 +180,27 @@ class SetupApplierTest {
         for (int i = 0; i < 65; i++)
             many.add(new SetupPlan.Server("s" + i, "10.0.0.1:" + (20000 + i), false));
         assertFalse(withServers("play.example.net", many).problems().isEmpty());
+    }
+
+    @Test
+    void aFailedConfigSaveDoesNotWriteTheSetupMarkerOrVelocityToml(@TempDir Path dir) throws Exception {
+        Files.createDirectory(dir.resolve("config.yml"));
+        Files.writeString(dir.resolve("config.yml").resolve("keep"), "keep");
+        Path toml = dir.resolve("velocity.toml");
+        Files.writeString(toml, "[servers]\nlobby = \"127.0.0.1:25565\"\n");
+        String before = Files.readString(toml);
+
+        assertFalse(new SetupApplier(dir, toml).apply(current(), plan(9000, "play.example.net")).isEmpty());
+
+        assertEquals(before, Files.readString(toml));
+        assertFalse(Files.exists(dir.resolve("data/setup.json")));
+    }
+
+    @Test
+    void rejectsMalformedOrUnspecifiedIpv6Addresses() {
+        for (String host : List.of(":::1", "[::1", "::1]", "::", "[::]", "12345::1"))
+            assertFalse(withServers(host, List.of()).problems().isEmpty(), host);
+        for (String host : List.of("::1", "[::1]", "2001:db8::1"))
+            assertTrue(withServers(host, List.of()).problems().isEmpty(), host);
     }
 }

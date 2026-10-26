@@ -19,13 +19,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandContext> {
 
     @Override
     public SendOperation accept(InvokedCommandContext ctx) {
-        SenderContext senderCtx = mapSender(ctx.sender);
+        SenderContext senderCtx = mapSender(ctx.sender, ctx.stub.name());
 
         List<InvokedCommand.TypedArgument> typedArgs = new ArrayList<>();
         CommandStub stub = ctx.stub;
@@ -54,14 +55,16 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         return op;
     }
 
-    private SenderContext mapSender(Object sender) {
+    private SenderContext mapSender(Object sender, String commandName) {
         if (sender == null) {
             return new SenderContext.Other("null");
         }
 
         SenderContext.Player player = asPlayerSender(sender);
         if (player != null) {
-            return player;
+            String permission = "commandbridge.command." + commandName;
+            return new SenderContext.Player(player.name(), player.uuid(),
+                    hasPermission(sender, permission) ? Set.of(permission) : Set.of());
         }
 
         if (isConsoleSender(sender)) {
@@ -97,6 +100,14 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
         String className = sender.getClass().getName();
         return className.endsWith("ConsoleCommandSender")
                 || className.endsWith("ConsoleCommandSource");
+    }
+
+    private boolean hasPermission(Object sender, String permission) {
+        try {
+            return Boolean.TRUE.equals(sender.getClass().getMethod("hasPermission", String.class).invoke(sender, permission));
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
     }
 
     private Location3D extractBlockLocation(Object sender) {
@@ -165,6 +176,9 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
     }
 
     private Location3D toLocation3D(Object raw) {
+        if (raw instanceof Location3D location) {
+            return location;
+        }
         if (raw == null) {
             return null;
         }
@@ -180,6 +194,9 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
     }
 
     private Location2D toLocation2D(Object raw) {
+        if (raw instanceof Location2D location) {
+            return location;
+        }
         if (raw == null) {
             return null;
         }
@@ -203,6 +220,9 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
     }
 
     private List<EntityRef> toEntityRefs(Object raw) {
+        if (raw instanceof EntityRef ref) {
+            return List.of(ref);
+        }
         if (!(raw instanceof Collection<?> collection)) {
             return List.of();
         }
@@ -214,6 +234,9 @@ public final class InvokedCommandEvent extends OutboundHandler<InvokedCommandCon
     }
 
     private EntityRef toEntityRef(Object entity) {
+        if (entity instanceof EntityRef ref) {
+            return ref;
+        }
         if (entity == null) {
             return null;
         }

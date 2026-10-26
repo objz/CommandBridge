@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 public final class VelocityToml {
 
     private static final Pattern TABLE = Pattern.compile("^\\s*\\[");
+    private static final Pattern SERVERS_TABLE = Pattern.compile("^\\s*\\[\\s*servers\\s*\\]\\s*(?:#.*)?$");
     private static final Pattern KEY = Pattern.compile("^\\s*(?:\"([^\"]*)\"|([A-Za-z0-9_-]+))\\s*=");
     private static final Pattern BARE = Pattern.compile("[A-Za-z0-9_-]+");
 
@@ -25,6 +26,8 @@ public final class VelocityToml {
 
     /** {@code servers} maps a name to {@code host:port}; names already in [servers] are left alone. */
     public static String addServers(String toml, Map<String, String> servers) {
+        if (servers.containsKey("try"))
+            throw new IllegalArgumentException("The server name try is reserved by Velocity");
         String nl = toml.contains("\r\n") ? "\r\n" : "\n";
         List<String> lines = new ArrayList<>(List.of(toml.split("\r?\n", -1)));
 
@@ -37,7 +40,7 @@ public final class VelocityToml {
                 end = i;
                 break;
             }
-            if (lines.get(i).trim().equals("[servers]"))
+            if (SERVERS_TABLE.matcher(lines.get(i)).matches())
                 start = i;
         }
 

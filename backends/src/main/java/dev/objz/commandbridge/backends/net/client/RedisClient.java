@@ -17,6 +17,7 @@ import dev.objz.commandbridge.net.endpoints.RedisEndpoint;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.redis.RedisChannels;
 import dev.objz.commandbridge.scripting.model.enums.Location;
+import dev.objz.commandbridge.security.RedisSeal;
 import dev.objz.commandbridge.security.SecretLoader;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
@@ -47,6 +48,7 @@ public final class RedisClient implements BackendClient {
     private final BackendCommandBridgeImpl api;
 
     private volatile JedisPool pool;
+    private final RedisSeal seal;
     private volatile JedisPubSub subscriber;
     private volatile Thread subscriberThread;
     private volatile boolean running;
@@ -60,20 +62,22 @@ public final class RedisClient implements BackendClient {
         this.dataDir = Objects.requireNonNull(dataDir);
         this.adapter = Objects.requireNonNull(adapter);
 
+        String secret = resolveSecret();
+        this.seal = new RedisSeal(secret);
         this.reconnectHandler = new ReconnectHandler(cfg, adapter, this::attemptReconnect);
-        this.authHandler = new AuthHandler(cfg, outNode, stateRef);
+        this.authHandler = new AuthHandler(cfg, outNode, stateRef, this);
         this.messageRouter = new RedisMessageRouter(
                 inNode,
                 outNode,
                 awaiter,
                 stateRef,
-                resolveSecret(),
+                secret,
                 location);
 
         outNode.setClientId(cfg.clientId());
         authHandler.onAuthFailed(this::onConnectionLost);
         messageRouter.onAuthenticationRequired(authHandler::authenticate);
-        this.api = new BackendCommandBridgeImpl(this);
+        this.api = new BackendCommandBridgeImpl(this, cfg.clientId(), adapter);
     }
 
     @Override
@@ -88,6 +92,7 @@ public final class RedisClient implements BackendClient {
         }
 
         try {
+            authHandler.invalidate();
             stateRef.set(ConnectionState.CONNECTING);
             running = true;
             pool = createPool();
@@ -117,6 +122,7 @@ public final class RedisClient implements BackendClient {
     @Override
     public synchronized void reconnect() throws Exception {
         Log.warn("Manual reconnection initiated");
+        authHandler.invalidate();
         reconnectHandler.shutdown();
         api.shutdown();
         messageRouter.clearTap();
@@ -141,7 +147,9 @@ public final class RedisClient implements BackendClient {
     @Override
     public synchronized void close() {
         Log.debug("Closing RedisClient");
+        authHandler.invalidate();
         reconnectHandler.shutdown();
+        api.shutdown();
         messageRouter.clearTap();
         stopInternal();
         stateRef.set(ConnectionState.DISCONNECTED);
@@ -229,9 +237,15 @@ public final class RedisClient implements BackendClient {
                 @Override
                 public void onMessage(String channel, String message) {
                     RedisEndpoint endpoint = proxyEndpoint;
-                    if (endpoint != null) {
-                        messageRouter.onText(endpoint, message);
+                    if (endpoint == null) {
+                        return;
                     }
+                    String opened = seal.open(channel, message);
+                    if (opened == null) {
+                        Log.debug("Dropped an invalid, expired, or replayed Redis message");
+                        return;
+                    }
+                    messageRouter.onText(endpoint, opened);
                 }
             };
 
@@ -251,10 +265,15 @@ public final class RedisClient implements BackendClient {
     }
 
     private CompletableFuture<Void> publishToProxy(Envelope env) {
+        final String message;
         try {
-            String payload = Envelope.MAPPER.writeValueAsString(env);
+            message = seal.seal(RedisChannels.PROXY_INBOUND, Envelope.MAPPER.writeValueAsString(env));
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        try {
             try (Jedis jedis = pool.getResource()) {
-                jedis.publish(RedisChannels.PROXY_INBOUND, payload);
+                jedis.publish(RedisChannels.PROXY_INBOUND, message);
             }
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
@@ -281,6 +300,7 @@ public final class RedisClient implements BackendClient {
     }
 
     private void stopInternal() {
+        authHandler.invalidate();
         running = false;
 
         JedisPubSub sub = subscriber;

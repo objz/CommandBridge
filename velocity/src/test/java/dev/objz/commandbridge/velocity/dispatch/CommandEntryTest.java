@@ -8,12 +8,17 @@ import dev.objz.commandbridge.net.OutboundHandler;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.net.proto.MessageType;
+import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
+import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
+import dev.objz.commandbridge.cmd.ref.EntityRef;
 import dev.objz.commandbridge.scripting.model.Defaults;
 import dev.objz.commandbridge.scripting.model.Permissions;
 import dev.objz.commandbridge.scripting.model.Script;
+import dev.objz.commandbridge.scripting.model.enums.ArgType;
 import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.Server;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
+import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
 import dev.objz.commandbridge.scripting.platform.PlatformFeatures;
 import dev.objz.commandbridge.security.AuthStatus;
@@ -21,8 +26,10 @@ import dev.objz.commandbridge.velocity.FakeProxy;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.TestFixtures;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
+import dev.objz.commandbridge.velocity.dispatch.model.ScheduledTask;
 import dev.objz.commandbridge.velocity.net.out.ctx.ExecuteCommandContext;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
+import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.util.PlayerTracker;
 import dev.objz.commandbridge.velocity.util.UserCaches;
 import org.junit.jupiter.api.BeforeAll;
@@ -37,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -64,6 +72,7 @@ final class CommandEntryTest {
     private final List<String> alexMessages = new ArrayList<>();
     private Function<String, UUID> mojang = name -> null;
     private CommandEntry entry;
+    private ScriptManager scriptManager;
 
     private static Method processCommandAt;
 
@@ -87,7 +96,8 @@ final class CommandEntryTest {
         });
         var userCache = UserCaches.offline(proxy.server, sessions, outNode, dir.resolve("usercache.json"),
                 name -> mojang.apply(name));
-        entry = new CommandEntry(proxy.server, new Object(), new ScriptManager(dir, PlatformFeatures.none()),
+        scriptManager = new ScriptManager(dir, PlatformFeatures.none());
+        entry = new CommandEntry(proxy.server, new Object(), scriptManager,
                 sessions, outNode, "proxy-1", dir, tracker, userCache, PlatformFeatures.none(),
                 Duration.ofDays(1));
         connect("survival-1");
@@ -135,6 +145,113 @@ final class CommandEntryTest {
         while (sent.size() < count && System.nanoTime() < deadline) {
             Thread.sleep(10);
         }
+    }
+
+    @Test
+    void playerArgEntityRefSurvivesWireAndTaskRestore() throws Exception {
+        var target = UUID.randomUUID();
+        var wire = new InvokedCommand.TypedArgument(ArgType.PLAYERS,
+                List.of(new EntityRef("PLAYER", target.toString(), "Steve")));
+        var restored = Envelope.MAPPER.readValue(Envelope.MAPPER.writeValueAsBytes(wire), InvokedCommand.TypedArgument.class);
+
+        run(proxy.console, null, Map.of("target", restored.value()),
+                script(cmd("heal", new Server(false, false, "target"), null, null)));
+        run(proxy.console, null, Map.of("target", new EntityRef("PLAYER", target.toString(), "Steve")),
+                script(cmd("feed", new Server(false, false, "target"), null, null)));
+
+        var base = script(cmd("restored", new Server(false, false, "target"), null, null));
+        var savedScript = new Script(base.version(), base.name(), base.enabled(), base.description(), base.aliases(),
+                base.permissions(), base.register(), base.defaults(), List.of(new ArgMapping("target", true, ArgType.PLAYERS, null)),
+                base.commands());
+        var saved = new ScheduledTask(UUID.randomUUID(), ALEX, savedScript.name(), savedScript.commands().getFirst(),
+                Map.of("target", restored.value()), 0, System.currentTimeMillis(), savedScript);
+        var file = dir.resolve("restored-tasks.json");
+        TaskStore.save(file, List.of(saved));
+        var fromDisk = TaskStore.load(file).getFirst();
+        run(proxy.console, null, fromDisk.arguments(), fromDisk.authorizedScript());
+
+        assertEquals(List.of(target, target, target), sent.stream().map(ExecuteCommandContext::uuid).toList());
+    }
+
+    private void enable(Script script) throws Exception {
+        var enabled = ScriptManager.class.getDeclaredField("enabled");
+        enabled.setAccessible(true);
+        enabled.set(scriptManager, List.of(script));
+    }
+
+    private ClientSession remoteProxy() {
+        connect("proxy-2");
+        var session = sessions.findSession("proxy-2", Location.BACKEND).orElseThrow();
+        session.location(Location.VELOCITY);
+        tracker.addPlayer("proxy-2", ALEX);
+        return session;
+    }
+
+    private InvokedCommand remoteInvocation(Set<String> permissions) {
+        return new InvokedCommand("give", List.of(), new SenderContext.Player("Alex", ALEX.toString(), permissions));
+    }
+
+    @Test
+    void authenticatedOwningProxyPreservesRemotePlayerAndPermission() throws Exception {
+        enable(script(cmd("heal", null, null, null)));
+        var remote = remoteProxy();
+        var invoked = remoteInvocation(Set.of("commandbridge.command.give"));
+        invoked = Envelope.MAPPER.readValue(Envelope.MAPPER.writeValueAsBytes(invoked), InvokedCommand.class);
+
+        entry.execute(invoked, remote);
+
+        assertEquals(1, sent.size());
+        assertEquals(ALEX, sent.getFirst().uuid());
+    }
+
+    @Test
+    void remotePlayerWithoutPermissionNeverInheritsConsoleAuthority() throws Exception {
+        enable(script(cmd("op Alex", null, null, null)));
+        entry.execute(remoteInvocation(Set.of()), remoteProxy());
+        assertTrue(sent.isEmpty());
+    }
+
+    @Test
+    void remotePermissionsRequireAuthenticatedOwningProxy() throws Exception {
+        enable(script(cmd("op Alex", null, null, null)));
+        var remote = remoteProxy();
+        var invoked = remoteInvocation(Set.of("commandbridge.command.give"));
+        remote.status(AuthStatus.AUTH_FAIL);
+        entry.execute(invoked, remote);
+        remote.status(AuthStatus.AUTH_OK);
+        remote.location(Location.BACKEND);
+        entry.execute(invoked, remote);
+        remote.location(Location.VELOCITY);
+        tracker.removePlayer("proxy-2", ALEX);
+        entry.execute(invoked, remote);
+        entry.execute(invoked, null);
+        assertTrue(sent.isEmpty());
+    }
+
+    @Test
+    void remotePermissionAssertionsCannotOverrideALocalPlayersPermissions() throws Exception {
+        enable(script(cmd("op Alex", null, null, null)));
+        proxy.addPlayer(ALEX, "Alex");
+        entry.execute(remoteInvocation(Set.of("commandbridge.command.give")), remoteProxy());
+        assertTrue(sent.isEmpty());
+    }
+
+    @Test
+    void unknownAndBlockSendersNeverBecomeConsole() throws Exception {
+        enable(script(cmd("op Alex", null, null, null)));
+        var remote = remoteProxy();
+        entry.execute(new InvokedCommand("give", List.of(), new SenderContext.Other("unknown")), remote);
+        entry.execute(new InvokedCommand("give", List.of(), new SenderContext.Block(null)), remote);
+        assertTrue(sent.isEmpty());
+    }
+
+    @Test
+    void queuedAuthorizedChainResumesItsUnchangedTailOnly() throws Exception {
+        var script = script(cmd("heal", new Server(false, true, null), null, null), cmd("feed", null, null, null));
+        enable(script);
+        run(alex(), ALEX, Map.of(), script);
+        tracker.addPlayer("survival-1", ALEX);
+        assertEquals(List.of("heal", "feed"), sent.stream().map(ExecuteCommandContext::command).toList());
     }
 
     @Test

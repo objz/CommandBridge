@@ -88,6 +88,8 @@ public record SetupPlan(String serverId, EndpointType endpointType, int port, St
         for (Server s : servers) {
             if (!SERVER_NAME.matcher(s.id()).matches())
                 out.add("A server name can use letters, digits, dots, dashes and underscores, up to 32 characters.");
+            else if (s.id().equals("try"))
+                out.add("The server name try is reserved by Velocity. Pick another name.");
             else if (!isServerAddress(s.address()))
                 out.add("The address of " + s.id() + " must be host:port, like 10.0.0.13:25565.");
             else if (!seen.add(s.id()))
@@ -102,13 +104,20 @@ public record SetupPlan(String serverId, EndpointType endpointType, int port, St
     private static final Pattern IPV4 = Pattern.compile("^((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$");
     private static final Pattern HOSTNAME = Pattern.compile(
             "^(?=.{1,253}$)[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$");
-    private static final Pattern IPV6 = Pattern.compile("^\\[?[0-9a-fA-F:]+\\]?$");
+    private static final Pattern IPV6 = Pattern.compile("^(?:[0-9a-fA-F:]+|\\[[0-9a-fA-F:]+\\])$");
 
     static boolean isHost(String h) {
         if (h.equals("0.0.0.0"))
             return false;
-        if (h.chars().filter(c -> c == ':').count() >= 2)
-            return IPV6.matcher(h).matches();
+        if (h.chars().filter(c -> c == ':').count() >= 2) {
+            if (!IPV6.matcher(h).matches())
+                return false;
+            try {
+                return !java.net.InetAddress.getByName(h).isAnyLocalAddress();
+            } catch (java.net.UnknownHostException e) {
+                return false;
+            }
+        }
         if (h.matches("[\\d.]+"))
             return IPV4.matcher(h).matches();
         return HOSTNAME.matcher(h).matches();

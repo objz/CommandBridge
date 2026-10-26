@@ -96,6 +96,8 @@ public final class RelayChannel implements WebSocket.Listener {
                 .thenApply(socket -> {
                     channel.ws = socket;
                     channel.watch = WATCH.scheduleAtFixedRate(channel::expire, 30, 30, TimeUnit.SECONDS);
+                    if (channel.closed)
+                        channel.watch.cancel(false);
                     return channel;
                 });
     }
@@ -132,10 +134,6 @@ public final class RelayChannel implements WebSocket.Listener {
     }
 
     public void close() {
-        ScheduledFuture<?> w = watch;
-        if (w != null) {
-            w.cancel(false);
-        }
         WebSocket socket = ws;
         if (socket != null && !closed) {
             socket.sendClose(WebSocket.NORMAL_CLOSURE, "closed by proxy");
@@ -180,10 +178,15 @@ public final class RelayChannel implements WebSocket.Listener {
     }
 
     private void markClosed() {
-        if (!closed) {
+        synchronized (this) {
+            if (closed)
+                return;
             closed = true;
-            onClosed.run();
+            ScheduledFuture<?> w = watch;
+            if (w != null)
+                w.cancel(false);
         }
+        onClosed.run();
     }
 
     private void handle(String frame) throws Exception {

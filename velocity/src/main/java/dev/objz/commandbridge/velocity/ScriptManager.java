@@ -35,7 +35,7 @@ public final class ScriptManager {
     private volatile List<Script> loaded = List.of();
     private volatile List<Script> enabled = List.of();
     private volatile List<Script> disabled = List.of();
-    private long errors;
+    private volatile long errors;
 
     public ScriptManager(Path dataDir, PlatformFeatures platformFeatures) {
         this.scriptsDir = dataDir.resolve("scripts");
@@ -48,7 +48,7 @@ public final class ScriptManager {
         loadAll(true);
     }
 
-    public void loadAll(boolean logSummary) {
+    public synchronized void loadAll(boolean logSummary) {
         List<Script> newLoaded = new ArrayList<>();
         List<Script> newEnabled = new ArrayList<>();
         List<Script> newDisabled = new ArrayList<>();
@@ -59,6 +59,7 @@ public final class ScriptManager {
             Files.createDirectories(scriptsDir);
         } catch (IOException e) {
             Log.error(e, "Cannot create scripts directory at '{}'", scriptsDir);
+            errors = 1;
             return;
         }
 
@@ -67,6 +68,7 @@ public final class ScriptManager {
             yamlFiles = files.filter(ScriptManager::isYaml).toList();
         } catch (IOException e) {
             Log.error(e, "Failed to list scripts at '{}'", scriptsDir);
+            errors = 1;
             return;
         }
 
@@ -74,13 +76,21 @@ public final class ScriptManager {
             try (var in = Files.newInputStream(p)) {
                 LoadResult<Script> res = ScriptLoader.loadResult(Script.class, in,
                         platformFeatures);
-                newLoaded.add(res.value);
+                if (res.value != null)
+                    newLoaded.add(res.value);
                 if (res.ok() && res.value != null) {
+                    String name = res.value.name().toLowerCase(Locale.ROOT);
+                    if (newFiles.containsKey(name)) {
+                        Log.error("Script '{}' repeats the name used by '{}'", p.getFileName(), newFiles.get(name).getFileName());
+                        newDisabled.add(res.value);
+                        newErrors++;
+                        continue;
+                    }
                     Log.debug("Loaded script '{}' from '{}' (enabled={}, commands={})",
                             res.value.name(), p.getFileName(), res.value.enabled(),
                             res.value.commands() != null ? res.value.commands().size() : 0);
                     if (res.value.name() != null) {
-                        newFiles.put(res.value.name(), p);
+                        newFiles.put(name, p);
                     }
                     if (res.value.enabled())
                         newEnabled.add(res.value);
@@ -89,11 +99,13 @@ public final class ScriptManager {
                 } else {
                     String header = "Script '" + p.getFileName() + "' invalid:";
                     Log.error(res.problems.toBulletedList(header));
-                    newDisabled.add(res.value);
+                    if (res.value != null)
+                        newDisabled.add(res.value);
                     newErrors += res.problems.count();
                 }
             } catch (Exception e) {
                 Log.error(e, "Script '{}' invalid: unexpected error: {}", p.getFileName(), e.getMessage());
+                newErrors++;
             }
         }
 
@@ -149,11 +161,11 @@ public final class ScriptManager {
             return Optional.empty();
         }
         synchronized (filesByName) {
-            return Optional.ofNullable(filesByName.get(name));
+            return Optional.ofNullable(filesByName.get(name.toLowerCase(Locale.ROOT)));
         }
     }
 
-    public ToggleResult setEnabled(String name, boolean target) {
+    public synchronized ToggleResult setEnabled(String name, boolean target) {
         Optional<Path> pathOpt = filePathOf(name);
         if (pathOpt.isEmpty()) {
             return ToggleResult.notFound();
@@ -186,8 +198,7 @@ public final class ScriptManager {
             if (v.find()) {
                 int insertAt = v.end();
                 String after = original.substring(insertAt);
-                String prefix = after.startsWith("\n") || after.startsWith("\r") ? "" : System.lineSeparator();
-                updated = original.substring(0, insertAt) + prefix + insertion + after;
+                updated = original.substring(0, insertAt) + System.lineSeparator() + "enabled: " + desired + after;
             } else {
                 updated = insertion + original;
             }
@@ -204,7 +215,7 @@ public final class ScriptManager {
         return ToggleResult.changed();
     }
 
-    public List<String> save(String fileName, String yaml) {
+    public synchronized List<String> save(String fileName, String yaml) {
         List<String> problems = validate(fileName, yaml);
         if (!problems.isEmpty()) {
             return problems;
@@ -212,10 +223,14 @@ public final class ScriptManager {
         Path file = resolveScriptFile(fileName);
         try {
             Files.createDirectories(scriptsDir);
-            Path tmp = scriptsDir.resolve(file.getFileName() + ".tmp");
-            Files.writeString(tmp, yaml, StandardCharsets.UTF_8);
-            Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            Path tmp = Files.createTempFile(scriptsDir, file.getFileName() + ".", ".tmp");
+            try {
+                Files.writeString(tmp, yaml, StandardCharsets.UTF_8);
+                Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } finally {
+                Files.deleteIfExists(tmp);
+            }
         } catch (IOException e) {
             Log.error(e, "Failed to write script file '{}': {}", file, e.getMessage());
             // the page only learns that it failed; the path and the cause stay in the console
@@ -225,7 +240,7 @@ public final class ScriptManager {
     }
 
     /** What would keep {@code yaml} from being saved as {@code fileName}; empty when it can be. */
-    public List<String> validate(String fileName, String yaml) {
+    public synchronized List<String> validate(String fileName, String yaml) {
         Path file = resolveScriptFile(fileName);
         if (file == null) {
             return List.of("Invalid file name '" + fileName + "' (use letters, digits, '-' or '_' and .yml)");
@@ -242,20 +257,30 @@ public final class ScriptManager {
             return res.problems.problems().stream().map(Object::toString).toList();
         }
 
-        Optional<Path> owner = filePathOf(res.value.name());
-        if (owner.isPresent() && !owner.get().equals(file)) {
-            return List.of("Script name '" + res.value.name() + "' is already used by "
-                    + owner.get().getFileName());
+        try {
+            for (var source : readSources().entrySet()) {
+                if (source.getKey().equals(fileName))
+                    continue;
+                try (var in = new java.io.ByteArrayInputStream(source.getValue().getBytes(StandardCharsets.UTF_8))) {
+                    LoadResult<Script> other = ScriptLoader.loadResult(Script.class, in, platformFeatures);
+                    if (other.value != null && res.value.name().equalsIgnoreCase(other.value.name())) {
+                        return List.of("Script name '" + res.value.name() + "' is already used by " + source.getKey());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.error(e, "Could not check script names: {}", e.getMessage());
+            return List.of("Could not check script names, the proxy console has the details");
         }
         return List.of();
     }
 
-    public boolean delete(String fileName) throws IOException {
+    public synchronized boolean delete(String fileName) throws IOException {
         Path file = resolveScriptFile(fileName);
         return file != null && Files.deleteIfExists(file);
     }
 
-    public Map<String, String> readSources() throws IOException {
+    public synchronized Map<String, String> readSources() throws IOException {
         Map<String, String> out = new java.util.TreeMap<>();
         Files.createDirectories(scriptsDir);
         try (Stream<Path> files = Files.list(scriptsDir)) {
@@ -273,6 +298,11 @@ public final class ScriptManager {
             return null;
         }
         return scriptsDir.resolve(fileName);
+    }
+
+    public List<String> validateDeletion(String fileName) {
+        Path file = resolveScriptFile(fileName);
+        return file != null && isYaml(file) ? List.of() : List.of("Script file not found or invalid file name");
     }
 
     public enum ToggleStatus {
@@ -298,7 +328,7 @@ public final class ScriptManager {
     }
 
     private static boolean isYaml(Path p) {
-        if (!Files.isRegularFile(p))
+        if (!Files.isRegularFile(p, java.nio.file.LinkOption.NOFOLLOW_LINKS))
             return false;
         String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
         return n.endsWith(".yml") || n.endsWith(".yaml");

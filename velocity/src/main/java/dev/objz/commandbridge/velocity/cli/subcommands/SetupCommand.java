@@ -14,6 +14,7 @@ import dev.objz.commandbridge.velocity.ui.Report;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public final class SetupCommand extends AbstractCliCommand {
 
@@ -25,6 +26,7 @@ public final class SetupCommand extends AbstractCliCommand {
     private final Function<CommandSource, CompletableFuture<String>> openEditor;
     private static final long CONFIRM_WITHIN_MS = 60_000;
     private volatile SetupSession active;
+    private long openingGeneration;
     private volatile long warnedAt;
 
     public SetupCommand(ProxyServer proxy, ConfigManager<VelocityConfig> configManager, SessionHub sessionHub,
@@ -60,7 +62,16 @@ public final class SetupCommand extends AbstractCliCommand {
     }
 
     private void start(CommandSource sender, String message, String note) {
+        start(sender, message, note, () -> SetupSession.open(proxy, configManager, sessionHub, dataDir,
+                Path.of("velocity.toml"), () -> openEditor.apply(sender), () -> {
+                }));
+    }
+
+    synchronized void start(CommandSource sender, String message, String note,
+            Supplier<CompletableFuture<SetupSession>> opener) {
+        long generation = ++openingGeneration;
         SetupSession current = active;
+        active = null;
         if (current != null) {
             current.closeOffers();
             if (current.isOpen())
@@ -72,20 +83,26 @@ public final class SetupCommand extends AbstractCliCommand {
         } else {
             Log.info("Connecting to the setup relay...");
         }
-        // Velocity reads velocity.toml from its working directory
-        SetupSession.open(proxy, configManager, sessionHub, dataDir, Path.of("velocity.toml"),
-                () -> openEditor.apply(sender), () -> {
-        }).whenComplete((session, error) -> {
-            if (error != null) {
-                Report.of("Setup").error("Could not open the setup: " + rootMessage(error)).send(sender);
-                return;
+        opener.get().whenComplete((session, error) -> {
+            synchronized (this) {
+                if (generation != openingGeneration) {
+                    if (session != null) {
+                        session.closeOffers();
+                        session.close();
+                    }
+                    return;
+                }
+                if (error != null) {
+                    Report.of("Setup").error("Could not open the setup: " + rootMessage(error)).send(sender);
+                    return;
+                }
+                active = session;
+                Report.of("Setup")
+                        .success(message)
+                        .link("Setup", session.url(), "Click to open")
+                        .muted(note)
+                        .send(sender);
             }
-            active = session;
-            Report.of("Setup")
-                    .success(message)
-                    .link("Setup", session.url(), "Click to open")
-                    .muted(note)
-                    .send(sender);
         });
     }
 

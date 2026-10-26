@@ -12,9 +12,11 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ConfigManagerLoadTest {
@@ -152,6 +154,58 @@ final class ConfigManagerLoadTest {
 
         assertFalse(manager.load());
         assertEquals(8765, manager.current().endpoints().webSocket().bindPort());
+    }
+
+    @Test
+    void failedReloadsKeepTheLastGoodConfig() throws IOException {
+        var manager = velocity("server-id: live-proxy\nendpoints:\n  websocket:\n    bind-port: 9001\n");
+        assertTrue(manager.load());
+        VelocityConfig good = manager.current();
+
+        for (String invalid : List.of(
+                "server-id: candidate\nendpoints:\n  websocket:\n    bind-port: 70000\n",
+                "server-id: candidate\nendpoint-type: typo\n",
+                "timeouts:\n  register-timeout: soon\n",
+                "server-id: [unclosed\n")) {
+            Files.writeString(dir.resolve("config.yml"), invalid);
+            assertFalse(manager.reload(), invalid);
+            assertSame(good, manager.current(), invalid);
+        }
+
+        Files.delete(dir.resolve("config.yml"));
+        Files.createDirectory(dir.resolve("config.yml"));
+        assertFalse(manager.reload());
+        assertSame(good, manager.current());
+    }
+
+    @Test
+    void successfulReloadPublishesTheNormalizedCandidate() throws IOException {
+        var manager = velocity("server-id: live-proxy\n");
+        assertTrue(manager.load());
+        Files.writeString(dir.resolve("config.yml"), "server-id: ' next-proxy '\n");
+
+        assertTrue(manager.reload());
+        assertEquals("next-proxy", manager.current().serverId());
+    }
+
+    @Test
+    void backendLoadsAlsoKeepTheLastGoodConfigOnFailure() throws IOException {
+        Files.writeString(dir.resolve("backend.yml"), "client-id: live-backend\n");
+        var manager = new ConfigManager<>(dir, "backend.yml", BackendsConfig.class);
+        assertTrue(manager.load());
+        BackendsConfig good = manager.current();
+        Files.writeString(dir.resolve("backend.yml"), "client-id: candidate\nendpoints:\n  websocket:\n    port: 70000\n");
+
+        assertFalse(manager.load());
+        assertSame(good, manager.current());
+    }
+
+    @Test
+    void invalidInitialCandidateFallsBackToDefaultsWithoutPublishingItsOtherChanges() throws IOException {
+        var manager = velocity("server-id: candidate\nendpoints:\n  websocket:\n    bind-port: 70000\n");
+
+        assertFalse(manager.load());
+        assertDefaultsLoaded(manager.current());
     }
 
     @Test

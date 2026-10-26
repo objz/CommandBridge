@@ -11,10 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 
-/**
- * Tests for {@link PlatformDetector}.
- * Verifies that platform detection returns valid, consistent results.
- */
 final class PlatformDetectorTest {
 
     @BeforeAll

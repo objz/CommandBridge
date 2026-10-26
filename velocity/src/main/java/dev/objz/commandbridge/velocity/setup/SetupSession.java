@@ -122,23 +122,28 @@ public final class SetupSession {
             Log.warn("The keystore of the setup could not be read: {}", e.getMessage());
             return new Result(false, List.of("Could not open the keystore with that path and password"));
         }
-        staged = null;
-        applied = true;
         VelocityConfig current = configManager.current();
         boolean restart = applier.needsRestart(current, p);
         List<String> errors = new ArrayList<>(applier.apply(current, p));
-        for (SetupPlan.Server server : p.servers()) {
-            if (server.addToVelocity() && proxy.getServer(server.id()).isEmpty()) {
-                try {
-                    proxy.registerServer(new ServerInfo(server.id(), address(server.address())));
-                } catch (Exception e) {
-                    errors.add("Could not register " + server.id() + ": " + e.getMessage());
+        if (errors.isEmpty()) {
+            for (SetupPlan.Server server : p.servers()) {
+                if (server.addToVelocity() && proxy.getServer(server.id()).isEmpty()) {
+                    try {
+                        proxy.registerServer(new ServerInfo(server.id(), address(server.address())));
+                    } catch (Exception e) {
+                        errors.add("Could not register " + server.id() + ": " + e.getMessage());
+                    }
                 }
             }
+            if (!restart && !configManager.reload())
+                errors.add("Could not reload config.yml");
+            if (errors.isEmpty()) {
+                offerCodes(p, pin);
+                staged = null;
+                applied = true;
+            }
         }
-        if (!restart)
-            configManager.reload();
-        offerCodes(p, pin);
+        restart = restart && applied;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("type", "applied");
@@ -209,6 +214,9 @@ public final class SetupSession {
             channel.send(Map.of("type", "plan-error", "problems", List.of("This setup is applied already. Run /cb setup for a new one.")));
             return;
         }
+        staged = null;
+        plan = null;
+        planJson = null;
         VelocityConfig current = configManager.current();
         SetupPlan next = SetupPlan.fromJson(json).withCurrentPasswords(current);
         List<String> problems = next.problems();
@@ -351,8 +359,15 @@ public final class SetupSession {
             return TLS.keystoreSpkiPin(p.keystore().path(), p.keystore().type(), p.keystore().password());
         if (p.tlsMode() == TlsMode.TOFU) {
             // the TOFU keystore lives in data/, see TlsResolver
-            String pin = TLS.readServerSpkiPin(dataDir.resolve("data"));
-            return pin == null ? "" : pin;
+            Path tlsDir = dataDir.resolve("data");
+            String pin = TLS.readServerSpkiPin(tlsDir);
+            if (pin == null) {
+                TLS.ensure(tlsDir, "localhost");
+                pin = TLS.readServerSpkiPin(tlsDir);
+            }
+            if (pin == null)
+                throw new IllegalStateException("Could not read the proxy TLS pin");
+            return pin;
         }
         return "";
     }

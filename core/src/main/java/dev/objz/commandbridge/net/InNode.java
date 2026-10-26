@@ -33,15 +33,20 @@ public final class InNode {
     }
 
     public InNode setSendOperationFactory(BiFunction<Endpoint, Envelope, SendOperation> factory) {
-        this.sendOperationFactory = factory;
+        synchronized (handlers) {
+            this.sendOperationFactory = factory;
+            handlers.values().forEach(handler -> handler.setSendOperationFactory(factory));
+        }
         return this;
     }
 
     public InNode register(MessageType type, InboundHandler handler) {
         Objects.requireNonNull(type);
         Objects.requireNonNull(handler);
-        handler.setSendOperationFactory(sendOperationFactory);
-        handlers.put(type, handler);
+        synchronized (handlers) {
+            handler.setSendOperationFactory(sendOperationFactory);
+            handlers.put(type, handler);
+        }
         return this;
     }
 
@@ -52,6 +57,11 @@ public final class InNode {
         } catch (Exception e) {
             String source = endpoint != null ? endpoint.describe() : "unknown";
             Log.warn("Bad JSON from {}: {}", source, e.getMessage());
+            return;
+        }
+
+        if (env == null || env.type() == null) {
+            Log.warn("Dropped an envelope without a message type from {}", endpoint != null ? endpoint.describe() : "unknown");
             return;
         }
 

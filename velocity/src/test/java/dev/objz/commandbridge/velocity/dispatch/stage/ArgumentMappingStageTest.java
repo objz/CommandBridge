@@ -1,6 +1,7 @@
 package dev.objz.commandbridge.velocity.dispatch.stage;
 
 import dev.objz.commandbridge.api.channel.command.RunAs;
+import dev.objz.commandbridge.cmd.ref.EntityRef;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
 import dev.objz.commandbridge.scripting.model.Defaults;
@@ -34,6 +35,30 @@ final class ArgumentMappingStageTest {
     @BeforeAll
     static void setUp() {
         TestFixtures.ensureLog();
+    }
+
+    @Test
+    void complexArgumentsUseTheScriptTypeRatherThanThePeersTypeTag() {
+        var script = scriptWithArgs(List.of(new ArgMapping("target", true, ArgType.PLAYERS, null)));
+        var invoked = List.of(new InvokedCommand.TypedArgument(ArgType.STRING,
+                List.of(Map.of("type", "PLAYER", "uuid", "uuid", "name", "Alex"))));
+        var result = new AtomicReference<ExecutionResult>();
+
+        new ArgumentMappingStage().process(contextWithArgs(script, invoked), result::set);
+
+        var ctx = assertInstanceOf(ExecutionResult.Continue.class, result.get()).context();
+        assertEquals(List.of(new EntityRef("PLAYER", "uuid", "Alex")), ctx.arguments().get("target"));
+    }
+
+    @Test
+    void invalidComplexArgumentStopsInsteadOfEscapingThePipeline() {
+        var script = scriptWithArgs(List.of(new ArgMapping("target", true, ArgType.PLAYERS, null)));
+        var invoked = List.of(new InvokedCommand.TypedArgument(ArgType.STRING, Map.of("unknownField", "value")));
+        var result = new AtomicReference<ExecutionResult>();
+
+        new ArgumentMappingStage().process(contextWithArgs(script, invoked), result::set);
+
+        assertInstanceOf(ExecutionResult.Error.class, result.get());
     }
 
     @Test

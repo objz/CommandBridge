@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 public final class ReloadCommand extends AbstractCliCommand {
 
@@ -71,20 +72,22 @@ public final class ReloadCommand extends AbstractCliCommand {
             registrationManager.load(scriptManager.enabled());
 
             List<ClientSession> activeClients = sessionHub.authenticated();
-            int clientsWithScripts = (int) activeClients.stream().filter(
-                    s -> !registrationManager.getScriptsForSession(s).isEmpty())
-                    .count();
 
             Duration registerTimeout = Duration.ofSeconds(cfg.timeouts().registerTimeout());
 
-            if (clientsWithScripts == 0) {
+            if (activeClients.isEmpty()) {
                 sendSuccess(ctx, loaded, enabled, disabled, errors, startNs);
                 return;
             }
             AtomicInteger completed = new AtomicInteger(0);
             ConcurrentHashMap<String, ReloadResult> results = new ConcurrentHashMap<>();
-            final int totalExpected = clientsWithScripts;
-            final var sentTo = new ConcurrentHashMap<String, Boolean>();
+            final int totalExpected = activeClients.size();
+            BiConsumer<String, ReloadResult> complete = (clientId, result) -> {
+                if (results.putIfAbsent(clientId, result) == null
+                        && completed.incrementAndGet() == totalExpected) {
+                    displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors, startNs);
+                }
+            };
 
             for (ClientSession session : activeClients) {
                 String clientId = session.id();
@@ -93,11 +96,6 @@ public final class ReloadCommand extends AbstractCliCommand {
                 Set<dev.objz.commandbridge.scripting.model.Script> scripts = registrationManager
                         .getScriptsForSession(session);
 
-                if (scripts == null || scripts.isEmpty()) {
-                    continue;
-                }
-
-                sentTo.put(clientId, true);
                 try {
                     outNode.send(MessageType.REGISTER_COMMANDS,
                             new RegistrationRequestContext(session, scripts,
@@ -106,22 +104,12 @@ public final class ReloadCommand extends AbstractCliCommand {
                                         ReloadStatus status = success
                                                 ? ReloadStatus.SUCCESS
                                                 : ReloadStatus.FAILED;
-                                        results.put(clientId,
-                                                new ReloadResult(status,
-                                                        address,
-                                                        null));
-                                if (completed.incrementAndGet() == totalExpected) {
-                                    displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors,
-                                        startNs);
-                                }
+                                        complete.accept(clientId,
+                                                new ReloadResult(status, address, null));
                                     }));
                 } catch (Exception ex) {
-                    results.put(clientId, new ReloadResult(ReloadStatus.FAILED, address,
+                    complete.accept(clientId, new ReloadResult(ReloadStatus.FAILED, address,
                             ex.getMessage()));
-                    if (completed.incrementAndGet() == totalExpected) {
-                        displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors,
-                                startNs);
-                    }
                 }
             }
 
@@ -132,12 +120,11 @@ public final class ReloadCommand extends AbstractCliCommand {
                         if (completed.get() < totalExpected) {
                             for (ClientSession session : activeClients) {
                                 String clientId = session.id();
-                                if (sentTo.containsKey(clientId)
-                                        && !results.containsKey(clientId)) {
+                                if (!results.containsKey(clientId)) {
                                     String address = session.endpoint() != null
                                             ? session.endpoint().describe()
                                             : "unknown";
-                                    results.put(clientId,
+                                    complete.accept(clientId,
                                             new ReloadResult(
                                                     ReloadStatus.TIMEOUT,
                                                     address,
@@ -146,11 +133,6 @@ public final class ReloadCommand extends AbstractCliCommand {
                                                                     .toSeconds()
                                                             + "s"));
                                 }
-                            }
-                            if (completed.get() < totalExpected) {
-                                completed.set(totalExpected);
-                                displayResults(sender, results, totalExpected, loaded, enabled, disabled, errors,
-                                        startNs);
                             }
                         }
                     } catch (InterruptedException e) {

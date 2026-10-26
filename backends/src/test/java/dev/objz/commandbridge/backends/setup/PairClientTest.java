@@ -62,6 +62,7 @@ class PairClientTest {
         final List<JsonNode> received = new ArrayList<>();
         URI uri;
         Listener listener;
+        String configJson;
 
         FakeProxy(String code) {
             this.code = code;
@@ -80,7 +81,8 @@ class PairClientTest {
                 JsonNode msg = MAPPER.readTree(data.toString());
                 received.add(msg);
                 if (msg.path("type").asText().equals("hello")) {
-                    String sealed = PairCrypto.seal(code, MAPPER.writeValueAsBytes(paired()));
+                    String sealed = PairCrypto.seal(code, configJson == null ? MAPPER.writeValueAsBytes(paired())
+                            : configJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                     String reply = MAPPER.writeValueAsString(Map.of("type", "config", "proxy", "main-proxy", "sealed", sealed));
                     CompletableFuture.runAsync(() -> listener.onText(this, reply, true));
                 }
@@ -261,5 +263,30 @@ class PairClientTest {
         assertEquals("client-id: old\n", Files.readString(dir.resolve("config.yml")));
         assertFalse(Files.exists(dir.resolve("config.yml.bak")));
         assertEquals("error", proxy.received.get(proxy.received.size() - 1).path("type").asText());
+    }
+
+    @Test
+    void rejectsIncompleteConfigsBeforeOfferingAConfirm(@TempDir Path dir) {
+        String code = PairCrypto.newCode();
+        FakeProxy proxy = new FakeProxy(code);
+        proxy.configJson = "{}";
+        var client = new PairClient(dir, "ws://relay.test/", proxy::connect);
+
+        assertThrows(ExecutionException.class, () -> client.pair(code, "PAPER", "1.21.4").get(5, TimeUnit.SECONDS));
+        assertFalse(Files.exists(dir.resolve("config.yml")));
+    }
+
+    @Test
+    void configParseErrorsDoNotSendDecryptedValuesToTheRelay(@TempDir Path dir) {
+        String code = PairCrypto.newCode();
+        FakeProxy proxy = new FakeProxy(code);
+        proxy.configJson = "{\"endpointType\":\"private-value-must-stay-encrypted\"}";
+        var client = new PairClient(dir, "ws://relay.test/", proxy::connect);
+
+        var error = assertThrows(ExecutionException.class,
+                () -> client.pair(code, "PAPER", "1.21.4").get(5, TimeUnit.SECONDS));
+
+        assertFalse(proxy.received.toString().contains("private-value-must-stay-encrypted"));
+        assertFalse(error.getCause().getMessage().contains("private-value-must-stay-encrypted"));
     }
 }

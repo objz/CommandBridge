@@ -45,6 +45,8 @@ public final class WsClient implements BackendClient {
     private volatile WsEndpoint cachedEndpoint;
     private Location location = Location.BACKEND;
     private String serverId;
+    private long connectionGeneration;
+    private boolean closed;
 
     public WsClient(BackendsConfig cfg, Path dataDir, PlatformAdapter<?> adapter) {
         this.cfg = Objects.requireNonNull(cfg);
@@ -52,7 +54,7 @@ public final class WsClient implements BackendClient {
         this.resources = new ResourcePool();
         this.connectionHandler = new ConnectionHandler(cfg, resources);
         this.reconnectHandler = new ReconnectHandler(cfg, adapter, this::attemptReconnect);
-        this.authHandler = new AuthHandler(cfg, outNode, stateRef);
+        this.authHandler = new AuthHandler(cfg, outNode, stateRef, this);
 
         String secret = resolveSecret();
         this.messageRouter = new MessageRouter(
@@ -66,7 +68,7 @@ public final class WsClient implements BackendClient {
 
         outNode.setClientId(cfg.clientId());
         authHandler.onAuthFailed(this::onConnectionLost);
-        this.api = new BackendCommandBridgeImpl(this);
+        this.api = new BackendCommandBridgeImpl(this, cfg.clientId(), adapter);
     }
 
     @Override
@@ -75,6 +77,10 @@ public final class WsClient implements BackendClient {
             Log.debug("Already connected, skipping start");
             return;
         }
+
+        closed = false;
+        long generation = ++connectionGeneration;
+        authHandler.invalidate();
 
         if (!reconnectHandler.isReconnecting()) {
             reconnectHandler.stopReconnect();
@@ -95,7 +101,7 @@ public final class WsClient implements BackendClient {
             WebSocketChannel channel = connectionHandler.connect(reconnectHandler.isReconnecting());
             stateRef.set(ConnectionState.CONNECTED);
 
-            messageRouter.setupChannel(channel);
+            messageRouter.setupChannel(channel, () -> onConnectionLost(generation));
             api.bootstrap();
 
             authHandler.authenticate();
@@ -105,6 +111,7 @@ public final class WsClient implements BackendClient {
             }
 
         } catch (Exception e) {
+            authHandler.invalidate();
             stateRef.set(ConnectionState.DISCONNECTED);
 
             if (!reconnectHandler.isReconnecting()) {
@@ -118,6 +125,8 @@ public final class WsClient implements BackendClient {
     @Override
     public synchronized void reconnect() throws Exception {
         Log.warn("Manual reconnection initiated");
+        connectionGeneration++;
+        authHandler.invalidate();
         reconnectHandler.shutdown();
         messageRouter.clearTap();
         connectionHandler.forceClose();
@@ -154,6 +163,9 @@ public final class WsClient implements BackendClient {
     @Override
     public synchronized void close() throws Exception {
         Log.debug("Closing WsClient");
+        closed = true;
+        connectionGeneration++;
+        authHandler.invalidate();
 
         reconnectHandler.shutdown();
         api.shutdown();
@@ -210,13 +222,27 @@ public final class WsClient implements BackendClient {
         authHandler.onAuthenticated(callback);
     }
 
-    private void onConnectionLost() {
+    private synchronized void onConnectionLost() {
+        onConnectionLost(connectionGeneration);
+    }
+
+    private synchronized void onConnectionLost(long generation) {
+        if (closed || generation != connectionGeneration) {
+            return;
+        }
+        connectionGeneration++;
+        authHandler.invalidate();
+        messageRouter.clearTap();
+        cachedEndpoint = null;
         stateRef.set(ConnectionState.RECONNECTING);
         connectionHandler.forceClose();
         reconnectHandler.scheduleReconnect();
     }
 
-    private void attemptReconnect() {
+    private synchronized void attemptReconnect() {
+        if (closed) {
+            return;
+        }
         try {
             if (connectionHandler.isConnected()) {
                 connectionHandler.forceClose();

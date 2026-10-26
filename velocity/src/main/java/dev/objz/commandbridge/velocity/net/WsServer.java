@@ -6,15 +6,14 @@ import dev.objz.commandbridge.net.ResponseAwaiter;
 import dev.objz.commandbridge.net.SendOperation;
 import dev.objz.commandbridge.net.InNode;
 import dev.objz.commandbridge.net.endpoints.WsEndpoint;
+import dev.objz.commandbridge.net.endpoints.BoundedReceiveListener;
 import dev.objz.commandbridge.net.proto.Envelope;
 import dev.objz.commandbridge.velocity.net.session.ClientSession;
 import dev.objz.commandbridge.velocity.net.session.SessionHub;
 import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.websockets.WebSocketConnectionCallback;
-import io.undertow.websockets.core.AbstractReceiveListener;
 import io.undertow.websockets.core.BufferedBinaryMessage;
-import io.undertow.websockets.core.BufferedTextMessage;
 import io.undertow.websockets.core.CloseMessage;
 import io.undertow.websockets.core.StreamSourceFrameChannel;
 import io.undertow.websockets.core.WebSocketCallback;
@@ -66,11 +65,12 @@ public final class WsServer implements EndpointServer {
     public void start() {
         WebSocketConnectionCallback cb = (WebSocketHttpExchange ex, WebSocketChannel ch) -> {
             final WsEndpoint endpoint = new WsEndpoint(ch);
+            ch.addCloseTask(channel -> sessions.remove(endpoint));
 
-            ch.getReceiveSetter().set(new AbstractReceiveListener() {
+            ch.getReceiveSetter().set(new BoundedReceiveListener() {
                 @Override
-                protected void onFullTextMessage(WebSocketChannel c, BufferedTextMessage msg) {
-                    inNode.onText(endpoint, msg.getData());
+                protected void onTextMessage(WebSocketChannel c, String msg) {
+                    inNode.onText(endpoint, msg);
                 }
 
                 @Override

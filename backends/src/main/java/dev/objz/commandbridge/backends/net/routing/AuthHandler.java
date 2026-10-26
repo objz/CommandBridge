@@ -16,13 +16,17 @@ public final class AuthHandler {
     private final BackendsConfig cfg;
     private final OutNode outNode;
     private final AtomicReference<ConnectionState> stateRef;
+    private final Object lifecycleLock;
+    private long generation;
     private volatile Runnable onAuthed;
     private volatile Runnable onAuthFailed;
 
-    public AuthHandler(BackendsConfig cfg, OutNode outNode, AtomicReference<ConnectionState> stateRef) {
+    public AuthHandler(BackendsConfig cfg, OutNode outNode, AtomicReference<ConnectionState> stateRef,
+            Object lifecycleLock) {
         this.cfg = cfg;
         this.outNode = outNode;
         this.stateRef = stateRef;
+        this.lifecycleLock = lifecycleLock;
     }
 
     public void onAuthenticated(Runnable callback) {
@@ -34,35 +38,61 @@ public final class AuthHandler {
     }
 
     public boolean authenticate() {
+        synchronized (lifecycleLock) {
+            return authenticateLocked();
+        }
+    }
+
+    public void invalidate() {
+        synchronized (lifecycleLock) {
+            generation++;
+        }
+    }
+
+    private boolean authenticateLocked() {
+        long attempt = ++generation;
 
         Consumer<ClientStatus> statusUpdater = status -> {
-            ConnectionState newState = status.toConnectionState();
-            stateRef.set(newState);
-
-            if (newState == ConnectionState.AUTHENTICATED) {
-                Log.debug("Authentication successful");
-                var cb = onAuthed;
-                if (cb != null) {
-                    try {
-                        cb.run();
-                    } catch (Exception e) {
-                        Log.error("Authentication callback failed: {}", e.getMessage());
-                    }
+            synchronized (lifecycleLock) {
+                if (attempt != generation) {
+                    return;
                 }
-            } else if (newState == ConnectionState.AUTH_FAILED) {
-                Log.error("Authentication failed");
+                ConnectionState newState = status.toConnectionState();
+                stateRef.set(newState);
+
+                if (newState == ConnectionState.AUTHENTICATED) {
+                    Log.debug("Authentication successful");
+                    var cb = onAuthed;
+                    if (cb != null) {
+                        try {
+                            cb.run();
+                        } catch (Exception e) {
+                            Log.error("Authentication callback failed: {}", e.getMessage());
+                        }
+                    }
+                } else if (newState == ConnectionState.AUTH_FAILED) {
+                    Log.error("Authentication failed");
+                }
             }
         };
 
         Duration timeout = Duration.ofSeconds(cfg.timeouts().authTimeout());
-        AuthRequestContext context = new AuthRequestContext(timeout, statusUpdater, onAuthFailed);
+        AuthRequestContext context = new AuthRequestContext(timeout, statusUpdater, () -> {
+            synchronized (lifecycleLock) {
+                if (attempt == generation && onAuthFailed != null) {
+                    onAuthFailed.run();
+                }
+            }
+        });
 
         try {
             outNode.send(MessageType.AUTH_REQUEST, context);
             return true;
         } catch (Exception e) {
             Log.error(e, "Failed to send authentication request");
-            stateRef.set(ConnectionState.AUTH_FAILED);
+            if (attempt == generation) {
+                stateRef.set(ConnectionState.AUTH_FAILED);
+            }
             return false;
         }
     }

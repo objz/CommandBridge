@@ -13,7 +13,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** Endpoint that records replies sent by an inbound handler wired to it. */
 final class RecordingEndpoint implements Endpoint {
 
     final List<Envelope> sent = new CopyOnWriteArrayList<>();

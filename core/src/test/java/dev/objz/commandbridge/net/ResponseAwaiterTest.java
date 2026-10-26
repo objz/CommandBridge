@@ -19,11 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Tests for {@link ResponseAwaiter}.
- * Verifies signal matching by client ID, wildcard null-clientId fallback,
- * and safe behavior when no awaiter is pending.
- */
 final class ResponseAwaiterTest {
 
     @BeforeAll

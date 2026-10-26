@@ -19,6 +19,7 @@ public final class ResourcePool implements AutoCloseable {
     private XnioWorker worker;
     private ByteBufferPool bufferPool;
     private XnioSsl ssl;
+    private TrustManager sessionTrust;
     private final ClassLoader classLoader;
 
     public ResourcePool() {
@@ -58,7 +59,14 @@ public final class ResourcePool implements AutoCloseable {
 
         TrustManager tm;
         try {
-            tm = new TrustManager(mode, configuredPin);
+            if (mode == TlsMode.TOFU && (configuredPin == null || configuredPin.isBlank())) {
+                if (sessionTrust == null) {
+                    sessionTrust = new TrustManager(mode, configuredPin);
+                }
+                tm = sessionTrust;
+            } else {
+                tm = new TrustManager(mode, configuredPin);
+            }
         } catch (Exception e) {
             Log.error(e, "Failed to create TrustManager for TLS mode {}", mode);
             throw e;

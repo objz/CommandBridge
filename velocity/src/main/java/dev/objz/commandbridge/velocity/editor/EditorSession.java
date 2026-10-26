@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Live web editor session over a {@link RelayChannel}. */
@@ -48,9 +49,10 @@ public final class EditorSession {
     }
 
     public static CompletableFuture<EditorSession> open(ScriptManager scripts, ReloadCommand reload,
-            CommandSource owner, Supplier<Map<String, Map<String, String>>> servers, EditorLayoutStore layout, Runnable onClosed) {
+            CommandSource owner, Supplier<Map<String, Map<String, String>>> servers, EditorLayoutStore layout,
+            Consumer<EditorSession> onClosed) {
         EditorSession session = new EditorSession(scripts, reload, owner, servers, layout);
-        return RelayChannel.open("Editor", "editor/", session::handle, onClosed)
+        return RelayChannel.open("Editor", "editor/", session::handle, () -> onClosed.accept(session))
                 .thenApply(channel -> {
                     session.channel = channel;
                     return session;
@@ -150,11 +152,31 @@ public final class EditorSession {
      * to the proxy runs /cb editor confirm with the code, so a leaked editor link alone can't change scripts.
      */
     private void stage(JsonNode msg) throws Exception {
-        Map<String, String> files = new LinkedHashMap<>();
-        msg.path("files").fields().forEachRemaining(e -> files.put(e.getKey(), e.getValue().asText("")));
-        List<String> deletions = new ArrayList<>();
-        msg.path("deletions").forEach(d -> deletions.add(d.asText("")));
+        pending = null;
         Map<String, Object> errors = new LinkedHashMap<>();
+        if ((msg.has("files") && !msg.path("files").isObject())
+                || (msg.has("deletions") && !msg.path("deletions").isArray())) {
+            send(Map.of("type", "staged", "errors", Map.of("request", List.of("Files must be an object and deletions an array"))));
+            return;
+        }
+        Map<String, String> files = new LinkedHashMap<>();
+        msg.path("files").fields().forEachRemaining(e -> {
+            if (e.getValue().isTextual())
+                files.put(e.getKey(), e.getValue().textValue());
+            else
+                errors.put(e.getKey(), List.of("Script contents must be text"));
+        });
+        List<String> deletions = new ArrayList<>();
+        for (JsonNode deletion : msg.path("deletions")) {
+            String file = deletion.asText("");
+            List<String> problems = scripts.validateDeletion(file);
+            if (!deletion.isTextual() || !problems.isEmpty())
+                errors.put(file, List.of("Script file not found or invalid file name"));
+            else if (files.containsKey(file) || deletions.contains(file))
+                errors.put(file, List.of("A file can only be changed or deleted once"));
+            else
+                deletions.add(file);
+        }
         for (var e : files.entrySet()) {
             List<String> problems = scripts.validate(e.getKey(), e.getValue());
             if (!problems.isEmpty()) {

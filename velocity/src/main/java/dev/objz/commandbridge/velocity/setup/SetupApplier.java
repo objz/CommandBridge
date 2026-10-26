@@ -73,8 +73,10 @@ public final class SetupApplier {
     /** Writes config.yml, the new servers in velocity.toml and data/setup.json. Returns what went wrong. */
     public List<String> apply(VelocityConfig current, SetupPlan plan) {
         List<String> errors = new ArrayList<>();
-        if (!new ConfigManager<>(dataDir, VelocityConfig.class).save(proxyConfig(current, plan)))
+        if (!new ConfigManager<>(dataDir, VelocityConfig.class).save(proxyConfig(current, plan))) {
             errors.add("Could not write config.yml");
+            return errors;
+        }
 
         Map<String, String> added = new LinkedHashMap<>();
         plan.servers().stream().filter(SetupPlan.Server::addToVelocity).forEach(s -> added.put(s.id(), s.address()));

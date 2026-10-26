@@ -11,9 +11,11 @@ import dev.objz.commandbridge.net.payloads.cmd.CommandStub;
 import dev.objz.commandbridge.net.payloads.cmd.InvokedCommand;
 import dev.objz.commandbridge.net.payloads.cmd.SenderContext;
 import dev.objz.commandbridge.scripting.model.Script;
+import dev.objz.commandbridge.scripting.model.enums.Location;
 import dev.objz.commandbridge.scripting.model.records.mapping.ArgMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.CmdMapping;
 import dev.objz.commandbridge.scripting.model.records.mapping.IdMapping;
+import dev.objz.commandbridge.security.AuthStatus;
 import dev.objz.commandbridge.velocity.ScriptManager;
 import dev.objz.commandbridge.velocity.dispatch.exec.LocalDispatcher;
 import dev.objz.commandbridge.velocity.dispatch.model.ExecutionContext;
@@ -102,7 +104,7 @@ public final class CommandEntry {
     }
 
     public void execute(InvokedCommand invoked, ClientSession originSession) {
-        resolveSource(invoked.sender())
+        resolveSource(invoked.sender(), originSession)
                 .ifPresentOrElse(
                         source -> runPipeline(
                                 createInitialContext(invoked, originSession, source)),
@@ -278,6 +280,16 @@ public final class CommandEntry {
     }
 
     private CompletableFuture<UUID> resolveToUuid(Object value) {
+        if (value instanceof EntityRef ref) {
+            if (ref.uuid() == null) {
+                return ref.name() != null ? userCache.resolve(ref.name()) : CompletableFuture.completedFuture(null);
+            }
+            try {
+                return CompletableFuture.completedFuture(UUID.fromString(ref.uuid()));
+            } catch (IllegalArgumentException e) {
+                return CompletableFuture.completedFuture(null);
+            }
+        }
         if (value instanceof String str) {
             try {
                 return CompletableFuture.completedFuture(UUID.fromString(str));
@@ -287,14 +299,7 @@ public final class CommandEntry {
         }
 
         if (value instanceof List<?> list && !list.isEmpty()) {
-            Object first = list.getFirst();
-            if (first instanceof EntityRef ref && ref.uuid() != null) {
-                try {
-                    return CompletableFuture.completedFuture(UUID.fromString(ref.uuid()));
-                } catch (IllegalArgumentException e) {
-                    return CompletableFuture.completedFuture(null);
-                }
-            }
+            return resolveToUuid(list.getFirst());
         }
 
         return CompletableFuture.completedFuture(null);
@@ -302,22 +307,34 @@ public final class CommandEntry {
 
     private ExecutionContext createInitialContext(InvokedCommand invoked, ClientSession session,
             CommandSource source) {
-        UUID playerUuid = source instanceof Player p ? p.getUniqueId() : null;
+        UUID playerUuid = invoked.sender() instanceof SenderContext.Player p ? UUID.fromString(p.uuid()) : null;
         return new ExecutionContext(invoked, session, source, playerUuid, null, Map.of(), null, -1);
     }
 
-    private Optional<CommandSource> resolveSource(SenderContext sender) {
+    private Optional<CommandSource> resolveSource(SenderContext sender, ClientSession originSession) {
+        if (sender == null) {
+            return Optional.empty();
+        }
         return switch (sender) {
             case SenderContext.Player p -> {
                 try {
                     UUID u = UUID.fromString(p.uuid());
-                    yield proxy.getPlayer(u).map(pl -> (CommandSource) pl);
+                    Optional<CommandSource> local = proxy.getPlayer(u).map(pl -> (CommandSource) pl);
+                    if (local.isPresent()) {
+                        yield local;
+                    }
+                    if (originSession != null && originSession.status() == AuthStatus.AUTH_OK
+                            && originSession.location() == Location.VELOCITY
+                            && playerTracker.isPlayerOn(u, originSession.id())) {
+                        yield Optional.of(new RemotePlayerSource(p, originSession.id()));
+                    }
+                    yield Optional.empty();
                 } catch (Exception e) {
                     yield Optional.empty();
                 }
             }
             case SenderContext.Console() -> Optional.of(proxy.getConsoleCommandSource());
-            default -> Optional.of(proxy.getConsoleCommandSource());
+            default -> Optional.empty();
         };
     }
 

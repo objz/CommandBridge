@@ -12,9 +12,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VelocityTomlTest {
+
+    @Test
+    void aCommentAfterTheServersHeaderDoesNotCreateADuplicateTable() {
+        String input = "[servers] # backend addresses\nlobby = \"localhost:25565\"\n";
+
+        String out = VelocityToml.addServers(input, Map.of("creative", "localhost:25566"));
+
+        assertEquals(1, out.split("\\[servers\\]", -1).length - 1);
+        assertTrue(out.contains("creative = \"localhost:25566\""));
+    }
 
     // Velocity's own default velocity.toml, comments included
     private static String fixture() throws IOException {
@@ -30,6 +41,25 @@ class VelocityTomlTest {
 
         String expected = in.replace("try = [", "creative = \"10.0.0.13:25565\"\ntry = [");
         assertEquals(expected, out);
+    }
+
+    @Test
+    void rejectsTheReservedTryNameWithOrWithoutAnExistingTryArray() throws IOException {
+        for (String input : java.util.List.of(fixture(), "[servers]\n\"try\" = [\"lobby\"]\n", "")) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> VelocityToml.addServers(input, Map.of("try", "localhost:25565")));
+        }
+    }
+
+    @Test
+    void aReservedNameDoesNotChangeTheFile(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("velocity.toml");
+        String before = fixture();
+        Files.writeString(file, before);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> VelocityToml.addServers(file, Map.of("try", "localhost:25565")));
+        assertEquals(before, Files.readString(file));
     }
 
     @Test

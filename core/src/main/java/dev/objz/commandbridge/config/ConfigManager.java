@@ -101,7 +101,8 @@ public final class ConfigManager<T> {
 
             boolean enumOk = validateEnumValues(root, modelClass, "");
             if (!enumOk) {
-                this.current = defaults;
+                if (current == null)
+                    this.current = defaults;
                 Log.error("Invalid config.yml");
                 return false;
             }
@@ -113,21 +114,26 @@ public final class ConfigManager<T> {
             T loaded = root.get(modelClass, defaults);
 
             var result = profile.normalize(loaded);
-            this.current = result.config();
             Log.debug("Config loaded from '{}' for model {} (valid={})", filePath, modelClass.getSimpleName(), result.ok());
 
             if (!result.ok()) {
+                if (current == null)
+                    this.current = defaults;
                 Log.error("Invalid config.yml");
+                return false;
             }
-            return result.ok();
+            this.current = result.config();
+            return true;
 
         } catch (SerializationException e) {
             Log.error("Invalid config.yml: {}", e.getMessage());
-            this.current = profileOf(modelClass).defaults();
+            if (current == null)
+                this.current = profileOf(modelClass).defaults();
             return false;
         } catch (Exception e) {
             Log.error(e, "Error loading config.yml: {}", e.getMessage());
-            this.current = profileOf(modelClass).defaults();
+            if (current == null)
+                this.current = profileOf(modelClass).defaults();
             return false;
         }
     }

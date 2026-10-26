@@ -123,6 +123,31 @@ class SetupSessionTest {
     }
 
     @Test
+    void aClosedOfferNeverHandsOutTheConfig() {
+        var offer = new PairOffer("creative", "main-proxy", PairCrypto.newCode(), new byte[]{'{', '}'}, n -> {
+        });
+        var socket = new FakeSocket();
+        offer.close();
+
+        offer.onText(socket, "{\"type\":\"hello\"}", true);
+
+        assertTrue(socket.sent.isEmpty());
+    }
+
+    @Test
+    void repeatedDoneMessagesOnlyReportPairingOnce() {
+        var count = new java.util.concurrent.atomic.AtomicInteger();
+        var offer = new PairOffer("creative", "main-proxy", PairCrypto.newCode(), new byte[]{'{', '}'}, n -> count.incrementAndGet());
+        var socket = new FakeSocket();
+        offer.onText(socket, "{\"type\":\"hello\"}", true);
+
+        offer.onText(socket, "{\"type\":\"done\"}", true);
+        offer.onText(socket, "{\"type\":\"done\"}", true);
+
+        assertEquals(1, count.get());
+    }
+
+    @Test
     void clientConfigSurvivesTheJsonItIsSealedAs() throws Exception {
         var c = dev.objz.commandbridge.config.model.BackendsConfig.defaults();
         assertEquals(c, MAPPER.readValue(MAPPER.writeValueAsBytes(c), dev.objz.commandbridge.config.model.BackendsConfig.class));
@@ -144,6 +169,17 @@ class SetupSessionTest {
     void firstUsePinIsTheProxysOwnCertificate(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
         // the proxy keeps its TOFU keystore in data/, where TlsResolver creates it
         dev.objz.commandbridge.security.TLS.ensure(dir.resolve("data"), "localhost");
+        var plan = new SetupPlan("main-proxy", dev.objz.commandbridge.config.model.EndpointType.WEBSOCKET, 8765,
+                "play.example.net", null, dev.objz.commandbridge.config.model.TlsMode.TOFU, null, List.of());
+
+        String pin = SetupSession.pin(plan, dir);
+
+        assertTrue(pin.startsWith("sha256/"), pin);
+        assertEquals(dev.objz.commandbridge.security.TLS.readServerSpkiPin(dir.resolve("data")), pin);
+    }
+
+    @Test
+    void enablingTlsDuringSetupCreatesThePinBeforePairing(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
         var plan = new SetupPlan("main-proxy", dev.objz.commandbridge.config.model.EndpointType.WEBSOCKET, 8765,
                 "play.example.net", null, dev.objz.commandbridge.config.model.TlsMode.TOFU, null, List.of());
 
@@ -182,5 +218,96 @@ class SetupSessionTest {
 
         assertEquals("proxy main, WebSocket at play.example.net:8765, encrypted on first use, servers lobby, creative (new, 10.0.0.13:25565)",
                 SetupSession.summary(plan));
+    }
+
+    private static SetupSession offlineSession(java.nio.file.Path dir) throws Exception {
+        var config = new dev.objz.commandbridge.config.ConfigManager<>(dir,
+                dev.objz.commandbridge.config.model.VelocityConfig.class);
+        assertTrue(config.load());
+        var proxy = (com.velocitypowered.api.proxy.ProxyServer) java.lang.reflect.Proxy.newProxyInstance(
+                SetupSessionTest.class.getClassLoader(), new Class<?>[]{com.velocitypowered.api.proxy.ProxyServer.class},
+                (instance, method, args) -> {
+                    if (method.getName().equals("getAllServers"))
+                        return List.of();
+                    throw new UnsupportedOperationException(method.getName());
+                });
+        var constructor = SetupSession.class.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        SetupSession session = (SetupSession) constructor.newInstance(proxy, config,
+                new dev.objz.commandbridge.velocity.net.session.SessionHub(), dir, dir.resolve("velocity.toml"),
+                (java.util.function.Supplier<CompletableFuture<String>>) () -> CompletableFuture.completedFuture(""));
+        var relayType = dev.objz.commandbridge.velocity.editor.RelayChannel.class;
+        var relayConstructor = relayType.getDeclaredConstructor(String.class, String.class,
+                dev.objz.commandbridge.velocity.editor.RelayChannel.Handler.class, Runnable.class);
+        relayConstructor.setAccessible(true);
+        Object relay = relayConstructor.newInstance("Setup test", "setup/",
+                (dev.objz.commandbridge.velocity.editor.RelayChannel.Handler) msg -> {
+                }, (Runnable) () -> {
+                });
+        var ws = relayType.getDeclaredField("ws");
+        ws.setAccessible(true);
+        ws.set(relay, new FakeSocket());
+        var channel = SetupSession.class.getDeclaredField("channel");
+        channel.setAccessible(true);
+        channel.set(session, relay);
+        return session;
+    }
+
+    private static Object field(SetupSession session, String name) throws Exception {
+        var field = SetupSession.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(session);
+    }
+
+    private static void plan(SetupSession session, String json) throws Exception {
+        var method = SetupSession.class.getDeclaredMethod("plan", JsonNode.class);
+        method.setAccessible(true);
+        method.invoke(session, MAPPER.readTree(json));
+    }
+
+    private static String stage(SetupSession session) throws Exception {
+        var method = SetupSession.class.getDeclaredMethod("stage");
+        method.setAccessible(true);
+        method.invoke(session);
+        return (String) field(session, "staged");
+    }
+
+    private static final String PLAN = """
+            {"serverId":"main-proxy","endpointType":"WEBSOCKET","port":8765,"address":"localhost",
+             "tlsMode":"PLAIN","servers":[]}
+            """;
+
+    @Test
+    void invalidPlansRevokeThePreviousStagedApproval(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        SetupSession session = offlineSession(dir);
+        plan(session, PLAN);
+        String code = stage(session);
+
+        plan(session, "{}");
+
+        assertNull(session.confirm(code));
+    }
+
+    @Test
+    void aFailedApplyRemainsUnappliedAndCanBeRetried(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        SetupSession session = offlineSession(dir);
+        plan(session, PLAN);
+        String code = stage(session);
+        java.nio.file.Files.delete(dir.resolve("config.yml"));
+        java.nio.file.Files.createDirectory(dir.resolve("config.yml"));
+        java.nio.file.Files.writeString(dir.resolve("config.yml/keep"), "keep");
+
+        SetupSession.Result failed = session.confirm(code);
+
+        assertTrue(!failed.errors().isEmpty());
+        assertTrue(!failed.restartNeeded());
+        assertEquals(false, field(session, "applied"));
+        assertEquals(code, field(session, "staged"));
+        assertTrue(!java.nio.file.Files.exists(dir.resolve("data/setup.json")));
+
+        java.nio.file.Files.delete(dir.resolve("config.yml/keep"));
+        java.nio.file.Files.delete(dir.resolve("config.yml"));
+        assertTrue(session.confirm(code).errors().isEmpty());
+        assertEquals(true, field(session, "applied"));
     }
 }
