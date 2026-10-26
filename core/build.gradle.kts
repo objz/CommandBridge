@@ -36,6 +36,8 @@ dependencies {
     
     compileOnly("org.bouncycastle:bcprov-jdk18on:1.82")
     compileOnly("org.bouncycastle:bcpkix-jdk18on:1.82")
+    testImplementation("org.bouncycastle:bcprov-jdk18on:1.82")
+    testImplementation("org.bouncycastle:bcpkix-jdk18on:1.82")
 
     compileOnly("com.google.code.gson:gson:2.13.2")
 
