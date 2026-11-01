@@ -22,6 +22,9 @@ public final class RegistrationHandler extends InboundHandler {
     private final BackendClient client;
     private final CommandRegistryInterface registry;
     private volatile List<CommandStub> registeredCommands = List.of();
+    // Last set that registered without errors. Re-registering through CommandAPI after startup
+    // reloads datapacks on the main thread, so an identical set (e.g. after a reconnect) is skipped.
+    private volatile List<CommandStub> appliedCommands = List.of();
 
     public RegistrationHandler(BackendClient client) {
         this(client, new CommandRegistry(new ArgumentMapper(), client.outboundRouter()));
@@ -40,6 +43,7 @@ public final class RegistrationHandler extends InboundHandler {
             Log.warn("Failed to unregister previous commands: {}", e.getMessage());
         }
         registeredCommands = List.of();
+        appliedCommands = List.of();
     }
 
     @Override
@@ -50,6 +54,22 @@ public final class RegistrationHandler extends InboundHandler {
         } catch (Exception e) {
             Log.error(e, "Failed to handle REGISTER_COMMANDS from {}", env.from());
         }
+
+        if (rc != null && rc.commands() != null && !rc.commands().isEmpty()
+                && rc.commands().equals(appliedCommands)) {
+            Log.debug("Commands from {} are unchanged, keeping the current registration", env.from());
+            if (client.serverId() == null || client.serverId().isBlank()) {
+                client.setServerId(env.from());
+            }
+            int n = appliedCommands.size();
+            Feedback f = new Feedback(n, n, 0, List.of(), List.of());
+            reply(endpoint, env, MessageType.REGISTER_COMMANDS_RESULT, f).dispatch().exceptionally(ex -> {
+                Log.warn("Failed to send FEEDBACK: {}", ex.toString());
+                return null;
+            });
+            return;
+        }
+        appliedCommands = List.of();
 
         try {
             registry.unregisterAll();
@@ -89,6 +109,9 @@ public final class RegistrationHandler extends InboundHandler {
             client.setServerId(env.from());
         }
         Feedback f = fc.build();
+        if (f.failed() == 0) {
+            appliedCommands = registeredCommands;
+        }
         Summary.feedbackSummary("Registration", f, env.from());
         Summary.feedbackDetails(f, env.from(), true);
 
