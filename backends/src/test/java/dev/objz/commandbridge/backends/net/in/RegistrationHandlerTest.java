@@ -118,6 +118,53 @@ final class RegistrationHandlerTest {
     }
 
     @Test
+    void unchangedRequestKeepsCurrentRegistration() throws Exception {
+        receive(commands("heal", "feed"));
+        endpoint.sent.clear();
+        registryCalls.clear();
+
+        receive(commands("heal", "feed"));
+
+        assertTrue(registryCalls.isEmpty());
+        Feedback feedback = feedback();
+        assertEquals(2, feedback.requested());
+        assertEquals(2, feedback.succeeded());
+        assertEquals(List.of("heal", "feed"),
+                handler.snapshotRegisteredCommands().stream().map(CommandStub::name).toList());
+    }
+
+    @Test
+    void changedRequestReregisters() throws Exception {
+        receive(commands("heal", "feed"));
+        registryCalls.clear();
+
+        receive(commands("heal"));
+
+        assertEquals(List.of("unregisterAll", "register:heal"), registryCalls);
+    }
+
+    @Test
+    void requestWithFailuresIsRetriedEvenIfUnchanged() throws Exception {
+        receive(commands("bad-one", "heal"));
+        registryCalls.clear();
+
+        receive(commands("bad-one", "heal"));
+
+        assertEquals(List.of("unregisterAll", "register:bad-one", "register:heal"), registryCalls);
+    }
+
+    @Test
+    void unregisterAllForcesNextRegistration() throws Exception {
+        receive(commands("heal"));
+        handler.unregisterAll();
+        registryCalls.clear();
+
+        receive(commands("heal"));
+
+        assertEquals(List.of("unregisterAll", "register:heal"), registryCalls);
+    }
+
+    @Test
     void unregisterFailureDoesNotBlockRegistration() throws Exception {
         failUnregister = true;
 
